@@ -5,45 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="848d0728-c703-45ee-b532-94ce3a25dd80" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/VAE.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/dc_diag.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/diagnostics.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/load_data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/solver.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/chol_sp_diff.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/data_ssh_sst.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/data_wcov.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_score.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_ssh_sst_winit.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_winit.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_winit_old.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/load_data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/loss_score.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/models_spde.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/scipy_sparse_tools.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/score_based.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/sde_perturb.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_score.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_ssh_sst.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_wcov.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/spde.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/unet.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE/models.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE/solver.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/models.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/multimodal/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/multimodal/ose_utils.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/multiprior/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/three_d/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/three_d/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/DMI/SST/solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/contrib/DMI/SST/solver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -152,7 +115,8 @@
       <workItem from="1730460410503" duration="928000" />
       <workItem from="1730462871024" duration="1161000" />
       <workItem from="1730464403015" duration="7324000" />
-      <workItem from="1730489724932" duration="172000" />
+      <workItem from="1730489724932" duration="1463000" />
+      <workItem from="1730492214902" duration="755000" />
     </task>
     <servers />
   </component>

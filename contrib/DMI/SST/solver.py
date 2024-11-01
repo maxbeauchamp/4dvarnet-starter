@@ -269,37 +269,19 @@ class BilinAEPriorCost_wgeo(nn.Module):
 
 
 class VAEPriorCost_wgeo(nn.Module):
-    def __init__(self, dim_in, dim_out, path_weights, norm_stats_anom, norm_stats_state):
+    def __init__(self, dim_in, dim_out, path_weights):
         super().__init__()
         self.vae = VAE(in_channels=dim_in, out_channels=dim_out)
         # load weights of the VAE
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         ckpt = torch.load(path_weights, map_location=device)
         self.vae.load_state_dict(ckpt)
-        self.m_anom, self.s_anom = norm_stats_anom
-        self.m_state, self.s_state = norm_stats_state
-
-    def norm(self, x, m, s, forward=True):
-        if forward:
-            return (x-m)/s
-        else:
-            return (x*s)+m
 
     def forward_ae(self, state, batch):
         msk = batch.input.isfinite()
         anom = batch.input.nan_to_num()
-        coarse = batch.coarse.nan_to_num()
-        y = self.norm(self.norm(anom, self.m_anom, self.s_anom, forward=False)+coarse,self.m_state, self.s_state)
-        y = self.norm(self.norm(anom, self.m_anom, self.s_anom, forward=False),self.m_state, self.s_state)
-        inp = torch.cat((y, state[1]),dim=1)
-        # VAE acts on SST not anomalies
-        res = self.norm(self.norm(self.vae(inp), self.m_state, self.s_state,forward=False) - coarse, self.m_anom, self.s_anom)
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(3,1)
-        ax[0].pcolormesh(y[0,3,:,:].detach().cpu())
-        ax[1].pcolormesh(res[0,3,:,:].detach().cpu())
-        ax[2].pcolormesh((self.vae(inp))[0,3,:,:].detach().cpu())
-        plt.show()
+        inp = torch.cat((anom, state[1]),dim=1)
+        res = self.vae(inp)
         return res
 
     def forward(self, state, batch, x_prior=None):
