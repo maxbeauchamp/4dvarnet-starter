@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="848d0728-c703-45ee-b532-94ce3a25dd80" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/VAE.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/data.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/dc_diag.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/diagnostics.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/load_data.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.DMI.SST/solver.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/chol_sp_diff.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/data_ssh_sst.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/data_wcov.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_score.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_ssh_sst_winit.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_winit.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/lit_model_spde_winit_old.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/load_data.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/loss_score.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/models_spde.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/scipy_sparse_tools.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/score_based.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/sde_perturb.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_score.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_ssh_sst.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/solver_wcov.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/spde.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.SPDE/unet.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib.IMT.VAE/solver.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/data.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/lorenz63/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/multimodal/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/multimodal/ose_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/multiprior/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/three_d/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/three_d/models.py" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="2mpvLAbq9K4TbtjSA1s5Epsvg1E" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;devs&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/dmidata/users/maxb/4dvarnet-starter&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.notebooks.jupyter.connections.configuration.JupyterServerConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RdControllerToolWindowsLayoutState" isNewUi="true">
+    <layout>
+      <window_info id="Bookmarks" side_tool="true" />
+      <window_info id="Merge Requests" />
+      <window_info id="Commit_Guest" show_stripe_button="false" />
+      <window_info id="Pull Requests" />
+      <window_info id="Learn" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.24946064" />
+      <window_info id="Commit" order="1" weight="0.25" />
+      <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
+      <window_info anchor="bottom" id="Database Changes" />
+      <window_info anchor="bottom" id="TypeScript" />
+      <window_info anchor="bottom" id="TODO" />
+      <window_info anchor="bottom" id="HfCacheToolWindow" />
+      <window_info anchor="bottom" id="File Transfer" />
+      <window_info anchor="bottom" id="Version Control" order="0" />
+      <window_info anchor="bottom" id="Problems" order="1" />
+      <window_info anchor="bottom" id="Problems View" order="2" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="3" visible="true" weight="0.28296232" />
+      <window_info anchor="bottom" id="Services" order="4" />
+      <window_info anchor="bottom" id="Python Packages" order="5" weight="0.1" />
+      <window_info anchor="bottom" id="Python Console" order="6" weight="0.1" />
+      <window_info anchor="right" id="Endpoints" />
+      <window_info anchor="right" id="Coverage" side_tool="true" />
+      <window_info anchor="right" id="SciView" />
+      <window_info anchor="right" content_ui="combo" id="Notifications" order="0" weight="0.25" />
+      <window_info anchor="right" id="AIAssistant" order="1" weight="0.25" />
+      <window_info anchor="right" id="Database" order="2" weight="0.25" />
+      <window_info anchor="right" id="Gradle" order="3" weight="0.25" />
+      <window_info anchor="right" id="Maven" order="4" weight="0.25" />
+      <window_info anchor="right" id="Plots" order="5" weight="0.1" />
+    </layout>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23726.102" />
+        <option value="bundled-python-sdk-5e1850174b45-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23726.102" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="848d0728-c703-45ee-b532-94ce3a25dd80" name="Changes" comment="" />
+      <created>1727786274285</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1727786274285</updated>
+      <workItem from="1727786881312" duration="302000" />
+      <workItem from="1727787190142" duration="658000" />
+      <workItem from="1727787995330" duration="2000" />
+      <workItem from="1727788031726" duration="54000" />
+      <workItem from="1727788159288" duration="1653000" />
+      <workItem from="1727789824701" duration="130000" />
+      <workItem from="1727806262636" duration="15545000" />
+      <workItem from="1727851946352" duration="1484000" />
+      <workItem from="1727854078885" duration="1351000" />
+      <workItem from="1727855497883" duration="1416000" />
+      <workItem from="1727860649642" duration="2103000" />
+      <workItem from="1727864973677" duration="5415000" />
+      <workItem from="1727893266870" duration="4369000" />
+      <workItem from="1727898648622" duration="6000" />
+      <workItem from="1727902521495" duration="245000" />
+      <workItem from="1727991762967" duration="178000" />
+      <workItem from="1728025743869" duration="3227000" />
+      <workItem from="1728031994317" duration="14167000" />
+      <workItem from="1728052957710" duration="1881000" />
+      <workItem from="1728281785065" duration="4234000" />
+      <workItem from="1728311625852" duration="14681000" />
+      <workItem from="1728390647180" duration="6142000" />
+      <workItem from="1728412229392" duration="3338000" />
+      <workItem from="1730366283319" duration="1553000" />
+      <workItem from="1730453590889" duration="4693000" />
+      <workItem from="1730460410503" duration="928000" />
+      <workItem from="1730462871024" duration="1161000" />
+      <workItem from="1730464403015" duration="7324000" />
+      <workItem from="1730489724932" duration="172000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <line>2</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <line>29</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <line>601</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <line>638</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <line>704</line>
+          <option name="timeStamp" value="7" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
