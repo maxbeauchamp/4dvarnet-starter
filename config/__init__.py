@@ -52,7 +52,8 @@ domains = {
     "baltic_dm3_eval": dict(lon=[16.93999, 20.68005], lat=[55.18, 56.8001]),
     "baltic_dm1": dict(lon=[1.48,6.28], lat=[53.48,58.28]),
     "baltic_dm2": dict(lon=[-6.32,3.28], lat=[60.88,65.68]),
-    "baltic_dm3": dict(lon=[16.41,21.21], lat=[53.61,58.41])
+    "baltic_dm3": dict(lon=[16.41,21.21], lat=[53.61,58.41]),
+    "global": dict(lon=[-180,180], lat=[-80,90])
 }
 
 for n, d in domains.items():

@@ -70,8 +70,10 @@ def cosanneal_vae_lr_adam(lit_mod, lr, T_max=100, weight_decay=0., train_vae=Fal
         [
             {"params": lit_mod.solver.grad_mod.parameters(), "lr": lr},
             {"params": lit_mod.solver.obs_cost.parameters(), "lr": lr},
-            {"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
+            #{"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
             {"params": lit_mod.solver.gen_mod.parameters(), "lr": lr},
+            {"params": lit_mod.solver.lambda_obs, "lr": lr / 2},
+            {"params": lit_mod.solver.lambda_reg, "lr": lr / 2},
         ], weight_decay=weight_decay
         )
     else:
@@ -79,7 +81,9 @@ def cosanneal_vae_lr_adam(lit_mod, lr, T_max=100, weight_decay=0., train_vae=Fal
         [
             {"params": lit_mod.solver.grad_mod.parameters(), "lr": lr},
             {"params": lit_mod.solver.obs_cost.parameters(), "lr": lr},
-            {"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
+            #{"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
+            {"params": lit_mod.solver.lambda_obs, "lr": 1e-1},
+            {"params": lit_mod.solver.lambda_reg, "lr": lr/2},
         ], weight_decay=weight_decay
         )
     return {
@@ -551,7 +555,7 @@ def compute_ose_metrics(test_data, alontrack_independent_dataset='/homes/m19beau
     delta_x = velocity * delta_t
     lenght_scale = 1000 # km
    
-    file= 'file_4dvarnet_for_metrics.nc'
+    file= '/DATASET/mbeauchamp/IMT/4DVarNet_outputs/SPDE/file_4dvarnet_for_metrics.nc'
     test_data = test_data.update({'ssh':(('time','lat','lon'),test_data.out.data)})
     test_data.to_netcdf(file)
 

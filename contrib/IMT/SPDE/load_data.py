@@ -1,6 +1,7 @@
 import xarray as xr
 import src
 import numpy as np
+import pickle
 
 def load_data_wcov(path_files=["/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
                                "/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc"],
@@ -74,4 +75,65 @@ def load_data_ssh_sst(path_ssh, path_sst,
 
     return ds
 
+def mask_input(da, mask_list):
+    i = np.random.randint(0, len(mask_list))
+    mask = mask_list[i]
+    da = np.where(np.isfinite(mask), da, np.empty_like(da).fill(np.nan)).astype(np.float32)
+    return da
 
+def open_glorys12_data(path, masks_path, domain, variables="zos", masking=True, test_cut=None):
+    """
+        Function to load glorys data
+
+        path: path to glorys .nc file
+        masks_path: path to nadir-like observation masks with dimensions matching glorys dataset size. pickled np array list.
+        domain: lat and long extremities to cut data
+        variables: variable to load
+        masking: whether to mask the input data using the masks in masks_path
+        test_cut: if not None, {'time': slice(time1, time2)}, speeding up the loading by pre-cutting the loaded data
+    """
+
+    print("LOADING input data")
+    # DROPPING DEPTH !!
+    ds =  (
+        xr.open_dataset(path).drop_vars('depth')
+    )
+    
+    if 'latitude' in list(ds.dims):
+        ds = ds.rename({'latitude':'lat', 'longitude':'lon'})
+
+
+    if test_cut is not None:
+        ds = ds.sel(time=test_cut)
+
+    ds = (
+        ds
+        .load()
+        .assign(
+            input = lambda ds: ds[variables],
+            tgt= lambda ds: ds[variables]
+        )
+    )
+    print("done.")
+
+    if masking:
+        print("OPENING mask list")
+        with open(masks_path, 'rb') as masks_file:
+            mask_list = pickle.load(masks_file)
+        mask_list = np.array(mask_list)
+        print("done.")
+
+        print("MASKING input data")
+        ds= ds.assign(
+            input=xr.apply_ufunc(mask_input, ds.input, input_core_dims=[['lat', 'lon']], output_core_dims=[['lat', 'lon']], kwargs={"mask_list": mask_list}, dask="allowed", vectorize=True)
+            )
+        print("done.")
+    
+    ds = ds.sel(domain)
+    ds = (
+        ds[[*src.data.TrainingItem._fields]]
+        .transpose("time", "lat", "lon")
+        #.to_array()
+    )
+
+    return ds

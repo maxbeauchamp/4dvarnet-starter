@@ -264,7 +264,7 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         if self.training and batch.tgt.isfinite().float().mean() < 0.05:
             return None, None
 
-        batch = self.modify_batch(batch)
+        #batch = self.modify_batch(batch)
         loss, out = self.base_step(batch, phase)
         grad_loss = self.weighted_mse(kfilts.sobel(out) - kfilts.sobel(batch.tgt),
                                       self.optim_weight)

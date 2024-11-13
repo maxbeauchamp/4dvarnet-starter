@@ -34,7 +34,7 @@ trainer:
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
       monitor: val_mse
       save_top_k: 3
-      filename: '{val_mse:.5f}-{epoch:03d}'
+      filename: '{val_mse:.5f}-{epoch:03d}_anom_wc_wg'
 
 datamodule:
   _target_: contrib.DMI.SST.data.BaseDataModule_wcoarse_wgeo

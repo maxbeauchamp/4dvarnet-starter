@@ -326,53 +326,28 @@ class VAE_ResidualBlock(nn.Module):
 
         return x + self.residual_layer(residue)
 
-    
 class VAE_Encoder(nn.Sequential):
     def __init__(self, in_channels=9, out_channels=28):
         super().__init__(
             # (Batch_Size, Channel, Height, Width) -> (Batch_Size, 128, Height, Width)
-            PConv2d(in_channels, 128, kernel_size=3, padding=1,multi_channel=True, return_mask=True),  
-             # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
-            VAE_PResidualBlock(128, 128),
-            # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
-            VAE_PResidualBlock(128, 128),
+            PConv2d(in_channels, 24, kernel_size=3, padding=1,multi_channel=True, return_mask=True),      
             # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height / 2, Width / 2)
-            PConv2d(128, 128, kernel_size=3, stride=2, padding=0, multi_channel=True,return_mask=True),
-            # (Batch_Size, 128, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 2, Width / 2)
-            VAE_PResidualBlock(128, 256), 
-            # (Batch_Size, 256, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 2, Width / 2)
-            #VAE_PResidualBlock(256, 256), 
+            PConv2d(24, 48, kernel_size=3, stride=2, padding=0, multi_channel=True,return_mask=True),
             # (Batch_Size, 256, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 4, Width / 4)
-            PConv2d(256, 256, kernel_size=3, stride=2, padding=0,multi_channel=True, return_mask=True), 
-            # (Batch_Size, 256, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            VAE_PResidualBlock(256, 512), 
-            # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            #VAE_PResidualBlock(512, 512), 
+            PConv2d(48, 96, kernel_size=3, stride=2, padding=0,multi_channel=True, return_mask=True), 
             # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #PConv2d(512, 512, kernel_size=3, stride=2, padding=0,multi_channel=True, return_mask=True), 
+            PConv2d(96, 192, kernel_size=3, stride=2, padding=0,multi_channel=True, return_mask=True), 
             # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #VAE_PResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #VAE_PResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_PResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_PAttentionBlock(512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_PResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            nn.GroupNorm(32, 512), 
+            nn.GroupNorm(12, 192), 
             # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
             nn.SiLU(), 
-
             # Because the padding=1, it means the width and height will increase by 2
             # Out_Height = In_Height + Padding_Top + Padding_Bottom
             # Out_Width = In_Width + Padding_Left + Padding_Right
             # Since padding = 1 means Padding_Top = Padding_Bottom = Padding_Left = Padding_Right = 1,
             # Since the Out_Width = In_Width + 2 (same for Out_Height), it will compensate for the Kernel size of 3
             # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 8, Height / 8, Width / 8). 
-            PConv2d(512, out_channels, kernel_size=3, padding=1, multi_channel=True,return_mask=True), 
-
+            PConv2d(192, out_channels, kernel_size=3, padding=1, multi_channel=True,return_mask=True), 
             # (Batch_Size, 8, Height / 8, Width / 8) -> (Batch_Size, 8, Height / 8, Width / 8)
             PConv2d(out_channels, out_channels, kernel_size=1, padding=0, multi_channel=True, return_mask=True), 
         )
@@ -396,14 +371,17 @@ class VAE_Encoder(nn.Sequential):
                 x = module(x)
             else:
                 x, mask = module(x,mask)
-                
+        
         # (Batch_Size, 8, Height / 8, Width / 8) -> two tensors of shape (Batch_Size, 4, Height / 8, Width / 8)
         mean, log_variance = torch.chunk(x, 2, dim=1)
+        
         # Clamp the log variance between -30 and 20, so that the variance is between (circa) 1e-14 and 1e8. 
         # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 4, Height / 8, Width / 8)
         log_variance = torch.clamp(log_variance, -30, 20)
+        
         # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 4, Height / 8, Width / 8)
         variance = log_variance.exp()
+        
         # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 4, Height / 8, Width / 8)
         stdev = variance.sqrt()
         
@@ -414,8 +392,8 @@ class VAE_Encoder(nn.Sequential):
         
         # Scale by a constant
         # Constant taken from: https://github.com/CompVis/stable-diffusion/blob/21f890f9da3cfbeaba8e2ac3c425ee9e998d5229/configs/stable-diffusion/v1-inference.yaml#L17C1-L17C1
-        x *= 0.18215
-        
+        #x *= 0.18215
+                
         return x, mean, log_variance
 
 class VAE_Decoder(nn.Sequential):
@@ -424,76 +402,45 @@ class VAE_Decoder(nn.Sequential):
             # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 4, Height / 8, Width / 8)
             nn.Conv2d(in_channels, 4, kernel_size=1, padding=0),
             # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            nn.Conv2d(4, 512, kernel_size=3, padding=1),   
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_AttentionBlock(512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 8, Width / 8)
-            #VAE_ResidualBlock(512, 512), 
-            # Repeats the rows and columns of the data by scale_factor (like when you resize an image by doubling its size).
-            # (Batch_Size, 512, Height / 8, Width / 8) -> (Batch_Size, 512, Height / 4, Width / 4)
-            #nn.Upsample(scale_factor=2),
+            nn.Conv2d(4, 192, kernel_size=3, padding=1),   
+            nn.Upsample(scale_factor=2),
             # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            nn.Conv2d(512, 512, kernel_size=3, padding=1), 
-            # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            #VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 4, Width / 4)
-            #VAE_ResidualBlock(512, 512), 
-            # (Batch_Size, 512, Height / 4, Width / 4) -> (Batch_Size, 512, Height / 2, Width / 2)
+            nn.Conv2d(192, 96, kernel_size=3, padding=1), 
             nn.Upsample(scale_factor=2), 
             # (Batch_Size, 512, Height / 2, Width / 2) -> (Batch_Size, 512, Height / 2, Width / 2)
-            nn.Conv2d(512, 512, kernel_size=3, padding=1), 
-            # (Batch_Size, 512, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 2, Width / 2)
-            VAE_ResidualBlock(512, 256), 
-            # (Batch_Size, 256, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 2, Width / 2)
-            VAE_ResidualBlock(256, 256), 
-            # (Batch_Size, 256, Height / 2, Width / 2) -> (Batch_Size, 256, Height / 2, Width / 2)
-            #VAE_ResidualBlock(256, 256), 
-            # (Batch_Size, 256, Height / 2, Width / 2) -> (Batch_Size, 256, Height, Width)
+            nn.Conv2d(96, 48, kernel_size=3, padding=1), 
             nn.Upsample(scale_factor=2), 
             # (Batch_Size, 256, Height, Width) -> (Batch_Size, 256, Height, Width)
-            nn.Conv2d(256, 256, kernel_size=3, padding=1), 
-            # (Batch_Size, 256, Height, Width) -> (Batch_Size, 128, Height, Width)
-            VAE_ResidualBlock(256, 128), 
+            nn.Conv2d(48, 48, kernel_size=3, padding=1), 
             # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
-            VAE_ResidualBlock(128, 128), 
-            # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
-            VAE_ResidualBlock(128, 128), 
-            # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
-            nn.GroupNorm(32, 128), 
+            nn.GroupNorm(12, 48), 
             # (Batch_Size, 128, Height, Width) -> (Batch_Size, 128, Height, Width)
             nn.SiLU(), 
             # (Batch_Size, 128, Height, Width) -> (Batch_Size, 3, Height, Width)
-            nn.Conv2d(128, out_channels, kernel_size=3, padding=1), 
+            nn.Conv2d(48, out_channels, kernel_size=3, padding=1), 
         )
 
     def forward(self, x):
         # x: (Batch_Size, 4, Height / 8, Width / 8)
         
         # Remove the scaling added by the Encoder.
-        x /= 0.18215
+        #x /= 0.18215
 
         for module in self:
             x = module(x)
 
         # (Batch_Size, 3, Height, Width)
-        return x
+        return x   
 
 class VAE(nn.Sequential):
-    def __init__(self,in_channels=9, out_channels=28):
+    def __init__(self,in_channels=9, out_channels=28, path_weights=None):
         super().__init__()
         self.encoder = VAE_Encoder(in_channels, out_channels).to(device)
         self.decoder = VAE_Decoder(out_channels//2,in_channels-5).to(device)
-        
+        if path_weights is not None:
+            ckpt = torch.load(path_weights, map_location=device)
+            self.load_state_dict(ckpt)
+
     def vae_loss(self, x, x_hat, mean, log_var, wKL=.01):
         err = x_hat-x
         err_grad = sobel(x_hat)-sobel(x)

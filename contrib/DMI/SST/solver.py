@@ -204,6 +204,8 @@ class GradSolver_wgeo(GradSolver):
                 # create a prior with VAE strategy
                 x_prior = self.prior_cost.forward_ae(state, batch)
                 state = self.init_state(batch, x_init=x_prior)
+            else:
+                x_prior = None
             self.grad_mod.reset_state(batch.input)
 
             for step in range(self.n_step):

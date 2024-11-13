@@ -1,3 +1,4 @@
+from random import sample 
 import pytorch_lightning as pl
 import numpy as np
 import torch.utils.data
@@ -48,7 +49,8 @@ class XrDataset(torch.utils.data.Dataset):
             resize_factor=1,
             res=0.05,
             frcst_lead=None,
-            pad = False
+            pad = False,
+            limit_num_coords=None
             ):
         """
         da: xarray.DataArray with patch dims at the end in the dim orders
@@ -66,6 +68,7 @@ class XrDataset(torch.utils.data.Dataset):
         self.res = res
         self.frcst_lead = frcst_lead
         self.pad = pad
+        self.limit_num_coords = limit_num_coords
 
         # extend self.da if domain larger than NetCDF
         '''
@@ -97,6 +100,7 @@ class XrDataset(torch.utils.data.Dataset):
         lat_orig = self.da.lat.data
 
         # pad
+        self.da_orig = self.da
         nt, ny, nx = tuple(self.da.sizes[d] for d in ['time', 'lat', 'lon'])
         if self.pad:
             pad_x = find_pad(self.patch_dims['lon'], self.strides['lon'], nx)
@@ -164,11 +168,27 @@ class XrDataset(torch.utils.data.Dataset):
         self.return_coords = True
         coords = []
         try:
-            for i in range(len(self)):
-                coords.append(self[i])
+            if self.limit_num_coords is None:
+                for i in range(len(self)):
+                    coords.append(self[i])
+            else:
+                for i in sample(range(0,len(self)),self.limit_num_coords):
+                    coords.append(self[i])
         finally:
             self.return_coords = False
             return coords
+
+    def get_padded_dims(self):
+        #padded_dims = {d: len(self.da[d].values) for d in self.patch_dims}
+        # lat
+        #padded_dims['lat'] += self.strides['lat'] - (padded_dims['lat'] - self.patch_dims['lat']) % self.strides['lat']
+        # lon
+        #padded_dims['lon'] += self.strides['lon'] - (padded_dims['lon'] - self.patch_dims['lon']) % self.strides['lon']
+        #return tuple(padded_dims.values())
+        return (len(self.da[d].values) for d in self.patch_dims)
+
+    def get_unpadded_dims(self):
+        return (len(self.da_orig[d].values) for d in self.patch_dims)
 
     def __getitem__(self, item):
         sl = {
@@ -187,8 +207,7 @@ class XrDataset(torch.utils.data.Dataset):
             return self.postpro_fn(item)
         return item
     
-    
-    def reconstruct(self, batches, weight=None, crop=None):
+    def reconstruct(self, batches, weight=None, crop=None, fast=False):
         """
         takes as input a list of np.ndarray of dimensions (b, *, *patch_dims)
         return a stitched xarray.DataArray with the coords of patch_dims
@@ -198,14 +217,16 @@ class XrDataset(torch.utils.data.Dataset):
         overlapping patches will be averaged with weighting 
         """
 
-        items = list(itertools.chain(*batches))
-        return self.reconstruct_from_items(items, weight, crop=crop)
+        if fast:
+            return self.reconstruct_from_items_fast(batches, weight, crop=crop)
+        else:
+            items = list(itertools.chain(*batches))
+            return self.reconstruct_from_items(items, weight, crop=crop)
 
     def reconstruct_from_items(self, items, weight=None, crop=None):
         if weight is None:
             weight = np.ones(list(self.patch_dims.values()))
         w = xr.DataArray(weight, dims=list(self.patch_dims.keys()))
-
         
         if crop is None:
             coords = self.get_coords()
@@ -238,6 +259,58 @@ class XrDataset(torch.utils.data.Dataset):
             count_da.loc[da.coords] = count_da.sel(da.coords) + w
 
         return rec_da / count_da
+
+    def reconstruct_from_items_fast(self, items: torch.Tensor, weight=None, crop=None):
+        """
+            Reconstruction of patches that can contain padded patches
+        """
+        if weight is None:
+            weight = np.ones(list(self.patch_dims.values()))
+
+        # getting coords
+        if crop is None:
+            coords_slices = self.get_coords()
+        else:
+            if self.frcst_lead is None:
+                coords_slices = [item.isel(time=slice(crop//2,-(crop//2))) for item in self.get_coords()]
+            else:
+                coords_slices = [item.isel(time=slice(crop,
+                                               self.patch_dims['time'])) for item in self.get_coords()]
+
+        coords_dims = self.patch_dims
+        
+        new_dims = [f'v{i}' for i in range(len(items[0].cpu().shape) - len(coords_dims))]
+        dims = new_dims + list(coords_dims)
+
+        new_shape = items[0].shape[:len(new_dims)]
+        full_unpadded_shape = [*new_shape, *self.get_unpadded_dims()]
+        full_padded_shape = [*new_shape, *self.get_padded_dims()]
+
+        print(full_padded_shape)
+        print(full_unpadded_shape)
+        # create cuda slices
+        full_slices = []
+        for idx, coord_slices in enumerate(coords_slices):
+            full_slices.append(tuple([slice(None)]*len(new_dims)+list(coord_slices.values())))
+
+        # create cuda tensors
+        rec_tensor = torch.zeros(size=full_padded_shape).cuda()
+        count_tensor = torch.zeros(size=full_padded_shape).cuda()
+        w = torch.tensor(weight).cuda()
+
+        for idx in range(items.size(0)):
+            rec_tensor[full_slices[idx]] += items[idx] * w
+            count_tensor[full_slices[idx]] += w
+        result_tensor = (rec_tensor / count_tensor).cpu()
+        result_array = np.array(result_tensor[[slice(0,max_shape) for max_shape in full_unpadded_shape]])
+
+        result_da = xr.DataArray(
+            result_array,
+            dims=dims,
+            coords={d: self.da[d] for d in self.patch_dims},
+        )
+
+        return result_da
 
 class XrConcatDataset(torch.utils.data.ConcatDataset):
     """
@@ -346,7 +419,8 @@ class BaseDataModule(pl.LightningDataModule):
         self.train_ds = XrDataset(
             train_data, **self.xrds_kw, postpro_fn=post_fn,
             resize_factor = self.resize_factor,
-            res = self.res, frcst_lead = self.frcst_lead
+            res = self.res, limit_num_coords = 300,
+            frcst_lead = self.frcst_lead
         )
         if self.aug_kw:
             self.train_ds = AugmentedDataset(self.train_ds, **self.aug_kw)
