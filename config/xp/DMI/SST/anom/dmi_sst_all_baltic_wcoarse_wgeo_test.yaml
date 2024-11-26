@@ -145,7 +145,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/sst_dmi_baltic_wcoarse_wgeo.ckpt
+    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/sst_dmi_baltic_wcoarse_wgeo_old.ckpt
 
 defaults:
   - /domain: baltic_ext

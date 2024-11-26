@@ -181,6 +181,7 @@ class XrDataset(torch.utils.data.Dataset):
                                     np.unravel_index(item, tuple(self.ds_size.values())))
              }
 
+        # read asip
         start = sl["time"].start
         end = sl["time"].stop
         if use_mf:
@@ -190,22 +191,45 @@ class XrDataset(torch.utils.data.Dataset):
             asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
                                                                        yc=sl["yc"]) \
                               for t in range(start,end)],dim="time")
-        dim_patch =  (len(asip.time),len(asip.yc),len(asip.xc))
-        if ( (dim_patch[1] != self.patch_dims["yc"]) or (dim_patch[2] != self.patch_dims["xc"]) ):
-            print("toto")
-            patch = xr.Dataset(
-                        coords=dict(
-                            xc=sl["xc"],
-                            yc=sl["yc"],
-                            time=asip.time,
-                     ))
-            asip = xr.align(patch,asip,join="left")[1]
-
+        
+        # pad
+        nt, ny, nx = tuple(asip.sizes[d] for d in ['time', 'yc', 'xc'])
+        xc_orig = asip.xc.data
+        yc_orig = yc.asip.data
+        if self.pad:
+            pad_x = find_pad(self.patch_dims['xc'], self.strides['xc'], nx)
+            pad_y = find_pad(self.patch_dims['yc'], self.strides['yc'], ny)
+            pad_ = {'xc':(pad_x[0],pad_x[1]),'yc':(pad_y[0],pad_y[1])}
+            asip = asip.pad(pad_, mode='constant', constant_values=None)
+            dx = [pad_ *self.res for pad_ in pad_x]
+            dy = [pad_ *self.res for pad_ in pad_y]
+            new_xc = np.concatenate((np.linspace(xc_orig[0]-dx[0],
+                                                 xc_orig[0],
+                                                 pad_x[0],endpoint=False),
+                                     xc_orig,
+                                     np.linspace(xc_orig[-1]+self.res,
+                                                 xc_orig[-1]+dx[1]+ self.res,
+                                                 pad_x[1],endpoint=False)))
+            new_yc = np.concatenate((np.linspace(yc_orig[0]-dy[0],
+                                                 yc_orig[0],
+                                                 pad_y[0],endpoint=False),
+                                     yc_orig,
+                                     np.linspace(yc_orig[-1]+self.res,
+                                                 yc_orig[-1]+dy[1]+ self.res,
+                                                 pad_y[1],endpoint=False)))
+            yc_padded = np.round(new_yc,2)
+            xc_padded = np.round(new_xc,2)
+            asip = asip.assign_coords(
+                         xc = np.round(xc,2),
+                         yc = np.round(yc,2)
+                       )
+        asip = asip.isel(xc=sl["xc"],yc=sl["yc"])
         lat = asip.lat.values
         lon = asip.lon.values
         asip_swath_def = pyresample.geometry.SwathDefinition(lons=lon, lats=lat)
         asip.close()
 
+        # read osisaf
         if use_mf:
             osisaf = xr.open_mfdataset(self.osisaf_paths[start:end])
         else:
@@ -216,11 +240,13 @@ class XrDataset(torch.utils.data.Dataset):
         osisaf_swath_def = pyresample.geometry.SwathDefinition(lons=osisaf_lon, lats=osisaf_lat)
         osisaf.close()
 
+        # interpolate osisaf on asip
         asip_coarse = np.zeros(asip.sic.shape)
         for i in range(len(asip.time)):
             asip_coarse[i] = pyresample.kd_tree.resample_nearest(osisaf_swath_def, osisaf_sic[i], asip_swath_def, radius_of_influence=30000, fill_value=np.nan)
         asip = asip.update({"sic_coarse":(("time","yc","xc"),asip_coarse)})
  
+        # create final item
         inp = asip.rename_vars({"sic":"input"}).transpose('time', 'yc', 'xc')
         tgt = asip.rename_vars({"sic":"tgt"}).transpose('time', 'yc', 'xc')
         coarse = asip.rename_vars({"sic_coarse":"coarse"}).transpose('time', 'yc', 'xc')
