@@ -260,9 +260,8 @@ class XrConcatDataset(torch.utils.data.ConcatDataset):
         rec_das = []
         for ds in self.datasets:
             ds_items = list(itertools.islice(items_iter, len(ds)))
-            rec_das.append(ds.reconstruct_from_items(ds_items, weight))
-    
-        return rec_das
+            rec_das.append(ds.reconstruct_from_items(ds_items, weight).isel(time=-1))
+        return xr.concat(rec_das,dim="time")
 
 class AugmentedDataset(torch.utils.data.Dataset):
     def __init__(self, inp_ds, aug_factor, aug_only=False, noise_sigma=None):
@@ -438,7 +437,7 @@ class BaseDataModule(pl.LightningDataModule):
                 pad=self.pads[1]
             )
         else:
-           self.val_ds =ConcatDataset([
+           self.val_ds = XrConcatDataset([
               XrDataset(
                 self.input_da.sel(**{'time': sl}), 
                 **self.xrds_kw, postpro_fn=post_fn,
@@ -447,13 +446,24 @@ class BaseDataModule(pl.LightningDataModule):
               ) for sl in self.domains['val']['time'] ]
             )
 
-        self.test_ds = XrDataset(
-            self.input_da.sel(self.domains['test']), **self.xrds_kw, postpro_fn=post_fn,
-            resize_factor = self.resize_factor,
-            res = self.res,
-            pad=self.pads[2],
-            stride_test=True
-        )
+        if isinstance(self.domains['test']['time'], slice):
+            self.test_ds = XrDataset(
+                self.input_da.sel(self.domains['test']), **self.xrds_kw, postpro_fn=post_fn,
+                resize_factor = self.resize_factor,
+                res = self.res,
+                pad=self.pads[2],
+                stride_test=True
+            )
+        else:
+            self.test_ds = XrConcatDataset([
+              XrDataset(
+                self.input_da.sel(**{'time': sl}),
+                **self.xrds_kw, postpro_fn=post_fn,
+                resize_factor = self.resize_factor,
+                res = self.res, pad=self.pads[2],
+                stride_test=True
+              ) for sl in self.domains['test']['time'] ]
+            )
 
     def train_dataloader(self):
         return  torch.utils.data.DataLoader(self.train_ds, shuffle=True, **self.dl_kw)

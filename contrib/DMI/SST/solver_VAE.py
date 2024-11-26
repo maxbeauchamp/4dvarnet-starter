@@ -39,7 +39,6 @@ class GradSolver_VAE(nn.Module):
         z = self.gen_mod.encoder(x_aug)[0]
         x_init = self.gen_mod.decoder(z)
         #x_init = torch.where(torch.isnan(batch.input),x_init,batch.input)
-
         return (x_init, coords_cov)
 
 
@@ -67,7 +66,7 @@ class GradSolver_VAE(nn.Module):
             gmod = self.grad_mod(grad)
             x_update = ( 1 / (step + 1) * gmod + self.lr_grad * (step + 1) / self.n_step * grad)
             x = x - x_update
-            print(self.lambda_reg, self.lambda_obs)
+            #print(self.lambda_reg, self.lambda_obs)
 
         state = (x, coords_cov)
         

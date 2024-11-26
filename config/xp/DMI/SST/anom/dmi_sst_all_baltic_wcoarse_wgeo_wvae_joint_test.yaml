@@ -3,12 +3,12 @@
 paths:
     #src: /gpfsstore/rech/yrf/uba22to/DMI
     src: /DATASET/mbeauchamp/DMI
-    obs: ${paths.src}/training_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc
-    tgt: ${paths.src}/training_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc
-    oi: ${paths.src}/training_dataset/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc
-    coarse: ${paths.src}/training_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC_w4DVarNet_coarse.nc
-    topo: ${paths.src}/training_dataset/DMI-TOPO_NSEABALTIC.nc
-    fg_std: ${paths.src}/training_dataset/DMI-FGSTD_NSEABALTIC.nc
+    obs: ${paths.src}/validation_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC_validation_s0.nc
+    tgt: ${paths.src}/validation_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC_validation_s0.nc
+    oi: ${paths.src}/validation_dataset/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC_2021_validation.nc
+    coarse: ${paths.src}/validation_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC_validation_s0_w4DVarNet_coarse.nc
+    topo: ${paths.src}/validation_dataset/DMI-TOPO_NSEABALTIC.nc
+    fg_std: ${paths.src}/validation_dataset/DMI-FGSTD_NSEABALTIC.nc
 
 domain: ???
 
@@ -55,14 +55,34 @@ datamodule:
         - {_target_: builtins.slice, _args_: ['2021-04-01', '2021-04-30']} 
         - {_target_: builtins.slice, _args_: ['2021-07-01', '2021-07-31']}
         - {_target_: builtins.slice, _args_: ['2021-10-01', '2021-10-31']}
-    test:
-      time: {_target_: builtins.slice, _args_: ['2021-06-01', '2021-06-09']}
-    #train
-    #  time: {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-31']}
-    #val:
-    #  time: {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-31']}
     #test:
-    #  time: {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-21']}
+      #time: {_target_: builtins.slice, _args_: ['2021-06-01', '2021-06-09']}
+    test:
+      time:
+        - {_target_: builtins.slice, _args_: ['2021-01-09', '2021-01-15']}
+        - {_target_: builtins.slice, _args_: ['2021-01-24', '2021-01-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-02-09', '2021-02-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-02-22', '2021-02-28']}
+        #- {_target_: builtins.slice, _args_: ['2021-03-09', '2021-03-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-03-24', '2021-03-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-04-09', '2021-04-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-04-23', '2021-04-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-05-09', '2021-05-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-05-24', '2021-05-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-06-09', '2021-06-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-06-23', '2021-06-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-07-09', '2021-07-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-07-24', '2021-07-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-08-09', '2021-08-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-08-24', '2021-08-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-09-09', '2021-09-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-09-23', '2021-09-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-10-09', '2021-10-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-10-24', '2021-10-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-11-09', '2021-11-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-11-23', '2021-11-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-12-09', '2021-12-15']}
+        #- {_target_: builtins.slice, _args_: ['2021-12-24', '2021-12-31']}
   xrds_kw:
     patch_dims: { time: 7, lat: 240, lon: 240}
     strides: { time: 1, lat: 20, lon: 20}
@@ -119,6 +139,7 @@ model:
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       #dim_in: 25
       dim_hidden: 96
+  n_simu: 10
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel

@@ -289,7 +289,7 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         if batch_idx == 0:
             self.test_data = []
 
-        batch = self.modify_batch(batch)
+        #batch = self.modify_batch(batch)
         out = self(batch=batch)
         m, s = self.norm_stats
 

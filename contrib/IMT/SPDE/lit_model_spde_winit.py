@@ -14,6 +14,7 @@ from cupyx.scipy.sparse import csc_matrix as cupy_sp_csc_matrix
 from torch.utils.dlpack import to_dlpack
 from torch.utils.dlpack import from_dlpack
 from sksparse.cholmod import cholesky
+from cholespy import CholeskySolverF, MatrixType
 import einops
 
 def smooth(field):
@@ -91,6 +92,7 @@ class Lit4dVarNet(pl.LightningModule):
         self.out_as_first_guess = out_as_first_guess
         self.smooth_wprior = smooth_wprior
 
+        self.device_solver = "cpu"
         self.return_daw = False
 
     @property
@@ -239,6 +241,16 @@ class Lit4dVarNet(pl.LightningModule):
     def configure_optimizers(self):
         return self.opt_fn(self,epoch_start_opt2=self.epoch_start_opt2)
 
+    def run_cholespy_simulations(self, A):
+        n_rows = A.size()[0]
+        rows, cols = A.coalesce().indices()
+        data = A.coalesce().values()
+        solver = CholeskySolverF(n_rows, rows, cols, data, MatrixType.COO)
+        b = torch.randn(n_rows,self.n_simu).to(A.device)
+        x = torch.zeros_like(b).to(A.device)
+        solver.solve(b, x)
+        return x
+
     def test_step(self, batch, batch_idx, phase="test"):
         if batch_idx == 0:
             self.test_data = []
@@ -278,18 +290,23 @@ class Lit4dVarNet(pl.LightningModule):
     
             x_simu = []
             for ibatch in range(n_b):
-                Q_ = Q[ibatch].detach().cpu()
-                Q_sp = sparse_torch2scipy(Q_)
-                if self.factor is None:
-                    self.factor = cholesky(Q_sp,ordering_method='natural')
-                else:
-                    self.factor.cholesky_inplace(Q_sp)
-                if self.solver.nll.downsamp is not None:
-                    RM = self.factor.apply_P(torch.randn((nb_nodes//(self.solver.nll.downsamp**2))*n_t,self.n_simu))
-                else:
-                    RM = self.factor.apply_P(torch.randn(nb_nodes*n_t,self.n_simu))
-                x_simu_ = torch.FloatTensor(self.factor.solve_Lt(RM,
+                if self.device_solver=="cpu":
+                    Q_ = Q[ibatch].detach().cpu()
+                    Q_sp = sparse_torch2scipy(Q_)
+                    if self.factor is None:
+                        self.factor = cholesky(Q_sp,ordering_method='natural')
+                    else:
+                        self.factor.cholesky_inplace(Q_sp)
+                    if self.solver.nll.downsamp is not None:
+                        RM = self.factor.apply_P(torch.randn((nb_nodes//(self.solver.nll.downsamp**2))*n_t,self.n_simu))
+                    else:
+                        RM = self.factor.apply_P(torch.randn(nb_nodes*n_t,self.n_simu))
+                    x_simu_ = torch.FloatTensor(self.factor.solve_Lt(RM,
                                                         use_LDLt_decomposition=False)).to(device)
+                else:
+                    Q_ = Q[ibatch].detach()
+                    x_simu_ = self.run_cholespy_simulations(Q_)
+
                 if self.solver.nll.downsamp is not None:
                     x_simu_ = torch.squeeze(torch.stack([self.solver.nll.up(torch.reshape(x_simu_[:,i], 
                                                      (1,n_t,

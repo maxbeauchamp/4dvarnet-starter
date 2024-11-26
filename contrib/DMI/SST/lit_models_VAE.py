@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 from src.models import Lit4dVarNet
 
 class Lit4dVarNet_VAE(Lit4dVarNet):
-    def __init__(self, path_mask, optim_weight, domain_limits, persist_rw=True, *args, **kwargs):
+    def __init__(self, path_mask, optim_weight, domain_limits, n_simu=1, persist_rw=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.domain_limits = domain_limits
+        self.n_simu = n_simu
         self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).analysed_sst_LR[20])
         self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
 
@@ -92,44 +93,52 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
     def test_step(self, batch, batch_idx):
         if batch_idx == 0:
             self.test_data = []
+            self.test_simu = []
 
-        batch = self.modify_batch(batch)
         out = self(batch=batch)
 
-        covs = self.solver.init_state(batch)[1]
-        z, mean, log_var = self.solver.gen_mod.encoder(torch.cat((batch.tgt,covs),dim=1))
-        x_hat = self.solver.gen_mod.decoder(z)
-
-        """
-        # plot
-        data = xr.Dataset(data_vars=dict(
-                               out=(["time", "lat", "lon"], x_hat[0].detach().cpu().data),
-                               ),
-                          coords=(dict(time=range(7),
-                                  lon=range(240),
-                                  lat=range(240))))
-        data.out.plot(col='time',col_wrap=7)
-        plt.show()
-        """
+        #covs = self.solver.init_state(batch)[1]
+        #z, mean, log_var = self.solver.gen_mod.encoder(torch.cat((batch.tgt,covs),dim=1))
+        #x_hat = self.solver.gen_mod.decoder(z)
 
         m, s = self.norm_stats
 
-        self.test_data.append(torch.stack(
-            [
+        if self.n_simu==1:
+            out = self(batch=batch)
+            self.test_data.append(torch.stack(
+                [
                 batch.input.cpu() * s + m + batch.coarse.cpu(),
                 batch.tgt.cpu() * s + m + batch.coarse.cpu(),
                 out.squeeze(dim=-1).detach().cpu() * s + m + batch.coarse.cpu(),
-                x_hat.cpu() * s + m
-            ],
-            dim=1,
-        )) 
+                #x_hat.cpu() * s + m
+               ],dim=1))
+            out = None
+        else:
+            simu = []
+            for i in range(self.n_simu):
+                print(i)
+                simu.append(self(batch=batch))
+            simu = torch.stack(simu, dim=4).detach().cpu()
+            self.test_data.append(torch.stack(
+                [
+                 batch.input.cpu() * s + m + batch.coarse.cpu(),
+                 batch.tgt.cpu() * s + m + batch.coarse.cpu(),
+                 torch.mean((simu * s + m) + torch.unsqueeze(batch.coarse.cpu(),dim=4), dim=4)
+                ],dim=1))
+            self.test_simu.append(torch.unsqueeze(
+                 (simu * s + m) +  torch.unsqueeze(batch.coarse.cpu(),dim=4),
+                 dim=1))
+            simu = None
 
         batch = None
-        out = None
 
     @property
     def test_quantities(self):
-        return ['inp', 'tgt', 'out', 'vae']
+        return ['inp', 'tgt', 'out']#, 'vae']
+
+    @property
+    def test_simu_quantities(self):
+        return ['simulations']
 
     def on_test_epoch_end(self):
 
@@ -141,10 +150,34 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
             rec_da = self.trainer.test_dataloaders.dataset.reconstruct(
                 self.test_data, self.rec_weight.cpu().numpy()
             )
+        if self.n_simu>1:
+            rec_da_wsimu = []
+            for i in range(self.n_simu):
+                if isinstance(self.trainer.test_dataloaders,list):
+                    rec_simu = self.trainer.test_dataloaders[0].dataset.reconstruct(
+                        [ts[:,:,:,:,:,i] for ts in self.test_simu], self.rec_weight.cpu().numpy()
+                    )
+                else:
+                    rec_simu = self.trainer.test_dataloaders.dataset.reconstruct(
+                        [ts[:,:,:,:,:,i] for ts in self.test_simu], self.rec_weight.cpu().numpy()
+                    )
+                rec_da_wsimu.append(rec_simu)
+            rec_simu = xr.concat(rec_da_wsimu, pd.Index(np.arange(self.n_simu), name='simu'))
 
+        self.test_simu = rec_simu.assign_coords(
+                        dict(v0=self.test_simu_quantities)
+                     ).to_dataset(dim='v0')
         self.test_data = rec_da.assign_coords(
-            dict(v0=self.test_quantities)
-        ).to_dataset(dim='v0')
+                dict(v0=self.test_quantities)
+            ).to_dataset(dim='v0')
+        self.test_data = xr.merge([self.test_data,self.test_simu])
+ 
+        # crop (if necessary) 
+        self.test_data = self.test_data.sel(**(self.domain_limits or {}))
+        self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
+
+        self.test_data.coords['mask'] = (('lat', 'lon'), self.mask_land.values)
+        self.test_data = self.test_data.where(self.test_data.mask)
 
         metric_data = self.test_data.pipe(self.pre_metric_fn)
         metrics = pd.Series({
