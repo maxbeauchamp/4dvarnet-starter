@@ -2,7 +2,7 @@
 
 paths:
     #src: /gpfsstore/rech/yrf/uba22to/DMI
-    src: /DATASET/mbeauchamp/DMI
+    src: /Odyssey/private/m19beauc/DMI
     obs: ${paths.src}/training_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc
     tgt: ${paths.src}/training_dataset/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc
     #tgt: ${paths.src}/training_dataset/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc

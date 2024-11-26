@@ -2,8 +2,8 @@
 
 workdir=../..
 cd $workdir
-store_dir=/DATASET/mbeauchamp/DMI
-scratchdir=/DATASET/mbeauchamp/DMI/results/lightning_logs
+store_dir=/Odyssey/private/m19beauc/DMI
+scratchdir=/Odyssey/private/m19beauc/DMI/results/lightning_logs
 
 # 1. training on rzf10
 HYDRA_FULL_ERROR=1 CUDA_VISIBLE_DEVICES=0 python main.py xp=DMI/SST/coarse/dmi_sst_all_baltic_rzf10

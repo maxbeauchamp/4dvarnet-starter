@@ -3,7 +3,7 @@
 workdir=../..
 cd $workdir
 
-scratchdir=/DATASET/mbeauchamp/DMI/results/lightning_logs
+scratchdir=/Odyssey/private/m19beauc/DMI/results/lightning_logs
 #scratchdir=$SCRATCH/lightning_logs
 
 #ckpt_path=/gpfswork/rech/yrf/uba22to/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_dm3.ckpt
@@ -46,4 +46,4 @@ done
 echo ${list_outputs[*]}
 # merge the NetCDF files
 ncrcat ${list_outputs[*]} -O ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${xpname}_${dm}.nc
-mv -f ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${dm}.nc /DATASET/mbeauchamp/DMI/4DVarNet_outputs
+mv -f ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${dm}.nc /Odyssey/private/m19beauc/DMI/4DVarNet_outputs

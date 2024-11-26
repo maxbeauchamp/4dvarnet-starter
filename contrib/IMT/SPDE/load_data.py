@@ -3,8 +3,8 @@ import src
 import numpy as np
 import pickle
 
-def load_data_wcov(path_files=["/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                               "/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc"],
+def load_data_wcov(path_files=["/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                               "/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc"],
                    var_names=["nadir_obs","ssh"],
                    new_names=["input","tgt"],
                    path_mask=None,
@@ -32,7 +32,7 @@ def load_data_wcov(path_files=["/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubski
                             'mask':(('lat','lon'),mask)})
     return data
 
-def load_data_sst(path, path_mask="/DATASET/mbeauchamp/IMT/data/mask_sst_gf_ext.nc",
+def load_data_sst(path, path_mask="/Odyssey/private/m19beauc/IMT/data/mask_sst_gf_ext.nc",
                   var_gt='sst', var_mask='mask_sst'):
 
     ds = xr.open_dataset(path).rename_vars({var_gt:"tgt"})
@@ -50,7 +50,7 @@ def load_data_sst(path, path_mask="/DATASET/mbeauchamp/IMT/data/mask_sst_gf_ext.
 
 def load_data_ssh_sst(path_ssh, path_sst,
                       var_obs_ssh="nadir_obs", var_gt_ssh='ssh',
-                      path_mask_sst="/DATASET/mbeauchamp/IMT/data/mask_sst_gf_ext.nc",
+                      path_mask_sst="/Odyssey/private/m19beauc/IMT/data/mask_sst_gf_ext.nc",
                       var_gt_sst='sst', var_mask_sst='mask_sst'):
 
     # sst

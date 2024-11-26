@@ -555,7 +555,7 @@ def compute_ose_metrics(test_data, alontrack_independent_dataset='/homes/m19beau
     delta_x = velocity * delta_t
     lenght_scale = 1000 # km
    
-    file= '/DATASET/mbeauchamp/IMT/4DVarNet_outputs/SPDE/file_4dvarnet_for_metrics.nc'
+    file= '/Odyssey/private/m19beauc/IMT/4DVarNet_outputs/SPDE/file_4dvarnet_for_metrics.nc'
     test_data = test_data.update({'ssh':(('time','lat','lon'),test_data.out.data)})
     test_data.to_netcdf(file)
 
@@ -590,8 +590,8 @@ def compute_ose_metrics(test_data, alontrack_independent_dataset='/homes/m19beau
                                                          bin_lon_step,
                                                          bin_lat_step, 
                                                          bin_time_step,
-                                                         output_filename='/DATASET/mbeauchamp/spa_stat.nc',
-                                                         output_filename_timeseries='/DATASET/mbeauchamp/TS.nc')
+                                                         output_filename='/Odyssey/private/m19beauc/spa_stat.nc',
+                                                         output_filename_timeseries='/Odyssey/private/m19beauc/TS.nc')
     
     # Compute spectral scores
     compute_spectral_scores(time_alongtrack, 
@@ -602,14 +602,14 @@ def compute_ose_metrics(test_data, alontrack_independent_dataset='/homes/m19beau
                         lenght_scale,
                         delta_x,
                         delta_t,
-                        '/DATASET/mbeauchamp/spectrum.nc')    
+                        '/Odyssey/private/m19beauc/spectrum.nc')    
     
     leaderboard_psds_score = -999
-    leaderboard_psds_score = plot_psd_score('/DATASET/mbeauchamp/spectrum.nc')  
+    leaderboard_psds_score = plot_psd_score('/Odyssey/private/m19beauc/spectrum.nc')  
 
-    os.remove('/DATASET/mbeauchamp/spa_stat.nc')
-    os.remove('/DATASET/mbeauchamp/spectrum.nc')
-    os.remove('/DATASET/mbeauchamp/TS.nc')
+    os.remove('/Odyssey/private/m19beauc/spa_stat.nc')
+    os.remove('/Odyssey/private/m19beauc/spectrum.nc')
+    os.remove('/Odyssey/private/m19beauc/TS.nc')
     os.remove(file)  
     
     return leaderboard_nrmse, leaderboard_nrmse_std, int(leaderboard_psds_score)

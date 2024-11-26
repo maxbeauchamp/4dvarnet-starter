@@ -3,8 +3,8 @@ import src
 import numpy as np
 import contrib
 
-def load_data(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-              path_tgt="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc") :
+def load_data(path_obs="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+              path_tgt="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc") :
 
     
     inp = xr.open_dataset(path_obs).rename_vars({"sea_surface_temperature":"input"}).transpose('time', 'lat', 'lon')
@@ -15,9 +15,9 @@ def load_data(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_
     
     return data
 
-def load_data_wcoarse(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                      path_tgt="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                      path_coarse="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc") :
+def load_data_wcoarse(path_obs="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                      path_tgt="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                      path_coarse="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc") :
     
     
     inp = xr.open_dataset(path_obs).rename_vars({"sea_surface_temperature":"input"}).transpose('time', 'lat', 'lon')
@@ -33,11 +33,11 @@ def load_data_wcoarse(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubski
         
     return data
 
-def load_data_wgeo(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                   path_tgt="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                   path_oi="/DATASET/mbeauchamp/DMI/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc",
-                   path_topo="/DATASET/mbeauchamp/DMI/DMI-TOPO_NSEABALTIC.nc",
-                   path_fgstd="/DATASET/mbeauchamp/DMI/DMI-FGSTD_NSEABALTIC.nc") :
+def load_data_wgeo(path_obs="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                   path_tgt="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                   path_oi="/Odyssey/private/m19beauc/DMI/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc",
+                   path_topo="/Odyssey/private/m19beauc/DMI/DMI-TOPO_NSEABALTIC.nc",
+                   path_fgstd="/Odyssey/private/m19beauc/DMI/DMI-FGSTD_NSEABALTIC.nc") :
 
     mask = xr.open_dataset(path_oi)
     topo = xr.open_dataset(path_topo)
@@ -59,12 +59,12 @@ def load_data_wgeo(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-n
         
     return data
 
-def load_data_wcoarse_wgeo(path_obs="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                   path_tgt="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                   path_oi="/DATASET/mbeauchamp/DMI/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc",
-                   path_coarse="/DATASET/mbeauchamp/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
-                   path_topo="/DATASET/mbeauchamp/DMI/DMI-TOPO_NSEABALTIC.nc",
-                   path_fgstd="/DATASET/mbeauchamp/DMI/DMI-FGSTD_NSEABALTIC.nc"):
+def load_data_wcoarse_wgeo(path_obs="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                   path_tgt="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                   path_oi="/Odyssey/private/m19beauc/DMI/DMI-L4_GHRSST-SSTfnd-DMI_OI-NSEABALTIC.nc",
+                   path_coarse="/Odyssey/private/m19beauc/DMI/DMI-L3S_GHRSST-SSTsubskin-night_SST_UHR_NRT-NSEABALTIC.nc",
+                   path_topo="/Odyssey/private/m19beauc/DMI/DMI-TOPO_NSEABALTIC.nc",
+                   path_fgstd="/Odyssey/private/m19beauc/DMI/DMI-FGSTD_NSEABALTIC.nc"):
 
     mask = xr.open_dataset(path_oi)
     topo = xr.open_dataset(path_topo)

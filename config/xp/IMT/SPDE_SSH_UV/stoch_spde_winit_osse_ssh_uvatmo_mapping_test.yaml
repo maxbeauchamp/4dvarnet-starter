@@ -1,10 +1,10 @@
 # @package _global_
 
 paths:
-    natl_4nads_swot_osse: /DATASET/mbeauchamp/IMT/data/natl_4nadirs_swot.nc
+    natl_4nads_swot_osse: /Odyssey/private/m19beauc/IMT/data/natl_4nadirs_swot.nc
     natl_u: /DATASET/NATL/wind/NATL60-ERAint-u10m-2012-2013-1_20.nc
     natl_v: /DATASET/NATL/wind/NATL60-ERAint-v10m-2012-2013-1_20.nc
-    natl_6nads_ose: /DATASET/mbeauchamp/IMT/data/natl_ose_6nadirs.nc
+    natl_6nads_ose: /Odyssey/private/m19beauc/IMT/data/natl_ose_6nadirs.nc
 
 domain: ???
 
