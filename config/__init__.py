@@ -53,16 +53,18 @@ domains = {
     "baltic_dm1": dict(lon=[1.48,6.28], lat=[53.48,58.28]),
     "baltic_dm2": dict(lon=[-6.32,3.28], lat=[60.88,65.68]),
     "baltic_dm3": dict(lon=[16.41,21.21], lat=[53.61,58.41]),
-    "global": dict(lon=[-180,180], lat=[-80,90])
+    "global": dict(lon=[-180,180], lat=[-80,90]),
+    "arctic": dict(xc=[-3349750., -2150250.], yc=[5349750.,4150250.])
 }
 
 for n, d in domains.items():
-    train = dict(
-        lat=dict(_target_="builtins.slice", _args_=d["lat"]),
-        lon=dict(_target_="builtins.slice", _args_=d["lon"]),
-    )
-    test = dict(
-        lat=dict(_target_="builtins.slice", _args_=[d["lat"][0] + 1, d["lat"][1] - 1]),
-        lon=dict(_target_="builtins.slice", _args_=[d["lon"][0] + 1, d["lon"][1] - 1]),
-    )
+    key_coords = list(d.keys())
+    train = {
+        key_coords[0] : dict(_target_="builtins.slice", _args_=d[key_coords[0]]),
+        key_coords[1] : dict(_target_="builtins.slice", _args_=d[key_coords[1]]),
+    }
+    test = {
+        key_coords[0] : dict(_target_="builtins.slice", _args_=[d[key_coords[0]][0] + 1, d[key_coords[0]][1] - 1]),
+        key_coords[1] : dict(_target_="builtins.slice", _args_=[d[key_coords[1]][0] + 1, d[key_coords[1]][1] - 1]),
+    }
     cs.store(name=n, node={"train": train, "test": test}, group="domain")

@@ -110,12 +110,12 @@ class BaseObsCost(nn.Module):
         return self.w * F.mse_loss(state[msk], batch.input.nan_to_num()[msk])
 
 class SRNNPriorCost(nn.Module):
-    def __init__(self, dim_in, dim_hidden):
+    def __init__(self, srnn):
         super().__init__()
-        self.srnn = srnn(dim_in, dim_hidden)
+        self.srnn = srnn
 
     def forward_ae(self, x):
-        self.srnn(x)
+        return self.srnn(x)
 
     def forward(self, state, prior):
          return F.mse_loss(state, prior)

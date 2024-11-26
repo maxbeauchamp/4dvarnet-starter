@@ -85,18 +85,17 @@ class XrDataset(torch.utils.data.Dataset):
         self.limit_num_coords = limit_num_coords
 
         # store coords 
-        times = len(self.asip_paths)
+        times = np.arange(len(self.asip_paths))
         xc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).xc.data
         yc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).yc.data
 
         # pad
-        nt, ny, nx = (len(times),len(xc),len(yc))
+        nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
         if self.pad:
             pad_x = find_pad(self.patch_dims['xc'], self.strides['xc'], nx)
             pad_y = find_pad(self.patch_dims['yc'], self.strides['yc'], ny)
             pad_ = {'xc':(pad_x[0],pad_x[1]),
                     'yc':(pad_y[0],pad_y[1])}
-            self.da = self.da.pad(pad_, mode='constant', constant_values=None)
             dx = [pad_ *self.res for pad_ in pad_x]
             dy = [pad_ *self.res for pad_ in pad_y]
             new_xc = np.concatenate((np.linspace(xc_orig[0]-dx[0],
@@ -115,8 +114,13 @@ class XrDataset(torch.utils.data.Dataset):
                                                  pad_y[1],endpoint=False))) 
             yc_padded = np.round(new_yc,2)
             xc_padded = np.round(new_xc,2)
+            da_dims = dict(time=nt, xc=len(xc_padded), yc=len(yc_padded))
+        else:
+            da_dims = dict(time=nt, xc=len(xc_orig), yc=len(yc_orig))
+        print(domain_limits)
+        print(xc_orig)
+        print(da_dims)
 
-        da_dims = dict(time=nt, xc=len(xc_padded), yc=len(yc_padded))
         self.ds_size = {
             dim: max((da_dims[dim] - patch_dims[dim]) // self.strides.get(dim, 1) + 1, 0)
             for dim in patch_dims
@@ -169,31 +173,53 @@ class XrDataset(torch.utils.data.Dataset):
             self.return_coords = False
             return coords
 
-    def __getitem__(self, item):
+    def __getitem__(self, item, use_mf=False):
         sl = {
                 dim: slice(self.strides.get(dim, 1) * idx,
                            self.strides.get(dim, 1) * idx + self.patch_dims[dim])
                 for dim, idx in zip(self.ds_size.keys(),
                                     np.unravel_index(item, tuple(self.ds_size.values())))
+             }
 
-        asip = xr.open_mfdataset(self.asip_paths[sl["time"]]).sel(xc=sl["xc"],
+        start = sl["time"].start
+        end = sl["time"].stop
+        if use_mf:
+            asip = xr.open_mfdataset(self.asip_paths[start:end]).isel(xc=sl["xc"],
                                                                   yc=sl["yc"])
-        lat = asip['lat'].values
-        lon = asip['lon'].values
+        else:
+            asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
+                                                                       yc=sl["yc"]) \
+                              for t in range(start,end)],dim="time")
+        dim_patch =  (len(asip.time),len(asip.yc),len(asip.xc))
+        if ( (dim_patch[1] != self.patch_dims["yc"]) or (dim_patch[2] != self.patch_dims["xc"]) ):
+            print("toto")
+            patch = xr.Dataset(
+                        coords=dict(
+                            xc=sl["xc"],
+                            yc=sl["yc"],
+                            time=asip.time,
+                     ))
+            asip = xr.align(patch,asip,join="left")[1]
+
+        lat = asip.lat.values
+        lon = asip.lon.values
         asip_swath_def = pyresample.geometry.SwathDefinition(lons=lon, lats=lat)
         asip.close()
 
-        osisaf = xr.open_mfdataset(self.osisaf_paths[sl["time"]])
-        osisaf_sic = ds['ice_conc'].values
-        osisaf_lon = ds['lon'].values
-        osisaf_lat = ds['lat'].values
+        if use_mf:
+            osisaf = xr.open_mfdataset(self.osisaf_paths[start:end])
+        else:
+            osisaf = xr.concat([xr.open_dataset(self.osisaf_paths[t]) for t in range(start,end)],dim="time")
+        osisaf_sic = osisaf.ice_conc.values
+        osisaf_lon = osisaf.lon.values
+        osisaf_lat = osisaf.lat.values
         osisaf_swath_def = pyresample.geometry.SwathDefinition(lons=osisaf_lon, lats=osisaf_lat)
         osisaf.close()
 
         asip_coarse = np.zeros(asip.sic.shape)
         for i in range(len(asip.time)):
             asip_coarse[i] = pyresample.kd_tree.resample_nearest(osisaf_swath_def, osisaf_sic[i], asip_swath_def, radius_of_influence=30000, fill_value=np.nan)
-        asip = asip.update({"sic_coarse":(("time","xc","yc"),asip_coarse)})
+        asip = asip.update({"sic_coarse":(("time","yc","xc"),asip_coarse)})
  
         inp = asip.rename_vars({"sic":"input"}).transpose('time', 'yc', 'xc')
         tgt = asip.rename_vars({"sic":"tgt"}).transpose('time', 'yc', 'xc')
@@ -302,8 +328,8 @@ class AugmentedDataset(torch.utils.data.Dataset):
                              item.tgt, np.full_like(item.tgt,np.nan)))
 
 class BaseDataModule(pl.LightningDataModule):
-    def __init__(self, asip_paths, osisaf_paths, domains, xrds_kw, dl_kw, aug_kw=None,
-                 res=0.05, pads=[False,False,False], norm_stats=[m,s], **kwargs):
+    def __init__(self, asip_paths, osisaf_paths, domains, xrds_kw, dl_kw, norm_stats,
+                 aug_kw=None, res=0.05, pads=[False,False,False], **kwargs):
         
         super().__init__()
         self.asip_paths = asip_paths
@@ -348,20 +374,21 @@ class BaseDataModule(pl.LightningDataModule):
         obs_mask_item = ~np.isnan(gt_item)
         _obs_item = gt_item
         dtime = self.xrds_kw['patch_dims']['time']
-        dlat = self.xrds_kw['patch_dims']['lat']
-        dlon = self.xrds_kw['patch_dims']['lon']
+        dxc = self.xrds_kw['patch_dims']['xc']
+        dyc = self.xrds_kw['patch_dims']['yc']
         for t_ in range(dtime):
             obs_mask_item_t_ = obs_mask_item[t_]
-            if np.sum(obs_mask_item_t_)>.25*dlat*dlon:
+            if np.sum(obs_mask_item_t_)>.25*dyc*dxc:
                 obs_obj = .5*np.sum(obs_mask_item_t_)
                 while  np.sum(obs_mask_item_t_)>= obs_obj:
                     half_patch_height = np.random.randint(2,10)
                     half_patch_width = np.random.randint(2,10)
-                    idx_lat = np.random.randint(0,dlat)
-                    idx_lon = np.random.randint(0,dlon)
-                    obs_mask_item_t_[np.max([0,idx_lat-half_patch_height]):np.min([dlat,idx_lat+half_patch_height+1]),np.max([0,idx_lon-half_patch_width]):np.min([dlon,idx_lon+half_patch_width+1])] = 0
+                    idx_yc = np.random.randint(0,dyc)
+                    idx_xc = np.random.randint(0,dxc)
+                    obs_mask_item_t_[np.max([0,idx_yc-half_patch_height]):np.min([dyc,idx_yc+half_patch_height+1]),
+                                     np.max([0,idx_xc-half_patch_width]):np.min([dxc,idx_xc+half_patch_width+1])] = 0
                 obs_mask_item[t_] = obs_mask_item_t_
-        obs_mask_item = obs_mask_item == 1
+        obs_mask_item = (obs_mask_item == 1)
         if obs==True:
             obs_item = np.where(obs_mask_item, _obs_item, np.nan)
             return obs_item
@@ -375,26 +402,26 @@ class BaseDataModule(pl.LightningDataModule):
         obs_mask_item = ~np.isnan(gt_item)
         _obs_item = gt_item
         dtime = self.xrds_kw['patch_dims']['time']
-        dlat = self.xrds_kw['patch_dims']['lat']
-        dlon = self.xrds_kw['patch_dims']['lon']
+        dxc = self.xrds_kw['patch_dims']['xc']
+        dyc = self.xrds_kw['patch_dims']['yc']
 
         # define random size of additional wholes
         half_patch_height = np.random.randint(2,10,(dtime,npatch))
         half_patch_width = np.random.randint(2,10,(dtime,npatch))
-        idx_lat = np.random.randint(0,dlat,(dtime,npatch))
-        idx_lon = np.random.randint(0,dlon,(dtime,npatch))
+        idx_yc = np.random.randint(0,dyc,(dtime,npatch))
+        idx_xc = np.random.randint(0,dxc,(dtime,npatch))
 
         # define objective of missing data (50% of the initial obs)
         obs_obj = .5 * np.sum(obs_mask_item,axis=(1,2))
         
         # define 3d-numpy array index of new mask 
-        posy_start = (idx_lat-half_patch_height).clip(min=0)
-        posy_stop = (idx_lat+half_patch_height).clip(max=dlat)
-        posx_start = (idx_lon-half_patch_width).clip(min=0)
-        posx_stop = (idx_lon+half_patch_width).clip(max=dlon)
-        id_lat = [ [ np.arange(k,l) for k,l in zip(posy_start[t],posy_stop[t])] for t in range(dtime)]
-        id_lon = [ [ np.arange(k,l) for k,l in zip(posx_start[t],posx_stop[t])] for t in range(dtime)]
-        idx = np.concatenate([ np.array(np.meshgrid([t],id_lat[t][p],id_lon[t][p])).T.reshape(-1,3) \
+        posy_start = (idx_yc-half_patch_height).clip(min=0)
+        posy_stop = (idx_yc+half_patch_height).clip(max=dyc)
+        posx_start = (idx_xc-half_patch_width).clip(min=0)
+        posx_stop = (idx_xc+half_patch_width).clip(max=dxc)
+        id_yc = [ [ np.arange(k,l) for k,l in zip(posy_start[t],posy_stop[t])] for t in range(dtime)]
+        id_xc = [ [ np.arange(k,l) for k,l in zip(posx_start[t],posx_stop[t])] for t in range(dtime)]
+        idx = np.concatenate([ np.array(np.meshgrid([t],id_yc[t][p],id_xc[t][p])).T.reshape(-1,3) \
                                for t, p in np.array(np.meshgrid(np.arange(dtime),np.arange(npatch))).T.reshape(-1,2) ])
         # clip the number of new missing data according to the objectives
         idx_t = [ np.where(idx[:,0]==t)[0][0] for t in range(dtime) ]
@@ -402,7 +429,7 @@ class BaseDataModule(pl.LightningDataModule):
         stop_idx = [ idx_t[t] + np.argwhere( np.cumsum(obs_mask_item[idx[idx_t[t]:idx_t[t+1],0],
                                                                      idx[idx_t[t]:idx_t[t+1],1],
                                                                      idx[idx_t[t]:idx_t[t+1],2]]==1) >= obs_obj[t])[0] \
-                     if 2*obs_obj[t]/(dlat*dlon)>.4 else idx_t[t] for t in range(dtime) ]
+                     if 2*obs_obj[t]/(dyc*dxc)>.4 else idx_t[t] for t in range(dtime) ]
         idx_final = np.concatenate([np.arange(idx_t[t],stop_idx[t]) for t in range(dtime)])
         # fill the new mask with 0
         obs_mask_item[idx[idx_final,0],idx[idx_final,1],idx[idx_final,2]] = 0
@@ -458,12 +485,10 @@ class BaseDataModule(pl.LightningDataModule):
                 pad=self.pads[1]
             )
         else:
-           val_asip_paths = select_paths_from_dates(self.asip_paths, sl)
-           val_osisaf_paths = select_paths_from_dates(self.osisaf_paths, sl)
            self.val_ds =ConcatDataset([
               XrDataset(
-                val_asip_paths,
-                val_osisaf_paths, 
+                select_paths_from_dates(self.asip_paths, sl),
+                select_paths_from_dates(self.osisaf_paths, sl),
                 **self.xrds_kw, postpro_fn=post_fn,
                 res = self.res, pad=self.pads[1]
               ) for sl in self.domains['val']['time'] ]

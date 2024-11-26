@@ -16,7 +16,8 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
          super().__init__(*args, **kwargs)
 
          self.domain_limits = domain_limits
-         self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).analysed_sst_LR[20])
+         #self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).sic[20])
+         self.mask_land = None
 
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
 
@@ -39,7 +40,7 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
         self.log( f"{phase}_gloss", grad_loss, prog_bar=True, on_step=False, on_epoch=True)
 
-        training_loss = 50 * loss + 1000 * grad_loss + 10 * prior_cost
+        training_loss = 50 * loss + 1000 * grad_loss + 10 * srnn_loss
         return training_loss, out
 
     def base_step(self, batch, phase=""):
@@ -90,14 +91,13 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
         # crop (if necessary) 
         self.test_data = self.test_data.sel(**(self.domain_limits or {}))
-        self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
-
-        # set NaN according to mask
-        self.test_data = self.test_data.update({'inp':(('time','lat','lon'),self.test_data.inp.data),
-                                                'tgt':(('time','lat','lon'),self.test_data.tgt.data),
-                                                'analysed_sst':(('time','lat','lon'),self.test_data.out.data)})
-        self.test_data.coords['mask'] = (('lat', 'lon'), self.mask_land.values)
-        self.test_data = self.test_data.where(self.test_data.mask)
+        self.test_data = self.test_data.update({'inp':(('time','yc','xc'),self.test_data.inp.data),
+                                                'tgt':(('time','yc','xc'),self.test_data.tgt.data),
+                                                'sic':(('time','yc','xc'),self.test_data.out.data)})
+        if self.mask_land is not None:
+             self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
+             self.test_data.coords['mask'] = (('yc', 'xc'), self.mask_land.values)
+             self.test_data = self.test_data.where(self.test_data.mask)
 
         metric_data = self.test_data.pipe(self.pre_metric_fn),
         metrics = pd.Series({

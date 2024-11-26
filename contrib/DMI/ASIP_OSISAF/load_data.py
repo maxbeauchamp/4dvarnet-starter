@@ -1,4 +1,4 @@
-import glob
+from glob import glob
 import numpy as np
 
 def load_data(type="asip"):

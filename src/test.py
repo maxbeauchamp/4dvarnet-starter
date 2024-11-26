@@ -4,7 +4,8 @@ import random
 torch.set_float32_matmul_precision('high')
 from pytorch_lightning import loggers
 
-def base_test(trainer, dm, lit_mod, ckpt_path=None):
+def base_test(trainer, dm, lit_mod, 
+              save_dir="/DATASET/mbeauchamp/DMI/results", ckpt_path=None):
 
     '''
     ckpt = torch.load(ckpt_path)["state_dict"]
@@ -16,7 +17,6 @@ def base_test(trainer, dm, lit_mod, ckpt_path=None):
     '''
 
     version = 'version_' + str(random.randint(0, 100000))
-    save_dir = "/DATASET/mbeauchamp/DMI/results"
     logger_name = "lightning_logs"
     print(os.path.join(save_dir, logger_name, version))
     tb_logger = loggers.TensorBoardLogger(save_dir=save_dir,

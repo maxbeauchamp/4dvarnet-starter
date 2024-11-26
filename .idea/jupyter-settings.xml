@@ -7,7 +7,7 @@
           <value>
             <JupyterConnectionParameters>
               <option name="managed" value="true" />
-              <option name="sdkName" value="Remote Python 3.12.6 (sftp://maxb@ohm.dmi.dk:22/dmidata/users/maxb/miniconda3/envs/4dvarnet-starter/bin/python3.12)" />
+              <option name="sdkName" value="" />
             </JupyterConnectionParameters>
           </value>
         </entry>

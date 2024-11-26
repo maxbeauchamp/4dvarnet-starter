@@ -5,8 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="848d0728-c703-45ee-b532-94ce3a25dd80" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/jupyter-settings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/jupyter-settings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contrib/DMI/SST/solver.py" beforeDir="false" afterPath="$PROJECT_DIR$/contrib/DMI/SST/solver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -116,7 +116,7 @@
       <workItem from="1730462871024" duration="1161000" />
       <workItem from="1730464403015" duration="7324000" />
       <workItem from="1730489724932" duration="1463000" />
-      <workItem from="1730492214902" duration="755000" />
+      <workItem from="1730492214902" duration="1699000" />
     </task>
     <servers />
   </component>
