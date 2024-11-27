@@ -5,8 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="848d0728-c703-45ee-b532-94ce3a25dd80" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/jupyter-settings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/jupyter-settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Notebooks/Notebook_DMI/ASIP_OSISAF/quickstart_Notebook.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/4dvarnet-starter.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/4dvarnet-starter.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/xp/DMI/ASIP_OSISAF/base.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/xp/DMI/ASIP_OSISAF/base.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contrib/DMI/ASIP_OSISAF/data.py" beforeDir="false" afterPath="$PROJECT_DIR$/contrib/DMI/ASIP_OSISAF/data.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,14 +30,15 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;devs&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/dmidata/users/maxb/4dvarnet-starter&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/dmidata/users/maxb/4dvarnet-starter/Notebooks/Notebook_DMI/ASIP_OSISAF&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.notebooks.jupyter.connections.configuration.JupyterServerConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.jupyter.core.jupyter.connections.configuration.JupyterServerConfigurable&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -71,11 +75,16 @@
       <window_info anchor="right" id="Plots" order="5" weight="0.1" />
     </layout>
   </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/Notebooks/Notebook_DMI/ASIP_OSISAF" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-5c90d61e3bab-JavaScript-PY-242.23726.102" />
-        <option value="bundled-python-sdk-5e1850174b45-399fe30bd8c1-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-242.23726.102" />
+        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-PY-243.21565.199" />
+        <option value="bundled-python-sdk-cab1f2013843-4ae2d6a61b08-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-243.21565.199" />
       </set>
     </attachedChunks>
   </component>
@@ -117,6 +126,8 @@
       <workItem from="1730464403015" duration="7324000" />
       <workItem from="1730489724932" duration="1463000" />
       <workItem from="1730492214902" duration="1699000" />
+      <workItem from="1732695175978" duration="17921000" />
+      <workItem from="1732735351753" duration="2931000" />
     </task>
     <servers />
   </component>

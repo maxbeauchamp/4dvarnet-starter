@@ -55,6 +55,7 @@ class XrDataset(torch.utils.data.Dataset):
             self, 
             asip_paths,
             osisaf_paths,
+            times,
             patch_dims, domain_limits=None, strides=None,
             strides_test=None,
             check_full_scan=False, check_dim_order=False,
@@ -76,6 +77,7 @@ class XrDataset(torch.utils.data.Dataset):
         self.postpro_fn = postpro_fn
         self.asip_paths = asip_paths
         self.osisaf_paths = osisaf_paths
+        self.times = times
         self.patch_dims = patch_dims
         self.strides = strides or {}
         if stride_test:
@@ -88,6 +90,8 @@ class XrDataset(torch.utils.data.Dataset):
         times = np.arange(len(self.asip_paths))
         xc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).xc.data
         yc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).yc.data
+        self.xc = xc_orig
+        self.yc = yc_orig
 
         # pad
         nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
@@ -115,10 +119,10 @@ class XrDataset(torch.utils.data.Dataset):
             yc_padded = np.round(new_yc,2)
             xc_padded = np.round(new_xc,2)
             da_dims = dict(time=nt, xc=len(xc_padded), yc=len(yc_padded))
+            self.xc = xc_padded
+            self.yc = yc_padded
         else:
             da_dims = dict(time=nt, xc=len(xc_orig), yc=len(yc_orig))
-        print(domain_limits)
-        print(xc_orig)
         print(da_dims)
 
         self.ds_size = {
@@ -159,7 +163,7 @@ class XrDataset(torch.utils.data.Dataset):
         for i in range(len(self)):
             yield self[i]
 
-    def get_coords(self):
+    def get_coords_old(self):
         self.return_coords = True
         coords = []
         try:
@@ -169,6 +173,42 @@ class XrDataset(torch.utils.data.Dataset):
             else:
                 for i in sample(range(0,len(self)),self.limit_num_coords):
                     coords.append(self[i])
+        finally:
+            self.return_coords = False
+            return coords
+
+    def get_coords(self):
+        self.return_coords = True
+        coords = []
+        try:
+            if self.limit_num_coords is None:
+                for i in range(len(self)):
+                    sl = {
+                        dim: slice(self.strides.get(dim, 1) * idx,
+                                   self.strides.get(dim, 1) * idx + self.patch_dims[dim])
+                        for dim, idx in zip(self.ds_size.keys(),
+                                            np.unravel_index(i, tuple(self.ds_size.values())))
+                    }
+                    coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                                                         yc=self.yc[sl["yc"].start:sl["yc"].stop],
+                                                         time=self.times[sl["time"].start:sl["time"].stop],
+                                                        )
+                                             ).transpose('time', 'yc', 'xc')
+                                  )
+            else:
+                for i in sample(range(0,len(self)),self.limit_num_coords):
+                    sl = {
+                        dim: slice(self.strides.get(dim, 1) * idx,
+                                   self.strides.get(dim, 1) * idx + self.patch_dims[dim])
+                        for dim, idx in zip(self.ds_size.keys(),
+                                            np.unravel_index(i, tuple(self.ds_size.values())))
+                    }
+                    coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                                                         yc=self.yc[sl["yc"].start:sl["yc"].stop],
+                                                         time=self.times[sl["time"].start:sl["time"].stop],
+                                                        )
+                                             ).transpose('time', 'yc', 'xc')
+                                  )
         finally:
             self.return_coords = False
             return coords
@@ -186,44 +226,25 @@ class XrDataset(torch.utils.data.Dataset):
         end = sl["time"].stop
         if use_mf:
             asip = xr.open_mfdataset(self.asip_paths[start:end]).isel(xc=sl["xc"],
-                                                                  yc=sl["yc"])
+                                                                      yc=sl["yc"])
         else:
             asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
                                                                        yc=sl["yc"]) \
                               for t in range(start,end)],dim="time")
-        
+
         # pad
-        nt, ny, nx = tuple(asip.sizes[d] for d in ['time', 'yc', 'xc'])
-        xc_orig = asip.xc.data
-        yc_orig = yc.asip.data
-        if self.pad:
-            pad_x = find_pad(self.patch_dims['xc'], self.strides['xc'], nx)
-            pad_y = find_pad(self.patch_dims['yc'], self.strides['yc'], ny)
-            pad_ = {'xc':(pad_x[0],pad_x[1]),'yc':(pad_y[0],pad_y[1])}
-            asip = asip.pad(pad_, mode='constant', constant_values=None)
-            dx = [pad_ *self.res for pad_ in pad_x]
-            dy = [pad_ *self.res for pad_ in pad_y]
-            new_xc = np.concatenate((np.linspace(xc_orig[0]-dx[0],
-                                                 xc_orig[0],
-                                                 pad_x[0],endpoint=False),
-                                     xc_orig,
-                                     np.linspace(xc_orig[-1]+self.res,
-                                                 xc_orig[-1]+dx[1]+ self.res,
-                                                 pad_x[1],endpoint=False)))
-            new_yc = np.concatenate((np.linspace(yc_orig[0]-dy[0],
-                                                 yc_orig[0],
-                                                 pad_y[0],endpoint=False),
-                                     yc_orig,
-                                     np.linspace(yc_orig[-1]+self.res,
-                                                 yc_orig[-1]+dy[1]+ self.res,
-                                                 pad_y[1],endpoint=False)))
-            yc_padded = np.round(new_yc,2)
-            xc_padded = np.round(new_xc,2)
-            asip = asip.assign_coords(
-                         xc = np.round(xc,2),
-                         yc = np.round(yc,2)
-                       )
-        asip = asip.isel(xc=sl["xc"],yc=sl["yc"])
+        nt, ny, nx = tuple(self.patch_dims[d] for d in ['time', 'yc', 'xc'])
+        print(asip)
+        if ( (asip.sizes['yc'] !=ny) or (asip.sizes['xc']!=nx) ):
+            padded_patch = xr.Dataset(
+                        coords=dict(
+                            xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                            yc=self.yc[sl["yc"].start:sl["yc"].stop],
+                            time=asip.time,
+                     ))
+            asip = xr.align(patch,asip,join="left")[1]
+            print(asip)
+
         lat = asip.lat.values
         lon = asip.lon.values
         asip_swath_def = pyresample.geometry.SwathDefinition(lons=lon, lats=lat)
@@ -472,40 +493,45 @@ class BaseDataModule(pl.LightningDataModule):
         def select_paths_from_dates(files, times):
             # compute list of dates from domain
             if isinstance(times, list):
-                dates =  []
+                dates = []
+                times = []
                 for _ in range(len(times)):
                     start = datetime.datetime.strptime(times.start, "%Y-%m-%d")
                     end = datetime.datetime.strptime(times.stop, "%Y-%m-%d")
-                    dates.extend([start + datetime.timedelta(days=x) for x in range(0, (end-start).days)])     
+                    dates.extend([(start + datetime.timedelta(days=x)).strftime("%Y%m%d") for x in range(0, (end-start).days)])     
+                    times.extend([start + datetime.timedelta(days=x) for x in range(0, (end-start).days)])
             else:
                 start = datetime.datetime.strptime(times.start, "%Y-%m-%d")
                 end = datetime.datetime.strptime(times.stop, "%Y-%m-%d")
                 dates = [ (start + datetime.timedelta(days=x)).strftime("%Y%m%d") for x in range(0, (end-start).days) ]
+                times = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
             # subselection of paths
             files = np.sort([ f for f in files if any(s in f for s in dates) ])
-            return files
+            return files, times
 
         post_fn = self.post_fn()
         post_fn_rand = self.post_fn_rand()
 
-        train_asip_paths = select_paths_from_dates(self.asip_paths, self.domains['train']['time'])
-        train_osisaf_paths = select_paths_from_dates(self.osisaf_paths, self.domains['train']['time'])
+        train_asip_paths, train_times = select_paths_from_dates(self.asip_paths, self.domains['train']['time'])
+        train_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['train']['time'])
         self.train_ds = XrDataset(
             train_asip_paths, 
             train_osisaf_paths,
+            train_times,
             **self.xrds_kw, postpro_fn=post_fn_rand,
-            res = self.res, limit_num_coords = 100,
+            res = self.res, limit_num_coords = 10000,
             pad=self.pads[0]
         )
         if self.aug_kw:
             self.train_ds = AugmentedDataset(self.train_ds, **self.aug_kw)
 
         if isinstance(self.domains['val']['time'], slice):
-            val_asip_paths = select_paths_from_dates(self.asip_paths, self.domains['val']['time'])
-            val_osisaf_paths = select_paths_from_dates(self.osisaf_paths, self.domains['val']['time'])
+            val_asip_paths, val_times = select_paths_from_dates(self.asip_paths, self.domains['val']['time'])
+            val_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['val']['time'])
             self.val_ds = XrDataset(
                 val_asip_paths,
                 val_osisaf_paths,
+                val_times,
                 **self.xrds_kw, postpro_fn=post_fn,
                 res =self.res,
                 pad=self.pads[1]
@@ -513,18 +539,20 @@ class BaseDataModule(pl.LightningDataModule):
         else:
            self.val_ds =ConcatDataset([
               XrDataset(
-                select_paths_from_dates(self.asip_paths, sl),
-                select_paths_from_dates(self.osisaf_paths, sl),
+                select_paths_from_dates(self.asip_paths, sl)[0],
+                select_paths_from_dates(self.osisaf_paths, sl)[0],
+                select_paths_from_dates(self.asip_paths, sl)[1],
                 **self.xrds_kw, postpro_fn=post_fn,
                 res = self.res, pad=self.pads[1]
               ) for sl in self.domains['val']['time'] ]
             )
 
-        test_asip_paths = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
-        test_osisaf_paths = select_paths_from_dates(self.osisaf_paths, self.domains['test']['time'])
+        test_asip_paths, test_times = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
+        test_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['test']['time'])
         self.test_ds = XrDataset(
             test_asip_paths,
             test_osisaf_paths,
+            test_times,
             **self.xrds_kw, postpro_fn=post_fn,
             res = self.res,
             pad=self.pads[2],

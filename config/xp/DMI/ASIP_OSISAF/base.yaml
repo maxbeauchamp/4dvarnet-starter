@@ -46,7 +46,7 @@ datamodule:
         - {_target_: builtins.slice, _args_: ['2021-01-01', '2021-06-30']}
         - {_target_: builtins.slice, _args_: ['2021-07-01', '2021-12-31']} 
     test:
-      time: {_target_: builtins.slice, _args_: ['2024-01-01', '2024-01-10']}
+      time: {_target_: builtins.slice, _args_: ['2024-01-01', '2024-01-20']}
   xrds_kw:
     patch_dims: { time: 19, yc: 240, xc: 240}
     strides: { time: 1, yc: 20, xc: 20}
