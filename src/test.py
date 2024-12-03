@@ -5,7 +5,7 @@ torch.set_float32_matmul_precision('high')
 from pytorch_lightning import loggers
 
 def base_test(trainer, dm, lit_mod, 
-              save_dir="/Odyssey/private/m19beauc/DMI/results", ckpt_path=None):
+              save_dir="/dmidata/users/maxb/4dvarnet-starter/results", ckpt_path=None):
 
     '''
     ckpt = torch.load(ckpt_path)["state_dict"]

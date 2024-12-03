@@ -12,7 +12,7 @@ from src.models import Lit4dVarNet
 
 class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
-    def __init__(self, path_mask, optim_weight, domain_limits, persist_rw=True, *args, **kwargs):
+    def __init__(self, path_mask, optim_weight, sr_weight, domain_limits, persist_rw=True, *args, **kwargs):
          super().__init__(*args, **kwargs)
 
          self.domain_limits = domain_limits
@@ -20,27 +20,51 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
          self.mask_land = None
 
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
+         self.register_buffer('sr_weight', torch.from_numpy(sr_weight), persistent=persist_rw)
 
     def modify_batch(self,batch):
-        batch = batch._replace(input=batch.input.nan_to_num())
-        batch = batch._replace(tgt=batch.tgt.nan_to_num())
+        #batch = batch._replace(input=batch.input.nan_to_num())
+        #batch = batch._replace(tgt=batch.tgt.nan_to_num())
+        return batch
+
+    def remove_useless_patches(self,batch):
+        def nanvar(tensor, dim=None, keepdim=False):
+            tensor_mean = tensor.nanmean(dim=dim, keepdim=True)
+            output = (tensor - tensor_mean).square().nanmean(dim=dim, keepdim=keepdim)
+            return output
+        idx = []
+        for i in range(len(batch.tgt)):
+            # keep the patch if not full of NaN or not full of ice/water (var=0)
+            if ( (batch.tgt[i].isfinite().float().mean() != 0) and (nanvar(batch.coarse[i])!=0) ):
+                idx.append(i)
+        if len(idx)>0:
+            batch = batch._replace(input=batch.input[idx])
+            batch = batch._replace(tgt=batch.tgt[idx])
+            batch = batch._replace(coarse=batch.coarse[idx])
+        else:
+            batch = None
         return batch
 
     def step(self, batch, phase=""):
 
-        if self.training and batch.tgt.isfinite().float().mean() < 0.05:
+        batch = self.remove_useless_patches(batch)
+        if batch is None:
+            return None, None
+
+        if self.training and batch.coarse.isfinite().float().mean() < 0.05:
             return None, None
 
         #batch = self.modify_batch(batch)
         loss, out = self.base_step(batch, phase)
         grad_loss = self.weighted_mse(kfilts.sobel(out)-kfilts.sobel(batch.tgt),
                                       self.optim_weight)
-        srnn_loss = self.weighted_mse(batch.tgt-self.solver.prior_cost.forward_ae(batch.coarse),
-                                      self.optim_weight)
+        srnn_loss = self.weighted_mse(batch.tgt-self.solver.prior_cost.forward_ae(batch.coarse.nan_to_num()),
+                                      self.sr_weight)
 
         self.log( f"{phase}_gloss", grad_loss, prog_bar=True, on_step=False, on_epoch=True)
 
         training_loss = 50 * loss + 1000 * grad_loss + 10 * srnn_loss
+        print(50*loss, 10000 * grad_loss, 10 * srnn_loss)
         return training_loss, out
 
     def base_step(self, batch, phase=""):
@@ -49,7 +73,7 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
 
         with torch.no_grad():
-            self.log(f"{phase}_mse", 10000 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
+            self.log(f"{phase}_mse", 10 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
             self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
 
         return loss, out

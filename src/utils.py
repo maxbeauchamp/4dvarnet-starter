@@ -246,6 +246,15 @@ def get_center_time_wei(patch_dims, offset=0, **crop_kw):
         patch_dims.values(),
     )
 
+def get_uniform_time_wei(patch_dims, offset=0, **crop_kw):
+    pw = get_constant_crop(patch_dims, **crop_kw)
+    return np.fromfunction(
+        lambda t, *a: (
+            pw * 1
+        ),
+        patch_dims.values(),
+    )
+
 def duplicate_wei(weights):
     return np.concatenate((weights,weights),axis=0)
 

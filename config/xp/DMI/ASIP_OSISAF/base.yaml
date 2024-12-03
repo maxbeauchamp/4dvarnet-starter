@@ -12,9 +12,9 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  limit_train_batches: 600.
-  limit_val_batches: 20.
-  accumulate_grad_batches: 8
+  limit_train_batches:  16 #3000.
+  limit_val_batches: 10 #200.
+  accumulate_grad_batches: 16
   #precision: 16
   logger: 
     _target_: pytorch_lightning.loggers.CSVLogger
@@ -26,7 +26,7 @@ trainer:
     #- _target_: src.versioning_cb.VersioningCallback
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      monitor: val_mse
+      monitor: train_mse #val_mse
       save_top_k: 3
       filename: '{val_mse:.5f}-{epoch:03d}'
 
@@ -52,7 +52,7 @@ datamodule:
     strides: { time: 1, yc: 20, xc: 20}
     strides_test: {time: 1, yc: 200, xc: 200}
     domain_limits: ${domain.train}
-  dl_kw: {batch_size: 2, num_workers: 12}
+  dl_kw: {batch_size: 2, num_workers: 8}
   #aug_kw:
   #  aug_factor: 1
   #  aug_only: True
@@ -62,8 +62,8 @@ datamodule:
     - False
     - True
   norm_stats:
-    - 0
-    - 1
+    - 50
+    - 38
 
 model:
   _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF
@@ -84,6 +84,15 @@ model:
         - "xc"
   optim_weight:
       _target_: src.utils.get_linear_time_wei
+      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      crop: {time: 0, yc: 20, xc: 20}
+      offset: 1
+      dim_order:
+        - "time"
+        - "yc"
+        - "xc"
+  sr_weight:
+      _target_: src.utils.get_uniform_time_wei
       patch_dims: ${datamodule.xrds_kw.patch_dims}
       crop: {time: 0, yc: 20, xc: 20}
       offset: 1

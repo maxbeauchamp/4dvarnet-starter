@@ -9,8 +9,13 @@ from collections import namedtuple
 from torch.utils.data import  ConcatDataset
 from random import sample 
 import contrib
+from contrib.DMI.ASIP_OSISAF.load_data import *
 import datetime
 import pyresample
+import geopandas as gpd
+from geopandas import GeoSeries
+import cartopy.feature as cfeature
+import os
 
 TrainingItem = namedtuple(
     'TrainingItem', ['input', 'tgt', 'coarse']
@@ -60,10 +65,13 @@ class XrDataset(torch.utils.data.Dataset):
             strides_test=None,
             check_full_scan=False, check_dim_order=False,
             postpro_fn=None,
-            res=0.05,
+            res=500,
             pad = False,
             stride_test=False,
-            limit_num_coords=None
+            use_mf=False,
+            subsel_patch=False,
+            subsel_patch_path=None,
+            load_data=False
             ):
         """
         da: xarray.DataArray with patch dims at the end in the dim orders
@@ -72,6 +80,7 @@ class XrDataset(torch.utils.data.Dataset):
         strides: dict of dims to stride size (default to one)
         check_full_scan: Boolean: if True raise an error if the whole domain is not scanned by the patch size stride combination
         """
+
         super().__init__()
         self.return_coords = False
         self.postpro_fn = postpro_fn
@@ -84,20 +93,38 @@ class XrDataset(torch.utils.data.Dataset):
             self.strides = strides_test or {}
         self.res = res
         self.pad = pad
-        self.limit_num_coords = limit_num_coords
+        self.use_mf = False
+        self.subsel_patch = subsel_patch
+        self.load_data = load_data
 
         # store coords 
         times = np.arange(len(self.asip_paths))
-        xc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).xc.data
-        yc_orig = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {})).yc.data
+        asip_base = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {}))
+        xc_orig = asip_base.xc.data
+        yc_orig = asip_base.yc.data
+        self.lon = asip_base.lon.data
+        self.lat = asip_base.lat.data
         self.xc = xc_orig
         self.yc = yc_orig
+
+        if self.load_data:
+            self.asip, self.osisaf = load_mfdata(self.asip_paths,
+                                                 self.osisaf_paths,
+                                                 slice(datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
+                                                       datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")))
+            print(self.asip)
 
         # pad
         nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
         if self.pad:
             pad_x = find_pad(self.patch_dims['xc'], self.strides['xc'], nx)
             pad_y = find_pad(self.patch_dims['yc'], self.strides['yc'], ny)
+            self.lon = np.pad(self.lon,((pad_y[0],pad_y[1]),
+                                        (pad_x[0],pad_x[1])),
+                                        mode="linear_ramp")
+            self.lat = np.pad(self.lat,((pad_y[0],pad_y[1]),
+                                        (pad_x[0],pad_x[1])),
+                                        mode="linear_ramp")
             pad_ = {'xc':(pad_x[0],pad_x[1]),
                     'yc':(pad_y[0],pad_y[1])}
             dx = [pad_ *self.res for pad_ in pad_x]
@@ -109,12 +136,12 @@ class XrDataset(torch.utils.data.Dataset):
                                      np.linspace(xc_orig[-1]+self.res,
                                                  xc_orig[-1]+dx[1]+ self.res,
                                                  pad_x[1],endpoint=False))) 
-            new_yc = np.concatenate((np.linspace(yc_orig[0]-dy[0],
+            new_yc = np.concatenate((np.linspace(yc_orig[0]+dy[0],
                                                  yc_orig[0],
                                                  pad_y[0],endpoint=False),
                                      yc_orig,
-                                     np.linspace(yc_orig[-1]+self.res,
-                                                 yc_orig[-1]+dy[1]+ self.res,
+                                     np.linspace(yc_orig[-1]-self.res,
+                                                 yc_orig[-1]-dy[1]-self.res,
                                                  pad_y[1],endpoint=False))) 
             yc_padded = np.round(new_yc,2)
             xc_padded = np.round(new_xc,2)
@@ -129,6 +156,16 @@ class XrDataset(torch.utils.data.Dataset):
             dim: max((da_dims[dim] - patch_dims[dim]) // self.strides.get(dim, 1) + 1, 0)
             for dim in patch_dims
         }
+        # get patches in ocean
+        if self.subsel_patch:
+            if not os.path.isfile(subsel_patch_path):
+                idx0 = self.find_patches_in_ocean()
+                np.savetxt(subsel_patch_path, self.idx_patches_in_ocean, fmt='%i')
+            else:
+                idx0 = np.loadtxt(subsel_patch_path)
+            # repeat for the number of times
+            nitem_bytime = np.prod(list(self.ds_size.values())[1:])
+            self.idx_patches_in_ocean = np.concatenate([ idx0+(nitem_bytime*i) for i in range(list(self.ds_size.values())[0]) ])
 
         if check_full_scan:
             for dim in patch_dims:
@@ -153,57 +190,59 @@ class XrDataset(torch.utils.data.Dataset):
                         patch_dims {list(patch_dims)}
                         """
                 )
+
     def __len__(self):
         size = 1
-        for v in self.ds_size.values():
-            size *= v
+        if self.subsel_patch:
+            size = len(self.idx_patches_in_ocean)
+        else:
+            for v in self.ds_size.values():
+                size *= v
         return size
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
 
-    def get_coords_old(self):
+    def get_coords_old(self, limit=None):
         self.return_coords = True
         coords = []
         try:
-            if self.limit_num_coords is None:
+            if limit is None:
                 for i in range(len(self)):
                     coords.append(self[i])
             else:
-                for i in sample(range(0,len(self)),self.limit_num_coords):
+                for i in sample(range(0,len(self)),limit):
                     coords.append(self[i])
         finally:
             self.return_coords = False
             return coords
 
-    def get_coords(self):
+    def get_coords(self, limit=None):
         self.return_coords = True
         coords = []
         try:
-            if self.limit_num_coords is None:
-                for i in range(len(self)):
-                    sl = {
-                        dim: slice(self.strides.get(dim, 1) * idx,
-                                   self.strides.get(dim, 1) * idx + self.patch_dims[dim])
-                        for dim, idx in zip(self.ds_size.keys(),
-                                            np.unravel_index(i, tuple(self.ds_size.values())))
-                    }
-                    coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
-                                                         yc=self.yc[sl["yc"].start:sl["yc"].stop],
-                                                         time=self.times[sl["time"].start:sl["time"].stop],
-                                                        )
-                                             ).transpose('time', 'yc', 'xc')
-                                  )
+            if limit is None:
+                limit = len(self)
+                seq = np.arange(0,limit)
             else:
-                for i in sample(range(0,len(self)),self.limit_num_coords):
+                seq = sample(range(0,len(self)),limit)
+            for i in seq:
+                if self.subsel_patch:
+                    sl = {
+                        dim: slice(self.strides.get(dim, 1) * idx,
+                                   self.strides.get(dim, 1) * idx + self.patch_dims[dim])
+                        for dim, idx in zip(self.ds_size.keys(),
+                                            np.unravel_index(int(self.idx_patches_in_ocean[i]), tuple(self.ds_size.values())))
+                    }
+                else:
                     sl = {
                         dim: slice(self.strides.get(dim, 1) * idx,
                                    self.strides.get(dim, 1) * idx + self.patch_dims[dim])
                         for dim, idx in zip(self.ds_size.keys(),
                                             np.unravel_index(i, tuple(self.ds_size.values())))
-                    }
-                    coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                     }
+                coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
                                                          yc=self.yc[sl["yc"].start:sl["yc"].stop],
                                                          time=self.times[sl["time"].start:sl["time"].stop],
                                                         )
@@ -213,54 +252,144 @@ class XrDataset(torch.utils.data.Dataset):
             self.return_coords = False
             return coords
 
-    def __getitem__(self, item, use_mf=False):
-        sl = {
+    def item_in_ocean(self, lon, lat):
+        points = GeoSeries(gpd.points_from_xy(lon, lat))
+        points_gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+        land_50m = cfeature.NaturalEarthFeature('physical','land','50m')
+        land_polygons_cartopy = list(land_50m.geometries())
+        land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=land_polygons_cartopy)
+        # Spatially join the points with the land polygons
+        joined = gpd.sjoin(points_gdf, land_gdf, how='left', predicate='within')
+        # Check if each point is within a land polygon
+        is_within_ocean = 1-np.prod((joined['index_right'].notnull()).to_list())
+        return is_within_ocean
+
+    def find_patches_in_ocean(self):
+        def find_idx(coords,c):
+            return np.where(coords==c)[0][0]
+        nitem = np.prod(self.ds_size.values())
+        nitem_bytime = np.prod(list(self.ds_size.values())[1:])
+        coords = []
+        for i in range(nitem_bytime):
+            if np.mod(i,1000)==0:
+                print(i)
+            sl = {
+                dim: slice(self.strides.get(dim, 1) * idx,
+                                   self.strides.get(dim, 1) * idx + self.patch_dims[dim])
+                    for dim, idx in zip(self.ds_size.keys(),
+                                            np.unravel_index(i, tuple(self.ds_size.values())))
+                }
+            coords.append(xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                                                 yc=self.yc[sl["yc"].start:sl["yc"].stop],
+                                                 time=self.times[sl["time"].start:sl["time"].stop],
+                                                )
+                                    ).transpose('time', 'yc', 'xc')
+                        )
+        idx0 = []
+        for k in range(len(coords)):
+            if np.mod(k,1000)==0:
+                print(k)
+            ix = [find_idx(self.xc,x) for x in coords[k].xc.values]
+            iy = [find_idx(self.yc,y) for y in coords[k].yc.values]
+            item_lon = self.lon[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
+            item_lat = self.lat[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
+            if self.item_in_ocean(item_lon, item_lat):
+                idx0.append(k)
+        # repeat for the number of times
+        # idx = np.concatenate([ idx0+(nitem_bytime*i) for i in range(list(self.ds_size.values())[0]) ])
+        return idx0
+
+    def __getitem__(self, item):
+        if self.subsel_patch:
+            sl = {
+                dim: slice(self.strides.get(dim, 1) * idx,
+                           self.strides.get(dim, 1) * idx + self.patch_dims[dim])
+                for dim, idx in zip(self.ds_size.keys(),
+                    np.unravel_index(int(self.idx_patches_in_ocean[item]), tuple(self.ds_size.values())))
+                 }
+        else:
+            sl = {
                 dim: slice(self.strides.get(dim, 1) * idx,
                            self.strides.get(dim, 1) * idx + self.patch_dims[dim])
                 for dim, idx in zip(self.ds_size.keys(),
                                     np.unravel_index(item, tuple(self.ds_size.values())))
-             }
+                 }
 
-        # read asip
-        start = sl["time"].start
-        end = sl["time"].stop
-        if use_mf:
-            asip = xr.open_mfdataset(self.asip_paths[start:end]).isel(xc=sl["xc"],
-                                                                      yc=sl["yc"])
+        # before reading, check if batch is in land or ocean 
+        # if land, return array filled with nan values
+        coords = xr.Dataset(coords=dict(xc=self.xc[sl["xc"].start:sl["xc"].stop],
+                               yc=self.yc[sl["yc"].start:sl["yc"].stop],
+                               time=self.times[sl["time"].start:sl["time"].stop],
+                            )
+                        ).transpose('time', 'yc', 'xc')
+        def find_idx(coords,c):
+            return np.where(coords==c)[0][0]
+        ix = [find_idx(self.xc,x) for x in coords.xc.values]
+        iy = [find_idx(self.yc,y) for y in coords.yc.values]
+        item_lon = self.lon[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
+        item_lat = self.lat[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
+        if not self.item_in_ocean(item_lon, item_lat):
+            item = coords
+            size = [coords.sizes[d] for d in ["time","yc","xc"]]
+            item = item.update({"input":(("time","yc","xc"),np.full(size,np.nan))})
+            item['tgt'] = item.input
+            item['coarse'] = item.input
+            item = item[[*contrib.DMI.ASIP_OSISAF.data.TrainingItem._fields]].to_array()
+            if self.return_coords:
+                return item.coords.to_dataset()[list(self.patch_dims)]
+            item = item.data.astype(np.float32)
+            if self.postpro_fn is not None:
+                return self.postpro_fn(item)
+            return item
+
+        if self.load_data is not None:
+            asip = self.asip.isel(time=sl["time"],xc=sl["xc"],yc=sl["yc"])
         else:
-            asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
-                                                                       yc=sl["yc"]) \
+            # read asip
+            start = sl["time"].start
+            end = sl["time"].stop
+            if self.use_mf:
+                asip = xr.open_mfdataset(self.asip_paths[start:end]).isel(xc=sl["xc"],
+                                                                          yc=sl["yc"])
+            else:
+                asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
+                                                                           yc=sl["yc"])
                               for t in range(start,end)],dim="time")
-
         # pad
         nt, ny, nx = tuple(self.patch_dims[d] for d in ['time', 'yc', 'xc'])
-        print(asip)
         if ( (asip.sizes['yc'] !=ny) or (asip.sizes['xc']!=nx) ):
+            ix = [find_idx(self.xc,x) for x in self.xc[sl["xc"].start:sl["xc"].stop]]
+            iy = [find_idx(self.yc,y) for y in self.yc[sl["yc"].start:sl["yc"].stop]]
             padded_patch = xr.Dataset(
-                        coords=dict(
-                            xc=self.xc[sl["xc"].start:sl["xc"].stop],
-                            yc=self.yc[sl["yc"].start:sl["yc"].stop],
-                            time=asip.time,
-                     ))
-            asip = xr.align(patch,asip,join="left")[1]
-            print(asip)
+                        coords={
+                            "time": asip.time,
+                            "xc": self.xc[sl["xc"].start:sl["xc"].stop],
+                            "yc": self.yc[sl["yc"].start:sl["yc"].stop],
+                            "lon": (["yc","xc"], self.lon[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)]),
+                            "lat": (["yc","xc"], self.lat[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)])
+                            })
+            asip = xr.align(padded_patch,asip,join="left")[1]
+            asip.close()
 
         lat = asip.lat.values
         lon = asip.lon.values
         asip_swath_def = pyresample.geometry.SwathDefinition(lons=lon, lats=lat)
-        asip.close()
 
-        # read osisaf
-        if use_mf:
-            osisaf = xr.open_mfdataset(self.osisaf_paths[start:end])
+        if self.load_data is not None:
+            osisaf = self.osisaf.isel(time=sl["time"])
         else:
-            osisaf = xr.concat([xr.open_dataset(self.osisaf_paths[t]) for t in range(start,end)],dim="time")
+            # read osisaf
+            if self.use_mf:
+                osisaf = xr.open_mfdataset(self.osisaf_paths[start:end])
+            else:
+                osisaf = xr.concat([xr.open_dataset(self.osisaf_paths[t]) for t in range(start,end)],dim="time")
+            osisaf.close()
+
         osisaf_sic = osisaf.ice_conc.values
         osisaf_lon = osisaf.lon.values
         osisaf_lat = osisaf.lat.values
         osisaf_swath_def = pyresample.geometry.SwathDefinition(lons=osisaf_lon, lats=osisaf_lat)
-        osisaf.close()
-
+        
         # interpolate osisaf on asip
         asip_coarse = np.zeros(asip.sic.shape)
         for i in range(len(asip.time)):
@@ -376,7 +505,9 @@ class AugmentedDataset(torch.utils.data.Dataset):
 
 class BaseDataModule(pl.LightningDataModule):
     def __init__(self, asip_paths, osisaf_paths, domains, xrds_kw, dl_kw, norm_stats,
-                 aug_kw=None, res=0.05, pads=[False,False,False], **kwargs):
+                 aug_kw=None, res=0.05, pads=[False,False,False], 
+                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF",
+                 **kwargs):
         
         super().__init__()
         self.asip_paths = asip_paths
@@ -393,6 +524,8 @@ class BaseDataModule(pl.LightningDataModule):
         self.val_ds = None
         self.test_ds = None
         self._post_fn = None
+
+        self.subsel_path = subsel_path
 
     def norm_stats(self):
         return self._norm_stats
@@ -412,9 +545,9 @@ class BaseDataModule(pl.LightningDataModule):
         normalize = lambda item: (item - m) / s
         return ft.partial(ft.reduce,lambda i, f: f(i), [
             TrainingItem._make,
-            lambda item: item._replace(input=normalize(self.rand_obs(item.input-item.coarse))),
+            lambda item: item._replace(input=normalize(self.rand_obs(item.input))),
             lambda item: item._replace(coarse=normalize(item.coarse)),
-            lambda item: item._replace(tgt=normalize(item.tgt-item.coarse)),
+            lambda item: item._replace(tgt=normalize(item.tgt)),
         ])
 
     def rand_obs(self, gt_item, obs=True):
@@ -519,8 +652,10 @@ class BaseDataModule(pl.LightningDataModule):
             train_osisaf_paths,
             train_times,
             **self.xrds_kw, postpro_fn=post_fn_rand,
-            res = self.res, limit_num_coords = 10000,
-            pad=self.pads[0]
+            res = self.res, 
+            pad=self.pads[0],
+            subsel_patch=True,
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
         )
         if self.aug_kw:
             self.train_ds = AugmentedDataset(self.train_ds, **self.aug_kw)
@@ -534,18 +669,20 @@ class BaseDataModule(pl.LightningDataModule):
                 val_times,
                 **self.xrds_kw, postpro_fn=post_fn,
                 res =self.res,
-                pad=self.pads[1]
+                pad=self.pads[1],
+                subsel_patch=True,
+                subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
             )
         else:
-           self.val_ds =ConcatDataset([
-              XrDataset(
-                select_paths_from_dates(self.asip_paths, sl)[0],
-                select_paths_from_dates(self.osisaf_paths, sl)[0],
-                select_paths_from_dates(self.asip_paths, sl)[1],
-                **self.xrds_kw, postpro_fn=post_fn,
-                res = self.res, pad=self.pads[1]
-              ) for sl in self.domains['val']['time'] ]
-            )
+            self.val_ds = ConcatDataset([XrDataset(
+                   select_paths_from_dates(self.asip_paths, sl)[0],
+                   select_paths_from_dates(self.osisaf_paths, sl)[0],
+                   select_paths_from_dates(self.asip_paths, sl)[1],
+                   **self.xrds_kw, postpro_fn=post_fn,
+                   res = self.res, pad=self.pads[1],
+                   subsel_patch=True,
+                   subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
+                   ) for sl in self.domains['val']['time']])
 
         test_asip_paths, test_times = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
         test_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['test']['time'])
@@ -556,7 +693,8 @@ class BaseDataModule(pl.LightningDataModule):
             **self.xrds_kw, postpro_fn=post_fn,
             res = self.res,
             pad=self.pads[2],
-            stride_test=True
+            stride_test=True,
+            load_data=True
         )
 
     def train_dataloader(self):
@@ -566,7 +704,8 @@ class BaseDataModule(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.val_ds, shuffle=False, **self.dl_kw)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.test_ds, shuffle=False, **self.dl_kw)
+        return torch.utils.data.DataLoader(self.test_ds, shuffle=False, 
+                                           **self.dl_kw)
 
 class ConcatDataModule(BaseDataModule):
 

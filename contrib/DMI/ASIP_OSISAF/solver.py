@@ -37,7 +37,8 @@ class GradSolver(nn.Module):
         with torch.set_grad_enabled(True):
             state = self.init_state(batch)
             self.grad_mod.reset_state(batch.input)
-            prior = self.prior_cost.forward_ae(batch.coarse)
+            prior = self.prior_cost.forward_ae(batch.coarse.nan_to_num())
+            #prior = batch.coarse.nan_to_num()
             for step in range(self.n_step):
                 state = self.solver_step(state, batch, prior, step=step)
                 if not self.training:
