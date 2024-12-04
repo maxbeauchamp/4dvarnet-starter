@@ -52,7 +52,7 @@ datamodule:
     strides: { time: 1, yc: 20, xc: 20}
     strides_test: {time: 1, yc: 200, xc: 200}
     domain_limits: ${domain.train}
-  dl_kw: {batch_size: 2, num_workers: 8}
+  dl_kw: {batch_size: 2, num_workers: 16}
   #aug_kw:
   #  aug_factor: 1
   #  aug_only: True

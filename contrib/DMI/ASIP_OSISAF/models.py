@@ -85,20 +85,32 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         #batch = self.modify_batch(batch)
         out = self(batch=batch)
         m, s = self.norm_stats
-
         self.test_data.append(torch.stack(
             [
-                ((batch.input*s+m) + batch.coarse).cpu(),
-                ((batch.tgt*s+m) + batch.coarse).cpu(),
-                ((out*s+m) + batch.coarse).squeeze(dim=-1).detach().cpu(),
+                #(batch.input*s+m).cpu(),
+                #(batch.tgt*s+m).cpu(),
+                (out*s+m).squeeze(dim=-1).detach()#.cpu(),
             ],
             dim=1,
         ))
 
+        #out = (out*s+m).squeeze(dim=-1).detach()
+        #if batch_idx == 0:
+        #    self.test_data = torch.stack([out],dim=1)
+        #else:
+        #    self.test_data = torch.cat((self.test_data,torch.stack([out],dim=1)))
+
         batch = None
         out = None
 
+    @property
+    def test_quantities(self):
+        #return ['inp', 'tgt', 'out']
+        return ['out']
+
     def on_test_epoch_end(self):
+
+        #self.test_data = torch.cat(self.test_data).cuda()
 
         if isinstance(self.trainer.test_dataloaders,list):
             rec_da = self.trainer.test_dataloaders[0].dataset.reconstruct(

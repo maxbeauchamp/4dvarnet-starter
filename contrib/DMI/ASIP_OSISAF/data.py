@@ -41,6 +41,9 @@ def find_pad(sl, st, N):
         pad = 0
     return int(pad/2), int(pad-int(pad/2))
 
+def find_idx(coords,c):
+    return np.where(coords==c)[0][0]
+
 class XrDataset(torch.utils.data.Dataset):
     """
     torch Dataset based on an xarray.DataArray with on the fly slicing.
@@ -112,7 +115,6 @@ class XrDataset(torch.utils.data.Dataset):
                                                  self.osisaf_paths,
                                                  slice(datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
                                                        datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")))
-            print(self.asip)
 
         # pad
         nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
@@ -121,10 +123,18 @@ class XrDataset(torch.utils.data.Dataset):
             pad_y = find_pad(self.patch_dims['yc'], self.strides['yc'], ny)
             self.lon = np.pad(self.lon,((pad_y[0],pad_y[1]),
                                         (pad_x[0],pad_x[1])),
-                                        mode="linear_ramp")
+                                        mode="constant",
+                                        constant_values=((self.lon[0,0],self.lon[-1,0]),
+                                                    (self.lon[0,0],self.lon[0,-1])
+                                                   )
+                                        )
             self.lat = np.pad(self.lat,((pad_y[0],pad_y[1]),
                                         (pad_x[0],pad_x[1])),
-                                        mode="linear_ramp")
+                                        mode="constant",
+                                        constant_values=((self.lat[0,0],self.lat[-1,0]),
+                                                    (self.lat[0,0],self.lat[0,-1])
+                                                   )
+                                        )
             pad_ = {'xc':(pad_x[0],pad_x[1]),
                     'yc':(pad_y[0],pad_y[1])}
             dx = [pad_ *self.res for pad_ in pad_x]
@@ -151,6 +161,7 @@ class XrDataset(torch.utils.data.Dataset):
         else:
             da_dims = dict(time=nt, xc=len(xc_orig), yc=len(yc_orig))
         print(da_dims)
+        self.da_dims =da_dims
 
         self.ds_size = {
             dim: max((da_dims[dim] - patch_dims[dim]) // self.strides.get(dim, 1) + 1, 0)
@@ -160,7 +171,7 @@ class XrDataset(torch.utils.data.Dataset):
         if self.subsel_patch:
             if not os.path.isfile(subsel_patch_path):
                 idx0 = self.find_patches_in_ocean()
-                np.savetxt(subsel_patch_path, self.idx_patches_in_ocean, fmt='%i')
+                np.savetxt(subsel_patch_path, idx0, fmt='%i')
             else:
                 idx0 = np.loadtxt(subsel_patch_path)
             # repeat for the number of times
@@ -265,8 +276,6 @@ class XrDataset(torch.utils.data.Dataset):
         return is_within_ocean
 
     def find_patches_in_ocean(self):
-        def find_idx(coords,c):
-            return np.where(coords==c)[0][0]
         nitem = np.prod(self.ds_size.values())
         nitem_bytime = np.prod(list(self.ds_size.values())[1:])
         coords = []
@@ -322,8 +331,6 @@ class XrDataset(torch.utils.data.Dataset):
                                time=self.times[sl["time"].start:sl["time"].stop],
                             )
                         ).transpose('time', 'yc', 'xc')
-        def find_idx(coords,c):
-            return np.where(coords==c)[0][0]
         ix = [find_idx(self.xc,x) for x in coords.xc.values]
         iy = [find_idx(self.yc,y) for y in coords.yc.values]
         item_lon = self.lon[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
@@ -427,7 +434,7 @@ class XrDataset(torch.utils.data.Dataset):
         items = list(itertools.chain(*batches))
         return self.reconstruct_from_items(items, weight)
 
-    def reconstruct_from_items(self, items, weight=None):
+    def reconstruct_from_items_cpu(self, items, weight=None):
         if weight is None:
             weight = np.ones(list(self.patch_dims.values()))
         w = xr.DataArray(weight, dims=list(self.patch_dims.keys()))
@@ -451,8 +458,49 @@ class XrDataset(torch.utils.data.Dataset):
         for da in das:
             rec_da.loc[da.coords] = rec_da.sel(da.coords) + da * w
             count_da.loc[da.coords] = count_da.sel(da.coords) + w
-
+        
         return rec_da / count_da
+
+    def reconstruct_from_items(self, items, weight=None):
+        if weight is None:
+            weight = np.ones(list(self.patch_dims.values()))
+        w = torch.tensor(weight).cuda()
+
+        rec_tensor = torch.zeros(size=(self.da_dims["time"],
+                                       self.da_dims["yc"],
+                                       self.da_dims["xc"])).cuda()
+        count_tensor = torch.zeros(size=(self.da_dims["time"],
+                                       self.da_dims["yc"],
+                                       self.da_dims["xc"])).cuda()
+
+        coords = self.get_coords()
+        new_dims = [f'v{i}' for i in range(len(items[0].shape) - len(coords[0].dims))]
+        dims = new_dims + list(coords[0].dims)
+
+        #for idx in range(items.size(0)):
+        for idx in range(len(items)):
+            print(idx)
+            it = [find_idx(self.times,t) for t in coords[idx].time.values]
+            ix = [find_idx(self.xc,x) for x in coords[idx].xc.values]
+            iy = [find_idx(self.yc,y) for y in coords[idx].yc.values]
+            rec_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx] * w
+            count_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
+
+        result_tensor = (rec_tensor / count_tensor).cpu()
+        result_tensor = np.array(torch.where(result_tensor==0.,np.nan,result_tensor))
+
+        result_da = xr.DataArray(
+            result_tensor,
+            dims=dims,
+            coords={"time": self.times,
+                    "xc": self.xc,
+                    "yc": self.yc,
+                    "lon": (["yc","xc"], self.lon),
+                    "lat": (["yc","xc"], self.lat)
+                    }
+        )
+
+        return result_da
 
 class XrConcatDataset(torch.utils.data.ConcatDataset):
     """
@@ -694,7 +742,9 @@ class BaseDataModule(pl.LightningDataModule):
             res = self.res,
             pad=self.pads[2],
             stride_test=True,
-            load_data=True
+            load_data=True,
+            subsel_patch=True,
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean_for_test.txt"
         )
 
     def train_dataloader(self):
