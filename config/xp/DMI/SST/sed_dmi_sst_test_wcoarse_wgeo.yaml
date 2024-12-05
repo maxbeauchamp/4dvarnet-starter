@@ -111,6 +111,7 @@ model:
       _target_: src.models.ConvLstmGradModel
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       dim_hidden: 96
+    smoothing: True
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel
@@ -138,6 +139,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
+    save_dir: /Odyssey/private/m19beauc/DMI/results
     ckpt_path: __CKPT_PATH__
 
 defaults:

@@ -166,25 +166,7 @@ class Lit4dVarNet_SST(Lit4dVarNet):
         return training_loss, out
 
     def base_step(self, batch, phase=""):
-
-        '''
-        # base_step used in train/val only
-        inp, tgt, lon, lat, mask = batch.input.detach().cpu().numpy(), batch.tgt.detach().cpu().numpy(), batch.lat.detach().cpu().numpy(), batch.lon.detach().cpu().numpy(), batch.mask.detach().cpu().numpy()
-        import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(1,5,figsize=(30,10))
-        min, max = np.nanmin(inp[0,3,:,:]), np.nanmax(inp[0,3,:,:])
-        im = axs[0].pcolormesh(inp[0,3,:,:],vmin=min, vmax=max)
-        im = axs[1].pcolormesh(tgt[0,3,:,:],vmin=min, vmax=max)
-        print(lon.shape)
-        im = axs[2].pcolormesh(lon[0,0,:,:])
-        im = axs[3].pcolormesh(lat[0,0,:,:])
-        im = axs[4].pcolormesh(mask[0,0,:,:])
-        fig.subplots_adjust(right=0.8)
-        cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-        fig.colorbar(im, cax=cbar_ax)
-        plt.show()
-        '''
-
+        
         out = self(batch=batch)
         loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
 
@@ -268,10 +250,10 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         loss, out = self.base_step(batch, phase)
         grad_loss = self.weighted_mse(kfilts.sobel(out) - kfilts.sobel(batch.tgt),
                                       self.optim_weight)
-        #prior_cost = self.solver.prior_cost(self.solver.init_state(batch, out))
+        prior_cost = self.solver.prior_cost(self.solver.init_state(batch, out))
         self.log( f"{phase}_gloss", grad_loss, prog_bar=True, on_step=False, on_epoch=True)
 
-        training_loss = 50 * loss + 1000 * grad_loss #+ 10 * prior_cost
+        training_loss = 50 * loss + 1000 * grad_loss + 10 * prior_cost
         return training_loss, out
 
     def base_step(self, batch, phase=""):
@@ -280,7 +262,7 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
 
         with torch.no_grad():
-            self.log(f"{phase}_mse", 10000 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
+            self.log(f"{phase}_mse", 100 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
             self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
 
         return loss, out
@@ -342,54 +324,6 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
             self.test_data.to_netcdf(Path(self.logger.log_dir) / 'test_data.nc')
             print(Path(self.trainer.log_dir) / 'test_data.nc')
             self.logger.log_metrics(metrics.to_dict())
-
-class Lit4dVarNet_OSE(Lit4dVarNet):
-
-    def __init__(self, *args, **kwargs):
-         super().__init__(*args, **kwargs)
-
-    def step(self, batch, phase=""):
-        print(100*batch.tgt.isfinite().float().mean())
-        if self.training and 100*batch.tgt.isfinite().float().mean() < 0.1:
-            return None, None
-
-        loss, out = self.base_step(batch, phase)
-        self.log( f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
-
-        training_loss = loss
-        return training_loss, out
-
-    @staticmethod
-    def weighted_mse(err, weight):
-
-        # remove nan from err and weight
-        err_w = err * weight[None, ...]
-        non_zeros = (torch.ones_like(err) * weight[None, ...]) == 0.0
-        err_num = err.isfinite() & ~non_zeros
-        if err_num.sum() == 0:
-            return torch.scalar_tensor(1000.0, device=err_num.device).requires_grad_()
-        loss = F.mse_loss(err_w[err_num], torch.zeros_like(err_w[err_num]))
-        return loss
-
-
-    def base_step(self, batch, phase=""):
- 
-        out = self(batch=batch)
-
-        grad_out = kfilts.sobel(out,3)
-        grad_tgt = kfilts.sobel(batch.tgt,3)
-        lapl_out = kfilts.laplacian(out,3)
-        lapl_tgt = kfilts.laplacian(batch.tgt,3)
-
-        loss = self.weighted_mse(out - batch.tgt, self.rec_weight)
-        #loss += self.weighted_mse(grad_out - grad_tgt, self.rec_weight)
-        #loss += self.weighted_mse(lapl_out - lapl_tgt, self.rec_weight)
-
-        with torch.no_grad():
-            self.log(f"{phase}_mse", 10000 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
-            self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
-
-        return loss, out
 
 class GradSolver(nn.Module):
     def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, reset_state=True, **kwargs):

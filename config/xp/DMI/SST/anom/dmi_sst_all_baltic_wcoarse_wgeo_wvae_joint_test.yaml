@@ -139,6 +139,7 @@ model:
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       #dim_in: 25
       dim_hidden: 96
+    smoothing: True
   n_simu: 10
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
@@ -167,7 +168,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/sst_dmi_baltic_wcoarse_wgeo_wvae.ckpt
+    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_wvae.ckpt
 
 defaults:
   - /domain: baltic_ext

@@ -34,7 +34,7 @@ trainer:
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
       monitor: val_mse
       save_top_k: 3
-      filename: '{val_mse:.5f}-{epoch:03d}_anom_wc_wg'
+      filename: '{val_mse:.5f}-{epoch:03d}_anom_wc_wg_wsmoothing'
 
 datamodule:
   _target_: contrib.DMI.SST.data.BaseDataModule_wcoarse_wgeo
@@ -117,6 +117,7 @@ model:
       _target_: src.models.ConvLstmGradModel
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       dim_hidden: 96
+    smoothing: True
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel

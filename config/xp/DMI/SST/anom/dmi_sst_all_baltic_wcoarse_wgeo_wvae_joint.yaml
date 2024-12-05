@@ -119,6 +119,7 @@ model:
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       #dim_in: 25
       dim_hidden: 96
+    smoothing: True
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel

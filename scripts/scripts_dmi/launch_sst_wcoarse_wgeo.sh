@@ -6,11 +6,11 @@ cd $workdir
 scratchdir=/Odyssey/private/m19beauc/DMI/results/lightning_logs
 #scratchdir=$SCRATCH/lightning_logs
 
-ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo.ckpt
-ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_dm3_wcoarse_wgeo.ckpt
+ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_new.ckpt
+#ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_dm1_wcoarse_wgeo_new.ckpt
 
 dm=baltic_ext
-dm=baltic_dm3_eval
+#dm=baltic_dm1_eval
 
 xp_name=dt7_linweights_wcoarse
 
@@ -49,5 +49,5 @@ done
 echo ${list_outputs[*]}
 # merge the NetCDF files
 ncrcat ${list_outputs[*]} -O ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${xp_name}_${dm}.nc
-mv -f ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${xp_name}_${dm}.nc /Odyssey/private/m19beauc/DMI/4DVarNet_outputs
+mv -f ${scratchdir}/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${xp_name}_${dm}.nc /Odyssey/private/m19beauc/DMI/4DVarNet_outputs/DMI-L4_GHRSST-SSTfnd-DMI_4DVarNet-NSEABALTIC_2021_${xp_name}_${dm}_new.nc
 

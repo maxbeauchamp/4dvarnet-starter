@@ -8,18 +8,18 @@ import torch.nn.functional as F
 import numpy as np
 import xarray as xr
 from contrib.DMI.SST.VAE import *
+from kornia.filters import BoxBlur as smoother
 
 class GradSolver(nn.Module):
-    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, **kwargs):
+    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, smoothing=False,**kwargs):
         super().__init__()
         self.prior_cost = prior_cost
         self.obs_cost = obs_cost
         self.grad_mod = grad_mod
-
         self.n_step = n_step
         self.lr_grad = lr_grad
-
         self._grad_norm = None
+        self.smoothing = smoothing
 
     def init_state(self, batch, x_init=None):
         if x_init is not None:
@@ -48,9 +48,9 @@ class GradSolver(nn.Module):
                 if not self.training:
                     state = state.detach().requires_grad_(True)
 
-            #if not self.training:
-            #    state = self.prior_cost.forward_ae(state)
-            #state = self.prior_cost.forward_ae(state)
+            if self.smoothing:
+                smooth = smoother((5, 5))
+                state = smooth(state)
         return state
 
 
@@ -213,9 +213,13 @@ class GradSolver_wgeo(GradSolver):
                 if not self.training:
                     state = [s.detach().requires_grad_(True) for s in state]
 
-            #if not self.training:
-            #    state = [self.prior_cost.forward_ae(state,batch), state[1]]
-        return state[0]
+            if self.smoothing:
+                smooth = smoother((5, 5))
+                state = smooth(state[0])
+            else:
+                state = state[0]
+
+        return state
 
 class BilinAEPriorCost_wgeo(nn.Module):
     def __init__(self, dim_in, dim_hidden, kernel_size=3, downsamp=None, bilin_quad=True, nt=None):

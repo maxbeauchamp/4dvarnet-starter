@@ -13,7 +13,7 @@ from contrib.DMI.SST.solver import GradSolver_wgeo
 
 class GradSolver_VAE(nn.Module):
 
-    def __init__(self, obs_cost, gen_mod, grad_mod, n_step, lr_grad=0.2, latent = True, **kwargs):
+    def __init__(self, obs_cost, gen_mod, grad_mod, n_step, lr_grad=0.2, smoothing=False, latent = True, **kwargs):
         super().__init__()
 
         # Need 3 models (obs, gen(anom), solver-J) )
@@ -26,6 +26,7 @@ class GradSolver_VAE(nn.Module):
         self._grad_norm = None
         self.lambda_obs = torch.nn.Parameter(torch.Tensor([1.]))
         self.lambda_reg = torch.nn.Parameter(torch.Tensor([1.]))
+        self.smoothing = smoothing
 
     def init_state(self, batch, x_init=None):
         if x_init is None:
@@ -40,7 +41,6 @@ class GradSolver_VAE(nn.Module):
         x_init = self.gen_mod.decoder(z)
         #x_init = torch.where(torch.isnan(batch.input),x_init,batch.input)
         return (x_init, coords_cov)
-
 
     def solver_step(self, state, batch, step):
         # ! in this setup:
@@ -91,7 +91,13 @@ class GradSolver_VAE(nn.Module):
                  x = self.gen_mod.decoder(z)
                  state = (x, state[1])
             """
-        return state[0]
+            if self.smoothing:
+                smooth = smoother((5, 5))
+                state = smooth(state[0])
+            else:
+                state = state[0]
+
+        return state
 
 class ConvLstmGradModel(nn.Module):
     def __init__(self, dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None):

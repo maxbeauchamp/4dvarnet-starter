@@ -12,6 +12,7 @@ import contrib
 from contrib.DMI.ASIP_OSISAF.load_data import *
 import datetime
 import pyresample
+import pandas as pd
 import geopandas as gpd
 from geopandas import GeoSeries
 import cartopy.feature as cfeature
@@ -349,7 +350,7 @@ class XrDataset(torch.utils.data.Dataset):
                 return self.postpro_fn(item)
             return item
 
-        if self.load_data is not None:
+        if self.load_data:
             asip = self.asip.isel(time=sl["time"],xc=sl["xc"],yc=sl["yc"])
         else:
             # read asip
@@ -382,7 +383,7 @@ class XrDataset(torch.utils.data.Dataset):
         lon = asip.lon.values
         asip_swath_def = pyresample.geometry.SwathDefinition(lons=lon, lats=lat)
 
-        if self.load_data is not None:
+        if self.load_data:
             osisaf = self.osisaf.isel(time=sl["time"])
         else:
             # read osisaf
@@ -464,14 +465,14 @@ class XrDataset(torch.utils.data.Dataset):
     def reconstruct_from_items(self, items, weight=None):
         if weight is None:
             weight = np.ones(list(self.patch_dims.values()))
-        w = torch.tensor(weight).cuda()
+        w = torch.tensor(weight)#.cuda()
 
         rec_tensor = torch.zeros(size=(self.da_dims["time"],
                                        self.da_dims["yc"],
-                                       self.da_dims["xc"])).cuda()
+                                       self.da_dims["xc"]))#.cuda()
         count_tensor = torch.zeros(size=(self.da_dims["time"],
                                        self.da_dims["yc"],
-                                       self.da_dims["xc"])).cuda()
+                                       self.da_dims["xc"]))#.cuda()
 
         coords = self.get_coords()
         new_dims = [f'v{i}' for i in range(len(items[0].shape) - len(coords[0].dims))]
@@ -480,13 +481,13 @@ class XrDataset(torch.utils.data.Dataset):
         #for idx in range(items.size(0)):
         for idx in range(len(items)):
             print(idx)
-            it = [find_idx(self.times,t) for t in coords[idx].time.values]
+            it = [find_idx(self.times,pd.to_datetime(t)) for t in coords[idx].time.values]
             ix = [find_idx(self.xc,x) for x in coords[idx].xc.values]
             iy = [find_idx(self.yc,y) for y in coords[idx].yc.values]
-            rec_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx] * w
+            rec_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
             count_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
 
-        result_tensor = (rec_tensor / count_tensor).cpu()
+        result_tensor = (rec_tensor / count_tensor)#.cpu()
         result_tensor = np.array(torch.where(result_tensor==0.,np.nan,result_tensor))
 
         result_da = xr.DataArray(

@@ -75,6 +75,14 @@ def load_data_ssh_sst(path_ssh, path_sst,
 
     return ds
 
+def open_l3_data(path, domain):
+    ds = xr.open_dataset(path).rename_vars({"ssh":"input"})
+    ds["tgt"] = ds["input"]
+    ds = ds.sel(domain)
+    ds = ds[[*src.data.TrainingItem._fields]].transpose('time', 'lat', 'lon')
+    return ds
+
+
 def mask_input(da, mask_list):
     i = np.random.randint(0, len(mask_list))
     mask = mask_list[i]

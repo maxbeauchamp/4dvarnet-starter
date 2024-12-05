@@ -118,6 +118,7 @@ model:
       _target_: src.models.ConvLstmGradModel
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       dim_hidden: 96
+    smoothing: True
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel
@@ -145,7 +146,8 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/sst_dmi_baltic_wcoarse_wgeo_old.ckpt
+    save_dir: /Odyssey/private/m19beauc/DMI/results
+    ckpt_path: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_new.ckpt
 
 defaults:
   - /domain: baltic_ext
