@@ -467,29 +467,30 @@ class XrDataset(torch.utils.data.Dataset):
             weight = np.ones(list(self.patch_dims.values()))
         w = torch.tensor(weight)#.cuda()
 
-        rec_tensor = torch.zeros(size=(self.da_dims["time"],
+        result_tensor = torch.zeros(size=(1,
+                                       self.da_dims["time"],
                                        self.da_dims["yc"],
                                        self.da_dims["xc"]))#.cuda()
-        count_tensor = torch.zeros(size=(self.da_dims["time"],
+        count_tensor = torch.zeros(size=(1,
+                                       self.da_dims["time"],
                                        self.da_dims["yc"],
                                        self.da_dims["xc"]))#.cuda()
 
         coords = self.get_coords()
         new_dims = [f'v{i}' for i in range(len(items[0].shape) - len(coords[0].dims))]
-        dims = new_dims + list(coords[0].dims)
+        dims = new_dims + ["time", "yc", "xc"] #+list(coords[0].dims)
 
-        #for idx in range(items.size(0)):
         for idx in range(len(items)):
-            print(idx)
-            it = [find_idx(self.times,pd.to_datetime(t)) for t in coords[idx].time.values]
+            it = [find_idx(self.times, pd.to_datetime(np.datetime64(t)).to_pydatetime()) \
+                    for t in coords[idx].time.values]
             ix = [find_idx(self.xc,x) for x in coords[idx].xc.values]
             iy = [find_idx(self.yc,y) for y in coords[idx].yc.values]
-            rec_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
-            count_tensor[it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
+            result_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
+            count_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
 
-        result_tensor = (rec_tensor / count_tensor)#.cpu()
-        result_tensor = np.array(torch.where(result_tensor==0.,np.nan,result_tensor))
-
+        result_tensor /= count_tensor#.cpu()
+        result_tensor = result_tensor.numpy()
+        #result_tensor = torch.where(result_tensor==0.,np.nan,result_tensor).numpy()
         result_da = xr.DataArray(
             result_tensor,
             dims=dims,
@@ -500,7 +501,6 @@ class XrDataset(torch.utils.data.Dataset):
                     "lat": (["yc","xc"], self.lat)
                     }
         )
-
         return result_da
 
 class XrConcatDataset(torch.utils.data.ConcatDataset):
@@ -689,7 +689,7 @@ class BaseDataModule(pl.LightningDataModule):
                 times = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
             # subselection of paths
             files = np.sort([ f for f in files if any(s in f for s in dates) ])
-            return files, times
+            return files, np.array(times)
 
         post_fn = self.post_fn()
         post_fn_rand = self.post_fn_rand()

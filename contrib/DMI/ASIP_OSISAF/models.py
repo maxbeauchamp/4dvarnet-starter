@@ -16,8 +16,7 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
          super().__init__(*args, **kwargs)
 
          self.domain_limits = domain_limits
-         #self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).sic[20])
-         self.mask_land = None
+         self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).sic[0])
 
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
          self.register_buffer('sr_weight', torch.from_numpy(sr_weight), persistent=persist_rw)
@@ -127,8 +126,8 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
         # crop (if necessary) 
         self.test_data = self.test_data.sel(**(self.domain_limits or {}))
-        self.test_data = self.test_data.update({'inp':(('time','yc','xc'),self.test_data.inp.data),
-                                                'tgt':(('time','yc','xc'),self.test_data.tgt.data),
+        self.test_data = self.test_data.update({#'inp':(('time','yc','xc'),self.test_data.inp.data),
+                                                #'tgt':(('time','yc','xc'),self.test_data.tgt.data),
                                                 'sic':(('time','yc','xc'),self.test_data.out.data)})
         if self.mask_land is not None:
              self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
