@@ -228,11 +228,19 @@ class Lit4dVarNet_SST(Lit4dVarNet):
 
 class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
 
-    def __init__(self, path_mask, optim_weight, domain_limits, persist_rw=True, *args, **kwargs):
+    def __init__(self, path_mask, optim_weight, domain_limits, modify_weights= False, persist_rw=True, *args, **kwargs):
          super().__init__(*args, **kwargs)
 
          self.domain_limits = domain_limits
          self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).analysed_sst_LR[20])
+
+         if modify_weights:
+             rec_weight = get_last_time_wei(patch_dims= {'time': 7, 'lat': 840, 'lon': 840},
+                                             crop={'time': 0, 'lat': 20, 'lon': 20},
+                                             offset=1)
+             optim_weight = get_linear_time_wei(patch_dims= { 'time': 7, 'lat': 840, 'lon': 840},
+                                             crop={'time': 0, 'lat': 20, 'lon': 20},
+                                             offset=1)
 
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
 
@@ -245,6 +253,9 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
 
         if self.training and batch.tgt.isfinite().float().mean() < 0.05:
             return None, None
+        
+        if batch.land_mask.isfinite().float().mean() < 0.8:
+            return None, None
 
         #batch = self.modify_batch(batch)
         loss, out = self.base_step(batch, phase)
@@ -253,7 +264,7 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         prior_cost = self.solver.prior_cost(self.solver.init_state(batch, out))
         self.log( f"{phase}_gloss", grad_loss, prog_bar=True, on_step=False, on_epoch=True)
 
-        training_loss = 50 * loss + 1000 * grad_loss + 10 * prior_cost
+        training_loss = 50 * loss + 100 * grad_loss + 1 * prior_cost
         return training_loss, out
 
     def base_step(self, batch, phase=""):
@@ -262,7 +273,7 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
 
         with torch.no_grad():
-            self.log(f"{phase}_mse", 100 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
+            self.log(f"{phase}_mse", loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
             self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
 
         return loss, out
@@ -288,6 +299,14 @@ class Lit4dVarNet_SST_wcoarse(Lit4dVarNet):
         out = None
 
     def on_test_epoch_end(self):
+
+        if self.rec_weight.shape[1]!=(self.test_data[0][0][0].shape)[1]:
+            nlat = (self.test_data[0][0][0].shape)[1]
+            nlon = (self.test_data[0][0][0].shape)[2]
+            rec_weight = get_last_time_wei(patch_dims= {'time': 7, 'lat': nlat, 'lon': nlon},
+                                           crop={'time': 0, 'lat': 0, 'lon': 20},
+                                           offset=1)
+            self.rec_weight = torch.from_numpy(rec_weight).to(self.test_data[0].device)
 
         if isinstance(self.trainer.test_dataloaders,list):
             rec_da = self.trainer.test_dataloaders[0].dataset.reconstruct(

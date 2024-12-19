@@ -62,8 +62,8 @@ datamodule:
     - False
     - True
   norm_stats:
-    - 50
-    - 38
+    - 0
+    - 100
 
 model:
   _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF

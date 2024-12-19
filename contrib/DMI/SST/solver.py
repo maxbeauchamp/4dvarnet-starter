@@ -8,10 +8,18 @@ import torch.nn.functional as F
 import numpy as np
 import xarray as xr
 from contrib.DMI.SST.VAE import *
-from kornia.filters import BoxBlur as smoother
+from kornia.filters import box_blur as smoother
+
+def smooth(inp, mask):
+    sum_pool = torch.nn.AvgPool2d(kernel_size=5, stride=1, padding=2,
+                                  divisor_override=1)
+    s1 = sum_pool(inp)
+    s2 = sum_pool(mask)
+    res = torch.where(s2==0.,0.,s1/s2)
+    return res
 
 class GradSolver(nn.Module):
-    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, smoothing=False,**kwargs):
+    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, smoothing=False, **kwargs):
         super().__init__()
         self.prior_cost = prior_cost
         self.obs_cost = obs_cost
@@ -48,9 +56,6 @@ class GradSolver(nn.Module):
                 if not self.training:
                     state = state.detach().requires_grad_(True)
 
-            if self.smoothing:
-                smooth = smoother((5, 5))
-                state = smooth(state)
         return state
 
 
@@ -173,13 +178,23 @@ class BilinAEPriorCost(nn.Module):
 
 class GradSolver_wgeo(GradSolver):
 
+    def __init__(self, include_addcov=True, *args, **kwargs):
+         super().__init__(*args, **kwargs)
+         self.include_addcov = include_addcov
+
     def init_state(self, batch, x_init=None):
         x_init = super().init_state(batch, x_init)
-        coords_cov = torch.stack((batch.latv[:,0].nan_to_num(), 
+        if self.include_addcov:
+            coords_cov = torch.stack((batch.latv[:,0].nan_to_num(), 
                                   batch.lonv[:,0].nan_to_num(), 
                                   batch.land_mask[:,0].nan_to_num(),
                                   batch.topo[:,0].nan_to_num(), 
-                                  batch.fg_std[:,0].nan_to_num()), dim=1).to(x_init.device)
+                                  batch.fg_std[:,0].nan_to_num()),
+                                  dim=1).to(x_init.device)
+        else:
+            coords_cov = torch.stack((batch.latv[:,0].nan_to_num(),
+                                  batch.lonv[:,0].nan_to_num()),
+                                  dim=1).to(x_init.device)
         return (x_init, coords_cov)
 
     def solver_step(self, state, batch, step, x_prior=None):
@@ -212,22 +227,41 @@ class GradSolver_wgeo(GradSolver):
                 state = self.solver_step(state, batch, step=step, x_prior=x_prior)
                 if not self.training:
                     state = [s.detach().requires_grad_(True) for s in state]
-
+            
+            """
+            final_state = []
+            for i in range(len(batch.tgt)):
+                if batch.tgt[i].isfinite().float().mean()<0.001:
+                    final_state.append(torch.zeros(state[0].shape[1:]).to(state[0].device))
+                else:
+                    final_state.append(state[0][i])
+            state = torch.stack(final_state)"""
+            state = state[0]
+            
             if self.smoothing:
-                smooth = smoother((5, 5))
-                state = smooth(state[0])
-            else:
-                state = state[0]
+                state = torch.where(batch.land_mask==1,0.,state)
+                mask = (1-(batch.land_mask))
+                state = smooth(state,mask)
+                #state = smoother(state,5)
+                #state = state
+                """
+                if not self.training:
+                    state = torch.where(batch.land_mask==1,0.,state)
+                    mask = (1-(batch.land_mask))
+                    state = smooth(state,mask)
+                else:
+                    state = smoother(state,5)
+                """
 
         return state
 
 class BilinAEPriorCost_wgeo(nn.Module):
-    def __init__(self, dim_in, dim_hidden, kernel_size=3, downsamp=None, bilin_quad=True, nt=None):
+    def __init__(self, dim_in, dim_hidden, kernel_size=3, downsamp=None, bilin_quad=True, nt=None, n_covs=5):
         super().__init__()
         self.nt = nt
         self.bilin_quad = bilin_quad
         self.conv_in = nn.Conv2d(
-            dim_in+5, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
+            dim_in+n_covs, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
         self.conv_hidden = nn.Conv2d(
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
@@ -272,7 +306,6 @@ class BilinAEPriorCost_wgeo(nn.Module):
 
     def forward(self, state):
         return F.mse_loss(state[0], self.forward_ae(state))
-
 
 class VAEPriorCost_wgeo(nn.Module):
     def __init__(self, dim_in, dim_out, path_weights):

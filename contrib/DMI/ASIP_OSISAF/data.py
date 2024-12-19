@@ -7,6 +7,8 @@ import functools as ft
 import tqdm
 from collections import namedtuple
 from torch.utils.data import  ConcatDataset
+import multiprocessing
+import gc
 from random import sample 
 import contrib
 from contrib.DMI.ASIP_OSISAF.load_data import *
@@ -310,6 +312,7 @@ class XrDataset(torch.utils.data.Dataset):
         return idx0
 
     def __getitem__(self, item):
+        gc.collect()
         if self.subsel_patch:
             sl = {
                 dim: slice(self.strides.get(dim, 1) * idx,
@@ -360,9 +363,12 @@ class XrDataset(torch.utils.data.Dataset):
                 asip = xr.open_mfdataset(self.asip_paths[start:end]).isel(xc=sl["xc"],
                                                                           yc=sl["yc"])
             else:
-                asip = xr.concat([xr.open_dataset(self.asip_paths[t]).isel(xc=sl["xc"],
-                                                                           yc=sl["yc"])
-                              for t in range(start,end)],dim="time")
+                #asip = xr.concat([xr.open_dataset(self.asip_paths[t],lock=False,cache=False).isel(xc=sl["xc"],
+                #                                                           yc=sl["yc"])
+                #              for t in range(start,end)],dim="time")
+                asip = concatenate(self.asip_paths[np.arange(start,end)],var="sic",
+                                   slices={"xc": sl["xc"],"yc":sl["yc"]})
+                asip.close()
         # pad
         nt, ny, nx = tuple(self.patch_dims[d] for d in ['time', 'yc', 'xc'])
         if ( (asip.sizes['yc'] !=ny) or (asip.sizes['xc']!=nx) ):
@@ -390,7 +396,8 @@ class XrDataset(torch.utils.data.Dataset):
             if self.use_mf:
                 osisaf = xr.open_mfdataset(self.osisaf_paths[start:end])
             else:
-                osisaf = xr.concat([xr.open_dataset(self.osisaf_paths[t]) for t in range(start,end)],dim="time")
+                #osisaf = xr.concat([xr.open_dataset(self.osisaf_paths[t],lock=False,cache=False) for t in range(start,end)],dim="time")
+                osisaf = concatenate(self.osisaf_paths[np.arange(start,end)],var="ice_conc")
             osisaf.close()
 
         osisaf_sic = osisaf.ice_conc.values
@@ -581,7 +588,8 @@ class BaseDataModule(pl.LightningDataModule):
 
     def post_fn(self):
         m, s = self.norm_stats()
-        normalize = lambda item: (item - m) / s
+        #normalize = lambda item: (item - m) / s
+        normalize = lambda item: (item - m) / (s-m)
         return ft.partial(ft.reduce,lambda i, f: f(i), [
             TrainingItem._make,
             lambda item: item._replace(input=normalize(item.input)),
@@ -591,7 +599,8 @@ class BaseDataModule(pl.LightningDataModule):
 
     def post_fn_rand(self):
         m, s = self.norm_stats()
-        normalize = lambda item: (item - m) / s
+        #normalize = lambda item: (item - m) / s
+        normalize = lambda item: (item - m) / (s-m)
         return ft.partial(ft.reduce,lambda i, f: f(i), [
             TrainingItem._make,
             lambda item: item._replace(input=normalize(self.rand_obs(item.input))),

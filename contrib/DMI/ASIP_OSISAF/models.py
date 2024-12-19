@@ -88,7 +88,8 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
             [
                 #(batch.input*s+m).cpu(),
                 #(batch.tgt*s+m).cpu(),
-                (out*s+m).squeeze(dim=-1).detach()#.cpu(),
+                (out*(s-m)+m).squeeze(dim=-1).detach()#.cpu(),
+                #(out*s+m).squeeze(dim=-1).detach()#.cpu(),
             ],
             dim=1,
         ))
@@ -129,11 +130,12 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         self.test_data = self.test_data.update({#'inp':(('time','yc','xc'),self.test_data.inp.data),
                                                 #'tgt':(('time','yc','xc'),self.test_data.tgt.data),
                                                 'sic':(('time','yc','xc'),self.test_data.out.data)})
+        """
         if self.mask_land is not None:
              self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
              self.test_data.coords['mask'] = (('yc', 'xc'), self.mask_land.values)
              self.test_data = self.test_data.where(self.test_data.mask)
-
+        
         metric_data = self.test_data.pipe(self.pre_metric_fn),
         metrics = pd.Series({
             metric_n: metric_fn(metric_data)
@@ -141,8 +143,9 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         })
 
         print(metrics.to_frame(name="Metrics").to_markdown())
+        """
         if self.logger:
             self.test_data.to_netcdf(Path(self.logger.log_dir) / 'test_data.nc')
             print(Path(self.trainer.log_dir) / 'test_data.nc')
-            self.logger.log_metrics(metrics.to_dict())
+            #self.logger.log_metrics(metrics.to_dict())
 

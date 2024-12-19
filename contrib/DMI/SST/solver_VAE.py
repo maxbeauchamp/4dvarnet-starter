@@ -10,6 +10,15 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from contrib.DMI.SST.VAE import VAE as VAE_attention
 from contrib.DMI.SST.solver import GradSolver_wgeo
+from kornia.filters import box_blur as smoother
+
+def smooth(inp, mask):
+    sum_pool = torch.nn.AvgPool2d(kernel_size=5, stride=1, padding=2,
+                                  divisor_override=1)
+    s1 = sum_pool(inp)
+    s2 = sum_pool(mask)
+    res = torch.where(s2==0.,0.,s1/s2)
+    return res
 
 class GradSolver_VAE(nn.Module):
 
@@ -91,11 +100,20 @@ class GradSolver_VAE(nn.Module):
                  x = self.gen_mod.decoder(z)
                  state = (x, state[1])
             """
+            final_state = []
+            for i in range(len(batch.tgt)):
+                if batch.tgt[i].isfinite().float().mean()<0.001:
+                    final_state.append(torch.zeros(state[0].shape[1:]).to(state[0].device))
+                else:
+                    final_state.append(state[0][i])
+            state = torch.stack(final_state)
+
             if self.smoothing:
-                smooth = smoother((5, 5))
-                state = smooth(state[0])
-            else:
-                state = state[0]
+                if not self.training:
+                    mask = (1-(batch.land_mask))
+                    state = smooth(state,mask)
+                else:
+                    state = smoother(state,5)
 
         return state
 

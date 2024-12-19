@@ -11,19 +11,18 @@ def load_data(type="asip"):
         path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
     return path
 
-
-def concatenate(paths, var):
+def concatenate(paths, var, slices=None):
     # initialize with 1st Dataset
-    ds0 = xr.open_dataset(paths[0])
+    ds0 = xr.open_dataset(paths[0]).isel(**(slices or {}))
     dims = ds0.sizes
     data = np.zeros((len(paths),dims["yc"],dims["xc"]))
     data[0] = ds0[var].data
-    times = [ds0.time[0].data]   
+    times = [ds0.time[0].data]
     coords = ds0.coords
     ds0.close()
     # loop 
     for i in range(1,len(paths)):
-        dsi = xr.open_dataset(paths[i])
+        dsi = xr.open_dataset(paths[i]).isel(**(slices or {}))
         data[i] = dsi[var].data
         times.append(dsi.time[0].data)
         dsi.close()
@@ -37,7 +36,7 @@ def concatenate(paths, var):
                             lat=coords["lat"],
                             ))
     return concat
-    
+
 def load_mfdata(asip_paths, osisaf_paths, times):
     def select_paths_from_dates(files, times):
         # compute list of dates from domain

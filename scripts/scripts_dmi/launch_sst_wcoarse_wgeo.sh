@@ -6,7 +6,8 @@ cd $workdir
 scratchdir=/Odyssey/private/m19beauc/DMI/results/lightning_logs
 #scratchdir=$SCRATCH/lightning_logs
 
-ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_new.ckpt
+#ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_new.ckpt
+ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_wcoarse_wgeo_old.ckpt
 #ckpt_path=/homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/sst_dmi_baltic_dm1_wcoarse_wgeo_new.ckpt
 
 dm=baltic_ext
@@ -27,7 +28,7 @@ for month in {1..12} ; do
   sed -i -e 's|__CKPT_PATH__|'${ckpt_path}'|g' config/xp/DMI/SST/dmi_sst_test.yaml
   sed -i -e 's|__DOMAIN__|'${dm}'|g' config/xp/DMI/SST/dmi_sst_test.yaml
   #CUDA_VISIBLE_DEVICES=5 HYDRA_FULL_ERROR=1 python main.py xp=DMI/SST/dmi_sst_test
-  HYDRA_FULL_ERROR=1 CUDA_VISIBLE_DEVICES=1 python main.py xp=DMI/SST/dmi_sst_test
+  HYDRA_FULL_ERROR=1 CUDA_VISIBLE_DEVICES=4 python main.py xp=DMI/SST/dmi_sst_test
   N=`ls -Art ${scratchdir} | tail -n 1 | cut -f2 -d'_'`
   mm1=$((month-1))
   mp1=$((month+1))

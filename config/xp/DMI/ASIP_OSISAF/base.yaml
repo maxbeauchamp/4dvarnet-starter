@@ -12,9 +12,10 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  limit_train_batches:  16 #3000.
-  limit_val_batches: 10 #200.
-  accumulate_grad_batches: 16
+  #strategy: ddp_spawn
+  limit_train_batches:  1000.
+  limit_val_batches: 200.
+  accumulate_grad_batches: 10
   #precision: 16
   logger: 
     _target_: pytorch_lightning.loggers.CSVLogger
@@ -28,7 +29,7 @@ trainer:
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
       monitor: train_mse #val_mse
       save_top_k: 3
-      filename: '{val_mse:.5f}-{epoch:03d}'
+      filename: '{train_mse:.5f}-{epoch:03d}' #'{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: contrib.DMI.ASIP_OSISAF.data.BaseDataModule
@@ -52,7 +53,7 @@ datamodule:
     strides: { time: 1, yc: 20, xc: 20}
     strides_test: {time: 1, yc: 200, xc: 200}
     domain_limits: ${domain.train}
-  dl_kw: {batch_size: 2, num_workers: 8}
+  dl_kw: {batch_size: 2, num_workers: 20, persistent_workers: True} #, prefetch_factor: 2,  persistent_workers: True} #, multiprocessing_context: spawn}
   #aug_kw:
   #  aug_factor: 1
   #  aug_only: True
@@ -62,8 +63,8 @@ datamodule:
     - False
     - True
   norm_stats:
-    - 50
-    - 38
+    - 0
+    - 100
 
 model:
   _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF
