@@ -22,11 +22,12 @@ def smooth(inp, mask):
 
 class GradSolver_VAE(nn.Module):
 
-    def __init__(self, obs_cost, gen_mod, grad_mod, n_step, lr_grad=0.2, smoothing=False, latent = True, **kwargs):
+    def __init__(self, obs_cost, prior_cost, gen_mod, grad_mod, n_step, lr_grad=0.2, smoothing=False, latent = True, **kwargs):
         super().__init__()
 
         # Need 3 models (obs, gen(anom), solver-J) )
         self.obs_cost = obs_cost
+        self.prior_cost = prior_cost
         self.gen_mod = gen_mod
         self.grad_mod = grad_mod
         self.latent = latent
@@ -46,12 +47,24 @@ class GradSolver_VAE(nn.Module):
                                   batch.topo[:,0].nan_to_num(),
                                   batch.fg_std[:,0].nan_to_num()), dim=1).to(x_init.device)
         x_aug = torch.cat((x_init, coords_cov),dim=1)
-        z = self.gen_mod.encoder(x_aug)[0]
-        x_init = self.gen_mod.decoder(z)
+        #z = self.gen_mod.encoder(x_aug)[0]
+        #x_init = self.gen_mod.decoder(z)
         #x_init = torch.where(torch.isnan(batch.input),x_init,batch.input)
         return (x_init, coords_cov)
 
-    def solver_step(self, state, batch, step):
+    def set_prior(self, batch):
+        y = batch.input.nan_to_num().detach().requires_grad_(True)
+        coords_cov = torch.stack((batch.latv[:,0].nan_to_num(),
+                                  batch.lonv[:,0].nan_to_num(),
+                                  batch.land_mask[:,0].nan_to_num(),
+                                  batch.topo[:,0].nan_to_num(),
+                                  batch.fg_std[:,0].nan_to_num()), dim=1).to(y.device)
+        x_aug = torch.cat((y, coords_cov),dim=1)
+        z = self.gen_mod.encoder(x_aug)[0]
+        x_prior = self.gen_mod.decoder(z)
+        return x_prior
+
+    def solver_step(self, state, batch, prior, step):
         # ! in this setup:
         # x is the anom x_HR-x_LR
 
@@ -70,7 +83,8 @@ class GradSolver_VAE(nn.Module):
             x = self.gen_mod.decoder(z - z_update)
             #x = torch.where(batch.input==0,x,batch.input)
         else:
-            var_cost = self.lambda_reg**2 * torch.norm(x) + self.lambda_obs**2 * self.obs_cost(x, batch)
+            #var_cost = self.lambda_reg**2 * torch.norm(x) + self.lambda_obs**2 * self.obs_cost(x, batch)
+            var_cost = self.lambda_reg**2 * self.prior_cost(x, prior) + self.lambda_obs**2 * self.obs_cost(x, batch)
             grad = torch.autograd.grad(var_cost, x, create_graph=True)[0]
             gmod = self.grad_mod(grad)
             x_update = ( 1 / (step + 1) * gmod + self.lr_grad * (step + 1) / self.n_step * grad)
@@ -84,38 +98,25 @@ class GradSolver_VAE(nn.Module):
     def forward(self, batch):
         with torch.set_grad_enabled(True):
             state = self.init_state(batch)
+            prior = self.set_prior(batch)
+
             if self.latent:
                 self.grad_mod.reset_state(self.gen_mod.encoder(torch.cat(state,dim=1))[0])
             else:
                 self.grad_mod.reset_state(batch.input)
 
             for step in range(self.n_step):
-                state = self.solver_step(state, batch, step=step)
+                state = self.solver_step(state, batch, prior, step=step)
                 if not self.training:
                     state = [s.detach().requires_grad_(True) for s in state]
-            """
-            if not self.training:
-                 x = state[0]
-                 z = self.gen_mod.project_latent_space(x)
-                 x = self.gen_mod.decoder(z)
-                 state = (x, state[1])
-            """
-            final_state = []
-            for i in range(len(batch.tgt)):
-                if batch.tgt[i].isfinite().float().mean()<0.001:
-                    final_state.append(torch.zeros(state[0].shape[1:]).to(state[0].device))
-                else:
-                    final_state.append(state[0][i])
-            state = torch.stack(final_state)
 
+            state = state[0]
             if self.smoothing:
-                if not self.training:
-                    mask = (1-(batch.land_mask))
-                    state = smooth(state,mask)
-                else:
-                    state = smoother(state,5)
+                state = torch.where(batch.land_mask==1,0.,state)
+                mask = (1-(batch.land_mask))
+                state = smooth(state,mask)
 
-        return state
+        return state, prior
 
 class ConvLstmGradModel(nn.Module):
     def __init__(self, dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None):
@@ -181,6 +182,14 @@ class BaseObsCost(nn.Module):
     def forward(self, state, batch):
         msk = batch.input.isfinite()
         return self.w * F.mse_loss(state[msk], batch.input.nan_to_num()[msk])
+
+class BasePriorCost(nn.Module):
+    def __init__(self, w=1) -> None:
+        super().__init__()
+        self.w=w
+
+    def forward(self, state, prior):
+        return self.w * F.mse_loss(state, prior)
 
 class BilinAEPriorCost(nn.Module):
     def __init__(self, dim_in, dim_hidden, gen_mod, kernel_size=3, downsamp=None, bilin_quad=True, nt=None):

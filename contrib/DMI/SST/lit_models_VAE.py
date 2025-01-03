@@ -9,13 +9,23 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 from src.models import Lit4dVarNet
+from src.utils import get_last_time_wei, get_linear_time_wei
 
 class Lit4dVarNet_VAE(Lit4dVarNet):
-    def __init__(self, path_mask, optim_weight, domain_limits, n_simu=1, persist_rw=True, *args, **kwargs):
+    def __init__(self, path_mask, optim_weight, domain_limits, n_simu=1, modify_weights=False, persist_rw=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.domain_limits = domain_limits
         self.n_simu = n_simu
         self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).analysed_sst_LR[20])
+
+        if modify_weights:
+            rec_weight = get_last_time_wei(patch_dims= {'time': 7, 'lat': 840, 'lon': 840},
+                                             crop={'time': 0, 'lat': 20, 'lon': 20},
+                                             offset=1)
+            optim_weight = get_linear_time_wei(patch_dims= { 'time': 7, 'lat': 840, 'lon': 840},
+                                             crop={'time': 0, 'lat': 20, 'lon': 20},
+                                             offset=1)
+
         self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
 
     @property
@@ -78,7 +88,7 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
         return training_loss, out
 
     def base_step(self, batch, phase=""):
-        out = self(batch=batch)
+        out, _ = self(batch=batch)
         loss = self.weighted_mse(out - batch.tgt, self.rec_weight)
 
         with torch.no_grad():
@@ -104,7 +114,7 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
         m, s = self.norm_stats
 
         if self.n_simu==1:
-            out = self(batch=batch)
+            out, _ = self(batch=batch)
             self.test_data.append(torch.stack(
                 [
                 batch.input.cpu() * s + m + batch.coarse.cpu(),
@@ -115,19 +125,27 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
             out = None
         else:
             simu = []
+            priors = []
             for i in range(self.n_simu):
                 print(i)
-                simu.append(self(batch=batch))
+                out, prior = self(batch=batch)
+                simu.append(out)
+                priors.append(prior)
             simu = torch.stack(simu, dim=4).detach().cpu()
+            priors = torch.stack(priors, dim=4).detach().cpu()
+
             self.test_data.append(torch.stack(
                 [
                  batch.input.cpu() * s + m + batch.coarse.cpu(),
                  batch.tgt.cpu() * s + m + batch.coarse.cpu(),
                  torch.mean((simu * s + m) + torch.unsqueeze(batch.coarse.cpu(),dim=4), dim=4)
                 ],dim=1))
-            self.test_simu.append(torch.unsqueeze(
-                 (simu * s + m) +  torch.unsqueeze(batch.coarse.cpu(),dim=4),
-                 dim=1))
+            self.test_simu.append(torch.stack(
+                 [ 
+                     (simu * s + m) +  torch.unsqueeze(batch.coarse.cpu(),dim=4),
+                     priors
+                 ],dim=1))
+
             simu = None
 
         batch = None
@@ -138,9 +156,17 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
 
     @property
     def test_simu_quantities(self):
-        return ['simulations']
+        return ['simulations', 'priors']
 
     def on_test_epoch_end(self):
+
+        if self.rec_weight.shape[1]!=(self.test_data[0][0][0].shape)[1]:
+            nlat = (self.test_data[0][0][0].shape)[1]
+            nlon = (self.test_data[0][0][0].shape)[2]
+            rec_weight = get_last_time_wei(patch_dims= {'time': 7, 'lat': nlat, 'lon': nlon},
+                                           crop={'time': 0, 'lat': 0, 'lon': 20},
+                                           offset=1)
+            self.rec_weight = torch.from_numpy(rec_weight).to(self.test_data[0].device)
 
         if isinstance(self.trainer.test_dataloaders,list):
             rec_da = self.trainer.test_dataloaders[0].dataset.reconstruct(
@@ -176,6 +202,10 @@ class Lit4dVarNet_VAE(Lit4dVarNet):
         self.test_data = self.test_data.sel(**(self.domain_limits or {}))
         self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
 
+        # set NaN according to mask
+        self.test_data = self.test_data.rename_vars({'out':'analysed_sst'})
+        self.test_data = self.test_data.update({'std_simu':(('time','lat','lon'),
+                                                self.test_data.simulations.std(dim='simu').values)})
         self.test_data.coords['mask'] = (('lat', 'lon'), self.mask_land.values)
         self.test_data = self.test_data.where(self.test_data.mask)
 

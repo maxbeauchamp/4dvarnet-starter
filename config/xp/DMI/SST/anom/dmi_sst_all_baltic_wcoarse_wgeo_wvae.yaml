@@ -82,7 +82,7 @@ datamodule:
     - 0.4562528584789277
 
 model:
-  _target_: src.models.Lit4dVarNet_SST_wcoarse
+  _target_: contrib.DMI.SST.lit_models.Lit4dVarNet_SST_wcoarse
   persist_rw: False
   opt_fn:
     _target_: src.utils.cosanneal_vae_lr_adam

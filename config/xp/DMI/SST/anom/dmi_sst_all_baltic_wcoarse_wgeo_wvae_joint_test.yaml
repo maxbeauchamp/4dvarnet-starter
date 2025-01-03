@@ -61,6 +61,7 @@ datamodule:
       time:
         - {_target_: builtins.slice, _args_: ['2021-01-09', '2021-01-15']}
         - {_target_: builtins.slice, _args_: ['2021-01-24', '2021-01-30']}
+        - {_target_: builtins.slice, _args_: ['2021-02-01', '2021-02-07']}
         - {_target_: builtins.slice, _args_: ['2021-02-09', '2021-02-15']}
         - {_target_: builtins.slice, _args_: ['2021-02-22', '2021-02-28']}
         - {_target_: builtins.slice, _args_: ['2021-03-09', '2021-03-15']}
@@ -84,11 +85,11 @@ datamodule:
         - {_target_: builtins.slice, _args_: ['2021-12-09', '2021-12-15']}
         - {_target_: builtins.slice, _args_: ['2021-12-24', '2021-12-31']}
   xrds_kw:
-    patch_dims: { time: 7, lat: 240, lon: 240}
+    patch_dims: { time: 7, lat: 1120, lon: 640}
     strides: { time: 1, lat: 20, lon: 20}
-    strides_test: {time: 1, lat: 200, lon: 200}
+    strides_test: {time: 1, lat: 1120, lon: 600}
     domain_limits: ${domain.train}
-  dl_kw: {batch_size: 2, num_workers: 0}
+  dl_kw: {batch_size: 1, num_workers: 0}
   #aug_kw:
   #  aug_factor: 1
   #  aug_only: True
@@ -112,12 +113,14 @@ model:
     train_vae: False
   rec_weight:
       _target_: src.utils.get_last_time_wei
-      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      #patch_dims: ${datamodule.xrds_kw.patch_dims}
+      patch_dims: {time: 7, lat: 240, lon: 240}
       crop: {time: 0, lat: 20, lon: 20}
       offset: 1
   optim_weight:
       _target_: src.utils.get_linear_time_wei
-      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      #patch_dims: ${datamodule.xrds_kw.patch_dims}
+      patch_dims: {time: 7, lat: 240, lon: 240}
       crop: {time: 0, lat: 20, lon: 20}
       offset: 1
   solver: 
@@ -133,7 +136,9 @@ model:
       out_channels: 50
       path_weights: /homes/m19beauc/4dvarnet-starter/ckpt/DMI/SST/ckpt_vae_dmi.pth
     obs_cost: 
-      _target_: src.models.BaseObsCost
+      _target_: contrib.DMI.SST.solver_VAE.BaseObsCost
+    prior_cost:
+      _target_: contrib.DMI.SST.solver_VAE.BasePriorCost
     grad_mod: 
       _target_: src.models.ConvLstmGradModel
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
@@ -150,6 +155,8 @@ model:
         lon: ${domain.test.lon}
   path_mask: ${paths.coarse}
   domain_limits: ${domain.train}
+  modify_weights: True
+
 metrics:
   nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
   psd_scores: {_target_: src.utils.psd_based_scores_from_ds, _partial_: True}
