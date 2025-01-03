@@ -39,6 +39,7 @@ datamodule:
   osisaf_paths: 
     _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
     type: osisaf
+  domain_name: arctic
   domains:
     train:
       time: {_target_: builtins.slice, _args_: ['2022-01-01', '2023-12-31']}

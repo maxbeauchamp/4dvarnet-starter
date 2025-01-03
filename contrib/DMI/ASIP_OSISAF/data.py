@@ -560,7 +560,9 @@ class AugmentedDataset(torch.utils.data.Dataset):
                              item.tgt, np.full_like(item.tgt,np.nan)))
 
 class BaseDataModule(pl.LightningDataModule):
-    def __init__(self, asip_paths, osisaf_paths, domains, xrds_kw, dl_kw, norm_stats,
+    def __init__(self, asip_paths, osisaf_paths, 
+                 domain_name, domains,
+                 xrds_kw, dl_kw, norm_stats,
                  aug_kw=None, res=0.05, pads=[False,False,False], 
                  subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF",
                  **kwargs):
@@ -568,6 +570,7 @@ class BaseDataModule(pl.LightningDataModule):
         super().__init__()
         self.asip_paths = asip_paths
         self.osisaf_paths = osisaf_paths
+        self.domain_name = domain_name
         self.domains = domains
         self.xrds_kw = xrds_kw
         self.dl_kw = dl_kw
@@ -713,7 +716,7 @@ class BaseDataModule(pl.LightningDataModule):
             res = self.res, 
             pad=self.pads[0],
             subsel_patch=True,
-            subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
         )
         if self.aug_kw:
             self.train_ds = AugmentedDataset(self.train_ds, **self.aug_kw)
@@ -729,7 +732,7 @@ class BaseDataModule(pl.LightningDataModule):
                 res =self.res,
                 pad=self.pads[1],
                 subsel_patch=True,
-                subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
+                subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
             )
         else:
             self.val_ds = ConcatDataset([XrDataset(
@@ -739,7 +742,7 @@ class BaseDataModule(pl.LightningDataModule):
                    **self.xrds_kw, postpro_fn=post_fn,
                    res = self.res, pad=self.pads[1],
                    subsel_patch=True,
-                   subsel_patch_path=self.subsel_path+"/patch_in_ocean.txt"
+                   subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
                    ) for sl in self.domains['val']['time']])
 
         test_asip_paths, test_times = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
@@ -754,7 +757,7 @@ class BaseDataModule(pl.LightningDataModule):
             stride_test=True,
             load_data=True,
             subsel_patch=True,
-            subsel_patch_path=self.subsel_path+"/patch_in_ocean_for_test.txt"
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
         )
 
     def train_dataloader(self):

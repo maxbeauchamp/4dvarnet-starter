@@ -54,7 +54,8 @@ domains = {
     "baltic_dm2": dict(lon=[-6.32,3.28], lat=[60.88,65.68]),
     "baltic_dm3": dict(lon=[16.41,21.21], lat=[53.61,58.41]),
     "global": dict(lon=[-180,180], lat=[-80,90]),
-    "arctic": dict(xc=[-3849750.,3749750.], yc=[5849750.,-5349750.])
+    "arctic": dict(xc=[-3849750.,3749750.], yc=[5849750.,-5349750.]),
+    "arctic_small": dict(xc=[-3849750.,3749750.], yc=[3849750.,-3349750.])
 }
 
 for n, d in domains.items():
