@@ -11,9 +11,12 @@ def load_data(type="asip"):
         path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
     return path
 
-def concatenate(paths, var, slices=None):
+def concatenate(paths, var, slices=None, type_coords="index"):
     # initialize with 1st Dataset
-    ds0 = xr.open_dataset(paths[0]).isel(**(slices or {}))
+    if type_coords=="index":
+        ds0 = xr.open_dataset(paths[0]).isel(**(slices or {}))
+    else:
+        ds0 = xr.open_dataset(paths[0]).sel(**(slices or {}))
     dims = ds0.sizes
     data = np.zeros((len(paths),dims["yc"],dims["xc"]))
     data[0] = ds0[var].data
@@ -22,7 +25,10 @@ def concatenate(paths, var, slices=None):
     ds0.close()
     # loop 
     for i in range(1,len(paths)):
-        dsi = xr.open_dataset(paths[i]).isel(**(slices or {}))
+        if type_coords=="index":
+            dsi = xr.open_dataset(paths[i]).isel(**(slices or {}))
+        else:
+            dsi = xr.open_dataset(paths[i]).sel(**(slices or {}))
         data[i] = dsi[var].data
         times.append(dsi.time[0].data)
         dsi.close()
@@ -37,30 +43,30 @@ def concatenate(paths, var, slices=None):
                             ))
     return concat
 
-def load_mfdata(asip_paths, osisaf_paths, times):
+def load_mfdata(asip_paths, osisaf_paths, times, slices=None, type_coords="index"):
     def select_paths_from_dates(files, times):
         # compute list of dates from domain
         if isinstance(times, list):
             dates = []
-            times = []
+            new_times = []
             for _ in range(len(times)):
                 start = datetime.datetime.strptime(times.start, "%Y-%m-%d")
                 end = datetime.datetime.strptime(times.stop, "%Y-%m-%d")
                 dates.extend([(start + datetime.timedelta(days=x)).strftime("%Y%m%d") for x in range(0, (end-start).days)])
-                times.extend([start + datetime.timedelta(days=x) for x in range(0, (end-start).days)])
+                new_times.extend([start + datetime.timedelta(days=x) for x in range(0, (end-start).days)])
         else:
             start = datetime.datetime.strptime(times.start, "%Y-%m-%d")
             end = datetime.datetime.strptime(times.stop, "%Y-%m-%d")
             dates = [ (start + datetime.timedelta(days=x)).strftime("%Y%m%d") for x in range(0, (end-start).days) ]
-            times = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
+            new_times = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
         # subselection of paths
         files = np.sort([ f for f in files if any(s in f for s in dates) ])
-        return files, times
+        return files, new_times
     sel_asip, _ = select_paths_from_dates(asip_paths,times)
     sel_osisaf, _ = select_paths_from_dates(osisaf_paths,times)
-    asip = concatenate(sel_asip, "sic")   
+    asip = concatenate(sel_asip, "sic", slices, type_coords)   
     #asip = xr.concat([xr.open_dataset(path) for path in sel_asip],dim="time")
-    osisaf = concatenate(sel_osisaf, "ice_conc") 
+    osisaf = concatenate(sel_osisaf, "ice_conc", slices, type_coords) 
     #osisaf = xr.concat([xr.open_dataset(path) for path in sel_osisaf],dim="time")
 
     return asip, osisaf

@@ -228,6 +228,16 @@ def get_linear_time_wei(patch_dims, offset=0, **crop_kw):
         patch_dims.values(),
     )
 
+def get_frcst_time_wei(patch_dims, offset=0, frcst_lead=0, **crop_kw):
+    pw = get_constant_crop(patch_dims, **crop_kw)
+    return np.fromfunction(
+        lambda t, *a: (
+            (1 - np.abs(offset + np.where(t<(patch_dims["time"]-(frcst_lead+1)),t,(patch_dims["time"]-(frcst_lead+1))) \
+             - np.min((patch_dims["time"]-(frcst_lead+1),patch_dims["time"])))/np.min((patch_dims["time"]-(frcst_lead+1),patch_dims["time"])) ) * pw
+        ),
+        patch_dims.values(),
+    )
+
 def get_last_time_wei(patch_dims, offset=0, **crop_kw):
     pw = get_constant_crop(patch_dims, **crop_kw)
     return np.fromfunction(

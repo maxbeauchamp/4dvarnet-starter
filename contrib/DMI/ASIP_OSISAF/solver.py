@@ -43,7 +43,8 @@ class GradSolver(nn.Module):
                 state = self.solver_step(state, batch, prior, step=step)
                 if not self.training:
                     state = state.detach().requires_grad_(True)
-        return state
+            state = torch.clip(state,min=0.,max=1.)
+        return state, prior
 
 class ConvLstmGradModel(nn.Module):
     def __init__(self, dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None):
@@ -116,7 +117,9 @@ class SRNNPriorCost(nn.Module):
         self.srnn = srnn
 
     def forward_ae(self, x):
-        return self.srnn(x)
+        res = self.srnn(x)
+        res = torch.clip(res,min=0.,max=1.)
+        return res
 
     def forward(self, state, prior):
          return F.mse_loss(state, prior)

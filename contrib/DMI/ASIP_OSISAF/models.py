@@ -7,24 +7,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import xarray as xr
-from src.utils import get_last_time_wei, get_linear_time_wei
+from datetime import datetime
+from src.utils import get_last_time_wei, get_frcst_time_wei, get_linear_time_wei
 from src.models import Lit4dVarNet
 
 class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
-    def __init__(self, path_mask, optim_weight, sr_weight, domain_limits, persist_rw=True, *args, **kwargs):
+    def __init__(self, optim_weight, sr_weight, domain_limits, persist_rw=True, frcst_lead=0, *args, **kwargs):
          super().__init__(*args, **kwargs)
 
+         self.frcst_lead = frcst_lead
          self.domain_limits = domain_limits
-         self.mask_land = np.isfinite(xr.open_dataset(path_mask).sel(**(self.domain_limits or {})).sic[0])
-
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
          self.register_buffer('sr_weight', torch.from_numpy(sr_weight), persistent=persist_rw)
 
     def modify_batch(self,batch):
-        #batch = batch._replace(input=batch.input.nan_to_num())
-        #batch = batch._replace(tgt=batch.tgt.nan_to_num())
-        return batch
+        batch_ = batch
+        new_input = batch_.input
+        new_coarse = batch_.coarse
+        device = batch_.input.device
+        if (self.frcst_lead is not None) and (self.frcst_lead>0):
+            new_input[:,(-self.frcst_lead):,:,:] = np.nan
+            new_coarse[:,(-self.frcst_lead):,:,:] = np.nan
+        batch_ = batch_._replace(input=new_input.to(device))
+        batch_ = batch_._replace(coarse=new_coarse.to(device))
+        #batch_ = batch_._replace(input=batch_.input.nan_to_num())
+        #batch_ = batch_._replace(tgt=batch_.tgt.nan_to_num())
+        return batch_
 
     def remove_useless_patches(self,batch):
         def nanvar(tensor, dim=None, keepdim=False):
@@ -40,11 +49,14 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
             batch = batch._replace(input=batch.input[idx])
             batch = batch._replace(tgt=batch.tgt[idx])
             batch = batch._replace(coarse=batch.coarse[idx])
+            batch = batch._replace(land_mask=batch.land_mask[idx])
         else:
             batch = None
         return batch
 
     def step(self, batch, phase=""):
+
+        batch = self.modify_batch(batch)
 
         batch = self.remove_useless_patches(batch)
         if batch is None:
@@ -53,7 +65,6 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         if self.training and batch.coarse.isfinite().float().mean() < 0.05:
             return None, None
 
-        #batch = self.modify_batch(batch)
         loss, out = self.base_step(batch, phase)
         grad_loss = self.weighted_mse(kfilts.sobel(out)-kfilts.sobel(batch.tgt),
                                       self.optim_weight)
@@ -68,7 +79,7 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
     def base_step(self, batch, phase=""):
 
-        out = self(batch=batch)
+        out, sr= self(batch=batch)
         loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
 
         with torch.no_grad():
@@ -81,14 +92,19 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         if batch_idx == 0:
             self.test_data = []
 
-        #batch = self.modify_batch(batch)
-        out = self(batch=batch)
+        batch = self.modify_batch(batch)
+
+        out, sr = self(batch=batch)
+        out = torch.where(batch.land_mask==1.,np.nan,out)
         m, s = self.norm_stats
+
         self.test_data.append(torch.stack(
             [
                 #(batch.input*s+m).cpu(),
-                #(batch.tgt*s+m).cpu(),
-                (out*(s-m)+m).squeeze(dim=-1).detach()#.cpu(),
+                (batch.tgt*(s-m)+m)[:,-(self.frcst_lead+1):,:,:],#.cpu(),
+                (batch.coarse*(s-m)+m)[:,-(self.frcst_lead+1):,:,:],#.cpu(),
+                (out*(s-m)+m).squeeze(dim=-1).detach()[:,-(self.frcst_lead+1):,:,:],#.cpu(),
+                (sr*(s-m)+m).squeeze(dim=-1).detach()[:,-(self.frcst_lead+1):,:,:]#.cpu(),
                 #(out*s+m).squeeze(dim=-1).detach()#.cpu(),
             ],
             dim=1,
@@ -102,50 +118,53 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
         batch = None
         out = None
+        sr = None
 
     @property
     def test_quantities(self):
         #return ['inp', 'tgt', 'out']
-        return ['out']
+        return ['tgt', 'coarse', 'out', 'sr']
 
     def on_test_epoch_end(self):
 
         #self.test_data = torch.cat(self.test_data).cuda()
 
-        if isinstance(self.trainer.test_dataloaders,list):
-            rec_da = self.trainer.test_dataloaders[0].dataset.reconstruct(
-                self.test_data, self.rec_weight.cpu().numpy()
-            )
-        else:
-            rec_da = self.trainer.test_dataloaders.dataset.reconstruct(
-                self.test_data, self.rec_weight.cpu().numpy()
-            )
+        for i in np.arange(self.frcst_lead+1):
+            print("Reconstructing LEADTIME "+str(i))
+            if isinstance(self.trainer.test_dataloaders,list):
+                rec_da = self.trainer.test_dataloaders[0].dataset.reconstruct(
+                        [ self.test_data[j][:,:,[i],:,:] for j in range(len(self.test_data)) ],
+                        -(self.frcst_lead-i+1),
+                        self.rec_weight.cpu().numpy()[[-(self.frcst_lead-i+1)],:,:]
+                )
+            else:
+                rec_da = self.trainer.test_dataloaders.dataset.reconstruct(
+                        [ self.test_data[j][:,:,[i],:,:] for j in range(len(self.test_data)) ],
+                        -(self.frcst_lead-i+1),
+                        self.rec_weight.cpu().numpy()[[-(self.frcst_lead-i+1)],:,:]
+                )
 
-        self.test_data = rec_da.assign_coords(
-            dict(v0=self.test_quantities)
-        ).to_dataset(dim='v0')
+            test_data_ldt = rec_da.assign_coords(
+                dict(v0=self.test_quantities)
+            ).to_dataset(dim='v0')
 
-        # crop (if necessary) 
-        self.test_data = self.test_data.sel(**(self.domain_limits or {}))
-        self.test_data = self.test_data.update({#'inp':(('time','yc','xc'),self.test_data.inp.data),
-                                                #'tgt':(('time','yc','xc'),self.test_data.tgt.data),
-                                                'sic':(('time','yc','xc'),self.test_data.out.data)})
-        """
-        if self.mask_land is not None:
-             self.mask_land = self.mask_land.sel(**(self.domain_limits or {}))
-             self.test_data.coords['mask'] = (('yc', 'xc'), self.mask_land.values)
-             self.test_data = self.test_data.where(self.test_data.mask)
+            # crop (if necessary) 
+            test_data_ldt = test_data_ldt.sel(**(self.domain_limits or {}))
         
-        metric_data = self.test_data.pipe(self.pre_metric_fn),
-        metrics = pd.Series({
-            metric_n: metric_fn(metric_data)
-            for metric_n, metric_fn in self.metrics.items()
-        })
-
-        print(metrics.to_frame(name="Metrics").to_markdown())
-        """
-        if self.logger:
-            self.test_data.to_netcdf(Path(self.logger.log_dir) / 'test_data.nc')
-            print(Path(self.trainer.log_dir) / 'test_data.nc')
-            #self.logger.log_metrics(metrics.to_dict())
+            """
+            metric_data = test_data_ldt.pipe(self.pre_metric_fn),
+            metrics = pd.Series({
+                metric_n: metric_fn(metric_data)
+                for metric_n, metric_fn in self.metrics.items()
+            })
+            print(metrics.to_frame(name="Metrics").to_markdown())
+            """
+            time = datetime.strptime(str(test_data_ldt.time.data[0])[:10], "%Y-%m-%d").strftime("%Y%m%d")  
+            if i==0:
+                init_time = time
+            file = 'test_data_'+init_time+'_'+time+'.nc'
+            if self.logger:
+                 test_data_ldt.to_netcdf(Path(self.logger.log_dir) / file)
+                 print(Path(self.trainer.log_dir) / file)
+                 #self.logger.log_metrics(metrics.to_dict())
 

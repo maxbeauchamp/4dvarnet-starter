@@ -38,6 +38,7 @@ datamodule:
   osisaf_paths: 
     _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
     type: osisaf
+  mask_path: /dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
   domain_name: arctic
   domains:
     train:
@@ -125,7 +126,6 @@ model:
         time: {_target_: builtins.slice, _args_: ["2023-01-01", "2023-12-31"]}
         yc: ${domain.test.yc}
         xc: ${domain.test.xc}
-  path_mask: ${paths.mask}
   domain_limits: ${domain.train}
 metrics:
   nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}

@@ -18,11 +18,14 @@ import pandas as pd
 import geopandas as gpd
 from geopandas import GeoSeries
 import cartopy.feature as cfeature
+import shapely.geometry as sgeom
 import os
+from torch.utils.data.sampler import Sampler
 
 TrainingItem = namedtuple(
-    'TrainingItem', ['input', 'tgt', 'coarse']
+    'TrainingItem', ['input', 'tgt', 'coarse', 'land_mask']
 )
+
 
 TrainingItem_wgeo = namedtuple(
     'TrainingItem_wgeo', ['input', 'tgt', 'coarse', 'latv', 'lonv', 'land_mask', 'topo', 'fg_std']
@@ -66,6 +69,7 @@ class XrDataset(torch.utils.data.Dataset):
             self, 
             asip_paths,
             osisaf_paths,
+            mask,
             times,
             patch_dims, domain_limits=None, strides=None,
             strides_test=None,
@@ -113,11 +117,14 @@ class XrDataset(torch.utils.data.Dataset):
         self.xc = xc_orig
         self.yc = yc_orig
 
+        self.mask = mask.sel(**(domain_limits or {}))
+
         if self.load_data:
             self.asip, self.osisaf = load_mfdata(self.asip_paths,
                                                  self.osisaf_paths,
                                                  slice(datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
-                                                       datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")))
+                                                       datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")),
+                                                 domain_limits, type_coords="coords")
 
         # pad
         nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
@@ -137,9 +144,14 @@ class XrDataset(torch.utils.data.Dataset):
                                         constant_values=((self.lat[0,0],self.lat[-1,0]),
                                                     (self.lat[0,0],self.lat[0,-1])
                                                    )
+
                                         )
+            
             pad_ = {'xc':(pad_x[0],pad_x[1]),
                     'yc':(pad_y[0],pad_y[1])}
+
+            self.mask = self.mask.pad(pad_, constant_values=1)
+
             dx = [pad_ *self.res for pad_ in pad_x]
             dy = [pad_ *self.res for pad_ in pad_y]
             new_xc = np.concatenate((np.linspace(xc_orig[0]-dx[0],
@@ -163,13 +175,13 @@ class XrDataset(torch.utils.data.Dataset):
             self.yc = yc_padded
         else:
             da_dims = dict(time=nt, xc=len(xc_orig), yc=len(yc_orig))
-        print(da_dims)
         self.da_dims =da_dims
 
         self.ds_size = {
             dim: max((da_dims[dim] - patch_dims[dim]) // self.strides.get(dim, 1) + 1, 0)
             for dim in patch_dims
         }
+
         # get patches in ocean
         if self.subsel_patch:
             if not os.path.isfile(subsel_patch_path):
@@ -312,6 +324,7 @@ class XrDataset(torch.utils.data.Dataset):
         return idx0
 
     def __getitem__(self, item):
+        
         gc.collect()
         if self.subsel_patch:
             sl = {
@@ -339,12 +352,16 @@ class XrDataset(torch.utils.data.Dataset):
         iy = [find_idx(self.yc,y) for y in coords.yc.values]
         item_lon = self.lon[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
         item_lat = self.lat[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)].flatten()
+        item_mask = self.mask[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)]
+        #item_mask = self.mask.isel(xc=sl["xc"],yc=sl["yc"])
+
         if not self.item_in_ocean(item_lon, item_lat):
             item = coords
             size = [coords.sizes[d] for d in ["time","yc","xc"]]
             item = item.update({"input":(("time","yc","xc"),np.full(size,np.nan))})
             item['tgt'] = item.input
             item['coarse'] = item.input
+            item['land_mask'] = item.input
             item = item[[*contrib.DMI.ASIP_OSISAF.data.TrainingItem._fields]].to_array()
             if self.return_coords:
                 return item.coords.to_dataset()[list(self.patch_dims)]
@@ -369,6 +386,7 @@ class XrDataset(torch.utils.data.Dataset):
                 asip = concatenate(self.asip_paths[np.arange(start,end)],var="sic",
                                    slices={"xc": sl["xc"],"yc":sl["yc"]})
                 asip.close()
+
         # pad
         nt, ny, nx = tuple(self.patch_dims[d] for d in ['time', 'yc', 'xc'])
         if ( (asip.sizes['yc'] !=ny) or (asip.sizes['xc']!=nx) ):
@@ -383,6 +401,7 @@ class XrDataset(torch.utils.data.Dataset):
                             "lat": (["yc","xc"], self.lat[iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)])
                             })
             asip = xr.align(padded_patch,asip,join="left")[1]
+            #item_mask = xr.align(padded_patch,item_mask,join="left")[1] 
             asip.close()
 
         lat = asip.lat.values
@@ -419,6 +438,7 @@ class XrDataset(torch.utils.data.Dataset):
         item = inp
         item['tgt'] = tgt.tgt
         item['coarse'] = coarse.coarse
+        item = item.update({'land_mask': (("time","yc","xc"),np.transpose(np.dstack([item_mask]*len(item['tgt'])),(2,0,1)))})
         item = item[[*contrib.DMI.ASIP_OSISAF.data.TrainingItem._fields]].to_array()
 
         if self.return_coords:
@@ -429,7 +449,7 @@ class XrDataset(torch.utils.data.Dataset):
             return self.postpro_fn(item)
         return item
 
-    def reconstruct(self, batches, weight=None):
+    def reconstruct(self, batches, index_time, weight=None):
         """
         takes as input a list of np.ndarray of dimensions (b, *, *patch_dims)
         return a stitched xarray.DataArray with the coords of patch_dims
@@ -440,7 +460,7 @@ class XrDataset(torch.utils.data.Dataset):
         """
 
         items = list(itertools.chain(*batches))
-        return self.reconstruct_from_items(items, weight)
+        return self.reconstruct_from_items(items, index_time, weight)
 
     def reconstruct_from_items_cpu(self, items, weight=None):
         if weight is None:
@@ -469,17 +489,19 @@ class XrDataset(torch.utils.data.Dataset):
         
         return rec_da / count_da
 
-    def reconstruct_from_items(self, items, weight=None):
+    def reconstruct_from_items(self, items, index_time, weight=None):
         if weight is None:
             weight = np.ones(list(self.patch_dims.values()))
+            weight = np.ones(list(1,self.patch_dims.values()[1],self.patch_dims.values()[2]))
         w = torch.tensor(weight)#.cuda()
 
-        result_tensor = torch.zeros(size=(1,
-                                       self.da_dims["time"],
+        nvars = items[0].shape[0]
+        result_tensor = torch.zeros(size=(nvars,
+                                       1,#self.da_dims["time"],
                                        self.da_dims["yc"],
                                        self.da_dims["xc"]))#.cuda()
-        count_tensor = torch.zeros(size=(1,
-                                       self.da_dims["time"],
+        count_tensor = torch.zeros(size=(nvars,
+                                       1,#self.da_dims["time"],
                                        self.da_dims["yc"],
                                        self.da_dims["xc"]))#.cuda()
 
@@ -490,10 +512,13 @@ class XrDataset(torch.utils.data.Dataset):
         for idx in range(len(items)):
             it = [find_idx(self.times, pd.to_datetime(np.datetime64(t)).to_pydatetime()) \
                     for t in coords[idx].time.values]
+            it = it[-1]
             ix = [find_idx(self.xc,x) for x in coords[idx].xc.values]
             iy = [find_idx(self.yc,y) for y in coords[idx].yc.values]
-            result_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
-            count_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
+            #result_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
+            #count_tensor[:,it[0]:(it[-1]+1),iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
+            result_tensor[:,[0],iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += items[idx].cpu() * w
+            count_tensor[:,[0],iy[0]:(iy[-1]+1),ix[0]:(ix[-1]+1)] += w
 
         result_tensor /= count_tensor#.cpu()
         result_tensor = result_tensor.numpy()
@@ -501,7 +526,8 @@ class XrDataset(torch.utils.data.Dataset):
         result_da = xr.DataArray(
             result_tensor,
             dims=dims,
-            coords={"time": self.times,
+            coords={#"time": self.times,
+                    "time": np.atleast_1d(self.times[index_time]),
                     "xc": self.xc,
                     "yc": self.yc,
                     "lon": (["yc","xc"], self.lon),
@@ -559,8 +585,42 @@ class AugmentedDataset(torch.utils.data.Dataset):
         return item._replace(input=noise + np.where(np.isfinite(perm_item.input),
                              item.tgt, np.full_like(item.tgt,np.nan)))
 
+class CustomBatchSampler(Sampler):
+    r"""Yield a mini-batch of indices. 
+
+    Args:
+        data: Dataset for building sampling logic.
+        batch_size: Size of mini-batch.
+    """
+
+    def __init__(self, data, batch_size):
+        # build data for sampling here
+        self.batch_size = batch_size
+        self.data = data
+        self.list_samples = np.random.randint(low=0, 
+                                              high=len(data), 
+                                              size=5000)
+
+        
+    def __iter__(self):
+        # implement logic of sampling here
+        batch = []
+        #for i, item in enumerate(self.data):
+        #    if int(np.mod(i,self.step))==0.:
+        #        batch.append(i)
+        #for i in np.arange(len(self.data),step=self.step):
+        for i in self.list_samples:
+            batch.append(i)
+            if len(batch) == self.batch_size:
+                yield batch
+                batch = []
+
+    def __len__(self):
+        return len(self.data)
+
 class BaseDataModule(pl.LightningDataModule):
-    def __init__(self, asip_paths, osisaf_paths, 
+    def __init__(self, asip_paths, osisaf_paths,
+                 mask_path,
                  domain_name, domains,
                  xrds_kw, dl_kw, norm_stats,
                  aug_kw=None, res=0.05, pads=[False,False,False], 
@@ -570,6 +630,7 @@ class BaseDataModule(pl.LightningDataModule):
         super().__init__()
         self.asip_paths = asip_paths
         self.osisaf_paths = osisaf_paths
+        self.mask_path = mask_path
         self.domain_name = domain_name
         self.domains = domains
         self.xrds_kw = xrds_kw
@@ -577,6 +638,15 @@ class BaseDataModule(pl.LightningDataModule):
         self.aug_kw = aug_kw if aug_kw is not None else {}
         self.res = res
         self.pads = pads
+
+        asip_base = xr.open_dataset(self.asip_paths[0])
+        xc_orig = asip_base.xc.data
+        yc_orig = asip_base.yc.data
+        self.lon = asip_base.lon.data
+        self.lat = asip_base.lat.data
+        self.xc = xc_orig
+        self.yc = yc_orig
+
         self._norm_stats = norm_stats
 
         self.train_ds = None
@@ -585,6 +655,38 @@ class BaseDataModule(pl.LightningDataModule):
         self._post_fn = None
 
         self.subsel_path = subsel_path
+
+        if not os.path.isfile(self.mask_path):
+            mask = xr.Dataset(
+                        coords={
+                            "xc": self.xc,
+                            "yc": self.yc,
+                            "lon": (["yc","xc"], self.lon),
+                            "lat": (["yc","xc"], self.lat)
+                            })
+            land_mask = np.zeros((len(self.yc),len(self.xc)))
+            land_50m = cfeature.NaturalEarthFeature('physical','land','50m')
+            land_polygons_cartopy = list(land_50m.geometries())
+            land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=land_polygons_cartopy)
+            step_yc = np.concatenate((np.arange(len(self.yc),step=1000),np.array([len(self.yc)])))
+            step_xc = np.concatenate((np.arange(len(self.xc),step=1000),np.array([len(self.xc)])))
+            for i in range(len(step_yc)-1):
+                for j in range(len(step_xc)-1):
+                    lon = self.lon[step_yc[i]:step_yc[i+1],step_xc[j]:step_xc[j+1]]
+                    lat = self.lat[step_yc[i]:step_yc[i+1],step_xc[j]:step_xc[j+1]]
+                    nlat, nlon = lon.shape
+                    points = GeoSeries(gpd.points_from_xy(lon.flatten(), lat.flatten()))
+                    points_gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+                    joined = gpd.sjoin(points_gdf, land_gdf, how='left', predicate='within')
+                    part_land_mask = np.reshape(np.array(joined['index_right'].notnull().to_list()),(nlat,nlon))
+                    land_mask[step_yc[i]:step_yc[i+1],step_xc[j]:step_xc[j+1]] = part_land_mask
+            self.mask = mask.update({"mask":(("yc","xc"),land_mask)})
+            self.mask.to_netcdf(self.mask_path)
+            self.mask = mask.mask
+        else:
+            mask = xr.open_dataset(self.mask_path)
+            self.mask = mask.mask
+            mask.close()
 
     def norm_stats(self):
         return self._norm_stats
@@ -598,6 +700,7 @@ class BaseDataModule(pl.LightningDataModule):
             lambda item: item._replace(input=normalize(item.input)),
             lambda item: item._replace(coarse=normalize(item.coarse)),
             lambda item: item._replace(tgt=normalize(item.tgt)),
+            lambda item: item._replace(land_mask=item.land_mask)
         ])
 
     def post_fn_rand(self):
@@ -609,6 +712,7 @@ class BaseDataModule(pl.LightningDataModule):
             lambda item: item._replace(input=normalize(self.rand_obs(item.input))),
             lambda item: item._replace(coarse=normalize(item.coarse)),
             lambda item: item._replace(tgt=normalize(item.tgt)),
+            lambda item: item._replace(land_mask=item.land_mask)
         ])
 
     def rand_obs(self, gt_item, obs=True):
@@ -711,6 +815,7 @@ class BaseDataModule(pl.LightningDataModule):
         self.train_ds = XrDataset(
             train_asip_paths, 
             train_osisaf_paths,
+            self.mask,
             train_times,
             **self.xrds_kw, postpro_fn=post_fn_rand,
             res = self.res, 
@@ -727,22 +832,28 @@ class BaseDataModule(pl.LightningDataModule):
             self.val_ds = XrDataset(
                 val_asip_paths,
                 val_osisaf_paths,
+                self.mask,
                 val_times,
                 **self.xrds_kw, postpro_fn=post_fn,
                 res =self.res,
                 pad=self.pads[1],
+                stride_test=True,
+                load_data=False,
                 subsel_patch=True,
-                subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
+                subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
             )
         else:
             self.val_ds = ConcatDataset([XrDataset(
                    select_paths_from_dates(self.asip_paths, sl)[0],
                    select_paths_from_dates(self.osisaf_paths, sl)[0],
+                   self.mask,
                    select_paths_from_dates(self.asip_paths, sl)[1],
                    **self.xrds_kw, postpro_fn=post_fn,
                    res = self.res, pad=self.pads[1],
+                   stride_test=True,
+                   load_data=False,
                    subsel_patch=True,
-                   subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
+                   subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
                    ) for sl in self.domains['val']['time']])
 
         test_asip_paths, test_times = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
@@ -750,6 +861,7 @@ class BaseDataModule(pl.LightningDataModule):
         self.test_ds = XrDataset(
             test_asip_paths,
             test_osisaf_paths,
+            self.mask,
             test_times,
             **self.xrds_kw, postpro_fn=post_fn,
             res = self.res,
@@ -764,7 +876,11 @@ class BaseDataModule(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.train_ds, shuffle=True, **self.dl_kw)
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val_ds, shuffle=False, **self.dl_kw)
+        cb_sampler = CustomBatchSampler(self.val_ds,
+                                        batch_size=self.dl_kw["batch_size"])
+        return torch.utils.data.DataLoader(self.val_ds, #shuffle=False, 
+                                           batch_sampler=cb_sampler, 
+                                           num_workers=self.dl_kw["num_workers"])#,**self.dl_kw)
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(self.test_ds, shuffle=False, 

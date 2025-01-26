@@ -14,7 +14,7 @@ trainer:
   devices: 1
   #strategy: ddp_spawn
   limit_train_batches:  1000.
-  limit_val_batches: 200.
+  limit_val_batches: 500.
   accumulate_grad_batches: 10
   #precision: 16
   logger: 
@@ -27,9 +27,9 @@ trainer:
     #- _target_: src.versioning_cb.VersioningCallback
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      monitor: train_mse #val_mse
+      monitor: val_mse #train_mse
       save_top_k: 3
-      filename: '{train_mse:.5f}-{epoch:03d}' #'{val_mse:.5f}-{epoch:03d}'
+      filename: '{val_mse:.5f}-{epoch:03d}' #'{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: contrib.DMI.ASIP_OSISAF.data.BaseDataModule
@@ -39,14 +39,17 @@ datamodule:
   osisaf_paths: 
     _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
     type: osisaf
+  mask_path: /dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
   domain_name: arctic_small
   domains:
     train:
       time: {_target_: builtins.slice, _args_: ['2022-01-01', '2023-12-31']}
     val:
-      time: 
-        - {_target_: builtins.slice, _args_: ['2021-01-01', '2021-06-30']}
-        - {_target_: builtins.slice, _args_: ['2021-07-01', '2021-12-31']} 
+      time: {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']} 
+        #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-06-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-07-01', '2021-12-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-20']}
+        #- {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']}
     test:
       time: {_target_: builtins.slice, _args_: ['2024-01-01', '2024-01-20']}
   xrds_kw:
@@ -61,7 +64,7 @@ datamodule:
   res: 500 # in meters
   pads: 
     - False
-    - False
+    - True
     - True
   norm_stats:
     - 0
@@ -126,7 +129,6 @@ model:
         time: {_target_: builtins.slice, _args_: ["2023-01-01", "2023-12-31"]}
         yc: ${domain.test.yc}
         xc: ${domain.test.xc}
-  path_mask: ${paths.mask}
   domain_limits: ${domain.train}
 metrics:
   nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
@@ -146,9 +148,10 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
+    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic.ckpt
     save_dir: /dmidata/users/maxb/results
 
 defaults:
-  - /domain: arctic
+  - /domain: arctic_small
   - _self_
 
