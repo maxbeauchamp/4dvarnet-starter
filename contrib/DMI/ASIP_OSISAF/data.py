@@ -1,6 +1,7 @@
 import pytorch_lightning as pl
 import numpy as np
 import torch.utils.data
+import torch
 import xarray as xr
 import itertools
 import functools as ft
@@ -22,13 +23,15 @@ import shapely.geometry as sgeom
 import os
 from torch.utils.data.sampler import Sampler
 
-TrainingItem = namedtuple(
-    'TrainingItem', ['input', 'tgt', 'coarse', 'land_mask']
+TrainingItem_wogeo = namedtuple(
+    'TrainingItem_wogeo', ['input', 'tgt', 'coarse', 'land_mask']
 )
 
 
-TrainingItem_wgeo = namedtuple(
-    'TrainingItem_wgeo', ['input', 'tgt', 'coarse', 'latv', 'lonv', 'land_mask', 'topo', 'fg_std']
+TrainingItem = namedtuple(
+    'TrainingItem', ['input', 'tgt', 'coarse', 
+                          'latv', 'lonv', 'land_mask',
+                          't2m','istl1','siconc','sst','skt']
 )
 
 class IncompleteScanConfiguration(Exception):
@@ -69,6 +72,8 @@ class XrDataset(torch.utils.data.Dataset):
             self, 
             asip_paths,
             osisaf_paths,
+            covariates_paths,
+            covariates,
             mask,
             times,
             patch_dims, domain_limits=None, strides=None,
@@ -96,6 +101,8 @@ class XrDataset(torch.utils.data.Dataset):
         self.postpro_fn = postpro_fn
         self.asip_paths = asip_paths
         self.osisaf_paths = osisaf_paths
+        self.covariates_paths = covariates_paths
+        self.covariates = covariates
         self.times = times
         self.patch_dims = patch_dims
         self.strides = strides or {}
@@ -120,11 +127,13 @@ class XrDataset(torch.utils.data.Dataset):
         self.mask = mask.sel(**(domain_limits or {}))
 
         if self.load_data:
-            self.asip, self.osisaf = load_mfdata(self.asip_paths,
-                                                 self.osisaf_paths,
-                                                 slice(datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
-                                                       datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")),
-                                                 domain_limits, type_coords="coords")
+            self.asip, self.osisaf, self.covs = load_mfdata(self.asip_paths,
+                                                            self.osisaf_paths,
+                                                            self.covariates_paths,
+                                                            self.covariates,
+                                                            slice(datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
+                                                            datetime.datetime.strftime(self.times[-1]+datetime.timedelta(days=1), "%Y-%m-%d")),
+                                                            domain_limits, type_coords="coords")
 
         # pad
         nt, ny, nx = (len(times),len(xc_orig),len(yc_orig))
@@ -186,6 +195,7 @@ class XrDataset(torch.utils.data.Dataset):
         if self.subsel_patch:
             if not os.path.isfile(subsel_patch_path):
                 idx0 = self.find_patches_in_ocean()
+                print("Saving ocean patches in "+subsel_patch_path)
                 np.savetxt(subsel_patch_path, idx0, fmt='%i')
             else:
                 idx0 = np.loadtxt(subsel_patch_path)
@@ -371,7 +381,11 @@ class XrDataset(torch.utils.data.Dataset):
             return item
 
         if self.load_data:
-            asip = self.asip.isel(time=sl["time"],xc=sl["xc"],yc=sl["yc"])
+            asip = self.asip.isel(time=sl["time"])
+            ix = [ x in asip.xc for x in self.xc[sl["xc"].start:sl["xc"].stop] ]
+            iy = [ y in asip.yc for y in self.yc[sl["yc"].start:sl["yc"].stop] ]
+            asip = self.asip.sel(xc=(self.xc[sl["xc"].start:sl["xc"].stop])[ix],
+                                 yc=(self.yc[sl["yc"].start:sl["yc"].stop])[iy])
         else:
             # read asip
             start = sl["time"].start
@@ -423,21 +437,71 @@ class XrDataset(torch.utils.data.Dataset):
         osisaf_lon = osisaf.lon.values
         osisaf_lat = osisaf.lat.values
         osisaf_swath_def = pyresample.geometry.SwathDefinition(lons=osisaf_lon, lats=osisaf_lat)
-        
+
         # interpolate osisaf on asip
+        pool = torch.nn.AvgPool2d(10, stride=10)
+        up = torch.nn.Upsample(scale_factor=10, mode='bilinear', align_corners=True)
         asip_coarse = np.zeros(asip.sic.shape)
         for i in range(len(asip.time)):
-            asip_coarse[i] = pyresample.kd_tree.resample_nearest(osisaf_swath_def, osisaf_sic[i], asip_swath_def, radius_of_influence=30000, fill_value=np.nan)
+            asip_coarse[i] = pyresample.kd_tree.resample_nearest(osisaf_swath_def,
+                                                                 osisaf_sic[i],
+                                                                 asip_swath_def,
+                                                                 radius_of_influence=30000,
+                                                                 fill_value=np.nan)
+            # pool and bilinear upsample OSISAF
+            asip_coarse[i] = up(pool(torch.tensor(asip_coarse[i]).unsqueeze(0)).unsqueeze(0))[0,0,:,:].numpy()
         asip = asip.update({"sic_coarse":(("time","yc","xc"),asip_coarse)})
- 
+
+        # covariates
+        try:
+            if self.load_data:
+                covs = [ self.covs[i].isel(time=sl["time"]) for i in range(len(self.covs)) ]
+            else:
+                covs = []
+                for i in range(len(self.covariates)):
+                    covs.append(concatenate(self.covariates_paths[np.arange(start,end)],
+                                            var=self.covariates[i])
+                                )
+
+            covs_lon = [ ( np.mod((lon + 180),360) - 180) for lon in covs[0].longitude.values ]
+            covs_lat = covs[0].latitude.values
+            covs_lon, covs_lat = np.meshgrid(covs_lon, covs_lat)
+            covs_swath_def = pyresample.geometry.SwathDefinition(lons=covs_lon, lats=covs_lat)
+
+            # interpolate covariates on asip
+            pool = torch.nn.AvgPool2d(40, stride=40)
+            up = torch.nn.Upsample(scale_factor=40, mode='bilinear', align_corners=True)
+            for k in range(len(self.covariates)):
+                covs_coarse = np.zeros(asip.sic.shape)
+                for i in range(len(asip.time)):
+                    covs_coarse[i] = pyresample.kd_tree.resample_nearest(covs_swath_def,
+                                                                     covs[k][self.covariates[k]].values[i],
+                                                                     asip_swath_def,
+                                                                     radius_of_influence=30000,
+                                                                     fill_value=np.nan)
+                    # pool and bilinear upsample ERA5
+                    covs_coarse[i] = up(pool(torch.tensor(covs_coarse[i]).unsqueeze(0)).unsqueeze(0))[0,0,:,:].numpy()
+                asip = asip.update({self.covariates[k]:(("time","yc","xc"), covs_coarse)})
+        except:
+            # fill tgt with nan to discard the batch when evaluating
+            asip = asip.update({'tgt':(("time","yc","xc"), np.full(asip.tgt.data.shape,np.nan))})
+            covs_coarse = np.zeros(asip.sic.shape)
+
+        asip = asip.update({self.covariates[k]:(("time","yc","xc"), covs_coarse)})
+
         # create final item
-        inp = asip.rename_vars({"sic":"input"}).transpose('time', 'yc', 'xc')
-        tgt = asip.rename_vars({"sic":"tgt"}).transpose('time', 'yc', 'xc')
-        coarse = asip.rename_vars({"sic_coarse":"coarse"}).transpose('time', 'yc', 'xc')
+        asip = asip.transpose('time', 'yc', 'xc')
+        inp = asip.rename_vars({"sic":"input"})
+        tgt = asip.rename_vars({"sic":"tgt"})
+        coarse = asip.rename_vars({"sic_coarse":"coarse"})
 
         item = inp
         item['tgt'] = tgt.tgt
         item['coarse'] = coarse.coarse
+        item['lonv'] = inp.lon
+        item['latv'] = inp.lat
+        for k in range(len(self.covariates)):
+            item[self.covariates[k]] = asip[self.covariates[k]]
         item = item.update({'land_mask': (("time","yc","xc"),np.transpose(np.dstack([item_mask]*len(item['tgt'])),(2,0,1)))})
         item = item[[*contrib.DMI.ASIP_OSISAF.data.TrainingItem._fields]].to_array()
 
@@ -445,8 +509,10 @@ class XrDataset(torch.utils.data.Dataset):
             return item.coords.to_dataset()[list(self.patch_dims)]
 
         item = item.data.astype(np.float32)
+
         if self.postpro_fn is not None:
-            return self.postpro_fn(item)
+            item = self.postpro_fn(item)
+
         return item
 
     def reconstruct(self, batches, index_time, weight=None):
@@ -620,9 +686,11 @@ class CustomBatchSampler(Sampler):
 
 class BaseDataModule(pl.LightningDataModule):
     def __init__(self, asip_paths, osisaf_paths,
+                 covariates_paths, covariates,
                  mask_path,
                  domain_name, domains,
-                 xrds_kw, dl_kw, norm_stats,
+                 xrds_kw, dl_kw, 
+                 norm_stats, norm_stats_covs,
                  aug_kw=None, res=0.05, pads=[False,False,False], 
                  subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF",
                  **kwargs):
@@ -630,6 +698,8 @@ class BaseDataModule(pl.LightningDataModule):
         super().__init__()
         self.asip_paths = asip_paths
         self.osisaf_paths = osisaf_paths
+        self.covariates_paths = covariates_paths
+        self.covariates = covariates
         self.mask_path = mask_path
         self.domain_name = domain_name
         self.domains = domains
@@ -648,6 +718,7 @@ class BaseDataModule(pl.LightningDataModule):
         self.yc = yc_orig
 
         self._norm_stats = norm_stats
+        self._norm_stats_covs = norm_stats_covs
 
         self.train_ds = None
         self.val_ds = None
@@ -691,29 +762,50 @@ class BaseDataModule(pl.LightningDataModule):
     def norm_stats(self):
         return self._norm_stats
 
+    def norm_stats_covs(self):
+        return self._norm_stats_covs
+
     def post_fn(self):
         m, s = self.norm_stats()
-        #normalize = lambda item: (item - m) / s
+        m_covs, s_covs = self.norm_stats_covs()
+        normalize_zscore = lambda item, mean, std: (item - mean) / std
+        minmax_scale = lambda item, min, max: (item-min)/(max-min)
         normalize = lambda item: (item - m) / (s-m)
         return ft.partial(ft.reduce,lambda i, f: f(i), [
             TrainingItem._make,
             lambda item: item._replace(input=normalize(item.input)),
             lambda item: item._replace(coarse=normalize(item.coarse)),
             lambda item: item._replace(tgt=normalize(item.tgt)),
-            lambda item: item._replace(land_mask=item.land_mask)
+            lambda item: item._replace(land_mask=item.land_mask),
+            lambda item: item._replace(latv=minmax_scale(item.latv,50,90)),
+            lambda item: item._replace(lonv=minmax_scale(item.lonv,-180,180)),
+            lambda item: item._replace(t2m=normalize_zscore(item.t2m,m_covs["t2m"],s_covs["t2m"])),
+            lambda item: item._replace(istl1=normalize_zscore(item.istl1,m_covs["istl1"],s_covs["istl1"])),
+            lambda item: item._replace(siconc=minmax_scale(item.siconc,m_covs["siconc"],s_covs["siconc"])),
+            lambda item: item._replace(sst=normalize_zscore(item.sst,m_covs["sst"],s_covs["sst"])),
+            lambda item: item._replace(skt=normalize_zscore(item.skt,m_covs["skt"],s_covs["skt"]))
         ])
 
     def post_fn_rand(self):
         m, s = self.norm_stats()
-        #normalize = lambda item: (item - m) / s
+        m_covs, s_covs = self.norm_stats_covs()
+        normalize_zscore = lambda item, mean, std: (item - mean) / std
+        minmax_scale = lambda item, min, max: (item-min)/(max-min)
         normalize = lambda item: (item - m) / (s-m)
         return ft.partial(ft.reduce,lambda i, f: f(i), [
             TrainingItem._make,
             lambda item: item._replace(input=normalize(self.rand_obs(item.input))),
             lambda item: item._replace(coarse=normalize(item.coarse)),
             lambda item: item._replace(tgt=normalize(item.tgt)),
-            lambda item: item._replace(land_mask=item.land_mask)
-        ])
+            lambda item: item._replace(land_mask=item.land_mask),
+            lambda item: item._replace(latv=minmax_scale(item.latv,50,90)),
+            lambda item: item._replace(lonv=minmax_scale(item.lonv,-180,180)),
+            lambda item: item._replace(t2m=normalize_zscore(item.t2m,m_covs["t2m"],s_covs["t2m"])),
+            lambda item: item._replace(istl1=normalize_zscore(item.istl1,m_covs["istl1"],s_covs["istl1"])),
+            lambda item: item._replace(siconc=minmax_scale(item.siconc,m_covs["siconc"],s_covs["siconc"])),
+            lambda item: item._replace(sst=normalize_zscore(item.sst,m_covs["sst"],s_covs["sst"])),
+            lambda item: item._replace(skt=normalize_zscore(item.skt,m_covs["skt"],s_covs["skt"]))
+         ])
 
     def rand_obs(self, gt_item, obs=True):
         obs_mask_item = ~np.isnan(gt_item)
@@ -812,16 +904,21 @@ class BaseDataModule(pl.LightningDataModule):
 
         train_asip_paths, train_times = select_paths_from_dates(self.asip_paths, self.domains['train']['time'])
         train_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['train']['time'])
+        train_covariates_paths, _ = select_paths_from_dates(self.covariates_paths, self.domains['train']['time'])
         self.train_ds = XrDataset(
             train_asip_paths, 
             train_osisaf_paths,
+            train_covariates_paths,
+            self.covariates,
             self.mask,
             train_times,
             **self.xrds_kw, postpro_fn=post_fn_rand,
             res = self.res, 
             pad=self.pads[0],
             subsel_patch=True,
-            subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+".txt"
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean_"+self.domain_name+\
+                              "_patch_"+str(self.xrds_kw["patch_dims"]["yc"])+"_"+\
+                              str(self.xrds_kw["strides"]["yc"])+".txt"
         )
         if self.aug_kw:
             self.train_ds = AugmentedDataset(self.train_ds, **self.aug_kw)
@@ -829,9 +926,12 @@ class BaseDataModule(pl.LightningDataModule):
         if isinstance(self.domains['val']['time'], slice):
             val_asip_paths, val_times = select_paths_from_dates(self.asip_paths, self.domains['val']['time'])
             val_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['val']['time'])
+            val_covariates_paths, _ = select_paths_from_dates(self.covariates_paths, self.domains['val']['time'])
             self.val_ds = XrDataset(
                 val_asip_paths,
                 val_osisaf_paths,
+                val_covariates_paths,
+                self.covariates,
                 self.mask,
                 val_times,
                 **self.xrds_kw, postpro_fn=post_fn,
@@ -840,12 +940,16 @@ class BaseDataModule(pl.LightningDataModule):
                 stride_test=True,
                 load_data=False,
                 subsel_patch=True,
-                subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
+                subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+\
+                                  "_patch_"+str(self.xrds_kw["patch_dims"]["yc"])+"_"+\
+                                  str(self.xrds_kw["strides"]["yc"])+".txt"
             )
         else:
             self.val_ds = ConcatDataset([XrDataset(
                    select_paths_from_dates(self.asip_paths, sl)[0],
                    select_paths_from_dates(self.osisaf_paths, sl)[0],
+                   select_paths_from_dates(self.covariates_paths, sl)[0],
+                   self.covariates,
                    self.mask,
                    select_paths_from_dates(self.asip_paths, sl)[1],
                    **self.xrds_kw, postpro_fn=post_fn,
@@ -853,14 +957,19 @@ class BaseDataModule(pl.LightningDataModule):
                    stride_test=True,
                    load_data=False,
                    subsel_patch=True,
-                   subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
+                   subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+\
+                                     "_patch_"+str(self.xrds_kw["patch_dims"]["yc"])+"_"+\
+                                     str(self.xrds_kw["strides"]["yc"])+".txt"
                    ) for sl in self.domains['val']['time']])
 
         test_asip_paths, test_times = select_paths_from_dates(self.asip_paths, self.domains['test']['time'])
         test_osisaf_paths, _ = select_paths_from_dates(self.osisaf_paths, self.domains['test']['time'])
+        test_covariates_paths, _ = select_paths_from_dates(self.covariates_paths, self.domains['test']['time'])
         self.test_ds = XrDataset(
             test_asip_paths,
             test_osisaf_paths,
+            test_covariates_paths,
+            self.covariates,
             self.mask,
             test_times,
             **self.xrds_kw, postpro_fn=post_fn,
@@ -869,7 +978,9 @@ class BaseDataModule(pl.LightningDataModule):
             stride_test=True,
             load_data=True,
             subsel_patch=True,
-            subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+".txt"
+            subsel_patch_path=self.subsel_path+"/patch_in_ocean_test_"+self.domain_name+\
+                              "_patch_"+str(self.xrds_kw["patch_dims"]["yc"])+"_"+\
+                              str(self.xrds_kw["strides"]["yc"])+".txt"
         )
 
     def train_dataloader(self):

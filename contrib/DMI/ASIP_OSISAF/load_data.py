@@ -7,8 +7,10 @@ import pyresample
 def load_data(type="asip"):
     if type=="asip":
         path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc')
-    else:
+    elif type=="osisaf":
         path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
+    else:
+        path = glob('/dmidata/users/maxb/ERA5_DAILY/ERA5_20*.nc')
     return path
 
 def concatenate(paths, var, slices=None, type_coords="index"):
@@ -18,7 +20,10 @@ def concatenate(paths, var, slices=None, type_coords="index"):
     else:
         ds0 = xr.open_dataset(paths[0]).sel(**(slices or {}))
     dims = ds0.sizes
-    data = np.zeros((len(paths),dims["yc"],dims["xc"]))
+    if "yc" in dims:
+        data = np.zeros((len(paths),dims["yc"],dims["xc"]))
+    else:
+        data = np.zeros((len(paths),dims["latitude"],dims["longitude"]))
     data[0] = ds0[var].data
     times = [ds0.time[0].data]
     coords = ds0.coords
@@ -33,7 +38,8 @@ def concatenate(paths, var, slices=None, type_coords="index"):
         times.append(dsi.time[0].data)
         dsi.close()
     # concatenate
-    concat = xr.Dataset(data_vars={var:(("time", "yc", "xc"), data)},
+    if "yc" in dims:
+        concat = xr.Dataset(data_vars={var:(("time", "yc", "xc"), data)},
                         coords=dict(
                             time=times,
                             xc=coords["xc"],
@@ -41,9 +47,18 @@ def concatenate(paths, var, slices=None, type_coords="index"):
                             lon=coords["lon"],
                             lat=coords["lat"],
                             ))
+    else:
+        concat = xr.Dataset(data_vars={var:(("time", "latitude", "longitude"), data)},
+                        coords=dict(
+                            time=times,
+                            latitude=coords["latitude"],
+                            longitude=coords["longitude"],
+                            ))
     return concat
 
-def load_mfdata(asip_paths, osisaf_paths, times, slices=None, type_coords="index"):
+def load_mfdata(asip_paths, osisaf_paths, 
+                covariates_paths, covariates,
+                times, slices=None, type_coords="index"):
     def select_paths_from_dates(files, times):
         # compute list of dates from domain
         if isinstance(times, list):
@@ -64,10 +79,16 @@ def load_mfdata(asip_paths, osisaf_paths, times, slices=None, type_coords="index
         return files, new_times
     sel_asip, _ = select_paths_from_dates(asip_paths,times)
     sel_osisaf, _ = select_paths_from_dates(osisaf_paths,times)
+    sel_covariates, _ = select_paths_from_dates(covariates_paths,times)
     asip = concatenate(sel_asip, "sic", slices, type_coords)   
     #asip = xr.concat([xr.open_dataset(path) for path in sel_asip],dim="time")
     osisaf = concatenate(sel_osisaf, "ice_conc", slices, type_coords) 
     #osisaf = xr.concat([xr.open_dataset(path) for path in sel_osisaf],dim="time")
+    covs = []
+    for i in range(len(covariates)):
+        covs.append(concatenate(sel_covariates,
+                                var=covariates[i])
+                    )
 
-    return asip, osisaf
+    return asip, osisaf, covs
 

@@ -29,6 +29,7 @@ trainer:
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
       monitor: val_mse #train_mse
       save_top_k: 3
+      save_last: True
       filename: '{val_mse:.5f}-{epoch:03d}' #'{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
@@ -39,11 +40,20 @@ datamodule:
   osisaf_paths: 
     _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
     type: osisaf
+  covariates_paths:
+    _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
+    type: era5
+  covariates:
+    - t2m
+    - istl1
+    - siconc
+    - sst
+    - skt
   mask_path: /dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
   domain_name: arctic_small
   domains:
     train:
-      time: {_target_: builtins.slice, _args_: ['2022-01-01', '2023-12-31']}
+      time: {_target_: builtins.slice, _args_: ['2021-01-01', '2021-12-31']}
     val:
       time: {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']} 
         #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-06-30']}
@@ -51,7 +61,7 @@ datamodule:
         #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-20']}
         #- {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']}
     test:
-      time: {_target_: builtins.slice, _args_: ['2024-01-01', '2024-01-20']}
+      time: {_target_: builtins.slice, _args_: ['2022-01-01', '2022-01-20']}
   xrds_kw:
     patch_dims: { time: 19, yc: 240, xc: 240}
     strides: { time: 1, yc: 20, xc: 20}
@@ -69,10 +79,14 @@ datamodule:
   norm_stats:
     - 0
     - 100
+  norm_stats_covs:
+    - {'t2m': 270.08, 'istl1': 267.68, 'siconc': 0, 'sst': 276.97, 'skt': 270.50}
+    - {'t2m': 14.67, 'istl1': 7.80, 'siconc': 1, 'sst': 6.82, 'skt': 15.21}
 
 model:
   _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF
   frcst_lead: 7
+  use_cov: True
   persist_rw: False
   opt_fn:
     _target_: src.utils.cosanneal_lr_adam
@@ -108,22 +122,28 @@ model:
         - "yc"
         - "xc"
   solver: 
+    #_target_: contrib.DMI.ASIP_OSISAF.solver.CondGradSolver
     _target_: contrib.DMI.ASIP_OSISAF.solver.GradSolver
     n_step: 15
     lr_grad: 1e3
+    use_cov: True
     # lr_grad: 0.2
     prior_cost: 
       _target_: contrib.DMI.ASIP_OSISAF.solver.SRNNPriorCost
       srnn:
         _target_: contrib.DMI.ASIP_OSISAF.UNet.UNet
-        in_channels: ${datamodule.xrds_kw.patch_dims.time}
+        #in_channels: ${datamodule.xrds_kw.patch_dims.time}
+        in_channels: 95 #98
         num_classes: ${datamodule.xrds_kw.patch_dims.time}
     obs_cost: 
       _target_: src.models.BaseObsCost
     grad_mod: 
-      _target_: src.models.ConvLstmGradModel
+      #_target_: contrib.DMI.ASIP_OSISAF.solver.CondConvLstmGradModel
+      _target_: contrib.DMI.ASIP_OSISAF.solver.ConvLstmGradModel
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
-      dim_hidden: 96
+      #dim_hidden: 296
+      dim_hidden: 96  
+      #n_covs: 4
   test_metrics: ${metrics.test_metrics}
   pre_metric_fn: 
         _target_: xarray.Dataset.sel
@@ -132,6 +152,7 @@ model:
         yc: ${domain.test.yc}
         xc: ${domain.test.xc}
   domain_limits: ${domain.train}
+
 metrics:
   nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
   psd_scores: {_target_: src.utils.psd_based_scores_from_ds, _partial_: True}
@@ -150,7 +171,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic_frcst.ckpt
+    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic_frcst_wreducedcov_prioronly.ckpt
     save_dir: /dmidata/users/maxb/results
 
 defaults:

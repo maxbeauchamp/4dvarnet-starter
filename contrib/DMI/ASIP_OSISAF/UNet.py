@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from collections import OrderedDict
 from torch.nn import init
 import numpy as np
+import math
 
 def conv3x3(in_channels, out_channels, stride=1, 
             padding=1, bias=True, groups=1):    
@@ -40,6 +41,29 @@ def conv1x1(in_channels, out_channels, groups=1):
         stride=1)
 
 
+class MaxPool2dSame(torch.nn.MaxPool2d):
+
+    def calc_same_pad(self, i: int, k: int, s: int, d: int) -> int:
+        return max((math.ceil(i / s) - 1) * s + (k - 1) * d + 1 - i, 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        ih, iw = x.size()[-2:]
+
+        pad_h = self.calc_same_pad(i=ih, k=self.kernel_size[0], s=self.stride[0], d=self.dilation[0])
+        pad_w = self.calc_same_pad(i=iw, k=self.kernel_size[1], s=self.stride[1], d=self.dilation[1])
+
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(
+                x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2]
+            )
+        return F.max_pool2d(
+            x,
+            self.kernel_size,
+            self.stride,
+            self.padding,
+            self.dilation,
+        )
+
 class DownConv(nn.Module):
     """
     A helper Module that performs 2 convolutions and 1 MaxPool.
@@ -56,7 +80,10 @@ class DownConv(nn.Module):
         self.conv2 = conv3x3(self.out_channels, self.out_channels)
 
         if self.pooling:
-            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+            #self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+            self.pool = MaxPool2dSame(kernel_size=(2,2),
+                                      stride=(2,2),
+                                      dilation=(1,1))
 
     def forward(self, x):
         x = F.relu(self.conv1(x))

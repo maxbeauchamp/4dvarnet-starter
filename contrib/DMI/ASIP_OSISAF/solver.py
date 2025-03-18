@@ -9,7 +9,7 @@ import numpy as np
 import xarray as xr
 
 class GradSolver(nn.Module):
-    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, **kwargs):
+    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, use_cov=False, **kwargs):
         super().__init__()
         self.prior_cost = prior_cost
         self.obs_cost = obs_cost
@@ -17,11 +17,13 @@ class GradSolver(nn.Module):
         self.n_step = n_step
         self.lr_grad = lr_grad
         self._grad_norm = None
+        self.use_cov = use_cov
 
     def init_state(self, batch, x_init=None):
         if x_init is not None:
             return x_init
-        return batch.input.nan_to_num().detach().requires_grad_(True)
+        #return batch.input.nan_to_num().detach().requires_grad_(True)
+        return batch.coarse.nan_to_num().detach().requires_grad_(True)
 
     def solver_step(self, state, batch, prior, step):
         var_cost = self.prior_cost(state, prior) + self.obs_cost(state, batch)
@@ -37,7 +39,18 @@ class GradSolver(nn.Module):
         with torch.set_grad_enabled(True):
             state = self.init_state(batch)
             self.grad_mod.reset_state(batch.input)
-            prior = self.prior_cost.forward_ae(batch.coarse.nan_to_num())
+            if not self.use_cov:
+                prior = self.prior_cost.forward_ae(batch.coarse.nan_to_num())
+            else:
+                prior = self.prior_cost.forward_ae(torch.cat([
+                                        batch.coarse.nan_to_num(),
+                                        #batch.lonv.nan_to_num()[:,[0],:,:],
+                                        #batch.latv.nan_to_num()[:,[0],:,:],
+                                        #batch.land_mask.nan_to_num()[:,[0],:,:],
+                                        batch.t2m.nan_to_num(),
+                                        batch.istl1.nan_to_num(),
+                                        batch.sst.nan_to_num(),
+                                        batch.skt.nan_to_num()],dim=1))
             #prior = batch.coarse.nan_to_num()
             for step in range(self.n_step):
                 state = self.solver_step(state, batch, prior, step=step)
@@ -101,6 +114,59 @@ class ConvLstmGradModel(nn.Module):
         out = self.conv_out(hidden)
         out = self.up(out)
         return out
+
+class CondConvLstmGradModel(ConvLstmGradModel):
+
+    def __init__(self, dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None, n_covs=0):
+        super().__init__(dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None)
+        self.n_covs = n_covs
+        self.gates = torch.nn.Conv2d(
+            dim_in*(self.n_covs+1) + dim_hidden, # + 3,
+            4 * dim_hidden,
+            kernel_size=kernel_size,
+            padding=kernel_size // 2,
+        )
+
+class CondGradSolver(GradSolver):
+    def __init__(self, prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, **kwargs):
+        super().__init__(prior_cost, obs_cost, grad_mod, n_step, lr_grad=0.2, **kwargs)
+
+    def solver_step(self, state, batch, prior, step):
+        var_cost = self.prior_cost(state, prior) + self.obs_cost(state, batch)
+        grad = torch.autograd.grad(var_cost, state, create_graph=True)[0]
+        gmod = self.grad_mod(torch.cat([grad,
+                                        #batch.lonv.nan_to_num()[:,[0],:,:],
+                                        #batch.latv.nan_to_num()[:,[0],:,:],
+                                        #batch.land_mask.nan_to_num()[:,[0],:,:],
+                                        batch.t2m.nan_to_num(),
+                                        batch.istl1.nan_to_num(),
+                                        batch.sst.nan_to_num(),
+                                        batch.skt.nan_to_num()],dim=1))
+        state_update = (
+            1 / (step + 1) * gmod
+                + self.lr_grad * (step + 1) / self.n_step * grad
+        )
+        return state - state_update
+
+    def forward(self, batch):
+        with torch.set_grad_enabled(True):
+            state = self.init_state(batch)
+            self.grad_mod.reset_state(batch.input)
+            prior = self.prior_cost.forward_ae(torch.cat([
+                                        batch.coarse.nan_to_num(),
+                                        #batch.lonv.nan_to_num()[:,[0],:,:],
+                                        #batch.latv.nan_to_num()[:,[0],:,:],
+                                        #batch.land_mask.nan_to_num()[:,[0],:,:],
+                                        batch.t2m.nan_to_num(),
+                                        batch.istl1.nan_to_num(),
+                                        batch.sst.nan_to_num(),
+                                        batch.skt.nan_to_num()],dim=1))
+            for step in range(self.n_step):
+                state = self.solver_step(state, batch, prior, step=step)
+                if not self.training:
+                    state = state.detach().requires_grad_(True)
+            state = torch.clip(state,min=0.,max=1.)
+        return state, prior
 
 class BaseObsCost(nn.Module):
     def __init__(self, w=1) -> None:

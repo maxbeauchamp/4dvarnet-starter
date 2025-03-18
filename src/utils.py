@@ -209,6 +209,19 @@ def get_cropped_hanning_mask(patch_dims, crop, **kwargs):
     patch_weight = t_msk[:, None, None] * pw
     return patch_weight.cpu().numpy()
 
+def get_rectangular_hanning_mask(patch_dims, crop, dim_order=["time", "lat", "lon"]):
+    
+    print(patch_dims)
+    M, N = (patch_dims["yc"], patch_dims["xc"])
+    hann_1d_M = np.hanning(M)  # 1D Hanning window for rows
+    hann_1d_N = np.hanning(N)  # 1D Hanning window for columns
+    patch_weight = np.repeat(np.outer(hann_1d_M, hann_1d_N)[None,:], patch_dims["time"], axis=0)
+    mask = tuple(
+        slice(crop[d], -crop[d]) if crop.get(d, 0) > 0 else slice(None, None)
+        for d in dim_order
+    )
+    patch_weight[mask] = 1.0
+    return patch_weight
 
 def get_triang_time_wei(patch_dims, offset=0, **crop_kw):
     pw = get_constant_crop(patch_dims, **crop_kw)
@@ -256,8 +269,11 @@ def get_center_time_wei(patch_dims, offset=0, **crop_kw):
         patch_dims.values(),
     )
 
-def get_uniform_time_wei(patch_dims, offset=0, **crop_kw):
-    pw = get_constant_crop(patch_dims, **crop_kw)
+def get_uniform_time_wei(patch_dims, offset=0, constant_crop=True, **crop_kw):
+    if constant_crop:
+        pw = get_constant_crop(patch_dims, **crop_kw)
+    else:
+        pw = get_rectangular_hanning_mask(patch_dims, **crop_kw)
     return np.fromfunction(
         lambda t, *a: (
             pw * 1

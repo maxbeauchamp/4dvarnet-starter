@@ -11,15 +11,55 @@ from datetime import datetime
 from src.utils import get_last_time_wei, get_frcst_time_wei, get_linear_time_wei
 from src.models import Lit4dVarNet
 
+def freeze_model(model: nn.Module):
+    for param in model.parameters():
+        param.requires_grad = False
+    model.eval()  # set to eval mode
+    return model
+
 class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
-    def __init__(self, optim_weight, sr_weight, domain_limits, persist_rw=True, frcst_lead=0, *args, **kwargs):
+    def __init__(self,
+                 optim_weight,
+                 sr_weight,
+                 domain_limits,
+                 persist_rw=True, 
+                 frcst_lead=0,
+                 training_mode="join", 
+                 srnn_training_mode="from_osisaf",
+                 use_cov=True, *args, **kwargs):
+
          super().__init__(*args, **kwargs)
+         # remove the weighting to enable modifications during inference
+         # self.save_hyperparameters(ignore=["rec_weight","optim_weight","sr_weight"]) 
+
+         if training_mode=="srnn_only":
+             freeze_model(self.solver.grad_mod)
+         if training_mode=="solver_only":
+             freeze_model(self.solver.prior_cost)
 
          self.frcst_lead = frcst_lead
+         self.use_cov = use_cov
          self.domain_limits = domain_limits
+         self.srnn_training_mode = srnn_training_mode
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
          self.register_buffer('sr_weight', torch.from_numpy(sr_weight), persistent=persist_rw)
+
+def configure_optimizers(self):
+    if self.opt_fn is not None:
+        return self.opt_fn(self)
+    else:
+        opt = torch.optim.Adam(
+        [
+            {"params": lit_mod.solver.grad_mod.parameters(), "lr": lr},
+            {"params": lit_mod.solver.obs_cost.parameters(), "lr": lr},
+            {"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
+        ], weight_decay=1e-5
+        )
+        return {
+           "optimizer": opt,
+           "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=100),
+        }
 
     def modify_batch(self,batch):
         batch_ = batch
@@ -31,8 +71,6 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
             new_coarse[:,(-self.frcst_lead):,:,:] = np.nan
         batch_ = batch_._replace(input=new_input.to(device))
         batch_ = batch_._replace(coarse=new_coarse.to(device))
-        #batch_ = batch_._replace(input=batch_.input.nan_to_num())
-        #batch_ = batch_._replace(tgt=batch_.tgt.nan_to_num())
         return batch_
 
     def remove_useless_patches(self,batch):
@@ -50,6 +88,13 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
             batch = batch._replace(tgt=batch.tgt[idx])
             batch = batch._replace(coarse=batch.coarse[idx])
             batch = batch._replace(land_mask=batch.land_mask[idx])
+            if self.use_cov:
+                batch = batch._replace(lonv=batch.lonv[idx])
+                batch = batch._replace(latv=batch.latv[idx])
+                batch = batch._replace(t2m=batch.t2m[idx])
+                batch = batch._replace(istl1=batch.istl1[idx])
+                batch = batch._replace(sst=batch.sst[idx])
+                batch = batch._replace(skt=batch.skt[idx])
         else:
             batch = None
         return batch
@@ -62,25 +107,83 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         if batch is None:
             return None, None
 
-        if self.training and batch.coarse.isfinite().float().mean() < 0.05:
+        if self.training and batch.coarse.isfinite().float().mean() < 0.25:
             return None, None
 
         loss, out = self.base_step(batch, phase)
-        grad_loss = self.weighted_mse(kfilts.sobel(out)-kfilts.sobel(batch.tgt),
-                                      self.optim_weight)
-        srnn_loss = self.weighted_mse(batch.tgt-self.solver.prior_cost.forward_ae(batch.coarse.nan_to_num()),
-                                      self.sr_weight)
+        #grad_loss = self.weighted_mse(kfilts.sobel(out)-kfilts.sobel(batch.tgt),
+        #                              self.optim_weight)
+        # new grad_loss
+        mask = kfilts.sobel(batch.tgt).isfinite() * (~kfilts.sobel(batch.input).isfinite())
+        grad_loss1 = self.weighted_mse(torch.where(mask,kfilts.sobel(out),np.nan) - kfilts.sobel(batch.tgt),
+                                       self.optim_weight)
+        mask = kfilts.sobel(batch.tgt).isfinite() * kfilts.sobel(batch.input).isfinite()
+        grad_loss2 = self.weighted_mse(torch.where(mask,kfilts.sobel(out),np.nan) - kfilts.sobel(batch.tgt),
+                                       self.optim_weight)
+        grad_loss = grad_loss1 + grad_loss2
+
+        # super-resolution loss
+        if not self.use_cov:
+            srnn = self.solver.prior_cost.forward_ae(batch.coarse.nan_to_num())
+        else:
+            if srnn_training_mode=="from_osisaf": 
+                srnn = self.solver.prior_cost.forward_ae((torch.cat([
+                                                                batch.coarse.nan_to_num(),
+                                                                #batch.lonv.nan_to_num()[:,[0],:,:],
+                                                                #batch.latv.nan_to_num()[:,[0],:,:],
+                                                                #batch.land_mask.nan_to_num()[:,[0],:,:],
+                                                                batch.t2m.nan_to_num(),
+                                                                batch.istl1.nan_to_num(),
+                                                                batch.sst.nan_to_num(),
+                                                                batch.skt.nan_to_num()],dim=1)))
+            else:
+                srnn = self.solver.prior_cost.forward_ae((torch.cat([
+                                                                F.avg_pool2d(batch.tgt.nan_to_num(),
+                                                                             kernel_size=21,
+                                                                             stride=1,
+                                                                             padding=21//2),
+                                                                #batch.lonv.nan_to_num()[:,[0],:,:],
+                                                                #batch.latv.nan_to_num()[:,[0],:,:],
+                                                                #batch.land_mask.nan_to_num()[:,[0],:,:],
+                                                                batch.t2m.nan_to_num(),
+                                                                batch.istl1.nan_to_num(),
+                                                                batch.sst.nan_to_num(),
+                                                                batch.skt.nan_to_num()],dim=1)))
+        srnn_loss = self.weighted_mse(batch.tgt-srnn,self.sr_weight)
+        # prior regularization loss
+        nb, nt, ny, nx = batch.tgt.shape
+        # create kernel
+        sigma = 5
+        x = np.arange(0,15)
+        y = np.arange(0,15)
+        t = np.arange(0,5)
+        tt, yy, xx = np.meshgrid(t,y,x)
+        tt = np.transpose(tt,(1,0,2))
+        yy = np.transpose(yy,(1,0,2))
+        xx = np.transpose(xx,(1,0,2))
+        kernel = np.exp(-(np.abs(xx-(len(x)//2))**2 + np.abs(yy-(len(y)//2))**2 + np.abs(tt-(len(t)//2))**2)/(2*sigma**2))
+        kt, ky, kx = kernel.shape
+        krnl = torch.tensor(kernel).reshape((1,1,kt,ky,kx)).to(out.device)
+        mask = torch.squeeze(F.conv3d(torch.unsqueeze(batch.tgt.isfinite().float(),dim=1), krnl.float(), padding="same"),dim=1)      
+        mask = torch.where(mask<0.01,0,1).bool()
+        prior_loss = self.weighted_mse(torch.where(mask,out,np.nan) - srnn, self.optim_weight)
 
         self.log( f"{phase}_gloss", grad_loss, prog_bar=True, on_step=False, on_epoch=True)
 
-        training_loss = 50 * loss + 1000 * grad_loss + 10 * srnn_loss
-        print(50*loss, 10000 * grad_loss, 10 * srnn_loss)
+        training_loss = 50 * loss + 1000 * grad_loss + 10 * srnn_loss + 10 * prior_loss
+        print(50*loss, 10000 * grad_loss, 10 * srnn_loss, 10 * prior_loss)
         return training_loss, out
 
     def base_step(self, batch, phase=""):
 
         out, sr= self(batch=batch)
-        loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
+        #loss = self.weighted_mse(out - batch.tgt, self.optim_weight)
+        # new_loss
+        mask = batch.tgt.isfinite() * (~batch.input.isfinite())
+        loss1 = self.weighted_mse(torch.where(mask,out,np.nan) - batch.tgt, self.optim_weight)
+        mask = batch.tgt.isfinite() * batch.input.isfinite()
+        loss2 = self.weighted_mse(torch.where(mask,out,np.nan) - batch.tgt, self.optim_weight)
+        loss = loss1 + loss2
 
         with torch.no_grad():
             self.log(f"{phase}_mse", 10 * loss * self.norm_stats[1]**2, prog_bar=True, on_step=False, on_epoch=True)
@@ -92,17 +195,19 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
         if batch_idx == 0:
             self.test_data = []
 
+        coarse_orig = batch.coarse.clone().detach()
         batch = self.modify_batch(batch)
 
         out, sr = self(batch=batch)
         out = torch.where(batch.land_mask==1.,np.nan,out)
+        sr = torch.where(batch.land_mask==1.,np.nan,sr)
         m, s = self.norm_stats
 
         self.test_data.append(torch.stack(
             [
                 #(batch.input*s+m).cpu(),
                 (batch.tgt*(s-m)+m)[:,-(self.frcst_lead+1):,:,:],#.cpu(),
-                (batch.coarse*(s-m)+m)[:,-(self.frcst_lead+1):,:,:],#.cpu(),
+                (coarse_orig*(s-m)+m)[:,-(self.frcst_lead+1):,:,:],#.cpu(),
                 (out*(s-m)+m).squeeze(dim=-1).detach()[:,-(self.frcst_lead+1):,:,:],#.cpu(),
                 (sr*(s-m)+m).squeeze(dim=-1).detach()[:,-(self.frcst_lead+1):,:,:]#.cpu(),
                 #(out*s+m).squeeze(dim=-1).detach()#.cpu(),
@@ -122,6 +227,7 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
 
     @property
     def test_quantities(self):
+        #return ['out']
         #return ['inp', 'tgt', 'out']
         return ['tgt', 'coarse', 'out', 'sr']
 
@@ -168,3 +274,12 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
                  print(Path(self.trainer.log_dir) / file)
                  #self.logger.log_metrics(metrics.to_dict())
 
+    def on_load_checkpoint(self, checkpoint):
+        """
+        very useful whn shapes of the patches/weights between
+        training and inference
+        """
+        for key in self.state_dict().keys():
+            if key.startswith("rec_weight") or key.startswith("optim_weight") or key.startswith("sr_weight"):
+                print(key)
+                checkpoint["state_dict"][key] = self.state_dict()[key]

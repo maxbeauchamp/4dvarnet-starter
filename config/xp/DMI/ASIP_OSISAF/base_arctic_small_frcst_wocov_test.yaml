@@ -1,0 +1,175 @@
+# @package _global_
+
+paths:
+    src: /dmidata/users/maxb
+    mask: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/dmi_asip_seaice_mosaic_arc_l3_20240910.nc
+
+domain: ???
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: 1
+  #strategy: ddp_spawn
+  limit_train_batches:  3200.
+  limit_val_batches: 500.
+  accumulate_grad_batches: 32
+  #precision: 16
+  logger: 
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${hydra:runtime.choices.xp}
+    version: ''
+  max_epochs: 150
+  callbacks:
+    #- _target_: src.versioning_cb.VersioningCallback
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_mse #train_mse
+      save_top_k: 3
+      filename: '{val_mse:.5f}-{epoch:03d}' #'{val_mse:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: contrib.DMI.ASIP_OSISAF.data.BaseDataModule
+  asip_paths: 
+    _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
+    type: asip
+  osisaf_paths: 
+    _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
+    type: osisaf
+  covariates_paths:
+    _target_: contrib.DMI.ASIP_OSISAF.load_data.load_data
+    type: era5
+  covariates:
+    - t2m
+    - istl1
+    - siconc
+    - sst
+    - skt
+  mask_path: /dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
+  domain_name: arctic_small
+  domains:
+    train:
+      time: {_target_: builtins.slice, _args_: ['2021-01-01', '2021-12-31']}
+    val:
+      time: {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']} 
+        #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-06-30']}
+        #- {_target_: builtins.slice, _args_: ['2021-07-01', '2021-12-31']}
+        #- {_target_: builtins.slice, _args_: ['2021-01-01', '2021-01-20']}
+        #- {_target_: builtins.slice, _args_: ['2021-03-01', '2021-03-20']}
+    test:
+      time: {_target_: builtins.slice, _args_: ['2022-01-01', '2022-01-20']}
+  xrds_kw:
+    patch_dims: { time: 19, yc: 240, xc: 240}
+    strides: { time: 1, yc: 20, xc: 20}
+    strides_test: {time: 1, yc: 200, xc: 200}
+    domain_limits: ${domain.train}
+  dl_kw: {batch_size: 2, num_workers: 20, persistent_workers: True} #, prefetch_factor: 2,  persistent_workers: True} #, multiprocessing_context: spawn}
+  #aug_kw:
+  #  aug_factor: 1
+  #  aug_only: True
+  res: 500 # in meters
+  pads: 
+    - False
+    - True
+    - True
+  norm_stats:
+    - 0
+    - 100
+  norm_stats_covs:
+    - {'t2m': 270.08, 'istl1': 267.68, 'siconc': 0, 'sst': 276.97, 'skt': 270.50}
+    - {'t2m': 14.67, 'istl1': 7.80, 'siconc': 1, 'sst': 6.82, 'skt': 15.21}
+
+model:
+  _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF
+  frcst_lead: 7
+  use_cov: False
+  persist_rw: False
+  opt_fn:
+    _target_: src.utils.cosanneal_lr_adam
+    _partial_: true
+    lr: 1e-3
+    T_max: ${trainer.max_epochs}
+  rec_weight:
+      _target_: src.utils.get_uniform_time_wei
+      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      crop: {time: 0, yc: 20, xc: 20}
+      offset: 1
+      dim_order:
+        - "time"
+        - "yc"
+        - "xc"
+  optim_weight:
+      _target_: src.utils.get_frcst_time_wei
+      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      crop: {time: 0, yc: 20, xc: 20}
+      offset: 0
+      frcst_lead: 7
+      dim_order:
+        - "time"
+        - "yc"
+        - "xc"
+  sr_weight:
+      _target_: src.utils.get_uniform_time_wei
+      patch_dims: ${datamodule.xrds_kw.patch_dims}
+      crop: {time: 0, yc: 20, xc: 20}
+      offset: 1
+      dim_order:
+        - "time"
+        - "yc"
+        - "xc"
+  solver: 
+    _target_: contrib.DMI.ASIP_OSISAF.solver.GradSolver
+    n_step: 15
+    lr_grad: 1e3
+    # lr_grad: 0.2
+    prior_cost: 
+      _target_: contrib.DMI.ASIP_OSISAF.solver.SRNNPriorCost
+      srnn:
+        _target_: contrib.DMI.ASIP_OSISAF.UNet.UNet
+        in_channels: ${datamodule.xrds_kw.patch_dims.time}
+        #in_channels: 98
+        num_classes: ${datamodule.xrds_kw.patch_dims.time}
+    obs_cost: 
+      _target_: src.models.BaseObsCost
+    grad_mod: 
+      _target_: contrib.DMI.ASIP_OSISAF.solver.ConvLstmGradModel
+      dim_in: ${datamodule.xrds_kw.patch_dims.time}
+      dim_hidden: 96 #296
+      #n_covs: 4
+  test_metrics: ${metrics.test_metrics}
+  pre_metric_fn: 
+        _target_: xarray.Dataset.sel
+        _partial_: True
+        time: {_target_: builtins.slice, _args_: ["2023-01-01", "2023-12-31"]}
+        yc: ${domain.test.yc}
+        xc: ${domain.test.xc}
+  domain_limits: ${domain.train}
+
+metrics:
+  nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
+  psd_scores: {_target_: src.utils.psd_based_scores_from_ds, _partial_: True}
+  get0: {_target_: operator.itemgetter, _args_: [0]}
+  get1: {_target_: operator.itemgetter, _args_: [1]}
+  test_metrics:
+    'mu': {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get0}']}
+    'sig': {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get1}']}
+    'lx': {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get0}']}
+    'lt': {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
+
+entrypoints:
+  #- _target_: pytorch_lightning.seed_everything
+  #  seed: 333
+  - _target_: src.test.base_test
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    ckpt_path: /dmidata/users/maxb/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic_frcst_wocov.ckpt
+    save_dir: /dmidata/users/maxb/results
+
+defaults:
+  - /domain: arctic_small
+  - _self_
+
