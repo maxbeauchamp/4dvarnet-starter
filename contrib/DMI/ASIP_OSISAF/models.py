@@ -45,21 +45,21 @@ class Lit4dVarNet_ASIP_OSISAF(Lit4dVarNet):
          self.register_buffer('optim_weight', torch.from_numpy(optim_weight), persistent=persist_rw)
          self.register_buffer('sr_weight', torch.from_numpy(sr_weight), persistent=persist_rw)
 
-def configure_optimizers(self):
-    if self.opt_fn is not None:
-        return self.opt_fn(self)
-    else:
-        opt = torch.optim.Adam(
-        [
-            {"params": lit_mod.solver.grad_mod.parameters(), "lr": lr},
-            {"params": lit_mod.solver.obs_cost.parameters(), "lr": lr},
-            {"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
-        ], weight_decay=1e-5
-        )
-        return {
-           "optimizer": opt,
-           "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=100),
-        }
+    def configure_optimizers(self):
+        if self.opt_fn is not None:
+            return self.opt_fn(self)
+        else:
+            opt = torch.optim.Adam(
+            [
+                {"params": lit_mod.solver.grad_mod.parameters(), "lr": lr},
+                {"params": lit_mod.solver.obs_cost.parameters(), "lr": lr},
+                {"params": lit_mod.solver.prior_cost.parameters(), "lr": lr / 2},
+            ], weight_decay=1e-5
+            )
+            return {
+               "optimizer": opt,
+               "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=100),
+            }
 
     def modify_batch(self,batch):
         batch_ = batch
@@ -126,7 +126,7 @@ def configure_optimizers(self):
         if not self.use_cov:
             srnn = self.solver.prior_cost.forward_ae(batch.coarse.nan_to_num())
         else:
-            if srnn_training_mode=="from_osisaf": 
+            if self.srnn_training_mode=="from_osisaf": 
                 srnn = self.solver.prior_cost.forward_ae((torch.cat([
                                                                 batch.coarse.nan_to_num(),
                                                                 #batch.lonv.nan_to_num()[:,[0],:,:],
@@ -150,6 +150,7 @@ def configure_optimizers(self):
                                                                 batch.sst.nan_to_num(),
                                                                 batch.skt.nan_to_num()],dim=1)))
         srnn_loss = self.weighted_mse(batch.tgt-srnn,self.sr_weight)
+
         # prior regularization loss
         nb, nt, ny, nx = batch.tgt.shape
         # create kernel

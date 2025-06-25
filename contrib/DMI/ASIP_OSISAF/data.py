@@ -30,8 +30,8 @@ TrainingItem_wogeo = namedtuple(
 
 TrainingItem = namedtuple(
     'TrainingItem', ['input', 'tgt', 'coarse', 
-                          'latv', 'lonv', 'land_mask',
-                          't2m','istl1','siconc','sst','skt']
+                     'latv', 'lonv', 'land_mask',
+                     't2m','istl1','siconc','sst','skt']
 )
 
 class IncompleteScanConfiguration(Exception):
@@ -462,12 +462,11 @@ class XrDataset(torch.utils.data.Dataset):
                     covs.append(concatenate(self.covariates_paths[np.arange(start,end)],
                                             var=self.covariates[i])
                                 )
-
             covs_lon = [ ( np.mod((lon + 180),360) - 180) for lon in covs[0].longitude.values ]
             covs_lat = covs[0].latitude.values
             covs_lon, covs_lat = np.meshgrid(covs_lon, covs_lat)
+            covs_lon = covs_lon.astype(covs_lat.dtype)
             covs_swath_def = pyresample.geometry.SwathDefinition(lons=covs_lon, lats=covs_lat)
-
             # interpolate covariates on asip
             pool = torch.nn.AvgPool2d(40, stride=40)
             up = torch.nn.Upsample(scale_factor=40, mode='bilinear', align_corners=True)
@@ -482,18 +481,20 @@ class XrDataset(torch.utils.data.Dataset):
                     # pool and bilinear upsample ERA5
                     covs_coarse[i] = up(pool(torch.tensor(covs_coarse[i]).unsqueeze(0)).unsqueeze(0))[0,0,:,:].numpy()
                 asip = asip.update({self.covariates[k]:(("time","yc","xc"), covs_coarse)})
+            # create final item
+            asip = asip.transpose('time', 'yc', 'xc')
+            inp = asip.rename_vars({"sic":"input"})
+            tgt = asip.rename_vars({"sic":"tgt"})
+            coarse = asip.rename_vars({"sic_coarse":"coarse"})
         except:
             # fill tgt with nan to discard the batch when evaluating
-            asip = asip.update({'tgt':(("time","yc","xc"), np.full(asip.tgt.data.shape,np.nan))})
+            asip = asip.update({'tgt':(("time","yc","xc"), np.full(asip.sic.data.shape,np.nan))})
             covs_coarse = np.zeros(asip.sic.shape)
-
-        asip = asip.update({self.covariates[k]:(("time","yc","xc"), covs_coarse)})
-
-        # create final item
-        asip = asip.transpose('time', 'yc', 'xc')
-        inp = asip.rename_vars({"sic":"input"})
-        tgt = asip.rename_vars({"sic":"tgt"})
-        coarse = asip.rename_vars({"sic_coarse":"coarse"})
+            # create final item
+            asip = asip.transpose('time', 'yc', 'xc')
+            inp = asip.rename_vars({"sic":"input"})
+            tgt = asip 
+            coarse = asip.rename_vars({"sic_coarse":"coarse"})
 
         item = inp
         item['tgt'] = tgt.tgt
@@ -507,12 +508,10 @@ class XrDataset(torch.utils.data.Dataset):
 
         if self.return_coords:
             return item.coords.to_dataset()[list(self.patch_dims)]
-
+        
         item = item.data.astype(np.float32)
-
         if self.postpro_fn is not None:
             item = self.postpro_fn(item)
-
         return item
 
     def reconstruct(self, batches, index_time, weight=None):
