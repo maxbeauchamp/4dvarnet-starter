@@ -5,7 +5,8 @@ torch.set_float32_matmul_precision('high')
 from pytorch_lightning import loggers
 
 def base_training(trainer, dm, lit_mod, 
-                  save_dir="/Odyssey/private/m19beauc/DMI/results", ckpt=None):
+                  save_dir="/Odyssey/private/m19beauc/DMI/results",
+                  ckpt=None,test=True):
 
     version = 'version_' + str(random.randint(0, 100000))
     logger_name = "lightning_logs"
@@ -21,7 +22,8 @@ def base_training(trainer, dm, lit_mod,
         print()
 
     trainer.fit(lit_mod, datamodule=dm, ckpt_path=ckpt)
-    trainer.test(lit_mod, datamodule=dm, ckpt_path='best')
+    if test:
+        trainer.test(lit_mod, datamodule=dm, ckpt_path='best')
 
 def multi_dm_training(trainer, dm, lit_mod, test_dm=None, test_fn=None, ckpt=None):
     if trainer.logger is not None:
