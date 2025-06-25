@@ -86,7 +86,6 @@ datamodule:
 model:
   _target_: contrib.DMI.ASIP_OSISAF.models.Lit4dVarNet_ASIP_OSISAF
   frcst_lead: 7
-  use_cov: True
   persist_rw: False
   opt_fn:
     _target_: src.utils.cosanneal_lr_adam
