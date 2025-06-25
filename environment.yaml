@@ -26,3 +26,7 @@ dependencies:
     - tabulate
     - esm-tools
     - tensorboard
+    - hvplot
+    - scikit-image
+    - opencv-python
+    - geopandas
