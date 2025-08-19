@@ -1,0 +1,101 @@
+norm_stats:
+  asip:
+    sic:
+      min: 0.0
+      max: 100.0
+      type: minmax
+    standard_deviation_sic:
+      mean: 1.952899634621331
+      std: 4.922985470259985
+      type: zscore
+    status_flag:
+      min: 0.0
+      max: 1536.0
+      type: minmax
+  cimr:
+    SIC:
+      min: -0.049950417409564574
+      max: 1.0498479215517267
+      type: minmax
+    SIT:
+      mean: 0.09544839558401243
+      std: 0.13231399596810897
+      type: zscore
+    Tsurf:
+      mean: -7.098038910302271
+      std: 9.410905679026854
+      type: zscore
+    SICnoise:
+      mean: 9.402084735405344e-07
+      std: 0.007446822627062462
+      type: zscore
+    SITnoise:
+      mean: -1.244936869388826e-05
+      std: 0.003507472996277258
+      type: zscore
+    Tsurfnoise:
+      mean: -1.6181464698155027e-05
+      std: 0.0901130348999105
+      type: zscore
+  cristal:
+    HS:
+      mean: 0.15701109538657623
+      std: 0.14167074971036836
+      type: zscore
+    SIT:
+      mean: 1.713899766845625
+      std: 1.0358012026065266
+      type: zscore
+    SSH:
+      mean: 0.36872446726198005
+      std: 0.3961191636146796
+      type: zscore
+    HSnoise:
+      mean: 0.237219498422366
+      std: 0.11141783328896704
+      type: zscore
+    SITnoise:
+      mean: 1.7138151410883338
+      std: 1.0360327276131651
+      type: zscore
+    SSHnoise:
+      mean: 0.36873967481665904
+      std: 0.3961927398202259
+      type: zscore
+norm_stats_covs:
+  msl:
+    mean: 101397.28559169156
+    std: 1178.6647666762826
+    type: zscore
+  t2m:
+    mean: 271.533815513639
+    std: 14.303287836457294
+    type: zscore
+  u10:
+    mean: 0.5536510314408732
+    std: 4.341491519336185
+    type: zscore
+  v10:
+    mean: 0.031581173569483305
+    std: 4.287231013697467
+    type: zscore
+  tcc:
+    min: 0.0
+    max: 1.0
+    type: minmax
+  d2m:
+    mean: 268.22918333426907
+    std: 13.96055261063253
+    type: zscore
+  ssrd:
+    mean: -701143.5402508647
+    std: 785444.8336077137
+    type: zscore
+  strd:
+    mean: -1943008.2121575351
+    std: 466464.69271380285
+    type: zscore
+  tp:
+    mean: -0.0001834410365694742
+    std: 0.0005019462438424605
+    type: zscore
