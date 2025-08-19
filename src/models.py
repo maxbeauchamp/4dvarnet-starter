@@ -14,7 +14,16 @@ class Lit4dVarNet(pl.LightningModule):
     def __init__(self, solver, rec_weight, opt_fn, test_metrics=None, pre_metric_fn=None, norm_stats=None, persist_rw=True):
         super().__init__()
         self.solver = solver
-        self.register_buffer('rec_weight', torch.from_numpy(rec_weight), persistent=persist_rw)
+        if not isinstance(rec_weight, dict):
+            self.register_buffer('rec_weight', torch.from_numpy(rec_weight), persistent=persist_rw)
+        else:
+            self.rec_weight = {}
+            for key, weight_array in rec_weight.items():  # key = "patch_x10", etc.
+                buffer_name = f"_rec_weight_{key}"
+                weight_tensor = torch.from_numpy(weight_array).to("cuda")
+                self.register_buffer(buffer_name, weight_tensor, persistent=persist_rw)
+                self.rec_weight[key] = getattr(self, buffer_name)
+
         self.test_data = None
         self._norm_stats = norm_stats
         self.opt_fn = opt_fn
