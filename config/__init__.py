@@ -57,6 +57,7 @@ domains = {
     "arctic": dict(xc=[-3849750.,3749750.], yc=[5849750.,-5349750.]),
     "arctic_small": dict(xc=[-3849750.,3749750.], yc=[3849750.,-3349750.]),
     "arctic_tiny": dict(xc=[-3849750.,3749750.], yc=[449750.,-449750.]),
+    "arctic_croscim": dict(xc=[-3849750.,3749750.], yc=[2473750.,-4896250.]),
 }
 
 for n, d in domains.items():
