@@ -32,7 +32,7 @@ trainer:
 datamodule:
   _target_: src.data_notebook_fast.BaseDataModule
   input_da: 
-    _target_: contrib.IMT.SPDE.load_data.open_l3_data
+    _target_: contrib.SPDE.load_data.open_l3_data
     path: ${paths.nadir}
     domain: ${domain.train}
   domains:
@@ -109,7 +109,7 @@ datamodule:
     - 0.72527287
 
 model:
-  _target_: contrib.IMT.SPDE.lit_model_spde_winit.Lit4dVarNet
+  _target_: contrib.SPDE.lit_model_spde_winit.Lit4dVarNet
   frcst_lead: ${datamodule.frcst_lead}
   persist_rw: False
   epoch_start_opt2: 3
@@ -134,12 +134,12 @@ model:
     crop: {time: 0, lat: 10, lon: 10}
     offset: 1
   solver: 
-    _target_: contrib.IMT.SPDE.solver.GradSolver_Lgv
+    _target_: contrib.SPDE.solver.GradSolver_Lgv
     aug_state: True
     n_step: 5
     lr_grad: 1e3
     nll: 
-      _target_: contrib.IMT.SPDE.models_spde.NLL
+      _target_: contrib.SPDE.models_spde.NLL
       shape_data: 
         - 5
         - 120
@@ -152,7 +152,7 @@ model:
         - 1
       scheme: FUDM1
     nlpobs: 
-      _target_: contrib.IMT.SPDE.models_spde.NLpObs
+      _target_: contrib.SPDE.models_spde.NLpObs
     obs_cost:
       _target_: src.models.BaseObsCost
     grad_mod: 

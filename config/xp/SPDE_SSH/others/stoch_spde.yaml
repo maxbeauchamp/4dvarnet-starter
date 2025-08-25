@@ -51,7 +51,7 @@ datamodule:
   resize_factor: 2
 
 model:
-  _target_: contrib.IMT.SPDE.lit_model_spde_winit.Lit4dVarNet
+  _target_: contrib.SPDE.lit_model_spde_winit.Lit4dVarNet
   train_init: True
   downsamp: 4
   frcst_lead: 1
@@ -74,12 +74,12 @@ model:
     crop: {time: 0, lat: 10, lon: 10}
     offset: 1
   solver: 
-    _target_: contrib.IMT.SPDE.solver.GradSolver_Lgv
+    _target_: contrib.SPDE.solver.GradSolver_Lgv
     aug_state: True
     n_step: 10
     lr_grad: 1e-3
     nll: 
-      _target_: contrib.IMT.SPDE.models_spde.NLL
+      _target_: contrib.SPDE.models_spde.NLL
       shape_data: 
         - ${datamodule.xrds_kw.patch_dims.time}
         - 120
@@ -93,7 +93,7 @@ model:
       scheme: FUDM1
       downsamp: 2
     nlpobs: 
-      _target_: contrib.IMT.SPDE.models_spde.NLpObs
+      _target_: contrib.SPDE.models_spde.NLpObs
     prior_cost: None
     obs_cost:
       _target_: src.models.BaseObsCost

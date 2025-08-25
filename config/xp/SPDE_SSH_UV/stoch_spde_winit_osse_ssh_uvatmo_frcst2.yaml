@@ -30,9 +30,9 @@ trainer:
       filename: 'ssh_spde_uv_frcst2_4nadirs_swot_{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.IMT.SPDE.data_wcov.BaseDataModule_wcov
+  _target_: contrib.SPDE.data_wcov.BaseDataModule_wcov
   input_da: 
-    _target_: contrib.IMT.SPDE.load_data.load_data_wcov
+    _target_: contrib.SPDE.load_data.load_data_wcov
     path_files:
       - ${paths.natl_4nads_swot_osse}
       - ${paths.natl_4nads_swot_osse}
@@ -68,7 +68,7 @@ datamodule:
   norm_stats: {input: [0.3358479,0.3889041], tgt:[0.3358479,0.3889041], u:[3.18086934,5.5478178], v:[0.44667462,5.55617642]}
 
 model:
-  _target_: contrib.IMT.SPDE.lit_model_spde_winit.Lit4dVarNet_wcov
+  _target_: contrib.SPDE.lit_model_spde_winit.Lit4dVarNet_wcov
   frcst_lead: ${datamodule.frcst_lead}
   persist_rw: False
   epoch_start_opt2: 1000
@@ -93,12 +93,12 @@ model:
     crop: {time: 0, lat: 10, lon: 10}
     offset: 1
   solver: 
-    _target_: contrib.IMT.SPDE.solver_wcov.GradSolver_spde_wcov
+    _target_: contrib.SPDE.solver_wcov.GradSolver_spde_wcov
     aug_state: True
     n_step: 5
     lr_grad: 1e3
     nll: 
-      _target_: contrib.IMT.SPDE.models_spde.NLL
+      _target_: contrib.SPDE.models_spde.NLL
       shape_data: 
         - 5
         - 120
@@ -111,7 +111,7 @@ model:
         - 1
       scheme: FUDM1
     nlpobs: 
-      _target_: contrib.IMT.SPDE.models_spde.NLpObs
+      _target_: contrib.SPDE.models_spde.NLpObs
     obs_cost:
       _target_: src.models.BaseObsCost
     grad_mod: 
@@ -120,11 +120,11 @@ model:
       dim_hidden: 244
     unet_prior: False
   solver2:
-    _target_: contrib.IMT.SPDE.solver_wcov.GradSolver_wcov
+    _target_: contrib.SPDE.solver_wcov.GradSolver_wcov
     n_step: 15
     lr_grad: 1e3
     prior_cost:
-      _target_: contrib.IMT.SPDE.solver_wcov.BilinAEPriorCost_wcov
+      _target_: contrib.SPDE.solver_wcov.BilinAEPriorCost_wcov
       dim_in: ${datamodule.xrds_kw.patch_dims.time}
       dim_hidden: 64
       bilin_quad: False
