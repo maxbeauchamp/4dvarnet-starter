@@ -1,0 +1,203 @@
+# @package _global_
+
+paths:
+  src: /dmidata/users/maxb
+  mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
+
+domain: ???
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: 1
+  accumulate_grad_batches: 10
+  limit_train_batches: 1000.
+  limit_val_batches: 500.
+  max_epochs: 150
+  logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${hydra:runtime.choices.xp}
+    version: ''
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_mse
+      save_top_k: 3
+      filename: '{val_mse:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: contrib.CROSCIM.data_multires.BaseDataModuleMultiRes
+  asip_paths:
+    _target_: contrib.CROSCIM.load_data.load_data
+    type: asip
+  cimr_paths:
+    _target_: contrib.CROSCIM.load_data.load_data
+    type: cimr
+  cristal_paths:
+    _target_: contrib.CROSCIM.load_data.load_data
+    type: cristal
+  covariates_paths:
+    _target_: contrib.CROSCIM.load_data.load_data
+    type: era5
+  covariates: ["msl", "t2m", "u10", "v10", "tcc", "d2m", "ssrd", "strd", "tp"]
+  tgt_vars: ["asip_sic","cimr_SIT"]
+  mask_path: ${paths.mask}
+  domain_name: arctic_croscim
+  domains:
+    train:
+      time: {_target_: builtins.slice, _args_: ['2022-05-01', '2022-12-31']}
+    val:
+      time:
+        - {_target_: builtins.slice, _args_: ['2022-05-01', '2022-06-30']}
+        - {_target_: builtins.slice, _args_: ['2022-07-01', '2022-12-31']}
+    test:
+      time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
+  xrds_kw:
+    patch_dims: { time: 15, yc: 240, xc: 240}
+    strides: { time: 1, yc: 20, xc: 20}
+    strides_test: {time: 1, yc: 200, xc: 200}
+    domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
+                    yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
+  dl_kw: {batch_size: 2, num_workers: 20}
+  res: 500
+  pads: [False, False, True]
+  norm_stats:
+    asip:
+      sic: {min: 0.0, max: 100.0, type: minmax}
+      standard_deviation_sic: {mean: 1.952899634621331, std: 4.922985470259985, type: zscore}
+      status_flag: {min: 0.0, max: 1536.0, type: minmax}
+    cimr:
+      SIC: {min: -0.049950417409564574, max: 1.0498479215517267, type: minmax}
+      SIT: {mean: 0.09544839558401243, std: 0.13231399596810897, type: zscore}
+      Tsurf: {mean: -7.098038910302271, std: 9.410905679026854, type: zscore}
+      SICnoise: {mean: 9.402084735405344e-07, std: 0.007446822627062462, type: zscore}
+      SITnoise: {mean: -1.244936869388826e-05, std: 0.003507472996277258, type: zscore}
+      Tsurfnoise: {mean: -1.6181464698155027e-05, std: 0.0901130348999105, type: zscore}
+    cristal:
+      HS: {mean: 0.15701109538657623, std: 0.14167074971036836, type: zscore}
+      SIT: {mean: 1.713899766845625, std: 1.0358012026065266, type: zscore}
+      SSH: {mean: 0.36872446726198005, std: 0.3961191636146796, type: zscore}
+      HSnoise: {mean: 0.237219498422366, std: 0.11141783328896704, type: zscore}
+      SITnoise: {mean: 1.7138151410883338, std: 1.0360327276131651, type: zscore}
+      SSHnoise: {mean: 0.36873967481665904, std: 0.3961927398202259, type: zscore}
+  norm_stats_covs:
+    msl: {mean: 101397.28559169156, std: 1178.6647666762826, type: zscore}
+    t2m: {mean: 271.533815513639, std: 14.303287836457294, type: zscore}
+    u10: {mean: 0.5536510314408732, std: 4.341491519336185, type: zscore}
+    v10: {mean: 0.031581173569483305, std: 4.287231013697467, type: zscore}
+    tcc: {min: 0.0, max: 1.0, type: minmax}
+    d2m: {mean: 268.22918333426907, std: 13.96055261063253, type: zscore}
+    ssrd: {mean: -701143.5402508647, std: 785444.8336077137, type: zscore}
+    strd: {mean: -1943008.2121575351, std: 466464.69271380285, type: zscore}
+    tp: {mean: -0.0001834410365694742, std: 0.0005019462438424605, type: zscore}
+  multires: [50, 10, 2]
+
+model:
+  _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
+  persist_rw: False
+  multires: [50, 10, 2]
+  tgt_vars: ["tgt_sic", "tgt_SIT"]
+  domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
+                  yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
+  rec_weight: ${optim_weight}
+  optim_weight: ${optim_weight}
+  prior_weight: ${optim_weight}
+  frcst_lead: 0
+  solver:
+    _target_: contrib.CROSCIM.solver.GradSolvers
+    solvers:
+      solver_x2:
+        _target_: contrib.CROSCIM.solver.GradSolver
+        n_step: 10
+        lr_grad: 1e-3
+        prior_cost:
+          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          dim_in: 45
+          dim_hidden: 64
+          dim_out: 10
+          bilin_quad: False
+          downsamp: 2
+        obs_cost: {_target_: src.models.BaseObsCost}
+        grad_mod:
+          _target_: src.models.ConvLstmGradModel
+          dim_in: 45
+          dim_hidden: 96
+      solver_x10:
+        _target_: contrib.CROSCIM.solver.GradSolver
+        n_step: 5
+        lr_grad: 1e-3
+        prior_cost:
+          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          dim_in: 90
+          dim_hidden: 64
+          dim_out: 20
+          bilin_quad: False
+          downsamp: 2
+        obs_cost: {_target_: src.models.BaseObsCost}
+        grad_mod:
+          _target_: src.models.ConvLstmGradModel
+          dim_in: 90
+          dim_hidden: 96
+      solver_x50:
+        _target_: contrib.CROSCIM.solver.GradSolver
+        n_step: 5
+        lr_grad: 1e-3
+        prior_cost:
+          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          dim_in: 135
+          dim_hidden: 64
+          dim_out: 30
+          bilin_quad: False
+          downsamp: 2
+        obs_cost: {_target_: src.models.BaseObsCost}
+        grad_mod:
+          _target_: src.models.ConvLstmGradModel
+          dim_in: 135
+          dim_hidden: 96
+  norm_stats: ${datamodule.norm_stats}
+  norm_stats_covs: ${datamodule.norm_stats_covs}
+
+optim_weight:
+  patch_x2:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 5, yc: 240, xc: 240}
+    crop: {time: 0, yc: 20, xc: 20}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x10:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 10, yc: 240, xc: 240}
+    crop: {time: 0, yc: 20, xc: 20}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x50:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 15, yc: 240, xc: 240}
+    crop: {time: 0, yc: 20, xc: 20}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+
+metrics:
+  nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
+  psd_scores: {_target_: src.utils.psd_based_scores_from_ds, _partial_: True}
+  get0: {_target_: operator.itemgetter, _args_: [0]}
+  get1: {_target_: operator.itemgetter, _args_: [1]}
+  test_metrics:
+    mu: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get0}']}
+    sig: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get1}']}
+    lx: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get0}']}
+    lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
+
+entrypoints:
+  - _target_: src.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    save_dir: /dmidata/users/maxb/results
+
+defaults:
+  - /domain: arctic_croscim
+

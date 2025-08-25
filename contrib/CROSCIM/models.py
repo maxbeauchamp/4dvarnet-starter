@@ -10,7 +10,7 @@ import xarray as xr
 from datetime import datetime
 from src.utils import get_last_time_wei, get_frcst_time_wei, get_linear_time_wei
 from src.models import Lit4dVarNet
-from contrib.DMI.CROSCIM.data import *
+from contrib.CROSCIM.data import *
 from dataclasses import dataclass
 from collections import Counter
 from scipy.interpolate import RegularGridInterpolator
@@ -32,11 +32,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
     def __init__(self,
             optim_weight,
-            sr_weight,
+            prior_weight,
             domain_limits,
             persist_rw=True, 
             frcst_lead=0,
-            training_mode="join", 
             multires=[1], 
             tgt_vars=["tgt_sic","tgt_SIT"],
             norm_tgt_vars=["asip_sic","cimr_SIT"],
@@ -46,11 +45,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
          # optim_weight, srnn_weight, rec_weight are now multi-resolution dictionnaries
 
          super().__init__(*args, **kwargs)
-
-         if training_mode=="srnn_only":
-             freeze_model(self.solver.grad_mod)
-         if training_mode=="solver_only":
-             freeze_model(self.solver.prior_cost)
 
          self.var_groups = VAR_GROUPS
          self.covariates = COVARIATES
@@ -78,12 +72,12 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
              self.register_buffer(buffer_name, weight_tensor, persistent=persist_rw)
              self.optim_weight[key] = getattr(self, buffer_name)
 
-         self.sr_weight = {}
-         for key, weight_array in sr_weight.items():  # key = "patch_x10", etc.
-             buffer_name = f"_sr_weight_{key}"
+         self.prior_weight = {}
+         for key, weight_array in prior_weight.items():  # key = "patch_x10", etc.
+             buffer_name = f"_prior_weight_{key}"
              weight_tensor = torch.from_numpy(weight_array).to("cuda")
              self.register_buffer(buffer_name, weight_tensor, persistent=persist_rw)
-             self.sr_weight[key] = getattr(self, buffer_name)
+             self.prior_weight[key] = getattr(self, buffer_name)
 
          # Dictionnaire d'équivalences : var canonique → liste d'alias
          self.equivalence_map = {
@@ -464,16 +458,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             total_grad_loss += grad_loss
     
         # Prior / SRNN loss
-        """
         if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
             sbatch = self.format_batch_for_solver(batch)
-            srnn = self.solver.solvers[f"solver_x{res}"].prior_cost.forward_ae(sbatch)
-            total_srnn_loss = self.weighted_mse(sbatch.tgt.nan_to_num()-srnn,
-                                                self.sr_weight[res_key])
+            prior = self.solver.solvers[f"solver_x{res}"].prior_cost.forward_ae(sbatch)
+            total_srnn_loss = self.weighted_mse(sbatch.tgt-srnn,
+                                                self.prior_weight[res_key])
         else:
             total_srnn_loss = 0.0
-        """
-        total_srnn_loss = 0.0
 
         self.log(f"{phase}_gloss", total_grad_loss, prog_bar=True, on_step=False, on_epoch=True)
     
@@ -530,7 +521,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         weight = torch.tensor(weight)
 
         nvars = items[0].shape[0]
-        result_tensor = torch.zeros((nvars, 1, dl.dataset.da_dims['yc'], dl.dataset.da_dims['xc']))
+
+        result_tensor = torch.full((nvars, 1, dl.dataset.da_dims['yc'], dl.dataset.da_dims['xc']),
+                                   float('nan'))
         count_tensor = torch.zeros((nvars, 1, dl.dataset.da_dims['yc'], dl.dataset.da_dims['xc']))
 
         coords = dl.dataset.get_coords()[(daw*len(items)):((daw+1)*len(items))]
@@ -539,6 +532,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             c = coords[idx]
             iy = [np.where(dl.dataset.yc == y)[0][0] for y in c.yc.values]
             ix = [np.where(dl.dataset.xc == x)[0][0] for x in c.xc.values]
+            result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1] = torch.where(torch.isnan(result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1]),
+                                                                              0.,
+                                                                              result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1])
             result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1] += torch.squeeze(item * weight)
             count_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1] += weight
 
@@ -815,8 +811,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             self.test_data[res_key] = list(itertools.chain(*self.test_data[res_key]))
             self.test_times[res_key] = list(itertools.chain(*self.test_times[res_key]))
             if dataloader_idx == (len(self.multires)-1):
-                idx_rec = np.arange(batch.time.shape[-1]-self.frcst_lead+1,
-                                    batch.time.shape[-1])
+                #idx_rec = np.arange(batch.time.shape[-1]-self.frcst_lead+1,
+                #                    batch.time.shape[-1])
+                idx_rec = np.arange(batch.time.shape[-1])
                 write_netcdf = True
             else:
                 idx_rec = np.arange(batch.time.shape[-1])
@@ -847,6 +844,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         training and inference
         """
         for key in self.state_dict().keys():
-            if key.startswith("rec_weight") or key.startswith("optim_weight") or key.startswith("sr_weight"):
+            if key.startswith("rec_weight") or key.startswith("optim_weight") or key.startswith("prior_weight"):
                 print(key)
                 checkpoint["state_dict"][key] = self.state_dict()[key]

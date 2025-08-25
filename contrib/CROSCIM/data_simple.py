@@ -12,7 +12,7 @@ import multiprocessing
 import gc
 from random import sample
 import contrib
-from contrib.DMI.CROSCIM.load_data import *
+from contrib.CROSCIM.load_data import *
 import datetime
 import pyresample
 import pandas as pd

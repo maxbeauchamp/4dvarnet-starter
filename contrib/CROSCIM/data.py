@@ -12,7 +12,7 @@ import multiprocessing
 import gc
 from random import sample 
 import contrib
-from contrib.DMI.CROSCIM.load_data import *
+from contrib.CROSCIM.load_data import *
 import datetime
 import pyresample
 import pandas as pd
@@ -493,7 +493,7 @@ class BaseDataModule(pl.LightningDataModule):
                  norm_stats, norm_stats_covs,
                  aug_kw=None, res=500, pads=[False,False,False], 
                  resize=1,
-                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/CROSCIM",
+                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM",
                  **kwargs):
         
         super().__init__()

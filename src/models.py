@@ -8,7 +8,6 @@ import torch.nn.functional as F
 import numpy as np
 import xarray as xr
 from src.utils import get_last_time_wei, get_linear_time_wei
-from src.BCDUNet import BCDUNet
 
 class Lit4dVarNet(pl.LightningModule):
     def __init__(self, solver, rec_weight, opt_fn, test_metrics=None, pre_metric_fn=None, norm_stats=None, persist_rw=True):

@@ -2,9 +2,9 @@ import sys
 import os
 os.environ['HDF5_USE_FILE_LOCKING']='FALSE'
 print(os.getcwd())
-sys.path.append('../../..')
-from contrib.DMI.CROSCIM.data_multires import *
-from contrib.DMI.CROSCIM.load_data import *
+sys.path.append('../..')
+from contrib.CROSCIM.data_multires import *
+from contrib.CROSCIM.load_data import *
 from src.utils import *
 from src.models import *
 
@@ -30,7 +30,7 @@ datamodule = BaseDataModuleMultiRes(
     covariates_paths=load_data("era5"),
     covariates=["msl", "t2m", "u10", "v10", "tcc", "d2m", "ssrd", "strd", "tp"],
     tgt_vars=["asip_sic","cimr_SIT"],
-    mask_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/CROSCIM/mask_PanArctic.nc",
+    mask_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc",
     domain_name="arctic_croscim",
     domains={
         'train': {'time': slice('2022-05-01', '2022-12-31')},
