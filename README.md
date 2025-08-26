@@ -50,18 +50,6 @@ The test metrics of this model are ([see here for the details])(https://github.c
 Animation:
 ![Animation](https://s3.eu-central-1.wasabisys.com/melody/quentin_cloud/starter_anim.gif)
 
-## Stochastic extensions
-
-We build here a stochastic extension of the 4DVarNet framework by replacing the regularization term of the variational cost with a stochastic component inherited either from analog or SPDE-based framework to provide a generative feature associated to 4DVarNet.
-
-### Analog-based UQ
-![Analog based generative modeling](figs/En4DVarNet-analog.png)
-
-### SPDE-based generative modeling
-
-![Advection-diffusion based generative modeling](figs/En4DVarNet-gen.png)
-
-
 ## Useful links:
 - [Hydra documentation](https://hydra.cc/docs/intro/)
 - [Pytorch lightning documentation](https://pytorch-lightning.readthedocs.io/en/stable/index.html#get-started)
