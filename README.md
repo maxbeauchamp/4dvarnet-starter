@@ -77,5 +77,5 @@ showing the variables of interest (`tgt_sic`, `cimr_SIT`, `cristal_SSH`, `u10`) 
 - 4DVarNet papers:
   - Fablet, R.; Amar, M. M.; Febvre, Q.; Beauchamp, M.; Chapron, B. *END-TO-END PHYSICS-INFORMED REPRESENTATION LEARNING FOR SATELLITE OCEAN REMOTE SENSING DATA: APPLICATIONS TO SATELLITE ALTIMETRY AND SEA SURFACE CURRENTS.* ISPRS Annals 2021. https://doi.org/10.5194/isprs-annals-v-3-2021-295-2021  
   - Fablet, R.; Chapron, B.; Drumetz, L.; Mmin, E.; Pannekoucke, O.; Rousseau, F. *Learning Variational Data Assimilation Models and Solvers.* JAMES 2021. https://doi.org/10.1029/2021MS002572  
-  - Fablet, R.; Beauchamp, M.; Drumetz, L.; Rousseau, F. *Joint Interpolation and Representation Learning for Irregularly Sampled Satellite-Derived Geophysical Fields.* Frontiers in Applied Mathematics and Statistics 2021. https://doi.org/10.3389/fams.2021.655224  # 4DVarNet Multi-Resolution (CROSCIM)
+  - Fablet, R.; Beauchamp, M.; Drumetz, L.; Rousseau, F. *Joint Interpolation and Representation Learning for Irregularly Sampled Satellite-Derived Geophysical Fields.* Frontiers in Applied Mathematics and Statistics 2021. https://doi.org/10.3389/fams.2021.655224 
 
