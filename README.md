@@ -15,8 +15,6 @@ conda activate 4dvarnet-starter
 mamba env update -f environment.yaml
 ```
 
-```
-
 ## Run
 The model uses hydra see [#useful-links]
 ```
