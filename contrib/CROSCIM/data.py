@@ -562,7 +562,16 @@ class BaseDataModule(pl.LightningDataModule):
                 part_land_mask = np.reshape(np.array(joined['index_right'].notnull().to_list()),(nlat,nlon))
                 land_mask[step_yc[i]:step_yc[i+1],step_xc[j]:step_xc[j+1]] = part_land_mask
         mask = mask.update({"mask":(("yc","xc"),land_mask)})
-        mask.to_netcdf(self.mask_path)
+        encoding = {
+                   var: {"zlib": True, "complevel": 6}  # 9 = compression maximale
+                   for var in mask.data_vars
+                   }
+        mask.to_netcdf(
+                      self.mask_path,
+                      format="NETCDF4",
+                      engine="netcdf4",
+                      encoding=encoding
+        )
         return mask.mask 
     
     def norm_stats(self):
@@ -742,8 +751,8 @@ class BaseDataModule(pl.LightningDataModule):
                 subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
             )
 
-        self.train_ds = create_dataset('train')
-        self.val_ds = create_dataset('val')
+        #self.train_ds = create_dataset('train')
+        #self.val_ds = create_dataset('val')
         self.test_ds = create_dataset('test')
 
     def train_dataloader(self):

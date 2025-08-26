@@ -133,7 +133,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 continue  # sécurité pour ne traiter que les bons items
 
             item_dict = item._asdict()
-            res = key[7:]
+            res = int(key[7:])
             item_dict = self.crop_daw(item_dict, res)
             new_item = {}
 
@@ -364,7 +364,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return self.multistep(batch, "val")[0]
 
     def forward(self, batch, res=1):
-        return self.solver.solvers[f"solver_x{res}"](batch)
+        model = self.solver.solvers[f"solver_x{res}"].to(device)
+        return model(batch)
 
     def on_epoch_start(self):
         epoch = self.current_epoch
@@ -372,7 +373,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         train_res = self.multires[res_idx]
 
         for res in self.multires:
-            model = self.solver.solvers[f"solver_x{res}"]
+            model = self.solver.solvers[f"solver_x{res}"].to(device)
             if res == train_res:
                 model.train()
                 for p in model.parameters():
@@ -460,16 +461,18 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Prior / SRNN loss
         if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
             sbatch = self.format_batch_for_solver(batch)
-            prior = self.solver.solvers[f"solver_x{res}"].prior_cost.forward_ae(sbatch)
-            total_srnn_loss = self.weighted_mse(sbatch.tgt-srnn,
-                                                self.prior_weight[res_key])
+            model = self.solver.solvers[f"solver_x{res}"].to(device)
+            prior = model.prior_cost.forward_ae(sbatch.input)
+            #total_prior_loss = self.weighted_mse(sbatch.tgt-prior,
+            #                                    self.prior_weight[res_key])
+            total_prior_loss = 0.0
         else:
-            total_srnn_loss = 0.0
+            total_prior_loss = 0.0
 
         self.log(f"{phase}_gloss", total_grad_loss, prog_bar=True, on_step=False, on_epoch=True)
     
-        training_loss = 50 * loss + 1000 * total_grad_loss + 10 * total_srnn_loss
-        print(50 * loss, 10000 * total_grad_loss, 10 * total_srnn_loss)
+        training_loss = 50 * loss + 1000 * total_grad_loss + 10 * total_prior_loss
+        print(50 * loss, 10000 * total_grad_loss, 10 * total_prior_loss)
     
         return training_loss, out
 

@@ -9,10 +9,25 @@ import numpy as np
 import xarray as xr
 from src.utils import get_last_time_wei, get_linear_time_wei
 
+from typing import Any, Union
+from omegaconf import DictConfig, OmegaConf
+
+def to_dict_if_dictconfig(obj: Any) -> Union[dict, Any]:
+    """
+    Convert a DictConfig Hydra into a Python standard Dict.
+    if necessary
+    """
+    if isinstance(obj, DictConfig):
+        return OmegaConf.to_container(obj, resolve=True)
+    return obj
+
+
 class Lit4dVarNet(pl.LightningModule):
     def __init__(self, solver, rec_weight, opt_fn, test_metrics=None, pre_metric_fn=None, norm_stats=None, persist_rw=True):
         super().__init__()
         self.solver = solver
+
+        rec_weight = to_dict_if_dictconfig(rec_weight)
         if not isinstance(rec_weight, dict):
             self.register_buffer('rec_weight', torch.from_numpy(rec_weight), persistent=persist_rw)
         else:

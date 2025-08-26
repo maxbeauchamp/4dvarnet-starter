@@ -44,6 +44,7 @@ datamodule:
     type: era5
   covariates: ["msl", "t2m", "u10", "v10", "tcc", "d2m", "ssrd", "strd", "tp"]
   tgt_vars: ["asip_sic","cimr_SIT"]
+  multires: [50, 10, 2]
   mask_path: ${paths.mask}
   domain_name: arctic_croscim
   domains:
@@ -93,12 +94,12 @@ datamodule:
     ssrd: {mean: -701143.5402508647, std: 785444.8336077137, type: zscore}
     strd: {mean: -1943008.2121575351, std: 466464.69271380285, type: zscore}
     tp: {mean: -0.0001834410365694742, std: 0.0005019462438424605, type: zscore}
-  multires: [50, 10, 2]
 
 model:
   _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50, 10, 2]
+  opt_fn: null
   tgt_vars: ["tgt_sic", "tgt_SIT"]
   domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                   yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
