@@ -38,8 +38,8 @@ datamodule = BaseDataModuleMultiRes(
         'test': {'time': slice('2022-02-01', '2022-02-15')}
     },
     xrds_kw={
-        'patch_dims': {'time': 15, 'yc': 240, 'xc': 240},
-        'strides': {'time': 1, 'yc': 20, 'xc': 20},
+        'patch_dims': {'time': 15, 'yc': 256, 'xc': 256},
+        'strides': {'time': 1, 'yc': 28, 'xc': 28},
         'strides_test': {'time': 1, 'yc': 200, 'xc': 200},
         'domain_limits': dict(xc=slice(-3849750., 3749750.), yc=slice(2473750.,-4896250.))
     },
