@@ -12,7 +12,7 @@ import multiprocessing
 import gc
 from random import sample 
 import contrib
-from contrib.DMI.ASIP_OSISAF.load_data import *
+from contrib.ASIP_OSISAF.load_data import *
 import datetime
 import pyresample
 import pandas as pd
@@ -22,7 +22,6 @@ import cartopy.feature as cfeature
 import shapely.geometry as sgeom
 import os
 from torch.utils.data.sampler import Sampler
-
 
 TrainingItem = namedtuple(
     'TrainingItem', ['asip', 'osisaf', 
@@ -65,10 +64,10 @@ class XrDataset(torch.utils.data.Dataset):
         
         item = self.db.isel(record=item,sample=0)
         if self.da:
-            TrainingItem = TrainingItem_4da
-            item = item[[*TrainingItem_4da._fields]].to_array()
+            tr_item = TrainingItem_4da
         else:
-            item = item[[*TrainingItem._fields]].to_array()
+            tr_item = TrainingItem
+        item = item[[*tr_item._fields]].to_array()
         """
         if self.da:
             # Assuming da is your xarray.DataArray with a 'variable' coordinate
