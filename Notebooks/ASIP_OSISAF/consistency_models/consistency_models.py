@@ -355,7 +355,7 @@ class ConsistencyTrainingOutput:
     predicted : Tensor
         Predicted values.
     target : Tensor
-        Target values.
+        Target values.copilot 
     num_timesteps : int
         Number of timesteps at the current point in training from the timestep discretization schedule.
     sigmas : Tensor
@@ -418,7 +418,7 @@ class ConsistencyTraining:
         """Runs one step of the consistency training algorithm.
 
         Parameters
-        ----------
+        ----------copilot 
         student_model : nn.Module
             Model that is being trained.
         teacher_model : nn.Module
