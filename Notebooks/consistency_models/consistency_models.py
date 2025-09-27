@@ -346,6 +346,50 @@ def model_obs_cond_forward_wrapper(
 
     return c_skip * x + c_out * model(x, y, mask_y, sigma, **kwargs)
 
+
+def model_few_steps_forward_wrapper(
+    model: nn.Module,
+    x: Tensor,
+    y: Tensor,
+    sigma1: Tensor,
+    sigma2: Tensor,
+    sigma_data: float = 0.5,
+    sigma_min: float = 0.002,
+    **kwargs: Any,
+) -> Tensor:
+    """Wrapper for the model call to ensure that the residual connection and scaling
+    for the residual and output values are applied.
+
+    Parameters
+    ----------
+    model : nn.Module
+        Model to call.
+    x : Tensor
+        Input to the model, e.g: the noisy samples.
+    sigma : Tensor
+        Standard deviation of the noise. Normally referred to as t.
+    sigma_data : float, default=0.5
+        Standard deviation of the data.
+    sigma_min : float, default=0.002
+        Minimum standard deviation of the noise.
+    **kwargs : Any
+        Extra arguments to be passed during the model call.
+
+    Returns
+    -------
+    Tensor
+        Scaled output from the model with the residual connection applied.
+    """
+    c_skip = skip_scaling(sigma1, sigma_data, sigma_min)
+    c_out = output_scaling(sigma1, sigma_data, sigma_min)
+
+    # Pad dimensions as broadcasting will not work
+    c_skip = pad_dims_like(c_skip, x)
+    c_out = pad_dims_like(c_out, x)
+
+    return c_skip * x + c_out * model(x, y,  sigma1, sigma2, **kwargs)
+
+
 @dataclass
 class ConsistencyTrainingOutput:
     """Type of the output of the (Improved)ConsistencyTraining.__call__ method.
@@ -580,6 +624,117 @@ class ConsistencyTrainingObsCond:
                 y,
                 mask_y,
                 current_sigmas,
+                self.sigma_data,
+                self.sigma_min,
+                **kwargs,
+            )
+
+        return ConsistencyTrainingOutput(next_x, current_x, num_timesteps, sigmas)
+    
+class ConsistencyTrainingFewSteps:
+    """Implements the Consistency Training algorithm proposed in the paper.
+
+    Parameters
+    ----------
+    sigma_min : float, default=0.002
+        Minimum standard deviation of the noise.
+    sigma_max : float, default=80.0
+        Maximum standard deviation of the noise.
+    rho : float, default=7.0
+        Schedule hyper-parameter.
+    sigma_data : float, default=0.5
+        Standard deviation of the data.
+    initial_timesteps : int, default=2
+        Schedule timesteps at the start of training.
+    final_timesteps : int, default=150
+        Schedule timesteps at the end of training.
+    """
+
+    def __init__(
+        self,
+        sigma_min: float = 0.002,
+        sigma_max: float = 80.0,
+        rho: float = 7.0,
+        sigma_data: float = 0.5,
+        initial_timesteps: int = 2,
+        final_timesteps: int = 150,
+    ) -> None:
+        self.sigma_min = sigma_min
+        self.sigma_max = sigma_max
+        self.rho = rho
+        self.sigma_data = sigma_data
+        self.initial_timesteps = initial_timesteps
+        self.final_timesteps = final_timesteps
+
+    def __call__(
+        self,
+        student_model: nn.Module,
+        teacher_model: nn.Module,
+        x: Tensor,
+        y: Tensor,
+        current_training_step: int,
+        total_training_steps: int,
+        **kwargs: Any,
+    ) -> ConsistencyTrainingOutput:
+        """Runs one step of the consistency training algorithm.
+
+        Parameters
+        ----------
+        student_model : nn.Module
+            Model that is being trained.
+        teacher_model : nn.Module
+            An EMA of the student model.
+        x : Tensor
+            Clean data.
+        current_training_step : int
+            Current step in the training loop.
+        total_training_steps : int
+            Total number of steps in the training loop.
+        **kwargs : Any
+            Additional keyword arguments to be passed to the models.
+
+        Returns
+        -------
+        ConsistencyTrainingOutput
+            The predicted and target values for computing the loss as well as sigmas (noise levels).
+        """
+        num_timesteps = timesteps_schedule(
+            current_training_step,
+            total_training_steps,
+            self.initial_timesteps,
+            self.final_timesteps,
+        )
+        sigmas = karras_schedule(
+            num_timesteps, self.sigma_min, self.sigma_max, self.rho, x.device
+        )
+        noise = torch.randn_like(x)
+
+        timesteps = torch.randint(0, num_timesteps - 1, (x.shape[0],), device=x.device)
+
+        current_sigmas = sigmas[timesteps]
+        intermediate_sigmas = sigmas[timesteps + 1]
+        next_sigmas = sigmas[timesteps + 2]
+
+        next_noisy_x = x + pad_dims_like(next_sigmas, x) * noise
+        next_x = model_few_steps_forward_wrapper(
+            student_model,
+            next_noisy_x,
+            y,
+            intermediate_sigmas,
+            next_sigmas,
+            self.sigma_data,
+            self.sigma_min,
+            **kwargs,
+        )
+
+        with torch.no_grad():
+            current_noisy_x = x + pad_dims_like(current_sigmas, x) * noise
+            current_x = model_few_steps_forward_wrapper(
+                teacher_model,
+                current_noisy_x,
+                y,
+                current_sigmas,
+                next_sigmas,
                 self.sigma_data,
                 self.sigma_min,
                 **kwargs,
