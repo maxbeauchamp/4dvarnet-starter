@@ -1,262 +1,190 @@
 import torch
-import torch.nn as nn
+import pytorch_lightning as pl
 import torch.nn.functional as F
-from torch.autograd import Variable
-from collections import OrderedDict
-from torch.nn import init
-import numpy as np
-import math
 
-def conv3x3(in_channels, out_channels, stride=1, 
-            padding=1, bias=True, groups=1):    
-    return nn.Conv2d(
+import pandas as pd
+from pathlib import Path
+
+class StandardBlock(torch.nn.Module):
+    def __init__(
+        self,
         in_channels,
         out_channels,
+        mid_channels=None,
         kernel_size=3,
-        stride=stride,
-        padding=padding,
-        bias=bias,
-        groups=groups)
-
-def upconv2x2(in_channels, out_channels, mode='transpose'):
-    if mode == 'transpose':
-        return nn.ConvTranspose2d(
-            in_channels,
-            out_channels,
-            kernel_size=2,
-            stride=2)
-    else:
-        # out_channels is always going to be the same
-        # as in_channels
-        return nn.Sequential(
-            nn.Upsample(mode='bilinear', scale_factor=2),
-            conv1x1(in_channels, out_channels))
-
-def conv1x1(in_channels, out_channels, groups=1):
-    return nn.Conv2d(
-        in_channels,
-        out_channels,
-        kernel_size=1,
-        groups=groups,
-        stride=1)
-
-
-class MaxPool2dSame(torch.nn.MaxPool2d):
-
-    def calc_same_pad(self, i: int, k: int, s: int, d: int) -> int:
-        return max((math.ceil(i / s) - 1) * s + (k - 1) * d + 1 - i, 0)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        ih, iw = x.size()[-2:]
-
-        pad_h = self.calc_same_pad(i=ih, k=self.kernel_size[0], s=self.stride[0], d=self.dilation[0])
-        pad_w = self.calc_same_pad(i=iw, k=self.kernel_size[1], s=self.stride[1], d=self.dilation[1])
-
-        if pad_h > 0 or pad_w > 0:
-            x = F.pad(
-                x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2]
-            )
-        return F.max_pool2d(
-            x,
-            self.kernel_size,
-            self.stride,
-            self.padding,
-            self.dilation,
+        dilation=1,
+        **kwargs,
+    ):
+        super().__init__()
+        padding = kernel_size // 2
+        if not mid_channels:
+            mid_channels = out_channels
+        self.double_conv = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels,
+                mid_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                bias=False,
+                dilation=dilation,
+            ),
+            torch.nn.BatchNorm2d(mid_channels),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(
+                mid_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                bias=False,
+                dilation=dilation,
+            ),
+            torch.nn.BatchNorm2d(out_channels),
+            torch.nn.ReLU(inplace=True),
         )
 
-class DownConv(nn.Module):
-    """
-    A helper Module that performs 2 convolutions and 1 MaxPool.
-    A ReLU activation follows each convolution.
-    """
-    def __init__(self, in_channels, out_channels, pooling=True):
-        super(DownConv, self).__init__()
+    def forward(self, x):
+        return self.double_conv(x)
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.pooling = pooling
 
-        self.conv1 = conv3x3(self.in_channels, self.out_channels)
-        self.conv2 = conv3x3(self.out_channels, self.out_channels)
+class ResBlock(torch.nn.Module):
+    def __init__(
+        self, in_channels, out_channels, mid_channels=None, kernel_size=3, sf=1
+    ):
+        super().__init__()
+        self._scaling_factor = sf
 
-        if self.pooling:
-            #self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-            self.pool = MaxPool2dSame(kernel_size=(2,2),
-                                      stride=(2,2),
-                                      dilation=(1,1))
+        padding = kernel_size // 2
+        if not mid_channels:
+            mid_channels = out_channels
+        self.double_conv = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels,
+                mid_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                bias=False,
+            ),
+            torch.nn.BatchNorm2d(mid_channels),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(
+                mid_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                bias=False,
+            ),
+            torch.nn.BatchNorm2d(out_channels),
+        )
+        if in_channels != out_channels:
+            self.projection_conv = torch.nn.Sequential(
+                torch.nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+                torch.nn.BatchNorm2d(out_channels),
+            )
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        before_pool = x
-        if self.pooling:
-            x = self.pool(x)
-        return x, before_pool
+        out = self.double_conv(x)
+
+        if hasattr(self, "projection_conv"):
+            x = self.projection_conv(x)
+
+        out = out * self._scaling_factor + x
+
+        return F.relu(out)
 
 
-class UpConv(nn.Module):
-    """
-    A helper Module that performs 2 convolutions and 1 UpConvolution.
-    A ReLU activation follows each convolution.
-    """
-    def __init__(self, in_channels, out_channels, 
-                 merge_mode='concat', up_mode='transpose'):
-        super(UpConv, self).__init__()
+class Down(torch.nn.Module):
+    """Downscaling with maxpool then double conv"""
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.merge_mode = merge_mode
-        self.up_mode = up_mode
-
-        self.upconv = upconv2x2(self.in_channels, self.out_channels, 
-            mode=self.up_mode)
-
-        if self.merge_mode == 'concat':
-            self.conv1 = conv3x3(
-                2*self.out_channels, self.out_channels)
-        else:
-            # num of input channels to conv2 is same
-            self.conv1 = conv3x3(self.out_channels, self.out_channels)
-        self.conv2 = conv3x3(self.out_channels, self.out_channels)
-
-
-    def forward(self, from_down, from_up):
-        """ Forward pass
-        Arguments:
-            from_down: tensor from the encoder pathway
-            from_up: upconv'd tensor from the decoder pathway
-        """
-        from_up = self.upconv(from_up)
-        if self.merge_mode == 'concat':
-            x = torch.cat((from_up, from_down), 1)
-        else:
-            x = from_up + from_down
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        return x
-
-class UNet(nn.Module):
-    """ `UNet` class is based on https://arxiv.org/abs/1505.04597
-
-    The U-Net is a convolutional encoder-decoder neural network.
-    Contextual spatial information (from the decoding,
-    expansive pathway) about an input tensor is merged with
-    information representing the localization of details
-    (from the encoding, compressive pathway).
-
-    Modifications to the original paper:
-    (1) padding is used in 3x3 convolutions to prevent loss
-        of border pixels
-    (2) merging outputs does not require cropping due to (1)
-    (3) residual connections can be used by specifying
-        UNet(merge_mode='add')
-    (4) if non-parametric upsampling is used in the decoder
-        pathway (specified by upmode='upsample'), then an
-        additional 1x1 2d convolution occurs after upsampling
-        to reduce channel dimensionality by a factor of 2.
-        This channel halving happens with the convolution in
-        the tranpose convolution (specified by upmode='transpose')
-    """
-
-    def __init__(self, num_classes, in_channels=3, depth=5, 
-                 start_filts=12, up_mode='transpose', 
-                 merge_mode='concat'):
-        """
-        Arguments:
-            in_channels: int, number of channels in the input tensor.
-                Default is 3 for RGB images.
-            depth: int, number of MaxPools in the U-Net.
-            start_filts: int, number of convolutional filters for the 
-                first conv.
-            up_mode: string, type of upconvolution. Choices: 'transpose'
-                for transpose convolution or 'upsample' for nearest neighbour
-                upsampling.
-        """
-        super(UNet, self).__init__()
-
-        if up_mode in ('transpose', 'upsample'):
-            self.up_mode = up_mode
-        else:
-            raise ValueError("\"{}\" is not a valid mode for "
-                             "upsampling. Only \"transpose\" and "
-                             "\"upsample\" are allowed.".format(up_mode))
-    
-        if merge_mode in ('concat', 'add'):
-            self.merge_mode = merge_mode
-        else:
-            raise ValueError("\"{}\" is not a valid mode for"
-                             "merging up and down paths. "
-                             "Only \"concat\" and "
-                             "\"add\" are allowed.".format(up_mode))
-
-        # NOTE: up_mode 'upsample' is incompatible with merge_mode 'add'
-        if self.up_mode == 'upsample' and self.merge_mode == 'add':
-            raise ValueError("up_mode \"upsample\" is incompatible "
-                             "with merge_mode \"add\" at the moment "
-                             "because it doesn't make sense to use "
-                             "nearest neighbour to reduce "
-                             "depth channels (by half).")
-
-        self.num_classes = num_classes
-        self.in_channels = in_channels
-        self.start_filts = start_filts
-        self.depth = depth
-
-        self.down_convs = []
-        self.up_convs = []
-
-        # create the encoder pathway and add to a list
-        for i in range(depth):
-            ins = self.in_channels if i == 0 else outs
-            outs = self.start_filts*(2**i)
-            pooling = True if i < depth-1 else False
-
-            down_conv = DownConv(ins, outs, pooling=pooling)
-            self.down_convs.append(down_conv)
-
-        # create the decoder pathway and add to a list
-        # - careful! decoding only requires depth-1 blocks
-        for i in range(depth-1):
-            ins = outs
-            outs = ins // 2
-            up_conv = UpConv(ins, outs, up_mode=up_mode,
-                merge_mode=merge_mode)
-            self.up_convs.append(up_conv)
-
-        self.conv_final = conv1x1(outs, self.num_classes)
-
-        # add the list of modules to current module
-        self.down_convs = nn.ModuleList(self.down_convs)
-        self.up_convs = nn.ModuleList(self.up_convs)
-
-        self.reset_params()
-
-    @staticmethod
-    def weight_init(m):
-        if isinstance(m, nn.Conv2d):
-            init.xavier_normal(m.weight)
-            init.constant(m.bias, 0)
-
-
-    def reset_params(self):
-        for i, m in enumerate(self.modules()):
-            self.weight_init(m)
-
+    def __init__(self, in_channels, out_channels, block, **kwargs):
+        super().__init__()
+        self.maxpool_conv = torch.nn.Sequential(
+            torch.nn.MaxPool2d(2), block(in_channels, out_channels, **kwargs)
+        )
 
     def forward(self, x):
-        encoder_outs = []
-         
-        # encoder pathway, save outputs for merging
-        for i, module in enumerate(self.down_convs):
-            x, before_pool = module(x)
-            encoder_outs.append(before_pool)
+        return self.maxpool_conv(x)
 
-        for i, module in enumerate(self.up_convs):
-            before_pool = encoder_outs[-(i+2)]
-            x = module(before_pool, x)
-        
-        # No softmax is used. This means you need to use
-        # nn.CrossEntropyLoss is your training script,
-        # as this module includes a softmax already.
-        x = self.conv_final(x)
-        return x
+
+class Up(torch.nn.Module):
+    """Upscaling then double conv"""
+
+    def __init__(self, in_channels, out_channels, block, bilinear=True, **kwargs):
+        super().__init__()
+        # if bilinear, use the normal convolutions to reduce the number of channels
+        if bilinear:
+            self.up = torch.nn.Upsample(
+                scale_factor=2, mode="bilinear", align_corners=True
+            )
+            self.conv = block(in_channels, out_channels, in_channels // 2, **kwargs)
+        else:
+            self.up = torch.nn.ConvTranspose2d(
+                in_channels, in_channels // 2, kernel_size=2, stride=2
+            )
+            self.conv = block(in_channels, out_channels, **kwargs)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+
+class OutConv(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.out = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+
+    def forward(self, x):
+        return self.out(x)
+
+class UNetSolver(torch.nn.Module):
+    def __init__(
+        self, n_channels=1, n_hidden=64, n_classes=1, bilinear=True, block=ResBlock, add_input=False
+    ):
+        super(UNetSolver, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.add_input = add_input
+        self.bilinear = bilinear
+        factor = 2 if bilinear else 1
+
+        # block-wise weight scaling factors for stabilised gradients
+        sfs = 1 / torch.arange(1, 10).sqrt()
+
+        # define modules
+        self.inc = StandardBlock(n_channels, n_hidden)
+        self.down1 = Down(n_hidden, n_hidden * 2, block, sf=sfs[1])
+        self.down2 = Down(n_hidden * 2, n_hidden * 4, block, sf=sfs[2])
+        self.down3 = Down(n_hidden * 4, n_hidden * 8, block, sf=sfs[3])
+        self.down4 = Down(n_hidden * 8, n_hidden * 16 // factor, block, sf=sfs[4])
+
+        self.up1 = Up(n_hidden * 16, n_hidden * 8 // factor, block, bilinear, sf=sfs[5])
+        self.up2 = Up(n_hidden * 8, n_hidden * 4 // factor, block, bilinear, sf=sfs[6])
+        self.up3 = Up(n_hidden * 4, n_hidden * 2 // factor, block, bilinear, sf=sfs[7])
+        self.up4 = Up(n_hidden * 2, n_hidden, block, bilinear, sf=sfs[8])
+        self.outc = OutConv(n_hidden, n_classes)
+
+    def forward(self, batch):
+        x = batch.input.nan_to_num()
+        if self.add_input:
+            inp = x[:, -1].unsqueeze(1)
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+
+        out = self.outc(x)
+        if self.add_input:
+            out += inp
+
+        return out

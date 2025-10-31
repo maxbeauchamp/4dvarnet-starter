@@ -12,4 +12,7 @@ jobs
 contrib/ASIP_OSISAF/mask_PanArctic*
 contrib/CROSCIM/mask_PanArctic*
 Notebooks/ASIP_OSISAF/checkpoints
+Notebooks/log*
+Notebooks/checkpoints*
 ckpt/*
+debug_plots/*

@@ -1,5 +1,8 @@
+from cmath import phase
 import pandas as pd
 from pathlib import Path
+import matplotlib.pyplot as plt
+import os
 import pytorch_lightning as pl
 import kornia.filters as kfilts
 import torch
@@ -38,52 +41,222 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             frcst_lead=0,
             multires=[1], 
             tgt_vars=["tgt_sic","tgt_SIT"],
-            norm_tgt_vars=["asip_sic","cimr_SIT"],
+            satellite_vars=None,      # NEW: satellite variable config
+            covariates=None,          # NEW: covariates config
+            var_mapping=None,         # NEW: mapping for initialization
+            norm_stats=None,          # Already exists
             norm_stats_covs=None,
+            training_strategy='progressive',  # NEW PARAMETER
             *args, **kwargs):
 
-         # optim_weight, srnn_weight, rec_weight are now multi-resolution dictionnaries
+        # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
 
-         super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-         self.var_groups = VAR_GROUPS
-         self.covariates = COVARIATES
-         self.tgt_vars = tgt_vars
-         self.norm_tgt_vars = norm_tgt_vars
+        # Store training strategy
+        self.training_strategy = training_strategy
 
-         self.frcst_lead = frcst_lead
-         self.domain_limits = domain_limits
-         self.multires = multires
-         #self.maxlen_daw = self.trainer.datamodule.test_dataloader()[f"patch_x{self.multires[0]}"].dataset.patch_dims["time"]
-         self.maxlen_daw = 15
-         n = len(self.multires)
-         step = max(1, self.maxlen_daw // n)
-         self.len_daw = {
-                 r: max(1, self.maxlen_daw - i * step)
-                 for i, r in enumerate(self.multires)
-         }
+        # Store variable configuration
+        self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
+        self.covariates = covariates or DEFAULT_COVARIATES
+        self.tgt_vars = tgt_vars
+        self.var_mapping = var_mapping or {}  # e.g., {"tgt_sic": "asip_sic", "tgt_SIT": "cimr_SIT"}
+         
+        # Construct input_vars list
+        self.input_vars = []
+        for source, vars in self.satellite_vars.items():
+            for var in vars:
+                self.input_vars.append(f"{source}_{var}")
+        if self.covariates:
+            self.input_vars.extend(self.covariates)
 
-         self._norm_stats_cov = norm_stats_covs
 
-         self.optim_weight = {}
-         for key, weight_array in optim_weight.items():  # key = "patch_x10", etc.
-             buffer_name = f"_optim_weight_{key}"
-             weight_tensor = torch.from_numpy(weight_array).to("cuda")
-             self.register_buffer(buffer_name, weight_tensor, persistent=persist_rw)
-             self.optim_weight[key] = getattr(self, buffer_name)
+        self.frcst_lead = frcst_lead
+        self.domain_limits = domain_limits
+        self.multires = multires
+        self.maxlen_daw = 15
+        #self.maxlen_daw = self.trainer.datamodule.test_dataloader()[f"patch_x{self.multires[0]}"].dataset.patch_dims["time"]
+        n = len(self.multires)
+        step = max(1, self.maxlen_daw // n)
+        self.len_daw = {
+                r: max(1, self.maxlen_daw - i * step)
+                for i, r in enumerate(self.multires)
+        }
+        self._norm_stats = norm_stats
+        self._norm_stats_cov = norm_stats_covs
 
-         self.prior_weight = {}
-         for key, weight_array in prior_weight.items():  # key = "patch_x10", etc.
-             buffer_name = f"_prior_weight_{key}"
-             weight_tensor = torch.from_numpy(weight_array).to("cuda")
-             self.register_buffer(buffer_name, weight_tensor, persistent=persist_rw)
-             self.prior_weight[key] = getattr(self, buffer_name)
+        # Single function to process both weight dicts
+        self.optim_weight = self._process_weights(optim_weight, prefix='_optim_weight')
+        self.prior_weight = self._process_weights(prior_weight, prefix='_prior_weight')
+        
+        print(f"\n[Model Init] Instantiated weights:")
+        for res_key in self.optim_weight.keys():
+            weight = self.optim_weight[res_key]
+            print(f"  {res_key}: shape={weight.shape}, device={weight.device}, dtype={weight.dtype}")
 
-         # Dictionnaire d'équivalences : var canonique → liste d'alias
-         self.equivalence_map = {
-             "sic": ["sic", "SIC", "sea_ice_concentration"],
-             "SIT": ["sit", "SIT", "sea_ice_thickness"]
-         }
+        # Dictionnaire d'équivalences : var canonique → liste d'alias
+        self.equivalence_map = {
+            "sic": ["sic", "SIC", "sea_ice_concentration"],
+            "SIT": ["sit", "SIT", "sea_ice_thickness"]
+        }
+
+        # Move all solvers to device once
+        for res in self.multires:
+            if f"solver_x{res}" in self.solver.solvers:
+                self.solver.solvers[f"solver_x{res}"] = self.solver.solvers[f"solver_x{res}"].to(device)        
+
+        # Create directory for debug plots
+        self.debug_plot_dir = Path("debug_plots")
+        self.debug_plot_dir.mkdir(exist_ok=True)
+        self.plot_counter = 0  # Counter for unique filenames
+        self.hook_backward = False  # Flag to control backward hook
+
+        # Loss balancing configuration
+        self.loss_target_ratios = {
+            'base': 0.70,      # 70% of total loss
+            'grad': 0.10,      # 10% of total loss
+            'prior': 0.05,     # 5% of total loss
+            'tv': 0.,#0.10,        # 10% of total loss
+            'context': 0.#0.05    # 5% of total loss
+        }
+        
+        # Running averages for auto-balancing (EMA with alpha=0.1)
+        self.register_buffer('loss_ema', torch.zeros(5))  # [base, grad, prior, tv, context]
+        self.ema_alpha = 0.1
+        self.loss_names = ['base', 'grad', 'prior', 'tv', 'context']
+
+
+    def _process_weights(self, weight_dict, prefix='_weight'):
+        """
+        Process weight dict (handles callable, tensor, ndarray, DictConfig).
+        Registers as buffer and returns processed dict.
+        """
+        processed = {}
+        
+        for res_key, weight_fn in weight_dict.items():
+            # Convert to tensor
+            weight_tensor = self._to_tensor(weight_fn)
+            
+            # Register as buffer (auto device management)
+            buffer_name = f'{prefix}_{res_key.replace(".", "_").replace("-", "_")}'
+            self.register_buffer(buffer_name, weight_tensor)
+            processed[res_key] = getattr(self, buffer_name)
+        
+        return processed
+
+    def _to_tensor(self, weight_fn):
+        """
+         Convert any weight type to tensor.
+        Handles: torch.Tensor, np.ndarray, callable, DictConfig, or raw values.
+        """
+        # Already a tensor
+        if isinstance(weight_fn, torch.Tensor):
+            return weight_fn
+        
+        # Numpy array
+        if isinstance(weight_fn, np.ndarray):
+            return torch.from_numpy(weight_fn).float()
+        
+        # Callable (Hydra partial)
+        if callable(weight_fn):
+            result = weight_fn()
+            return self._to_tensor(result)  # Recursive call
+        
+        # DictConfig with _target_ (needs instantiation)
+        if hasattr(weight_fn, '_target_'):
+            from hydra.utils import instantiate
+            result = instantiate(weight_fn)
+            return self._to_tensor(result)  # Recursive call
+        
+        # Fallback: try direct conversion
+        return torch.tensor(weight_fn, dtype=torch.float32)
+        
+    def plot_batch_debug(self, sbatch, res, phase="train", batch_idx=0):
+        """
+        Plot input and target tensors for debugging.
+        sbatch: sBatch with input and tgt tensors
+        res: resolution
+        phase: train/val
+        batch_idx: batch index for filename
+        """
+        import matplotlib
+        matplotlib.use('Agg')  # Non-interactive backend
+        
+        # Extract first sample from batch (B, C, H, W) -> (C, H, W)
+        inp = sbatch.input[0].detach().cpu().numpy()  # (C, H, W)
+
+        tgt = sbatch.tgt[0].detach().cpu().numpy()    # (C, H, W)
+        
+        # Determine time steps and variables
+        n_channels_inp = inp.shape[0]
+        n_channels_tgt = tgt.shape[0]
+        
+        # Assume 15 time steps
+        n_time = 15
+        n_vars_inp = n_channels_inp // n_time
+        n_vars_tgt = n_channels_tgt // n_time
+        
+        # Reshape: (C, H, W) -> (V, T, H, W)
+        inp_reshaped = inp.reshape(n_vars_inp, n_time, inp.shape[1], inp.shape[2])
+        tgt_reshaped = tgt.reshape(n_vars_tgt, n_time, tgt.shape[1], tgt.shape[2])
+        
+        # === PLOT INPUT ===
+        fig_inp, axes_inp = plt.subplots(n_vars_inp, n_time, 
+                                         figsize=(n_time * 2, n_vars_inp * 2))
+        if n_vars_inp == 1:
+            axes_inp = axes_inp.reshape(1, -1)
+        
+        fig_inp.suptitle(f'INPUT - Res {res} - {phase} - Batch {batch_idx}', fontsize=16)
+        
+        for v in range(n_vars_inp):
+            for t in range(n_time):
+                ax = axes_inp[v, t]
+                data = inp_reshaped[v, t]
+                
+                # Handle NaN values for visualization
+                vmin, vmax = np.nanpercentile(data, [2, 98])
+                
+                im = ax.imshow(data, cmap='viridis', vmin=vmin, vmax=vmax)
+                ax.set_title(f'V{v} T{t}', fontsize=8)
+                ax.axis('off')
+                
+                # Add colorbar for first column
+                if t == 0:
+                    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        
+        plt.tight_layout()
+        filename_inp = self.debug_plot_dir / f'input_res{res}_{phase}_batch{self.plot_counter:04d}.png'
+        plt.savefig(filename_inp, dpi=100, bbox_inches='tight')
+        plt.close(fig_inp)
+        
+        # === PLOT TARGET ===
+        fig_tgt, axes_tgt = plt.subplots(n_vars_tgt, n_time,
+                                         figsize=(n_time * 2, n_vars_tgt * 2))
+        if n_vars_tgt == 1:
+            axes_tgt = axes_tgt.reshape(1, -1)
+        
+        fig_tgt.suptitle(f'TARGET - Res {res} - {phase} - Batch {batch_idx}', fontsize=16)
+        
+        for v in range(n_vars_tgt):
+            for t in range(n_time):
+                ax = axes_tgt[v, t]
+                data = tgt_reshaped[v, t]
+                
+                vmin, vmax = np.nanpercentile(data, [2, 98])
+                
+                im = ax.imshow(data, cmap='RdBu_r', vmin=vmin, vmax=vmax)
+                ax.set_title(f'V{v} T{t}', fontsize=8)
+                ax.axis('off')
+                
+                if t == 0:
+                    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        
+        plt.tight_layout()
+        filename_tgt = self.debug_plot_dir / f'target_res{res}_{phase}_batch{self.plot_counter:04d}.png'
+        plt.savefig(filename_tgt, dpi=100, bbox_inches='tight')
+        plt.close(fig_tgt)
+        
+        print(f"Saved debug plots: {filename_inp.name} and {filename_tgt.name}")
 
     @property
     def norm_stats(self):
@@ -100,6 +273,128 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         elif self.trainer.datamodule is not None:
             return self.trainer.datamodule.norm_stats_covs()
         return (0., 1.)
+    
+    def plot_input_target_mapping_debug(self, batch, res, phase="train", batch_idx=0):
+        """
+        Plot only input variables that are mapped to target variables.
+        Shows the correspondence between source observations and targets.
+        
+        Args:
+            batch: TrainingItem with all variables
+            res: resolution
+            phase: train/val/test
+            batch_idx: batch index for filename
+        """
+        import matplotlib
+        matplotlib.use('Agg')  # Non-interactive backend
+        
+        # Extract first sample from batch
+        batch_dict = batch._asdict()
+        
+        # Determine which input variables are mapped to targets
+        # var_mapping: {'tgt_sic': 'asip_sic', 'tgt_SIT': 'cimr_SIT'}
+        input_target_pairs = []
+        
+        for tgt_var, src_var in self.var_mapping.items():
+            if src_var in batch_dict and tgt_var in batch_dict:
+                input_target_pairs.append((src_var, tgt_var))
+        
+        if not input_target_pairs:
+            print(f"⚠️  No input-target pairs found in batch for plotting")
+            return
+        
+        n_pairs = len(input_target_pairs)
+        
+        # Extract data: (B, T, H, W) -> (T, H, W) for first sample
+        plot_data = []
+        for src_var, tgt_var in input_target_pairs:
+            src_data = batch_dict[src_var][0].detach().cpu().numpy()  # (T, H, W)
+            tgt_data = batch_dict[tgt_var][0].detach().cpu().numpy()  # (T, H, W)
+            plot_data.append((src_var, src_data, tgt_var, tgt_data))
+        
+        n_time = plot_data[0][1].shape[0]  # Number of time steps
+        
+        # === CREATE FIGURE ===
+        # Layout: n_pairs rows x n_time columns, but 2 subplots per cell (input + target)
+        fig = plt.figure(figsize=(n_time * 3, n_pairs * 6))
+        gs = fig.add_gridspec(n_pairs * 2, n_time, hspace=0.3, wspace=0.2)
+        
+        fig.suptitle(f'Input-Target Mapping - Res {res} - {phase} - Batch {batch_idx}', 
+                    fontsize=16, y=0.995)
+        
+        for pair_idx, (src_var, src_data, tgt_var, tgt_data) in enumerate(plot_data):
+            row_input = pair_idx * 2
+            row_target = pair_idx * 2 + 1
+            
+            # Compute global vmin/vmax across all timesteps for consistent coloring
+            src_vmin, src_vmax = np.nanpercentile(src_data, [2, 98])
+            tgt_vmin, tgt_vmax = np.nanpercentile(tgt_data, [2, 98])
+            
+            for t in range(n_time):
+                # === PLOT INPUT (SOURCE) ===
+                ax_input = fig.add_subplot(gs[row_input, t])
+                
+                src_t = src_data[t]  # (H, W)
+                
+                im_input = ax_input.imshow(src_t, cmap='viridis', 
+                                        vmin=src_vmin, vmax=src_vmax,
+                                        interpolation='nearest')
+                
+                if t == 0:
+                    ax_input.set_ylabel(f'{src_var}\n(Input)', fontsize=10, fontweight='bold')
+                
+                ax_input.set_title(f'T={t}', fontsize=9)
+                ax_input.axis('off')
+                
+                # Add colorbar for first column
+                if t == 0:
+                    cbar = plt.colorbar(im_input, ax=ax_input, fraction=0.046, pad=0.04)
+                    cbar.ax.tick_params(labelsize=8)
+                
+                # === PLOT TARGET ===
+                ax_target = fig.add_subplot(gs[row_target, t])
+                
+                tgt_t = tgt_data[t]  # (H, W)
+                
+                im_target = ax_target.imshow(tgt_t, cmap='RdBu_r',
+                                            vmin=tgt_vmin, vmax=tgt_vmax,
+                                            interpolation='nearest')
+                
+                if t == 0:
+                    ax_target.set_ylabel(f'{tgt_var}\n(Target)', fontsize=10, fontweight='bold')
+                
+                ax_target.axis('off')
+                
+                # Add colorbar for first column
+                if t == 0:
+                    cbar = plt.colorbar(im_target, ax=ax_target, fraction=0.046, pad=0.04)
+                    cbar.ax.tick_params(labelsize=8)
+                
+                # === COMPUTE AND DISPLAY STATISTICS ===
+                # Count valid observations
+                src_valid = np.isfinite(src_t).sum()
+                src_total = src_t.size
+                tgt_valid = np.isfinite(tgt_t).sum()
+                
+                # Add text with statistics
+                if t == n_time - 1:  # Add stats on last column
+                    stats_text = (
+                        f'Input valid: {src_valid}/{src_total} ({100*src_valid/src_total:.1f}%)\n'
+                        f'Target valid: {tgt_valid}/{src_total} ({100*tgt_valid/src_total:.1f}%)'
+                    )
+                    ax_target.text(1.05, 0.5, stats_text, 
+                                transform=ax_target.transAxes,
+                                fontsize=8, verticalalignment='center',
+                                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+        
+        plt.tight_layout()
+        
+        # Save figure
+        filename = self.debug_plot_dir / f'mapping_res{res}_{phase}_batch{self.plot_counter:04d}.png'
+        plt.savefig(filename, dpi=100, bbox_inches='tight')
+        plt.close(fig)
+        
+        print(f"✅ Saved input-target mapping plot: {filename.name}")
 
     def configure_optimizers(self):
         if self.opt_fn is not None:
@@ -111,7 +406,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             opt = torch.optim.Adam(params, lr=1e-3, weight_decay=1e-5)
             return {
                "optimizer": opt,
-               "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=100),
+               "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=150, eta_min=1e-6),
             }
 
     def crop_daw(self, item_dict, res):
@@ -175,29 +470,29 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     def format_batch_for_solver(self, batch):
         """
         À partir d'un batch de type TrainingItem, retourne un dictionnaire avec uniquement :
-          - 'input' : concaténation des VAR_GROUPS et COVARIATES
-          - 'tgt'   : concaténation des variables de tgt_vars
+        - 'input' : concaténation des input_vars (satellite + covariates)
+        - 'tgt'   : concaténation des variables de tgt_vars
         """
         input_tensors = []
-        for group, vars_ in self.var_groups.items():
-            for var in vars_:
-                key = f"{group}_{var}"
-                if hasattr(batch, key):
-                    input_tensors.append(getattr(batch, key))
     
-        for cov in self.covariates:
-            if hasattr(batch, cov):
-                input_tensors.append(getattr(batch, cov))
+        # Use self.input_vars instead of iterating over var_groups + covariates
+        for var in self.input_vars:
+            if hasattr(batch, var):
+                input_tensors.append(getattr(batch, var))
+            else:
+                print(f"⚠️  Warning: batch missing input variable '{var}'")
     
         tgt_tensors = []
         for var in self.tgt_vars:
             if hasattr(batch, var):
                 tgt_tensors.append(getattr(batch, var))
-    
+            else:
+                raise ValueError(f" Batch missing target variable '{var}'")
+
         return sBatch(
-                     input=torch.cat(input_tensors, dim=1).float(),
-                     tgt=torch.cat(tgt_tensors, dim=1).float()
-                     )
+            input=torch.cat(input_tensors, dim=1).float(),
+            tgt=torch.cat(tgt_tensors, dim=1).float()
+        )
 
     def update_batch_as_anomaly(self, batch, out):
         """
@@ -209,11 +504,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         for pred_var, coarse_prediction in out.items():
             if coarse_prediction is None:
                 continue
-
-            # Extrait la variable canonique (ex: "tgt_sic" → "sic")
-            canon_var = pred_var.replace("tgt_", "") if pred_var.startswith("tgt_") else pred_var
+            # Extrait la variable canonique (ex: "pred_sic" → "sic")
+            canon_var = pred_var.replace("pred_", "") if pred_var.startswith("pred_") else pred_var
             aliases = self.equivalence_map.get(canon_var, [canon_var])
-
             # Compute the anomaly
             for batch_var in batch_dict:
                 for alias in aliases:
@@ -223,119 +516,151 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     
         return type(batch)(**batch_dict)
 
-    def interpolate_torch_orig(self,coarse_dict,
-                          xc_coarse, yc_coarse,
-                          xc_target, yc_target,
-                          mode='bilinear',dtype=torch.float32):
+
+    def interpolate_torch(self, coarse_data, xc_coarse, yc_coarse, xc_target, yc_target, 
+                        mode='bilinear', align_corners=True):
         """
-        Interpolate dict of (B, T, H, W) tensors on batch-varying regular grids using torch.vmap.
-        coarse_dict: dict of {var_name: (B, T, Hc, Wc)}
-        xc_coarse, yc_coarse: (B, Wc), (B, Hc)
-        xc_target, yc_target: (B, Wf), (B, Hf)
-        Returns: dict of {var_name: (B, T, Hf, Wf)}
-        """
-    
-        def make_normalized_grid(xc_c, yc_c, xc_t, yc_t):
-            # Build normalized grid in [-1, 1] for grid_sample
-            x_min, x_max = xc_c.min(), xc_c.max()
-            y_min, y_max = yc_c.min(), yc_c.max()
-            grid_x, grid_y = torch.meshgrid(xc_t, yc_t, indexing='xy')  # (Wf, Hf)
-            grid_x = grid_x.permute(1, 0).float()
-            grid_y = grid_y.permute(1, 0).float()
-            # Normalisation basée sur les extrémités d'INDEX (pas min/max)
-            # Cela marche aussi si x_c/y_c décroissent (dénominateur < 0)
-            x0, x1 = xc_c[0], xc_c[-1]
-            y0, y1 = yc_c[0], yc_c[-1]
-            # Evite division par zéro si grille dégénérée
-            eps = torch.finfo(dctype := dtype).eps
-            dx = torch.clamp(x1 - x0, min=-1e-12, max=-1e-12) if (x1-x0).abs() < eps else (x1 - x0)
-            dy = torch.clamp(y1 - y0, min=-1e-12, max=-1e-12) if (y1-y0).abs() < eps else (y1 - y0)
-            norm_x = 2.0 * (grid_x - x0) / dx - 1.0
-            norm_y = 2.0 * (grid_y - y0) / dy - 1.0
-            grid = torch.stack((norm_x, norm_y), dim=-1)  # (Wf, Hf, 2)
-            grid = torch.clamp(grid, -1.0001, 1.0001)
-            #grid = grid.permute(1, 0, 2)  # (Hf, Wf, 2)
-            return grid  # (Hf, Wf, 2)
-    
-        def interpolate_one_sample(xb, grid):
-            # xb: (T, Hc, Wc)
-            # grid: (Hf, Wf, 2)
-            xb = xb.unsqueeze(1)  # (T, 1, Hc, Wc)
-            grid = grid.unsqueeze(0).repeat(xb.shape[0], 1, 1, 1)  # (T, Hf, Wf, 2)
-            out = F.grid_sample(xb, grid.to(device),
-                                mode=mode, align_corners=True)  # (T, 1, Hf, Wf)
-            return out.squeeze(1)  # (T, Hf, Wf)
-    
-        result = {}
-        for var, tensor in coarse_dict.items():
-            if (tensor is not None) and (var not in ["time","yc","xc"]):
-                B = tensor.shape[0]
-                grids = []
-                for b in range(B):
-                    grid = make_normalized_grid(
-                        xc_coarse[b], yc_coarse[b],
-                        xc_target[b], yc_target[b]
-                    )  # (Hf, Wf, 2)
-                    grids.append(grid)
-                grids = torch.stack(grids, dim=0)  # (B, Hf, Wf, 2)
-    
-                # vmap interpolation over batch
-                out = torch.vmap(interpolate_one_sample)(tensor.to(device),
-                                                         grids.to(device))  # (B, T, Hf, Wf)
-                result[var] = out
-    
-        return result
-    
-    def interpolate_torch(self, coarse_dict, 
-                                xc_coarse, yc_coarse, 
-                                xc_target, yc_target):
-        """
-        Interpolate dict of (B, T, Hc, Wc) numpy/tensor arrays onto new target grid (Hf, Wf).
-        Uses scipy RegularGridInterpolator with explicit loops over batch and time.
+        Interpolate coarse data to target grid using PyTorch grid_sample (batched).
         
-        coarse_dict: dict of {var_name: (B, T, Hc, Wc)}
-        xc_coarse: (B, Wc) 1D array of x-coords for each batch
-        yc_coarse: (B, Hc) 1D array of y-coords for each batch
-        xc_target: (B, Wf) 1D array of target x-coords for each batch
-        yc_target: (B, Hf) 1D array of target y-coords for each batch
+        Args:
+            coarse_data: (B, C, Hc, Wc) or dict of such tensors
+            xc_coarse: (B, Wc) or (Wc,) - coarse x-coordinates
+            yc_coarse: (B, Hc) or (Hc,) - coarse y-coordinates
+            xc_target: (B, Wf) or (Wf,) - target x-coordinates
+            yc_target: (B, Hf) or (Hf,) - target y-coordinates
+            mode: 'bilinear' or 'nearest'
+            align_corners: bool
         
-        Returns: dict of {var_name: (B, T, Hf, Wf)}
+        Returns:
+            interpolated: (B, C, Hf, Wf) or dict of such tensors
         """
-        result = {}
         
-        for var, tensor in coarse_dict.items():
-            if (tensor is None) or (var in ["time","yc","xc"]):
-                continue
+        def make_grid_batch(xc_coarse, yc_coarse, xc_target, yc_target):
+            """
+            Create normalized grid for torch grid_sample (batched version).
+            """
+            # Determine device from target coordinates (they should be on GPU)
+            device = xc_target.device if isinstance(xc_target, torch.Tensor) else 'cpu'
             
-            # Convert to numpy si tensor est torch.Tensor
-            if hasattr(tensor, "detach"):
-                tensor = tensor.detach().cpu().numpy()
+            # Convert to tensors and move to device WITH EXPLICIT FLOAT32
+            if not isinstance(xc_coarse, torch.Tensor):
+                xc_coarse = torch.tensor(xc_coarse, dtype=torch.float32, device=device)
+            else:
+                xc_coarse = xc_coarse.to(device=device, dtype=torch.float32)
             
-            T, Hc, Wc = tensor.shape[1:]
-            B = yc_target.shape[0]
-            Hf, Wf = yc_target.shape[1], xc_target.shape[1]
+            if not isinstance(yc_coarse, torch.Tensor):
+                yc_coarse = torch.tensor(yc_coarse, dtype=torch.float32, device=device)
+            else:
+                yc_coarse = yc_coarse.to(device=device, dtype=torch.float32)
             
-            out = np.zeros((B, T, Hf, Wf), dtype=np.float32)
+            if not isinstance(xc_target, torch.Tensor):
+                xc_target = torch.tensor(xc_target, dtype=torch.float32, device=device)
+            else:
+                xc_target = xc_target.to(device=device, dtype=torch.float32)
             
-            for b in range(B):
-                # build interpolator for each time step
-                x_c = xc_coarse[b].cpu().numpy() if hasattr(xc_coarse[b], "cpu") else xc_coarse[b]
-                y_c = yc_coarse[b].cpu().numpy() if hasattr(yc_coarse[b], "cpu") else yc_coarse[b]
-                X_t, Y_t = np.meshgrid(xc_target[b].cpu().numpy(), yc_target[b].cpu().numpy(), indexing="xy")
-                target_points = np.stack([Y_t.ravel(), X_t.ravel()], axis=-1)  # (Hf*Wf, 2)
+            if not isinstance(yc_target, torch.Tensor):
+                yc_target = torch.tensor(yc_target, dtype=torch.float32, device=device)
+            else:
+                yc_target = yc_target.to(device=device, dtype=torch.float32)
+            
+            # Handle batched vs non-batched inputs
+            if xc_coarse.ndim == 1:
+                xc_coarse = xc_coarse.unsqueeze(0)  # (1, Wc)
+            if yc_coarse.ndim == 1:
+                yc_coarse = yc_coarse.unsqueeze(0)  # (1, Hc)
+            if xc_target.ndim == 1:
+                xc_target = xc_target.unsqueeze(0)  # (1, Wf)
+            if yc_target.ndim == 1:
+                yc_target = yc_target.unsqueeze(0)  # (1, Hf)
+            
+            B = xc_target.shape[0]
+            
+            # Expand to batch size if needed
+            if xc_coarse.shape[0] == 1 and B > 1:
+                xc_coarse = xc_coarse.expand(B, -1)
+            if yc_coarse.shape[0] == 1 and B > 1:
+                yc_coarse = yc_coarse.expand(B, -1)
+            
+            # Get bounds from coarse grid (per batch)
+            x0 = xc_coarse[:, 0:1]  # (B, 1)
+            x1 = xc_coarse[:, -1:]  # (B, 1)
+            y0 = yc_coarse[:, 0:1]  # (B, 1)
+            y1 = yc_coarse[:, -1:]  # (B, 1)
+            
+            dx = x1 - x0  # (B, 1)
+            dy = y1 - y0  # (B, 1)
+            
+            # Normalize target coordinates to [-1, 1]
+            xc_t = xc_target  # (B, Wf)
+            yc_t = yc_target  # (B, Hf)
+            
+            # All tensors are now on the same device and dtype
+            norm_x = 2.0 * (xc_t - x0) / dx - 1.0  # (B, Wf)
+            norm_y = 2.0 * (yc_t - y0) / dy - 1.0  # (B, Hf)
+            
+            # Create meshgrid: (B, Hf, Wf)
+            Hf = yc_t.shape[1]
+            Wf = xc_t.shape[1]
+            
+            # Expand to meshgrid
+            norm_x = norm_x.unsqueeze(1).expand(B, Hf, Wf)  # (B, Hf, Wf)
+            norm_y = norm_y.unsqueeze(2).expand(B, Hf, Wf)  # (B, Hf, Wf)
+            
+            # Stack to (B, Hf, Wf, 2) - grid_sample expects (x, y) order
+            grid = torch.stack([norm_x, norm_y], dim=-1)
+            
+            return grid
+        
+        # Determine device and dtype from coarse_data
+        if isinstance(coarse_data, dict):
+            sample_tensor = next(iter(coarse_data.values()))
+        else:
+            sample_tensor = coarse_data
+        
+        device = sample_tensor.device
+        dtype = sample_tensor.dtype
+        
+        # Create grid (now all tensors will be on the same device and dtype)
+        grid = make_grid_batch(xc_coarse, yc_coarse, xc_target, yc_target)  # (B, Hf, Wf, 2)
+        
+        # Ensure grid is on the same device AND dtype as data
+        grid = grid.to(device=device, dtype=dtype)
+        
+        if isinstance(coarse_data, dict):
+            interpolated = {}
+            for key, data in coarse_data.items():
+                # Ensure data is (B, C, H, W)
+                if data.ndim == 3:
+                    data = data.unsqueeze(1)  # Add channel dim
                 
-                for t in range(T):
-                    f_interp = RegularGridInterpolator(
-                        (y_c, x_c),  # ordre (yc, xc)
-                        tensor[b, t], 
-                        bounds_error=False, fill_value=np.nan
-                    )
-                    interp_vals = f_interp(target_points).reshape(Hf, Wf)
-                    out[b, t] = interp_vals
+                # Ensure data is float32
+                data = data.to(dtype=torch.float32)
+                
+                # Interpolate
+                interpolated[key] = F.grid_sample(
+                    data, grid, 
+                    mode=mode, 
+                    align_corners=align_corners,
+                    padding_mode='border'
+                )
+            return interpolated
+        else:
+            # Ensure data is (B, C, H, W)
+            if coarse_data.ndim == 3:
+                coarse_data = coarse_data.unsqueeze(1)
             
-            result[var] = torch.tensor(out).to(device)
-        
-        return result
+            # Ensure coarse_data is on the correct device and dtype
+            coarse_data = coarse_data.to(device=device, dtype=torch.float32)
+            
+            # Interpolate
+            interpolated = F.grid_sample(
+                coarse_data, grid,
+                mode=mode,
+                align_corners=align_corners,
+                padding_mode='border'
+            )
+            
+            return interpolated
 
     def split_tensor_to_dict(self, tensor):
         """
@@ -343,94 +668,484 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         Args:
             tensor: torch.Tensor de shape (B, C=T*V, H, W)
         Returns:
-            dict {var_name: tensor de shape (B, T, H, W)}
+            dict {pred_var_name: tensor de shape (B, T, H, W)}
         """
         B, C, H, W = tensor.shape
         V = len(self.tgt_vars)
-        time_steps = C//V
+        time_steps = C // V
         assert C == time_steps * V, f"Expected C={time_steps}×{V}, but got {C}"
+    
         tensor_reshaped = tensor.view(B, V, time_steps, H, W)  # (B, V, T, H, W)
         tensor_reshaped = tensor_reshaped.permute(0, 2, 1, 3, 4)  # (B, T, V, H, W)
-        out_dict = {
-            var: tensor_reshaped[:, :, i]  # (B, T, H, W)
-            for i, var in enumerate(self.tgt_vars)
-        }
+    
+        out_dict = {}
+        for i, var in enumerate(self.tgt_vars):
+            # Replace any prefix before '_' with 'pred_'
+            if '_' in var:
+                var_suffix = var.split('_', 1)[1]  # Get everything after first '_'
+                pred_var_name = f'pred_{var_suffix}'
+            else:
+                pred_var_name = f'pred_{var}'
+        
+            out_dict[pred_var_name] = tensor_reshaped[:, :, i]  # (B, T, H, W)
+    
         return out_dict
 
     def training_step(self, batch, batch_idx):
+        # Ne pas enregistrer le hook ici - utilisez on_after_backward à la place
         return self.multistep(batch, "train")[0]
 
+    def on_after_backward(self):
+        if self.hook_backward:
+            """Called once per optimizer step (after gradient accumulation)"""
+            if self.global_step % 10 == 0 and self.trainer.is_global_zero:
+                grad_norms = [
+                    p.grad.norm().item() 
+                    for p in self.parameters() 
+                    if p.requires_grad and p.grad is not None and p.grad.norm().item() > 0
+                ]
+            
+                if grad_norms:
+                    print(f"Step {self.global_step}: ✅ {len(grad_norms)} params with gradients")
+                    print(f"  Mean: {np.mean(grad_norms):.6e}, Max: {np.max(grad_norms):.6e}, Min: {np.min(grad_norms):.6e}")
+                else:
+                    print(f"Step {self.global_step}: NO GRADIENTS!")
+    
     def validation_step(self, batch, batch_idx):
         return self.multistep(batch, "val")[0]
 
     def forward(self, batch, res=1):
-        model = self.solver.solvers[f"solver_x{res}"].to(device)
+        model = self.solver.solvers[f"solver_x{res}"]
         return model(batch)
 
-    def on_epoch_start(self):
+    def on_train_epoch_start(self):
         epoch = self.current_epoch
         res_idx = min(epoch // (self.trainer.max_epochs // len(self.multires)), len(self.multires) - 1)
         train_res = self.multires[res_idx]
 
+        if self.global_rank == 0:
+            print(f"\n[Epoch {epoch}] Training resolution: {train_res}")
+
+        # ✅ LOG: Print learning rate at start of epoch
+        if self.optimizers() is not None:
+            optimizer = self.optimizers()
+            if isinstance(optimizer, list):
+                optimizer = optimizer[0]
+            
+            for i, param_group in enumerate(optimizer.param_groups):
+                lr = param_group['lr']
+                print(f"  Learning rate (group {i}): {lr:.6e}")
+                self.log(f'lr_group_{i}', lr, on_step=False, on_epoch=True)
+        
+        print(f"{'='*60}")
+
         for res in self.multires:
-            model = self.solver.solvers[f"solver_x{res}"].to(device)
+            model = self.solver.solvers[f"solver_x{res}"]
             if res == train_res:
                 model.train()
                 for p in model.parameters():
                     p.requires_grad = True
+                if self.trainer.is_global_zero:
+                    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                    print(f"  solver_x{res}: TRAINING mode - {n_trainable:,} trainable params")
             else:
                 model.eval()
                 for p in model.parameters():
                     p.requires_grad = False
-        if self.global_rank == 0:
-            print(f"[Epoch {epoch}] Training resolution: {train_res}")
+                if self.trainer.is_global_zero:
+                    print(f"  solver_x{res}: EVAL mode - gradients frozen")
+
+    def _apply_constraints(self, out_dict):
+        """
+        Apply physical constraints to predictions based on norm_stats.
+        Works on NORMALIZED data (as stored in the model).
+        
+        Args:
+            out_dict: Dict of predictions {pred_var_name: tensor (B, T, H, W)}
+        
+        Returns:
+            out_dict: Constrained predictions
+        """
+        constrained = {}
+        
+        for pred_var_name, pred in out_dict.items():
+            if pred is None:
+                constrained[pred_var_name] = None
+                continue
+            
+            # Match pred_sic -> tgt_sic, pred_SIT -> tgt_SIT
+            if 'pred' in pred_var_name:
+                canonical_var = pred_var_name.replace('pred_', '')
+            else:
+                canonical_var = pred_var_name.replace('tgt_', '')
+            matching_tgt_var = f'tgt_{canonical_var}'
+            
+            # Check if this target variable exists in var_mapping
+            if matching_tgt_var not in self.var_mapping:
+                # No mapping, no constraint
+                constrained[pred_var_name] = pred
+                continue
+            
+            # Get source variable from var_mapping
+            # e.g., tgt_sic -> asip_sic
+            source_var = self.var_mapping[matching_tgt_var]
+            
+            # Parse source_var (e.g., 'asip_sic' -> group='asip', var='sic')
+            if '_' not in source_var:
+                constrained[pred_var_name] = pred
+                continue
+            
+            group, var = source_var.split('_', 1)
+            
+            # Get normalization stats
+            if group not in self._norm_stats or var not in self._norm_stats[group]:
+                constrained[pred_var_name] = pred
+                continue
+            
+            stats = self._norm_stats[group][var]
+            
+            # Apply constraints based on normalization type
+            if stats["type"] == "minmax":
+                # For minmax normalization: (x - min) / (max - min)
+                # Normalized data should be in [0, 1]
+                min_val, max_val = 0.0, 1.0
+                
+                # Count violations before clamping
+                below_min = (pred < min_val).sum().item()
+                above_max = (pred > max_val).sum().item()
+                total = pred.numel()
+                
+                # Clamp to [0, 1] for normalized data
+                constrained[pred_var_name] = torch.clamp(pred, min_val, max_val)
+            
+            elif stats["type"] == "zscore":
+                # For zscore normalization: (x - mean) / std
+                # Normalized data should typically be in ~[-3, 3], we use ±5σ
+                # In normalized space, this means [-5, 5]
+                min_val, max_val = -5.0, 5.0
+                
+                # Count violations
+                below_min = (pred < min_val).sum().item()
+                above_max = (pred > max_val).sum().item()
+                total = pred.numel()
+                
+                # Clamp to ±5 in normalized space
+                constrained[pred_var_name] = torch.clamp(pred, min_val, max_val)
+            
+            else:
+                # Unknown normalization type, no constraint
+                constrained[pred_var_name] = pred
+        
+        return constrained
 
     def multistep(self, batch, phase=""):
-
+        """
+        Multi-resolution training with three strategies:
+        1. Progressive: train one resolution at a time (curriculum learning)
+        2. Simultaneous: train all resolutions together
+        3. Hybrid: progressive then simultaneous
+        
+        Set via self.training_strategy (default: 'simultaneous')
+        """
         batch = self.modify_multires_batch(batch)
         out = {}
-
-        epoch = self.current_epoch
-        n_res = len(self.multires)
-        total_epochs = self.trainer.max_epochs
-        steps_per_res = max(1,total_epochs // n_res)
-        res_index = min(epoch // steps_per_res, n_res - 1)  # limit to the last resolution
-
-        train_res = self.multires[res_index]
-        print(f"epoch_{epoch}, training resolution {res_index}")
+        
+        # STRATEGY SELECTION
+        # Add this in __init__: self.training_strategy = "simultaneous"  # or "progressive" or "hybrid"
+        strategy = getattr(self, 'training_strategy', 'simultaneous')
+        
+        if strategy == 'progressive':
+            # Original curriculum learning approach
+            epoch = self.current_epoch
+            n_res = len(self.multires)
+            total_epochs = self.trainer.max_epochs
+            steps_per_res = max(1, total_epochs // n_res)
+            res_index = min(epoch // steps_per_res, n_res - 1)
+            train_resolutions = [self.multires[res_index]]
+            
+        elif strategy == 'hybrid':
+            # Progressive at first, then simultaneous
+            epoch = self.current_epoch
+            n_res = len(self.multires)
+            # Train progressively for first 40% of epochs, then all together
+            warmup_epochs = int(self.trainer.max_epochs * 0.4)
+            
+            if epoch < warmup_epochs:
+                steps_per_res = max(1, warmup_epochs // n_res)
+                res_index = min(epoch // steps_per_res, n_res - 1)
+                train_resolutions = [self.multires[res_index]]
+            else:
+                train_resolutions = self.multires  # All resolutions
+                
+        else:  # 'simultaneous'
+            # Train all resolutions at once
+            train_resolutions = self.multires
+        
         total_loss = 0.
+        
         for i, res in enumerate(self.multires):
             batch_res = batch[f"patch_x{res}"]
-            if (res==self.multires[0]):
-                if res==train_res:
+            should_train = (res in train_resolutions) and (phase == "train")
+            
+            if i == 0:
+                # First resolution (coarsest)
+                if should_train:
                     loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
                     total_loss += loss
                 else:
-                    # inference only if not training this resolution
+                    # Inference only (validation/test or frozen resolution)
                     with torch.no_grad():
                         _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
             else:
+                # Finer resolutions
                 coarser_res = self.multires[i-1]
-                # project coarser_res batch on res batch
+                
+                # Get coordinates
                 xc_target = batch_res.xc
                 yc_target = batch_res.yc
                 xc_coarse = batch[f"patch_x{coarser_res}"].xc
                 yc_coarse = batch[f"patch_x{coarser_res}"].yc
-                out[f"patch_x{coarser_res}_on_x{res}"] = self.interpolate_torch(out[f"patch_x{coarser_res}"],
-                                                                                xc_coarse, yc_coarse,
-                                                                                xc_target, yc_target)
-                out[f"patch_x{coarser_res}_on_x{res}"] = self.crop_daw(out[f"patch_x{coarser_res}_on_x{res}"], res)
-                # modify batch to work on anomaly compared to coarser resolution
-                batch_res = self.update_batch_as_anomaly(batch_res, out[f"patch_x{coarser_res}_on_x{res}"])
-                if res==train_res:
-                    loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
-                    # sum out[f"patch_x{coarser_res}"] and  out[f"patch_x{res}"]
-                    total_loss+=loss
+                
+                if xc_coarse.ndim == 3:
+                    xc_coarse = torch.squeeze(xc_coarse, dim=1)
+                    yc_coarse = torch.squeeze(yc_coarse, dim=1)
+                if xc_target.ndim == 3:
+                    xc_target = torch.squeeze(xc_target, dim=1)
+                    yc_target = torch.squeeze(yc_target, dim=1)
+                
+                # Detach or not based on training strategy
+                if strategy == 'simultaneous':
+                    # No detach: Gradients flow through all resolutions
+                    out_coarse_for_interp = out[f"patch_x{coarser_res}"]
                 else:
-                    # inference only if not training this resolution
+                    # Detach: Only current resolution is trained
+                    out_coarse_for_interp = {
+                        k: v.detach() if isinstance(v, torch.Tensor) else v 
+                        for k, v in out[f"patch_x{coarser_res}"].items()
+                    }
+                
+                # Interpolate
+                out[f"patch_x{coarser_res}_on_x{res}"] = self.interpolate_torch(
+                    out_coarse_for_interp,
+                    xc_coarse, yc_coarse,
+                    xc_target, yc_target
+                )
+                out[f"patch_x{coarser_res}_on_x{res}"] = self.crop_daw(
+                    out[f"patch_x{coarser_res}_on_x{res}"], res
+                )
+                
+                # Update batch as anomaly
+                batch_res = self.update_batch_as_anomaly(
+                    batch_res, 
+                    out[f"patch_x{coarser_res}_on_x{res}"]
+                )
+                
+                # Train or inference
+                if should_train:
+                    loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
+                    total_loss += loss
+                else:
                     with torch.no_grad():
                         _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
-        return loss, out
+                
+                # Add coarse resolution back
+                for var_name in self.tgt_vars:
+                    if '_' in var_name:
+                        var_suffix = var_name.split('_', 1)[1]
+                        pred_var_name = f'pred_{var_suffix}'
+                    else:
+                        pred_var_name = f'pred_{var_name}'
+                    
+                    # Use non-inplace operation to avoid view issues
+                    out[f"patch_x{res}"][pred_var_name] = (
+                        out[f"patch_x{res}"][pred_var_name] + 
+                        out[f"patch_x{coarser_res}_on_x{res}"][pred_var_name]
+                    )
+            
+            # Apply constraints
+            out[f"patch_x{res}"] = self._apply_constraints(out[f"patch_x{res}"])
+        
+        return total_loss, out
+
+    def total_variation_loss(self, pred, mask_interp, dilation_radius=2):
+        """
+        Compute Total Variation loss on interpolated pixels and their neighborhood.
+        Encourages spatial smoothness, especially at the boundary between 
+        interpolated and observed regions where artifacts often appear.
+        
+        Args:
+            pred: (B, T, H, W) prediction
+            mask_interp: (B, T, H, W) boolean mask of interpolated pixels
+            dilation_radius: number of pixels to extend the mask (default: 2)
+        
+        Returns:
+            tv_loss: scalar tensor
+        """
+        B, T, H, W = pred.shape
+        
+        # Dilate mask to include neighborhood around interpolated pixels
+        # This captures the transition zone where artifacts are most visible
+        if dilation_radius > 0:
+            # Create dilation kernel
+            kernel_size = 2 * dilation_radius + 1
+            kernel = torch.ones(1, 1, kernel_size, kernel_size, device=pred.device)
+            
+            # Reshape mask for conv2d: (B, T, H, W) -> (B*T, 1, H, W)
+            mask_flat = mask_interp.float().reshape(B * T, 1, H, W)
+            
+            # Apply dilation (max pooling with stride 1)
+            dilated_mask = F.conv2d(
+                mask_flat,
+                kernel,
+                padding=dilation_radius,
+                stride=1
+            )
+            
+            # Threshold to get binary mask (any neighbor was True)
+            dilated_mask = (dilated_mask > 0).reshape(B, T, H, W)
+            
+            # Alternative: use morphological dilation (requires kornia)
+            # from kornia.morphology import dilation
+            # dilated_mask = dilation(mask_flat, kernel).reshape(B, T, H, W)
+        else:
+            dilated_mask = mask_interp
+        
+        # Compute spatial gradients
+        diff_h = torch.abs(pred[:, :, 1:, :] - pred[:, :, :-1, :])  # Vertical: (B, T, H-1, W)
+        diff_w = torch.abs(pred[:, :, :, 1:] - pred[:, :, :, :-1])  # Horizontal: (B, T, H, W-1)
+        
+        # Expand dilated mask to match gradient dimensions
+        # For vertical gradients: combine adjacent rows
+        mask_h = dilated_mask[:, :, 1:, :] | dilated_mask[:, :, :-1, :]  # (B, T, H-1, W)
+        
+        # For horizontal gradients: combine adjacent columns
+        mask_w = dilated_mask[:, :, :, 1:] | dilated_mask[:, :, :, :-1]  # (B, T, H, W-1)
+        
+        # Compute TV loss only on masked regions
+        n_valid_h = mask_h.sum()
+        n_valid_w = mask_w.sum()
+        
+        if n_valid_h > 0:
+            tv_h = (diff_h[mask_h]).mean()
+        else:
+            tv_h = torch.tensor(0.0, device=pred.device)
+        
+        if n_valid_w > 0:
+            tv_w = (diff_w[mask_w]).mean()
+        else:
+            tv_w = torch.tensor(0.0, device=pred.device)
+        
+        tv_loss = tv_h + tv_w
+        
+        return tv_loss
+
+    def spatial_context_loss(self, pred, target, input_obs, mask_interp, radius=3, weight=None):
+        """
+        For each interpolated pixel, ensure consistency with nearby observed pixels.
+        
+        Args:
+            pred: (B, T, H, W) prediction
+            target: (B, T, H, W) ground truth
+            input_obs: (B, T, H, W) input observations (with NaN)
+            mask_interp: (B, T, H, W) mask of interpolated pixels
+            radius: neighborhood radius
+            weight: (H, W) optional weight tensor for weighted MSE
+        
+        Returns:
+            context_loss: scalar tensor
+        """
+        B, T, H, W = pred.shape
+        
+        # Create kernel for averaging neighborhood
+        kernel = torch.ones(1, 1, 2*radius+1, 2*radius+1, device=pred.device) / ((2*radius+1)**2)
+        
+        # Reshape for conv2d
+        pred_flat = pred.reshape(B*T, 1, H, W)
+        input_flat = input_obs.reshape(B*T, 1, H, W)
+        
+        # Compute local averages of observations (ignoring NaN)
+        input_valid = input_flat.nan_to_num(0.0)
+        input_mask = input_flat.isfinite().float()
+        
+        # Weighted average of valid observations in neighborhood
+        local_avg = F.conv2d(input_valid, kernel, padding=radius)
+        local_count = F.conv2d(input_mask, kernel, padding=radius)
+        local_avg = local_avg / (local_count + 1e-6)
+        
+        # Reshape back
+        local_avg = local_avg.reshape(B, T, H, W)
+        
+        # Compute difference
+        diff = pred - local_avg
+        
+        # Apply mask: only compute loss on interpolated pixels
+        diff_masked = torch.where(mask_interp, diff, torch.tensor(float('nan'), device=pred.device))
+        
+        # Compute MSE with optional weighting
+        if weight is not None:
+            context_loss = self.weighted_mse(diff_masked, weight)
+        else:
+            # Simple mean of squared differences (ignoring NaN)
+            valid_diff = diff_masked[mask_interp]
+            if valid_diff.numel() > 0:
+                context_loss = (valid_diff ** 2).mean()
+            else:
+                context_loss = torch.tensor(0.0, device=pred.device, requires_grad=True)
+        
+        return context_loss
+
+    def compute_balanced_weights(self, loss_values):
+        """
+        Compute weights to balance losses according to target ratios.
+        
+        Args:
+            loss_values: dict of {loss_name: scalar_value}
+        
+        Returns:
+            weights: dict of {loss_name: weight}
+        """
+        # Convert to tensor
+        losses = torch.stack([
+            loss_values['base'],
+            loss_values['grad'],
+            loss_values['prior'],
+            loss_values['tv'],
+            loss_values['context']
+        ])
+        
+        # Update EMA
+        if self.training:
+            if self.loss_ema.sum() == 0:  # First batch
+                self.loss_ema = losses.detach()
+            else:
+                self.loss_ema = (1 - self.ema_alpha) * self.loss_ema + self.ema_alpha * losses.detach()
+        
+        # ✅ Use the same EMA for both train and val (computed during training)
+        # Compute target magnitudes based on ratios
+        total_ema = self.loss_ema.sum()
+        if total_ema == 0:  # Safety check (should not happen after first batch)
+            total_ema = losses.sum().detach()
+        
+        target_magnitudes = torch.tensor([
+            self.loss_target_ratios['base'],
+            self.loss_target_ratios['grad'],
+            self.loss_target_ratios['prior'],
+            self.loss_target_ratios['tv'],
+            self.loss_target_ratios['context']
+        ], device=losses.device) * total_ema
+        
+        # Compute weights: target / current (with clipping to avoid instability)
+        weights = target_magnitudes / (self.loss_ema + 1e-8)
+        weights = torch.clamp(weights, 0.1, 10.0)  # Prevent extreme weights
+        
+        return {
+            'base': weights[0].item(),
+            'grad': weights[1].item(),
+            'prior': weights[2].item(),
+            'tv': weights[3].item(),
+            'context': weights[4].item()
+        }
+
 
     def step(self, batch, res, phase=""):
 
@@ -438,42 +1153,99 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         res_key = f"patch_x{res}"
     
         total_grad_loss = 0.0
-        total_srnn_loss = 0.0
-    
+        total_prior_loss = 0.0
+        total_tv_loss = 0.0
+        total_context_loss = 0.0
+
         for var_name in self.tgt_vars:
             if not hasattr(batch, var_name):
                 raise ValueError(f"Batch missing variable: {var_name}")
     
             target = getattr(batch, var_name)
-            pred = out[var_name]
+            var_suffix = var_name.split('_', 1)[1]  # Get everything after first '_'
+            pred_var_name = f'pred_{var_suffix}'
+            pred = out[pred_var_name]
     
+            # Masks
+            mask_interp = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            mask_obs = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            
+            # 1. Gradient loss
             tgt_sobel = kfilts.sobel(target)
             pred_sobel = kfilts.sobel(pred)
-    
-            mask = tgt_sobel.isfinite()
-    
-            grad_loss = self.weighted_mse(
-                torch.where(mask, pred_sobel, torch.tensor(float('nan'), device=pred.device)) - tgt_sobel,
-                self.optim_weight[res_key]
-            )
+            grad_loss = self.weighted_mse(pred_sobel - tgt_sobel, self.optim_weight[res_key])
             total_grad_loss += grad_loss
+            
+            #  2. Total Variation on interpolated regions
+            tv_loss = self.total_variation_loss(pred, mask_interp, dilation_radius=2)
+            total_tv_loss += tv_loss
+            
+            #  3. Spatial context with observations
+            input_obs = batch._asdict()[self.var_mapping[var_name]]
+            context_loss = self.spatial_context_loss(
+                pred, target, input_obs, mask_interp, 
+                radius=3, 
+                weight=self.optim_weight[res_key] 
+            )
+            total_context_loss += context_loss
     
-        # Prior / SRNN loss
+        # 4. Prior / SRNN loss
         if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
             sbatch = self.format_batch_for_solver(batch)
             model = self.solver.solvers[f"solver_x{res}"].to(device)
-            prior = model.prior_cost.forward_ae(sbatch.input)
-            #total_prior_loss = self.weighted_mse(sbatch.tgt-prior,
-            #                                    self.prior_weight[res_key])
-            total_prior_loss = 0.0
+            prior = model.prior_cost.forward_ae(sbatch.input.nan_to_num())
+            total_prior_loss = self.weighted_mse(sbatch.tgt-prior,self.prior_weight[res_key])
+            # Add small L2 regularization to ensure all params are used
+            l2_reg = sum(p.pow(2.0).sum() for p in model.prior_cost.parameters())
+            total_prior_loss = total_prior_loss + 1e-6 * l2_reg  # Tiny regularization
         else:
-            total_prior_loss = 0.0
+            total_prior_loss = torch.tensor(0.0, device=device, requires_grad=True)
 
-        self.log(f"{phase}_gloss", total_grad_loss, prog_bar=True, on_step=False, on_epoch=True)
-    
-        training_loss = 50 * loss + 1000 * total_grad_loss + 10 * total_prior_loss
-        print(50 * loss, 10000 * total_grad_loss, 10 * total_prior_loss)
-    
+        # COMPUTE BALANCED WEIGHTS
+        loss_values = {
+            'base': loss,
+            'grad': total_grad_loss,
+            'prior': total_prior_loss,
+            'tv': total_tv_loss,
+            'context': total_context_loss
+        }
+        
+        if self.training:
+            weights = self.compute_balanced_weights(loss_values)
+        else:
+            # Use fixed weights for validation
+            weights = {'base': 1.0, 'grad': 1.0, 'prior': 1.0, 'tv': 1.0, 'context': 1.0}
+        
+        # COMBINED LOSS with auto-balanced weights
+        training_loss = (
+            weights['base'] * loss +
+            weights['grad'] * total_grad_loss +
+            weights['prior'] * total_prior_loss +
+            weights['tv'] * total_tv_loss +
+            weights['context'] * total_context_loss
+        )
+
+        # Log individual losses AND weights
+        self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{phase}_gloss", total_grad_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{phase}_prior_loss", total_prior_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{phase}_tv_loss", total_tv_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{phase}_context_loss", total_context_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+        
+        # Log weights
+        if self.training and self.global_step % 50 == 0 and self.trainer.is_global_zero:
+            print(f"\n[Step {self.global_step}] Loss balancing:")
+            print(f"  Base loss:    {loss.item():.6f} × {weights['base']:.3f} = {(weights['base']*loss).item():.6f}")
+            print(f"  Grad loss:    {total_grad_loss.item():.6f} × {weights['grad']:.3f} = {(weights['grad']*total_grad_loss).item():.6f}")
+            print(f"  Prior loss:   {total_prior_loss.item():.6f} × {weights['prior']:.3f} = {(weights['prior']*total_prior_loss).item():.6f}")
+            print(f"  TV loss:      {total_tv_loss.item():.6f} × {weights['tv']:.3f} = {(weights['tv']*total_tv_loss).item():.6f}")
+            print(f"  Context loss: {total_context_loss.item():.6f} × {weights['context']:.3f} = {(weights['context']*total_context_loss).item():.6f}")
+            print(f"  Total:        {training_loss.item():.6f}")
+
+        self.log(f"{phase}_weight_base", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
+        self.log(f"{phase}_weight_grad", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
+        self.log(f"{phase}_weight_tv", weights['tv'], prog_bar=False, on_step=False, on_epoch=True)
+
         return training_loss, out
 
     def base_step(self, batch, res, phase=""):
@@ -488,6 +1260,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         """
 
         sbatch = self.format_batch_for_solver(batch)
+        self.plot_counter += 1  
+        # === PLOT DEBUG (every N batches) ===
+        if (self.plot_counter % 100 == 0) and (res==50):  # Plot every 10 batches
+            try:
+                self.plot_batch_debug(sbatch, res, phase, batch_idx=self.plot_counter)
+                self.plot_input_target_mapping_debug(batch, res, phase, batch_idx=self.plot_counter)
+            except Exception as e:
+                print(f"Warning: Failed to create debug plot: {e}")
 
         out = self(batch=sbatch, res=res)  # out is a tensor 
         out = self.split_tensor_to_dict(out)
@@ -498,15 +1278,54 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             if not hasattr(batch, var_name):
                 raise ValueError(f"Batch does not contain variable '{var_name}'")
             target = getattr(batch, var_name)  # (B, T, Y, X)
-            pred = out[var_name]  # (B, T, Y, X)
-            mask = target.isfinite() 
-            loss = self.weighted_mse(torch.where(mask, pred, 
-                                                torch.tensor(float('nan'), device=pred.device)) - target,
-                                                self.optim_weight[res_key])
-            total_loss += loss
-
-        with torch.no_grad():
-            self.log(f"{phase}_loss", total_loss, prog_bar=True, on_step=False, on_epoch=True)
+            # Convert var_name to pred_var_name
+            if '_' in var_name:
+                var_suffix = var_name.split('_', 1)[1]
+                pred_var_name = f'pred_{var_suffix}'
+            else:
+                pred_var_name = f'pred_{var_name}'
+            pred = out[pred_var_name]  # (B, T, Y, X)
+            # Mask 1: Interpolation pixels (input NaN, target valid)
+            mask = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            # Mask 2: Observation pixels (both input and target valid)
+            mask2 = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            # STATISTICS: Compute percentages
+            n_mask = mask.sum().item()
+            n_mask2 = mask2.sum().item()
+            n_total = target.numel()
+            
+            pct_mask = 100.0 * n_mask / n_total if n_total > 0 else 0.0
+            pct_mask2 = 100.0 * n_mask2 / n_total if n_total > 0 else 0.0
+            
+            # PRINT: Log every 50 steps
+            if self.global_step % 50 == 0 and self.trainer.is_global_zero:
+                print(f"\n[Step {self.global_step}] Res {res} - {phase} - Variable: {var_name}")
+                print(f"  Mask (interpolation):  {n_mask:7d} / {n_total:7d} ({pct_mask:5.2f}%)")
+                print(f"  Mask2 (observations):  {n_mask2:7d} / {n_total:7d} ({pct_mask2:5.2f}%)")
+                print(f"  Pred range: [{pred.min():.4f}, {pred.max():.4f}]")
+                # Simplest: mask NaN values
+                target_masked = target[~torch.isnan(target)]
+                if target_masked.numel() > 0:
+                    print(f"  Target range: [{target_masked.min().item():.4f}, {target_masked.max().item():.4f}]")
+                else:
+                    print(f"  Target range: [No valid values]")
+            # Compute losses
+            loss = self.weighted_mse(
+                torch.where(mask, pred, torch.tensor(float('nan'), device=pred.device)) - target,
+                self.optim_weight[res_key]
+            )
+            loss2 = self.weighted_mse(
+                torch.where(mask2, pred, torch.tensor(float('nan'), device=pred.device)) - target,
+                self.optim_weight[res_key]
+            )
+            # LOG: Print loss values
+            if self.global_step % 50 == 0 and self.trainer.is_global_zero:
+                print(f"  Loss (interpolation): {loss.item():.6f}")
+                print(f"  Loss (observations):  {loss2.item():.6f}")
+            # Log to tensorboard/wandb
+            self.log(f"{phase}_mask_pct_interp_{var_name}", pct_mask, on_step=False, on_epoch=True,sync_dist=True)
+            self.log(f"{phase}_mask_pct_obs_{var_name}", pct_mask2, on_step=False, on_epoch=True,sync_dist=True)
+            total_loss += loss + loss2
         
         return total_loss, out
 
@@ -544,7 +1363,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         result_tensor /= np.maximum(count_tensor, 1e-6)
         result_da = xr.DataArray(
             result_tensor,
-            dims=[f'v{i}' for i in range(nvars - len(coords[0].dims))] + ["time", "yc", "xc"],
+            #dims=[f'v{i}' for i in range(nvars - len(coords[0].dims))] + ["time", "yc", "xc"],
+            dims = ["v0", "time", "yc", "xc"],
             coords={
                 "time": [time],
                 "xc": dl.dataset.xc,
@@ -598,11 +1418,11 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return xr.concat(netcdf_final, dim="time").sortby("time")
 
     def aggregate_batches(self, idx_rec, 
-                          test_data, test_times,
-                          dataloader_idx=None,
-                          metrics=False,
-                          write_netcdf=False,
-                          use_datamodule=False):
+                        test_data, test_times,
+                        dataloader_idx=None,
+                        metrics=False,
+                        write_netcdf=False,
+                        use_datamodule=False):
 
         res = self.multires[dataloader_idx]
 
@@ -618,33 +1438,60 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         daws = torch.tensor(daws)
 
         netcdf_final = []
-
+        
         def unnormalize(varname, data):
-            group, var = varname.split("_")
+            """
+            Unnormalize using var_mapping to find the correct source variable.
+            Args:
+                varname: target variable name (e.g., 'tgt_sic')
+                data: normalized data tensor
+            """
+            # Find source variable from var_mapping
+            source_var = self.var_mapping.get(varname)
+            
+            if source_var is None:
+                raise ValueError(f"No mapping found for target variable '{varname}'")
+            
+            # Parse source_var (e.g., 'asip_sic' -> group='asip', var='sic')
+            if '_' in source_var:
+                group, var = source_var.split('_', 1)
+            else:
+                raise ValueError(f"Invalid source variable format: '{source_var}'")
+            
             stats = self.norm_stats[group][var]
+            
             if stats["type"] == "zscore":
                 return data * stats["std"] + stats["mean"]
             elif stats["type"] == "minmax":
                 return data * (stats["max"] - stats["min"]) + stats["min"]
             else:
-                raise ValueError(f"Unknown normalization type for {varname}")
+                raise ValueError(f"Unknown normalization type for {source_var}")
 
         for idx_daw in torch.unique(daws):
             sel_daw = torch.where(daws==idx_daw)[0]
             test_data_sel = [test_data[i] for i in sel_daw.tolist()]
             test_data_uniq = self.aggregate_batches_one_domain(idx_daw, idx_rec,
-                                                               test_data_sel,
-                                                               dataloader_idx,
-                                                               use_datamodule)
-            # prepare unnormalization for metrics and storage
+                                                            test_data_sel,
+                                                            dataloader_idx,
+                                                            use_datamodule)
+            # Prepare unnormalization for metrics and storage
             test_data_unnorm = test_data_uniq.copy(deep=False)
-            for i, var in enumerate(self.tgt_vars):
-                norm_var = self.norm_tgt_vars[i]
-                _, var = norm_var.split("_")
-                test_data_unnorm = test_data_unnorm.update({f"pred_{var}" : (("time","yc","xc"),
-                                                             unnormalize(norm_var, test_data_uniq[f"pred_{var}"].data))})
-                test_data_unnorm = test_data_unnorm.update({f"tgt_{var}" : (("time","yc","xc"),
-                                                             unnormalize(norm_var, test_data_uniq[f"tgt_{var}"].data))})
+            
+            for var in self.tgt_vars:
+                # Get the variable suffix (e.g., 'tgt_sic' -> 'sic')
+                if '_' in var:
+                    var_suffix = var.split('_', 1)[1]
+                else:
+                    var_suffix = var
+                # Unnormalize using var_mapping
+                test_data_unnorm = test_data_unnorm.update({
+                    f"pred_{var_suffix}": (("time", "yc", "xc"),
+                                        unnormalize(var, test_data_uniq[f"pred_{var_suffix}"].data))
+                })
+                test_data_unnorm = test_data_unnorm.update({
+                    f"tgt_{var_suffix}": (("time", "yc", "xc"),
+                                        unnormalize(var, test_data_uniq[f"tgt_{var_suffix}"].data))
+                })
             if metrics:
                 metric_data = test_data_unnorm.pipe(self.pre_metric_fn),
                 metrics = pd.Series({
@@ -683,8 +1530,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         nbatch = len(batch.time)  # batch.time: shape (B, T)
         T, H, W = batch.time.shape[1], batch.yc.shape[1], batch.xc.shape[1]
         coarse_dict = {}
+
         # Pour chaque variable du Dataset
-        for var in self.tgt_vars + ["time", "yc", "xc"]:
+        # Include both tgt_vars and their pred_* equivalents
+        pred_vars = []
+        for var in self.tgt_vars:
+            if '_' in var:
+                var_suffix = var.split('_', 1)[1]
+                pred_vars.append(f'pred_{var_suffix}')
+            else:
+                pred_vars.append(f'pred_{var}')  
+        for var in self.tgt_vars + pred_vars + ["time", "yc", "xc"]:
             B_array = []
             for i in range(nbatch):
                 times_i = np.squeeze(times[i])  # (T,)
@@ -721,11 +1577,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # Stack B (B, T, H, W)
             coarse_dict[var] = torch.stack(B_array, dim=0)
             # Récupérer tous les champs
-            fields = batch._fields
+            # fields = batch._fields
             # Construire un nouveau dict avec les valeurs de coarse_dict
             # ou None par défaut si clé manquante
+            # complete_dict = {field: coarse_dict.get(field, None) for field in fields}
+        # return type(batch)(**complete_dict)
+            fields = self.tgt_vars + pred_vars + ["time", "yc", "xc"]
             complete_dict = {field: coarse_dict.get(field, None) for field in fields}
-        return  type(batch)(**complete_dict)
+        return complete_dict
 
     def on_test_start(self):
         # Stocker les dataloader keys dans l'ordre des indices
@@ -743,6 +1602,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     
     def test_step(self, batch, batch_idx, dataloader_idx=None):
 
+        # Fix for single resolution
+        if dataloader_idx is None:
+            dataloader_idx = 0
         res = self.multires[dataloader_idx]
         res_key = f"patch_x{res}"
         last = self.len_daw[res]
@@ -758,6 +1620,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             self.test_times[res_key] = []
             
         batch = self.modify_batch(batch, res)
+
+        # Determine device from batch
+        device = batch.tgt_sic.device if hasattr(batch, 'tgt_sic') else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
         # anomaly conversion
         if dataloader_idx > 0:
             coarser_res = self.multires[dataloader_idx-1]
@@ -771,36 +1637,54 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                         self.len_daw[coarser_res]))
                for k, v in coarse.items()
             }
-            coarse = self.convert_xr_to_batch(coarse, batch)
-            xc_coarse = torch.squeeze(coarse.xc, dim=1)
-            yc_coarse = torch.squeeze(coarse.yc, dim=1)
-            itrp_coarse = self.interpolate_torch(coarse._asdict(),
+            coarse = self.convert_xr_to_batch(coarse, batch)       
+            # Move all coarse tensors to device
+            coarse = {
+                k: v.to(device) if isinstance(v, torch.Tensor) else v
+                for k, v in coarse.items()
+            }
+            xc_coarse = torch.squeeze(coarse["xc"], dim=1)
+            yc_coarse = torch.squeeze(coarse["yc"], dim=1)
+            itrp_coarse = self.interpolate_torch(coarse,#._asdict(),
                                                  xc_coarse, yc_coarse,
                                                  xc_target, yc_target)
             #itrp_coarse = self.crop_daw(itrp_coarse,res)
             # modify batch to work on anomaly compared to coarser resolution
-            batch = self.update_batch_as_anomaly(batch, itrp_coarse)
+            batch = self.update_batch_as_anomaly(batch, 
+                                                 {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')
+                                                }
+                            )
 
         sbatch = self.format_batch_for_solver(batch)
+
         out = self(batch=sbatch, res=res)
         out = self.split_tensor_to_dict(out)
+        
         # add coarser resolution to output
         if dataloader_idx > 0:
             out = {k: out[k] + itrp_coarse[k] for k in out}
-            #out = {k: itrp_coarse[k] for k in out}
-        for i, var in enumerate(self.tgt_vars):
-            out[var] = torch.where(batch.land_mask==1.,np.nan,out[var])
+        for var in out:
+            out[var] = torch.where(batch.land_mask==1., np.nan, out[var])
 
         # Stockage des sorties et des cibles
         # Unnormalization is done in aggregate
         out_norm, tgt_norm = {}, {}
         for i, var in enumerate(self.tgt_vars):
-            pred = out[var] 
-            out_norm[var] = pred
-            if dataloader_idx == 0:
-                tgt_norm[var] = getattr(batch, var)
+            # Convert var_name to pred_var_name
+            if '_' in var:
+                var_suffix = var.split('_', 1)[1]
+                pred_var_name = f'pred_{var_suffix}'
             else:
-                tgt_norm[var] = getattr(batch, var) + itrp_coarse[var]
+                pred_var_name = f'pred_{var}'
+            pred = out[pred_var_name]
+            out_norm[pred_var_name] = pred
+            tgt_norm[var] = getattr(batch, var)
+            if dataloader_idx > 0:
+                tgt_norm[var] += itrp_coarse[pred_var_name]
+        
+        # apply constraints
+        out_norm = self._apply_constraints(out_norm)
+        #tgt_norm = self._apply_constraints(tgt_norm)
         
         combined = list(out_norm.values()) + list(tgt_norm.values())
         stacked = torch.stack(combined, dim=1)
@@ -843,10 +1727,51 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
     def on_load_checkpoint(self, checkpoint):
         """
-        very useful when shapes of the patches/weights between
-        training and inference
+        Handle weight tensor size mismatches between training and inference.
+        
+        This is crucial when using different patch_dims for test vs train:
+        - Training: patch_dims = {time: 15, yc: 256, xc: 256}
+        - Test: patch_dims = {time: 15, yc: 294, xc: 304}
+        
+        The weight tensors (_rec_weight_*, _optim_weight_*, _prior_weight_*) are
+        initialized based on patch_dims, so they differ between train and test.
+        
+        Solution: Replace checkpoint weights with current model's weights.
         """
-        for key in self.state_dict().keys():
-            if key.startswith("rec_weight") or key.startswith("optim_weight") or key.startswith("prior_weight"):
-                print(key)
-                checkpoint["state_dict"][key] = self.state_dict()[key]
+        print("\n" + "="*60)
+        print("Loading checkpoint with weight adaptation...")
+        print("="*60)
+        
+        current_state = self.state_dict()
+        checkpoint_state = checkpoint["state_dict"]
+        
+        # Keys that need size adaptation
+        weight_prefixes = ["_rec_weight", "_optim_weight", "_prior_weight", "_sr_weight"]
+        
+        adapted_keys = []
+        for key in current_state.keys():
+            if any(key.startswith(prefix) for prefix in weight_prefixes):
+                checkpoint_shape = checkpoint_state.get(key, torch.empty(0)).shape
+                current_shape = current_state[key].shape
+                
+                if checkpoint_shape != current_shape:
+                    print(f"  ⚠️  Size mismatch for '{key}':")
+                    print(f"      Checkpoint: {checkpoint_shape}")
+                    print(f"      Current:    {current_shape}")
+                    print(f"      → Using current model's weight")
+                    
+                    # ✅ Replace with current model's weight
+                    checkpoint_state[key] = current_state[key]
+                    adapted_keys.append(key)
+        
+        if adapted_keys:
+            print(f"\n  ✅ Adapted {len(adapted_keys)} weight tensors:")
+            for key in adapted_keys:
+                print(f"      - {key}")
+        else:
+            print("  ✅ No weight adaptation needed (shapes match)")
+        
+        print("="*60 + "\n")
+        
+        # ✅ Update checkpoint with adapted weights
+        checkpoint["state_dict"] = checkpoint_state

@@ -6,6 +6,40 @@ paths:
 
 domain: ???
 
+# ===== CENTRALIZED VARIABLE CONFIGURATION =====
+var_config:
+  # Satellite variables by source
+  satellite_vars:
+    cimr: ["SIC", "SIT"]
+    cristal: ["SIT", "SSH"]
+    asip: ["sic"]
+  
+  # Atmospheric covariates
+  covariates: ["msl", "t2m", "u10", "v10"]
+  
+  # Target variables
+  target_vars: ["tgt_sic", "tgt_SIT"]
+  
+  # Mapping: which input variable initializes which target
+  var_mapping:
+    tgt_sic: asip_sic    # Target SIC initialized from ASIP SIC
+    tgt_SIT: cimr_SIT    # Target SIT initialized from CIMR SIT
+  
+  # Time steps per resolution
+  time_steps:
+    patch_x2: 5
+    patch_x10: 10
+    patch_x50: 15
+
+# ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
+# Automatically construct input_vars from satellite_vars + covariates
+computed:
+  # Flatten satellite vars: ['asip_sic', 'cimr_SIC', 'cimr_SIT', 'cristal_SIT', 'cristal_SSH']
+  input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
+  
+  # Combine with covariates
+  input_vars_all: ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
+
 trainer:
   _target_: pytorch_lightning.Trainer
   inference_mode: False
@@ -30,21 +64,26 @@ trainer:
 
 datamodule:
   _target_: contrib.CROSCIM.data_multires.BaseDataModuleMultiRes
+  
+  # Variable configuration
+  satellite_vars: ${var_config.satellite_vars}
+  covariates: ${var_config.covariates}
+  target_vars: ${var_config.target_vars}
+  var_mapping: ${var_config.var_mapping}
+  
+  # Data paths - using load_data.py's get_paths_for_source
   asip_paths:
-    _target_: contrib.CROSCIM.load_data.load_data
-    type: asip
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: asip
   cimr_paths:
-    _target_: contrib.CROSCIM.load_data.load_data
-    type: cimr
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: cimr
   cristal_paths:
-    _target_: contrib.CROSCIM.load_data.load_data
-    type: cristal
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: cristal
   covariates_paths:
-    _target_: contrib.CROSCIM.load_data.load_data
-    type: era5
-  covariates: ["msl", "t2m", "u10", "v10", "tcc", "d2m", "ssrd", "strd", "tp"]
-  tgt_vars: ["asip_sic","cimr_SIT"]
-  multires: [50, 10, 2]
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: covariates
   mask_path: ${paths.mask}
   domain_name: arctic_croscim
   domains:
@@ -57,9 +96,20 @@ datamodule:
     test:
       time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
   xrds_kw:
-    patch_dims: { time: 15, yc: 240, xc: 240}
-    strides: { time: 1, yc: 20, xc: 20}
+    # TRAIN/VAL (unchanged)
+    patch_dims: { time: 15, yc: 256, xc: 256}
+    strides: { time: 1, yc: 28, xc: 28}
     strides_test: {time: 1, yc: 200, xc: 200}
+    # TEST: patch_dims_dict (different per resolution)
+        # TEST: patch_dims_dict (different per resolution)
+    patch_dims_dict: 
+      50: {time: 15, yc: 294, xc: 304}
+      10: {time: 15, yc: 256, xc: 256}
+      2: {time: 15, yc: 256, xc: 256}
+    strides_test_dict: 
+      50: {time: 1, yc: 294, xc: 304}
+      10: {time: 1, yc: 256, xc: 256}
+      2: {time: 1, yc: 256, xc: 256}  
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                     yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   dl_kw: {batch_size: 2, num_workers: 20}
@@ -94,13 +144,19 @@ datamodule:
     ssrd: {mean: -701143.5402508647, std: 785444.8336077137, type: zscore}
     strd: {mean: -1943008.2121575351, std: 466464.69271380285, type: zscore}
     tp: {mean: -0.0001834410365694742, std: 0.0005019462438424605, type: zscore}
+  multires: [50, 10, 2]
 
 model:
   _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50, 10, 2]
   opt_fn: null
-  tgt_vars: ["tgt_sic", "tgt_SIT"]
+  # Variable configuration
+  tgt_vars: ${var_config.target_vars}
+  satellite_vars: ${var_config.satellite_vars}
+  covariates: ${var_config.covariates}
+  var_mapping: ${var_config.var_mapping}
+  
   domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                   yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   rec_weight: ${optim_weight}
@@ -113,71 +169,86 @@ model:
       solver_x2:
         _target_: contrib.CROSCIM.solver.GradSolver
         n_step: 10
-        lr_grad: 1e-3
+        lr_grad: 0.2
+        input_vars: ${computed.input_vars_all}
+        target_vars: ${var_config.target_vars}
+        var_mapping: ${var_config.var_mapping}
+        n_time: ${var_config.time_steps.patch_x2}
+        obs_cost:
+          _target_: contrib.CROSCIM.solver.BaseObsCost
+          w: 1.0
+          use_target: true
         prior_cost:
           _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: 45
+          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x2}"}
           dim_hidden: 64
-          dim_out: 10
-          bilin_quad: False
-          downsamp: 2
-        obs_cost: {_target_: src.models.BaseObsCost}
+          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x2}"}
         grad_mod:
-          _target_: src.models.ConvLstmGradModel
-          dim_in: 45
-          dim_hidden: 96
+          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x2}"}
+          dim_hidden: 64
       solver_x10:
         _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 5
-        lr_grad: 1e-3
+        n_step: 10
+        lr_grad: 0.2
+        input_vars: ${computed.input_vars_all}
+        target_vars: ${var_config.target_vars}
+        var_mapping: ${var_config.var_mapping}
+        n_time: ${var_config.time_steps.patch_x10}
+        obs_cost:
+          _target_: contrib.CROSCIM.solver.BaseObsCost
+          w: 1.0
+          use_target: true
         prior_cost:
           _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: 90
+          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
           dim_hidden: 64
-          dim_out: 20
-          bilin_quad: False
-          downsamp: 2
-        obs_cost: {_target_: src.models.BaseObsCost}
+          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x10}"}
         grad_mod:
-          _target_: src.models.ConvLstmGradModel
-          dim_in: 90
-          dim_hidden: 96
+          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x10}"}
+          dim_hidden: 64
       solver_x50:
         _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 5
-        lr_grad: 1e-3
+        n_step: 10
+        lr_grad: 0.2
+        input_vars: ${computed.input_vars_all}
+        target_vars: ${var_config.target_vars}
+        var_mapping: ${var_config.var_mapping}
+        n_time: ${var_config.time_steps.patch_x50}
+        obs_cost:
+          _target_: contrib.CROSCIM.solver.BaseObsCost
+          w: 1.0
+          use_target: true
         prior_cost:
           _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: 135
+          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 64
-          dim_out: 30
-          bilin_quad: False
-          downsamp: 2
-        obs_cost: {_target_: src.models.BaseObsCost}
+          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
-          _target_: src.models.ConvLstmGradModel
-          dim_in: 135
-          dim_hidden: 96
+          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
+          dim_hidden: 64
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
 
 optim_weight:
   patch_x2:
     _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 5, yc: 240, xc: 240}
-    crop: {time: 0, yc: 20, xc: 20}
+    patch_dims: {time: 5, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x10:
-    _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 10, yc: 240, xc: 240}
-    crop: {time: 0, yc: 20, xc: 20}
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 10, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x50:
-    _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 15, yc: 240, xc: 240}
-    crop: {time: 0, yc: 20, xc: 20}
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 15, yc: 294, xc: 304}
+    crop: {time: 0, yc: 0, xc: 0}
     offset: 1
     dim_order: ["time", "yc", "xc"]
 
@@ -197,7 +268,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim.ckpt
+    ckpt_path: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet.ckpt
     save_dir: /dmidata/users/maxb/results
 
 defaults:

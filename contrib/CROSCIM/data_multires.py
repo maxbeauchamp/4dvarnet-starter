@@ -46,89 +46,6 @@ def compute_cell_edges(arr):
     else:
         raise ValueError("Unsupported dimension for computing edges.")
 
-
-def plot_multires(batch_dict, var="asip_sic",
-                           resolution_colors=None, title="Multi-resolution SIC"):
-    """
-    Affiche des champs multi-résolution avec gestion des discontinuités de longitude (±180°).
-    """
-
-    if resolution_colors is None:
-        resolution_colors = {}
-
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.axes(projection=ccrs.NorthPolarStereo())
-    ax.set_extent([-180, 180, 50, 90], crs=ccrs.PlateCarree())
-    ax.add_feature(cfeature.LAND, zorder=0, facecolor='lightgray')
-    ax.coastlines()
-
-    pcm = None
-
-    for key in sorted(batch_dict.keys(), key=lambda k: int(k.split("_x")[-1])):
-        try:
-            factor = int(key.split("_x")[-1])
-        except ValueError:
-            print(f"Ignoring malformed key: {key}")
-            continue
-
-        item = batch_dict[key]
-        color = resolution_colors.get(factor, f"C{factor % 10}")
-
-        try:
-            data = getattr(item, var)
-            lon = getattr(item, "lon")
-            lat = getattr(item, "lat")
-        except AttributeError:
-            print(f"Variable manquante dans {key}.")
-            continue
-
-        if data.ndim == 3:
-            data = np.nanmean(data, axis=0)
-
-        # Convertir en coordonnées géographiques
-        lon = denormalize_minmax(lon, -180, 180)
-        lat = denormalize_minmax(lat, 50, 90)
-        lon_edges = compute_cell_edges(lon)
-        lat_edges = compute_cell_edges(lat)
-
-        # Détection des sauts de longitude (wraps à ±180°)
-        delta_lon_h = np.abs(np.diff(lon_edges, axis=1))
-        jump_mask_h = delta_lon_h[:, :-1] > 180
-
-        delta_lon_v = np.abs(np.diff(lon_edges, axis=0))
-        jump_mask_v = delta_lon_v[:-1, :] > 180
-
-        # Masque final pour cellules contenant un saut
-        mask_bad = np.zeros_like(data, dtype=bool)
-        mask_bad[:, :-1] |= jump_mask_h
-        mask_bad[:-1, :] |= jump_mask_v
-
-        data_masked = np.ma.array(data, mask=mask_bad)
-
-        pcm = ax.pcolormesh(
-            lon_edges, lat_edges, data_masked,
-            transform=ccrs.PlateCarree(),
-            cmap='Blues', shading='flat', alpha=0.8, zorder=1
-        )
-
-        # Tracer les contours du patch
-        bottom = np.column_stack((lon_edges[0, :], lat_edges[0, :]))
-        right = np.column_stack((lon_edges[:, -1], lat_edges[:, -1]))
-        top = np.column_stack((lon_edges[-1, ::-1], lat_edges[-1, ::-1]))
-        left = np.column_stack((lon_edges[::-1, 0], lat_edges[::-1, 0]))
-        contour = np.vstack([bottom, right[1:], top[1:], left[1:], bottom[0:1]])
-
-        ax.plot(contour[:, 0], contour[:, 1],
-                transform=ccrs.PlateCarree(), color=color,
-                linewidth=2, label=f"Patch x{factor}", zorder=2)
-
-    ax.set_title(title)
-    if pcm is not None:
-        plt.colorbar(pcm, ax=ax, orientation='vertical', shrink=0.5, label=var)
-    ax.legend()
-    plt.savefig("test.png", bbox_inches='tight')
-    plt.show()
-
 def pad_dataset_with_coords(ds, pad_yc=0, pad_xc=0):
     import numpy as np
     import xarray as xr
@@ -189,17 +106,30 @@ def pad_dataset_with_coords(ds, pad_yc=0, pad_xc=0):
 
 class XrDatasetMultiResTrain(XrDataset):
 
-    def __init__(self, multires=[1], *args, **kwargs):
-        super().__init__(subsel_patch=True, *args, **kwargs)
+    def __init__(self, multires=[1], satellite_vars=None,  *args, **kwargs):
+        # Store satellite_vars BEFORE calling super().__init__
+        self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
+              
+        # Determine which sources are active (have non-empty variable lists)
+        self.active_sources = [src for src, vars in self.satellite_vars.items() if vars]
+        
+        # Now call parent __init__ which will use self.satellite_vars
+        super().__init__(subsel_patch=True, satellite_vars=satellite_vars, *args, **kwargs)
+        
         self.multires = multires
 
         # Precompute enlarged patch sizes per resolution
         self.enlarged_dims = {}
         for factor in self.multires:
             self.enlarged_dims[factor] = {
-                'yc': self.patch_dims['yc'] * (factor//self.resize),
-                'xc': self.patch_dims['xc'] * (factor//self.resize)
+                'yc': self.patch_dims['yc'] * (factor // self.resize),
+                'xc': self.patch_dims['xc'] * (factor // self.resize)
             }
+        
+        print(f"XrDatasetMultiResTrain initialized:")
+        print(f"  Satellite vars: {self.satellite_vars}")
+        print(f"  Active sources: {self.active_sources}")
+        print(f"  Multires: {self.multires}")
 
     def coarsen_patch(self, patch, target_shape):
         """
@@ -212,52 +142,100 @@ class XrDatasetMultiResTrain(XrDataset):
 
     def extract_enlarged_patch_from_datasets(self, sl, factor):
         """
-        Extract a larger area from the original datasets (asip, cimr, cristal, covariates),
+        Extract a larger area from the original datasets,
         coarsen ASIP, then interpolate other datasets onto coarsened grid.
+        Only loads data for active sources.
         """
-
         y_center = (sl["yc"].start + sl["yc"].stop) // 2
         x_center = (sl["xc"].start + sl["xc"].stop) // 2
 
-        enlarged_yc = self.enlarged_dims[factor*self.resize]['yc']
-        enlarged_xc = self.enlarged_dims[factor*self.resize]['xc']
+        enlarged_yc = self.enlarged_dims[factor * self.resize]['yc']
+        enlarged_xc = self.enlarged_dims[factor * self.resize]['xc']
 
         y_start = max(0, y_center - enlarged_yc // 2)
-        y_end = min(y_start + enlarged_yc, self.da_dims["yc"]-1)
+        y_end = min(y_start + enlarged_yc, self.da_dims["yc"] - 1)
         x_start = max(0, x_center - enlarged_xc // 2)
-        x_end = min(x_start + enlarged_xc, self.da_dims["xc"]-1)
+        x_end = min(x_start + enlarged_xc, self.da_dims["xc"] - 1)
 
         item_mask = fast_pool(self.mask.isel(xc=slice(x_start, x_end), yc=slice(y_start, y_end)),
-                              factor,factor,mode="binary")
+                              factor, factor, mode="binary")
 
+        # Load datasets based on active sources
+        datasets = {}
+        
         if self.load_data:
-            asip_ds = self.full_asip.isel(time=sl["time"], xc=slice(x_start, x_end), yc=slice(y_start, y_end))
-            cimr_ds = self.full_cimr.isel(time=sl["time"])
-            cristal_ds = self.full_cristal.isel(time=sl["time"])
-            covariate_ds = self.full_covs.isel(time=sl["time"])
+            # Load only active sources
+            if 'asip' in self.active_sources:
+                datasets['asip'] = self.full_asip.isel(
+                    time=sl["time"], 
+                    xc=slice(x_start, x_end), 
+                    yc=slice(y_start, y_end)
+                )
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = self.full_cimr.isel(time=sl["time"])
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = self.full_cristal.isel(time=sl["time"])
+            
+            # Load covariates if configured
+            if hasattr(self, 'covariates') and self.covariates:
+                datasets['covariates'] = self.full_covs.isel(time=sl["time"])
         else:
             time_indices = np.arange(sl["time"].start, sl["time"].stop)
-            slices = {"xc": slice(self.xc[x_start],self.xc[x_end]),
-                      "yc": slice(self.yc[y_start],self.yc[y_end])
-                     }
+            slices = {
+                "xc": slice(self.xc[x_start], self.xc[x_end]),
+                "yc": slice(self.yc[y_start], self.yc[y_end])
+            }
             type_coords = "coords"
-            asip_ds = concatenate(self.asip_paths[time_indices], var_list=VAR_GROUPS["asip"],
-                                  slices=slices, type_coords=type_coords,
-                                  resize=factor*self.resize, domain_limits=self.domain_limits)
-            cimr_ds = concatenate(self.cimr_paths[time_indices], var_list=VAR_GROUPS["cimr"], slices=None)
-            cristal_ds = concatenate(self.cristal_paths[time_indices], var_list=VAR_GROUPS["cristal"], slices=None)
-            covariate_ds = concatenate(self.covariates_paths[time_indices], var_list=self.covariates, slices=None)
+            
+            # Load only active sources
+            if 'asip' in self.active_sources:
+                datasets['asip'] = concatenate(
+                    self.asip_paths[time_indices], 
+                    var_list=self.satellite_vars['asip'],
+                    slices=slices, 
+                    type_coords=type_coords,
+                    resize=factor * self.resize, 
+                    domain_limits=self.domain_limits
+                )
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = concatenate(
+                    self.cimr_paths[time_indices], 
+                    var_list=self.satellite_vars['cimr'], 
+                    slices=None
+                )
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = concatenate(
+                    self.cristal_paths[time_indices], 
+                    var_list=self.satellite_vars['cristal'], 
+                    slices=None
+                )
+            # Load covariates if configured
+            if hasattr(self, 'covariates') and self.covariates:
+                datasets['covariates'] = concatenate(
+                    self.covariates_paths[time_indices], 
+                    var_list=self.covariates, 
+                    slices=None
+                )
 
-        # padding if necessary
+        # Get ASIP dataset as reference (must be present)
+        if 'asip' not in datasets:
+            raise ValueError("ASIP dataset is required as reference grid but not loaded")
+        
+        asip_ds = datasets['asip']
+
+        # Padding if necessary
         expected_shape = (self.patch_dims['time'], self.patch_dims['yc'], self.patch_dims['xc'])
-        actual_shape = asip_ds["sic"].shape
+        # Use first available ASIP variable
+        first_asip_var = self.satellite_vars['asip'][0]
+        actual_shape = asip_ds[first_asip_var].shape
+        
         if actual_shape != expected_shape:
             pad_t = expected_shape[0] - actual_shape[0]
             pad_y = expected_shape[1] - actual_shape[1]
             pad_x = expected_shape[2] - actual_shape[2]
             pad = {dim: (0, pad_) for dim, pad_ in zip(["time", "yc", "xc"], [pad_t, pad_y, pad_x])}
             # add mask
-            asip_ds = asip_ds.update({"mask":(("yc","xc"),item_mask)})
+            asip_ds = asip_ds.update({"mask": (("yc", "xc"), item_mask)})
             # pad
             asip_ds = pad_dataset_with_coords(asip_ds, pad_yc=pad_y, pad_xc=pad_x)
             asip_ds['mask'] = asip_ds['mask'].fillna(1)
@@ -266,44 +244,84 @@ class XrDatasetMultiResTrain(XrDataset):
         lon_target = asip_ds.lon.values
         lat_target = asip_ds.lat.values
 
-        coarsened_asip = {}
-        for var in VAR_GROUPS["asip"]:
-            coarsened_asip[f"asip_{var}"] = asip_ds[var].values
+        # Collect data from ASIP
+        sample = {}
+        for var in self.satellite_vars['asip']:
+            sample[f"asip_{var}"] = asip_ds[var].values
 
-        #target_shape = (self.patch_dims['yc'], self.patch_dims['xc'])
-        # Get target grid from coarsened ASIP
-        #lon_target = F.adaptive_avg_pool2d(torch.from_numpy(asip_ds.lon.values).unsqueeze(0).float(), target_shape).squeeze(0).numpy()
-        #lat_target = F.adaptive_avg_pool2d(torch.from_numpy(asip_ds.lat.values).unsqueeze(0).float(), target_shape).squeeze(0).numpy()
-
-        # Interpolate CIMR, CRISTAL, COVARIATES
+        # Interpolate other satellite sources (only if active)
         if self.itrp_from_regular:
-            target_grid=(asip_ds.xc.values, asip_ds.yc.values)
-            coarsened_cimr = self.interpolate_dataset(target_grid, cimr_ds, VAR_GROUPS["cimr"],prefix="cimr")
-            coarsened_cristal = self.interpolate_dataset(target_grid, cristal_ds, VAR_GROUPS["cristal"],prefix="cristal")
-            coarsened_covs = self.interpolate_dataset(target_grid, covariate_ds, self.covariates)
+            target_grid = (asip_ds.xc.values, asip_ds.yc.values)
+            if 'cimr' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['cimr'], 
+                    self.satellite_vars['cimr'],
+                    prefix="cimr"
+                )
+                sample.update(interpolated)
+            if 'cristal' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['cristal'], 
+                    self.satellite_vars['cristal'],
+                    prefix="cristal"
+                )
+                sample.update(interpolated)
+            if 'covariates' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['covariates'], 
+                    self.covariates
+                )
+                sample.update(interpolated)
         else:
             swath_def_target = pyresample.geometry.SwathDefinition(lons=lon_target, lats=lat_target)
-            coarsened_cimr= self.interpolate_dataset(swath_def_target, cimr_ds, VAR_GROUPS["cimr"],prefix="cimr")
-            coarsened_cristal = self.interpolate_dataset(swath_def_target, cristal_ds, VAR_GROUPS["cristal"],prefix="cristal")
-            coarsened_covs = self.interpolate_dataset(swath_def_target, covariate_ds, self.covariates)
+            
+            if 'cimr' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['cimr'], 
+                    self.satellite_vars['cimr'],
+                    prefix="cimr"
+                )
+                sample.update(interpolated)
+            
+            if 'cristal' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['cristal'], 
+                    self.satellite_vars['cristal'],
+                    prefix="cristal"
+                )
+                sample.update(interpolated)
+            
+            if 'covariates' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['covariates'], 
+                    self.covariates
+                )
+                sample.update(interpolated)
 
-        # Assemble sample
-        sample = {**coarsened_asip, **coarsened_cimr, **coarsened_cristal, **coarsened_covs}
+        # Add metadata
         sample["land_mask"] = np.expand_dims(item_mask, axis=0)
         sample["lat"] = np.expand_dims(lat_target, axis=0)
         sample["lon"] = np.expand_dims(lon_target, axis=0)
 
-        # add target variables
-        for group, variables in VAR_GROUPS.items():
-            for var in variables:
-                var_key = f"{group}_{var}"
-                new_key = f"tgt_{var}"
-                if (var_key in sample) and (var_key in self.tgt_vars):
-                    sample[new_key] = sample[var_key]
+        # Add target variables based on var_mapping configuration
+        for target_var in self.target_vars:
+            source_var = self.var_mapping.get(target_var)
+            if source_var and source_var in sample:
+                sample[target_var] = sample[source_var]
+            else:
+                print(f"Warning: Could not map {target_var} from {source_var}. Available keys: {list(sample.keys())}")
 
-        # keep track of the coordinates
-        sample["time"] = np.expand_dims(np.array([ np.datetime64(t,"s").astype('float64') for t in asip_ds.time.values]), 
-                                        axis=0)
+        # Keep track of the coordinates
+        sample["time"] = np.expand_dims(
+            np.array([np.datetime64(t, "s").astype('float64') for t in asip_ds.time.values]),
+            axis=0
+        )
         sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
         sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
 
@@ -325,54 +343,166 @@ class XrDatasetMultiResTrain(XrDataset):
         out = {}
         out[f"patch_x{self.resize}"] = hr_sample
         for factor in self.multires[:-1]:
-            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor//(self.resize))
-            out[f"patch_x{factor}"] = enlarged_patch                  
+            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor // (self.resize))
+            out[f"patch_x{factor}"] = enlarged_patch
 
-        #plot_multires(out, var="asip_sic",
-        #              resolution_colors={1: "blue", 10: "orange", 100: "red"},
-        #              title="Sea Ice Concentration (Multi-resolution)"
-        #              )
         return out
+
 
 class XrDatasetMultiResTest:
     """
     Dataset pour le mode test : contient N XrDataset avec coarsening contrôlé par multires
     Chaque sortie est un TrainingItem avec suffixe de résolution.
     """
-    """
-    Dataset pour le mode test : contient N XrDataset avec coarsening contrôlé par multires
-    """
-    def __init__(self, multires=[1], *args, **kwargs):
+    def __init__(self, multires=[1], patch_dims_dict=None, strides_test_dict=None,
+                 satellite_vars=None, covariates=None, 
+                 target_vars=None, var_mapping=None, *args, **kwargs):
         self.datasets = {}
+        self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
+        self.covariates = covariates or []
+        self.target_vars = target_vars or []
+        self.var_mapping = var_mapping or {}     
+
+        # Handle patch_dims_dict (new) vs patch_dims (legacy)
+        if patch_dims_dict is not None:
+            self.patch_dims_dict = patch_dims_dict
+            # Validate: all resolutions must have patch_dims
+            for res in multires:
+                if res not in patch_dims_dict:
+                    raise ValueError(f"patch_dims_dict missing entry for resolution {res}")
+        else:
+            # Fallback: use same patch_dims for all resolutions
+            default_patch_dims = kwargs.get('patch_dims', {'time': 15, 'yc': 256, 'xc': 256})
+            self.patch_dims_dict = {res: default_patch_dims.copy() for res in multires}
+            print(f" No patch_dims_dict provided, using {default_patch_dims} for all resolutions")
+
+         # Handle strides_test_dict
+        if strides_test_dict is not None:
+            self.strides_test_dict = strides_test_dict
+            for res in multires:
+                if res not in strides_test_dict:
+                    raise ValueError(f"strides_test_dict missing entry for resolution {res}")
+        else:
+            # Fallback: use strides_test from kwargs if present, else compute from patch_dims
+            default_strides_test = kwargs.get('strides_test', None)
+            if default_strides_test:
+                self.strides_test_dict = {res: default_strides_test.copy() for res in multires}
+            else:
+                # Auto-compute: non-overlapping strides = patch_dims
+                self.strides_test_dict = {
+                    res: self.patch_dims_dict[res].copy() 
+                    for res in multires
+                }
+            print(f"No strides_test_dict provided, using non-overlapping strides")
+
+        print(f"\n{'='*60}")
+        print(f"XrDatasetMultiResTest configuration:")
+        print(f"  Multires: {multires}")
+        print(f"{'='*60}")
+
         for res in multires:
-            kwargs["resize"] = res
-            self.datasets[res] = XrDataset(subsel_patch=(res==multires[-1]),
-                                           load_data=True,
-                                           *args, **kwargs)
+            # Get resolution-specific patch_dims
+            patch_dims = self.patch_dims_dict[res]
+            strides_test = self.strides_test_dict[res]
+ 
+            # Create resolution-specific kwargs
+            res_kwargs = kwargs.copy()
+            res_kwargs['patch_dims'] = patch_dims
+            res_kwargs['strides_test'] = strides_test
+            res_kwargs['resize'] = res
+            print(f"  Resolution x{res}:")
+            print(f"    patch_dims: time={patch_dims['time']}, yc={patch_dims['yc']}, xc={patch_dims['xc']}")
+
+            self.datasets[res] = XrDataset(
+                satellite_vars=satellite_vars,
+                covariates=covariates,
+                target_vars=target_vars,
+                var_mapping=var_mapping,
+                subsel_patch=(res == multires[-1]) and len(multires) > 1,
+                load_data=True,
+                *args, 
+                **res_kwargs
+            )
 
     def get_dataloader_dict(self, batch_size=1, **loader_kwargs):
         """
         Retourne un dictionnaire de DataLoader pour chaque résolution
         """
         from torch.utils.data import DataLoader
-        return {res: DataLoader(ds, batch_size=batch_size, **loader_kwargs)
-                for res, ds in self.datasets.items()}
+        return {
+            res: DataLoader(ds, batch_size=batch_size, **loader_kwargs)
+            for res, ds in self.datasets.items()
+        }
 
 class BaseDataModuleMultiRes(BaseDataModule):
-    
-    def __init__(self, multires=[1], *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, 
+                 asip_paths, 
+                 cimr_paths, 
+                 cristal_paths,
+                 covariates_paths, 
+                 covariates,  # ✅ Required
+                 target_vars,    # ✅ Required
+                 satellite_vars=None,
+                 var_mapping=None,
+                 multires=[50, 10, 2],  # Multi-resolution specific
+                 **kwargs):
+        """
+        Multi-resolution data module extending BaseDataModule.
+        
+        Args:
+            multires: List of resolution factors [coarsest, ..., finest]
+            All other args passed to BaseDataModule
+        """
+
+        # Extract patch_dims_dict from xrds_kw if present (only for test)
+        xrds_kw = kwargs.get('xrds_kw', {})
+        self.patch_dims_dict = xrds_kw.pop('patch_dims_dict', None)
+        self.strides_test_dict = xrds_kw.pop('strides_test_dict', None)
+
+        # Update kwargs with modified xrds_kw
+        if 'xrds_kw' in kwargs:
+            kwargs['xrds_kw'] = xrds_kw
+
+        # Call parent with explicit required arguments
+        super().__init__(
+            asip_paths=asip_paths,
+            cimr_paths=cimr_paths,
+            cristal_paths=cristal_paths,
+            covariates_paths=covariates_paths,
+            covariates=covariates,
+            target_vars=target_vars,
+            satellite_vars=satellite_vars,
+            var_mapping=var_mapping,
+            **kwargs
+        )
+        
+        # Store multi-resolution configuration
         self.multires = multires
         self.resize = self.multires[-1]
+        
+        print(f"\n{'='*60}")
+        print(f"BaseDataModuleMultiRes configuration:")
+        print(f"{'='*60}")
+        print(f"  Multi-resolution factors: {self.multires}")
+        print(f"  Satellite vars: {self.satellite_vars}")
+        print(f"  Target vars: {self.target_vars}")
+        if self.patch_dims_dict:
+            print(f"  Test patch_dims per resolution:")
+            for res, dims in self.patch_dims_dict.items():
+                print(f"    x{res}: time={dims['time']}, yc={dims['yc']}, xc={dims['xc']}")
+        else:
+            print(f"  Using same patch_dims for all resolutions (train behavior)")
+        print(f"{'='*60}\n")
 
-    def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, save_dir="/dmidata/users/maxb/PREPROC/"):
+    def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, 
+                                      save_dir="/dmidata/users/maxb/PREPROC/"):
         """
         Save a multiresolution batch dictionary as separate NetCDF files.
         batch_dict: dict of {f"patch_x{res}": TrainingItem}
         patch_dims_dict: dict of {res: {"time": ..., "yc": ..., "xc": ...}}
         """
         os.makedirs(save_dir, exist_ok=True)
-    
+
         for key, batch in batch_dict.items():
             # Extrait le facteur de résolution (ex: x10 -> 10)
             try:
@@ -380,45 +510,43 @@ class BaseDataModuleMultiRes(BaseDataModule):
             except:
                 print(f"Warning: can't parse resolution factor in {key}")
                 continue
-    
+
             patch_dims = patch_dims_dict[factor]
-    
+
             data_vars = {}
-    
-            # Variables satellites
-            for group in VAR_GROUPS:
-                for var in VAR_GROUPS[group]:
-                    var_name = f"{group}_{var}"
+
+            # Variables satellites (dynamically based on config)
+            for source in self.active_sources:
+                for var in self.satellite_vars.get(source, []):
+                    var_name = f"{source}_{var}"
                     if hasattr(batch, var_name):
                         tensor = getattr(batch, var_name)
                         if torch.is_tensor(tensor) and tensor.ndim == 4:
                             data_vars[var_name] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
-    
+
             # Covariates
-            for cov in COVARIATES:
+            for cov in self.covariates:
                 if hasattr(batch, cov):
                     tensor = getattr(batch, cov)
                     if torch.is_tensor(tensor) and tensor.ndim == 4:
                         data_vars[cov] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
-    
+
             # Coordonnées et masque
             data_vars.update({
-                'times': (('sample', 'time'), torch.squeeze(batch.time,dim=1).detach().cpu().numpy().astype("datetime64[s]")),
-                'ycs': (('sample', 'yc'), torch.squeeze(batch.yc,dim=1).detach().cpu()),
-                'xcs': (('sample', 'xc'), torch.squeeze(batch.xc,dim=1).detach().cpu()),
-                'lat': (('sample', 'yc', 'xc'), torch.squeeze(batch.lat,dim=1).detach().cpu()),
-                'lon': (('sample', 'yc', 'xc'), torch.squeeze(batch.lon,dim=1).detach().cpu()),
-                'land_mask': (('sample', 'yc', 'xc'), torch.squeeze(batch.land_mask,dim=1).detach().cpu()),
+                'times': (('sample', 'time'), torch.squeeze(batch.time, dim=1).detach().cpu().numpy().astype("datetime64[s]")),
+                'ycs': (('sample', 'yc'), torch.squeeze(batch.yc, dim=1).detach().cpu()),
+                'xcs': (('sample', 'xc'), torch.squeeze(batch.xc, dim=1).detach().cpu()),
+                'lat': (('sample', 'yc', 'xc'), torch.squeeze(batch.lat, dim=1).detach().cpu()),
+                'lon': (('sample', 'yc', 'xc'), torch.squeeze(batch.lon, dim=1).detach().cpu()),
+                'land_mask': (('sample', 'yc', 'xc'), torch.squeeze(batch.land_mask, dim=1).detach().cpu()),
             })
-    
-            # target variables
-            for group, variables in VAR_GROUPS.items():
-                for var in variables:
-                    new_key = f"tgt_{var}"
-                    if hasattr(batch, new_key):
-                        tensor = getattr(batch, new_key)
-                        if torch.is_tensor(tensor) and tensor.ndim == 4:
-                            data_vars[new_key] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
+
+            # Target variables (dynamically based on config)
+            for target_var in self.target_vars:
+                if hasattr(batch, target_var):
+                    tensor = getattr(batch, target_var)
+                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+                        data_vars[target_var] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
             # Coordonnées
             coords = {
@@ -432,57 +560,123 @@ class BaseDataModuleMultiRes(BaseDataModule):
             ds = xr.Dataset(data_vars=data_vars, coords=coords)
             save_path = os.path.join(save_dir, f"preproc_batch_{ibatch}_x{factor}.nc")
             ds.to_netcdf(save_path)
+            print(f"Saved: {save_path}")
 
     def setup(self, stage='test'):
 
         def select_paths(files, times, fmt="%Y%m%d"):
+            """
+            Select files based on time ranges.
+            
+            Args:
+                files: List of file paths
+                times: Either a single slice or a list of slices
+                fmt: Date format string
+            """
+            from omegaconf import ListConfig
+            
+            dates, time_vals = [], []
+            
+            # Convert OmegaConf ListConfig to list if needed
+            if isinstance(times, ListConfig):
+                times = list(times)
+            
+            # Check if times is a list of slices or a single slice
             if isinstance(times, list):
-                dates, time_vals = [], []
-                for sl in times:
-                    start, end = sl.start, sl.stop
-                    dts = pd.date_range(start, end)
+                # Multiple time ranges (e.g., for validation)
+                for time_slice in times:
+                    start = time_slice.start
+                    stop = time_slice.stop
+                    dts = pd.date_range(start, stop)
                     dates.extend(dts.strftime(fmt).tolist())
                     time_vals.extend(dts.tolist())
             else:
-                start, end = times.start, times.stop
-                dts = pd.date_range(start, end)
+                # Single time range (e.g., for train/test)
+                start = times.start
+                stop = times.stop
+                dts = pd.date_range(start, stop)
                 dates = dts.strftime(fmt).tolist()
                 time_vals = dts.tolist()
-            files = np.sort([f for f in files if any(date in f for date in dates)])
-            return files, np.array(time_vals)
+            
+            # Select files matching the dates
+            selected_files = np.sort([f for f in files if any(date in f for date in dates)])
+            return selected_files, np.array(time_vals)
 
         def create_dataset(split):
-            asip_paths, times = select_paths(self.asip_paths, self.domains[split]['time'])
-            cimr_paths, _ = select_paths(self.cimr_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
-            cristal_paths, _ = select_paths(self.cristal_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
-            cov_paths, _ = select_paths(self.covariates_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
+            # Get paths only for active sources
+            paths_dict = {}
+            times = None
             
-            if split=="test":
-                XrDatasetMultiRes = XrDatasetMultiResTest
-            else:
-                XrDatasetMultiRes = XrDatasetMultiResTrain
-            return XrDatasetMultiRes(
-                multires=self.multires,
-                asip_paths=asip_paths,
-                cimr_paths=cimr_paths,
-                cristal_paths=cristal_paths,
-                covariates_paths=cov_paths,
-                covariates=COVARIATES,
-                tgt_vars=self.tgt_vars,
-                mask=self.mask,
-                times=times,
-                **self.xrds_kw,
-                postpro_fn=self.post_fn(rand_obs=(split=='train')),
-                res=self.res,
-                pad=self.pads[0 if split == 'train' else 1 if split == 'val' else 2],
-                stride_test=(split != 'train'),
-                resize=self.resize,
-                subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
-            )
+            for source in self.active_sources:
+                source_paths_attr = f"{source}_paths"
+                if hasattr(self, source_paths_attr):
+                    fmt = "%Y%m%d" if source == "asip" else "%Y-%m-%d"
+                    paths, times = select_paths(
+                        getattr(self, source_paths_attr), 
+                        self.domains[split]['time'],
+                        fmt=fmt
+                    )
+                    paths_dict[f"{source}_paths"] = paths
+            
+            # Ensure all required paths are present (even if empty)
+            for source in ['asip', 'cimr', 'cristal']:
+                if f"{source}_paths" not in paths_dict:
+                    paths_dict[f"{source}_paths"] = np.array([])  # Empty array instead of None
+            
+            # Get covariate paths if configured
+            if self.covariates and len(self.covariates) > 0:
+                cov_paths, _ = select_paths(
+                    self.covariates_paths,
+                    self.domains[split]['time'],
+                    fmt="%Y-%m-%d"
+                )
+                paths_dict['covariates_paths'] = cov_paths
 
-        self.train_ds = create_dataset('train')
+            # TEST: Use XrDatasetMultiResTest with patch_dims_dict
+            if split == "test":
+                return XrDatasetMultiResTest(
+                    multires=self.multires,
+                    patch_dims_dict=self.patch_dims_dict,  # Pass patch_dims_dict (can be None)
+                    strides_test_dict=self.strides_test_dict, 
+                    satellite_vars=self.satellite_vars,
+                    covariates=self.covariates,
+                    target_vars=self.target_vars,
+                    var_mapping=self.var_mapping,
+                    **paths_dict,
+                    mask=self.mask,
+                    times=times,
+                    **self.xrds_kw,
+                    postpro_fn=self.post_fn(rand_obs=False),
+                    res=self.res,
+                    pad=self.pads[2],
+                    stride_test=True,
+                    resize=self.resize,
+                    subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
+                )
+            
+            # TRAIN/VAL: Use XrDatasetMultiResTrain (unchanged, no patch_dims_dict)
+            else:
+                return XrDatasetMultiResTrain(
+                    multires=self.multires,
+                    satellite_vars=self.satellite_vars,
+                    covariates=self.covariates,
+                    target_vars=self.target_vars,
+                    var_mapping=self.var_mapping,
+                    **paths_dict,
+                    mask=self.mask,
+                    times=times,
+                    **self.xrds_kw,
+                    postpro_fn=self.post_fn(rand_obs=(split == 'train')),
+                    res=self.res,
+                    pad=self.pads[0 if split == 'train' else 1],
+                    stride_test=False,
+                    resize=self.resize,
+                    subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
+                )
+
+        #self.train_ds = create_dataset('train')
         #self.val_ds = create_dataset('val')
-        #self.test_ds = create_dataset('test')
+        self.test_ds = create_dataset('test')
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_ds, shuffle=True, **self.dl_kw)
@@ -492,6 +686,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
         return torch.utils.data.DataLoader(self.val_ds, batch_sampler=sampler, num_workers=self.dl_kw["num_workers"])
 
     def test_dataloader(self):
-        return { f"patch_x{res}": torch.utils.data.DataLoader(ds, shuffle=False, **self.dl_kw)
-                 for res, ds in self.test_ds.datasets.items() }
-
+        return {
+            f"patch_x{res}": torch.utils.data.DataLoader(ds, shuffle=False, **self.dl_kw)
+            for res, ds in self.test_ds.datasets.items()
+        }
