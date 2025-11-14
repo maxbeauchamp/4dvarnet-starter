@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from collections import Counter
 from scipy.interpolate import RegularGridInterpolator
 
+# test push
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 @dataclass
@@ -113,10 +114,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         # Loss balancing configuration
         self.loss_target_ratios = {
-            'base': 0.70,      # 70% of total loss
-            'grad': 0.10,      # 10% of total loss
+            'base': 0.8,      # 70% of total loss
+            'grad': 0.1,      # 10% of total loss
             'prior': 0.05,     # 5% of total loss
-            'tv': 0.,#0.10,        # 10% of total loss
+            'tv': 0.05,#0.10,        # 10% of total loss
             'context': 0.#0.05    # 5% of total loss
         }
         
@@ -124,7 +125,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.register_buffer('loss_ema', torch.zeros(5))  # [base, grad, prior, tv, context]
         self.ema_alpha = 0.1
         self.loss_names = ['base', 'grad', 'prior', 'tv', 'context']
-
 
     def _process_weights(self, weight_dict, prefix='_weight'):
         """
@@ -258,22 +258,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         
         print(f"Saved debug plots: {filename_inp.name} and {filename_tgt.name}")
 
-    @property
-    def norm_stats(self):
-        if self._norm_stats is not None:
-            return self._norm_stats
-        elif self.trainer.datamodule is not None:
-            return self.trainer.datamodule.norm_stats()
-        return (0., 1.)
-
-    @property
-    def norm_stats_covs(self):
-        if self._norm_stats_covs is not None:
-            return self._norm_stats_covs
-        elif self.trainer.datamodule is not None:
-            return self.trainer.datamodule.norm_stats_covs()
-        return (0., 1.)
-    
     def plot_input_target_mapping_debug(self, batch, res, phase="train", batch_idx=0):
         """
         Plot only input variables that are mapped to target variables.
@@ -300,7 +284,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 input_target_pairs.append((src_var, tgt_var))
         
         if not input_target_pairs:
-            print(f"⚠️  No input-target pairs found in batch for plotting")
+            print(f" No input-target pairs found in batch for plotting")
             return
         
         n_pairs = len(input_target_pairs)
@@ -394,7 +378,177 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         plt.savefig(filename, dpi=100, bbox_inches='tight')
         plt.close(fig)
         
-        print(f"✅ Saved input-target mapping plot: {filename.name}")
+        print(f" Saved input-target mapping plot: {filename.name}")
+
+    def plot_tv_loss_zones(self, pred, mask_interp, mask_obs, 
+                        dilated_interp, dilated_obs, boundary_mask,
+                        mask_yy, mask_xx, grad_yy, grad_xx):
+        """
+        Plot zones where TV loss is computed for debugging.
+        
+        Args:
+            pred: (B, T, H, W) prediction
+            mask_interp: original interpolation mask
+            mask_obs: original observation mask
+            dilated_interp: dilated interpolation mask
+            dilated_obs: dilated observation mask
+            boundary_mask: intersection of dilated masks
+            mask_yy: vertical gradient mask (H-2, W)
+            mask_xx: horizontal gradient mask (H, W-2)
+            grad_yy: vertical second derivatives
+            grad_xx: horizontal second derivatives
+        """
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Patch
+        
+        # Extract first sample and middle timestep for visualization
+        B, T, H, W = pred.shape
+        t_idx = T // 2
+        
+        # Move to CPU and convert to numpy
+        pred_np = pred[0, t_idx].detach().cpu().numpy()
+        mask_interp_np = mask_interp[0, t_idx].cpu().numpy()
+        mask_obs_np = mask_obs[0, t_idx].cpu().numpy()
+        dilated_interp_np = dilated_interp[0, t_idx].cpu().numpy()
+        dilated_obs_np = dilated_obs[0, t_idx].cpu().numpy()
+        boundary_mask_np = boundary_mask[0, t_idx].cpu().numpy()
+        
+        # Create composite mask for visualization
+        # 0: neither, 1: interp only, 2: obs only, 3: boundary (where TV is computed)
+        composite = np.zeros_like(mask_interp_np, dtype=int)
+        composite[mask_interp_np] = 1
+        composite[mask_obs_np] = 2
+        composite[boundary_mask_np] = 3
+        
+        # Create figure with multiple subplots
+        fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+        
+        # 1. Original prediction
+        ax = axes[0, 0]
+        vmin, vmax = np.nanpercentile(pred_np, [2, 98])
+        im = ax.imshow(pred_np, cmap='viridis', vmin=vmin, vmax=vmax)
+        ax.set_title(f'Prediction (t={t_idx})', fontsize=10, fontweight='bold')
+        ax.axis('off')
+        plt.colorbar(im, ax=ax, fraction=0.046)
+        
+        # 2. Original masks
+        ax = axes[0, 1]
+        mask_rgb = np.zeros((*mask_interp_np.shape, 3))
+        mask_rgb[mask_interp_np] = [1, 0, 0]  # Red: interpolation
+        mask_rgb[mask_obs_np] = [0, 0, 1]     # Blue: observations
+        ax.imshow(mask_rgb)
+        ax.set_title('Original Masks\n(Red=Interp, Blue=Obs)', fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # 3. Dilated masks
+        ax = axes[0, 2]
+        dilated_rgb = np.zeros((*dilated_interp_np.shape, 3))
+        dilated_rgb[dilated_interp_np] = [1, 0.5, 0.5]  # Light red
+        dilated_rgb[dilated_obs_np] = [0.5, 0.5, 1]     # Light blue
+        ax.imshow(dilated_rgb)
+        ax.set_title('Dilated Masks\n(Expanded zones)', fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # 4. Boundary mask (intersection)
+        ax = axes[0, 3]
+        cmap_boundary = plt.cm.colors.ListedColormap(['white', 'yellow'])
+        ax.imshow(boundary_mask_np, cmap=cmap_boundary, vmin=0, vmax=1)
+        ax.set_title(f'Boundary Mask\n({boundary_mask_np.sum()} pixels)', 
+                    fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # 5. Composite view (all zones)
+        ax = axes[1, 0]
+        cmap_composite = plt.cm.colors.ListedColormap(['white', 'red', 'blue', 'yellow'])
+        bounds = [0, 1, 2, 3, 4]
+        norm = plt.cm.colors.BoundaryNorm(bounds, cmap_composite.N)
+        im = ax.imshow(composite, cmap=cmap_composite, norm=norm)
+        ax.set_title('Composite View', fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # Custom legend
+        legend_elements = [
+            Patch(facecolor='white', edgecolor='black', label='Neither'),
+            Patch(facecolor='red', label='Interpolation only'),
+            Patch(facecolor='blue', label='Observation only'),
+            Patch(facecolor='yellow', label='Boundary (TV computed here)')
+        ]
+        ax.legend(handles=legend_elements, loc='center', fontsize=8)
+        
+        # 6. Vertical gradient mask (mask_yy)
+        ax = axes[1, 1]
+        # Pad to original size for visualization
+        mask_yy_padded = np.pad(mask_yy[0, t_idx].cpu().numpy(), 
+                                ((1, 1), (0, 0)), mode='constant')
+        cmap_grad = plt.cm.colors.ListedColormap(['white', 'green'])
+        ax.imshow(mask_yy_padded, cmap=cmap_grad, vmin=0, vmax=1)
+        ax.set_title(f'Vertical Gradient Mask\n({mask_yy[0, t_idx].sum().item():.0f} pixels)', 
+                    fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # 7. Horizontal gradient mask (mask_xx)
+        ax = axes[1, 2]
+        mask_xx_padded = np.pad(mask_xx[0, t_idx].cpu().numpy(),
+                                ((0, 0), (1, 1)), mode='constant')
+        ax.imshow(mask_xx_padded, cmap=cmap_grad, vmin=0, vmax=1)
+        ax.set_title(f'Horizontal Gradient Mask\n({mask_xx[0, t_idx].sum().item():.0f} pixels)',
+                    fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # 8. Combined gradient zones
+        ax = axes[1, 3]
+        combined_grad = np.zeros((H, W))
+        # Pad masks to original size
+        mask_yy_full = np.pad(mask_yy[0, t_idx].cpu().numpy(), ((1, 1), (0, 0)), mode='constant')
+        mask_xx_full = np.pad(mask_xx[0, t_idx].cpu().numpy(), ((0, 0), (1, 1)), mode='constant')
+        combined_grad[mask_yy_full] = 1
+        combined_grad[mask_xx_full] = 1
+        ax.imshow(combined_grad, cmap=cmap_grad, vmin=0, vmax=1)
+        total_pixels = mask_yy[0, t_idx].sum().item() + mask_xx[0, t_idx].sum().item()
+        ax.set_title(f'Combined Gradient Zones\n({total_pixels:.0f} total pixels)',
+                    fontsize=10, fontweight='bold')
+        ax.axis('off')
+        
+        # Global title with statistics
+        n_interp = mask_interp_np.sum()
+        n_obs = mask_obs_np.sum()
+        n_boundary = boundary_mask_np.sum()
+        n_total = H * W
+        
+        fig.suptitle(
+            f'TV Loss Computation Zones (Step {self.global_step})\n'
+            f'Interp: {n_interp}/{n_total} ({100*n_interp/n_total:.1f}%) | '
+            f'Obs: {n_obs}/{n_total} ({100*n_obs/n_total:.1f}%) | '
+            f'Boundary: {n_boundary}/{n_total} ({100*n_boundary/n_total:.1f}%)',
+            fontsize=14, fontweight='bold'
+        )
+        
+        plt.tight_layout()
+        
+        # Save figure
+        filename = self.debug_plot_dir / f'tv_loss_zones_step{self.global_step:06d}.png'
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        
+        print(f" Saved TV loss visualization: {filename.name}")
+
+    @property
+    def norm_stats(self):
+        if self._norm_stats is not None:
+            return self._norm_stats
+        elif self.trainer.datamodule is not None:
+            return self.trainer.datamodule.norm_stats()
+        return (0., 1.)
+
+    @property
+    def norm_stats_covs(self):
+        if self._norm_stats_covs is not None:
+            return self._norm_stats_covs
+        elif self.trainer.datamodule is not None:
+            return self.trainer.datamodule.norm_stats_covs()
+        return (0., 1.)
 
     def configure_optimizers(self):
         if self.opt_fn is not None:
@@ -706,7 +860,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 ]
             
                 if grad_norms:
-                    print(f"Step {self.global_step}: ✅ {len(grad_norms)} params with gradients")
+                    print(f"Step {self.global_step}:  {len(grad_norms)} params with gradients")
                     print(f"  Mean: {np.mean(grad_norms):.6e}, Max: {np.max(grad_norms):.6e}, Min: {np.min(grad_norms):.6e}")
                 else:
                     print(f"Step {self.global_step}: NO GRADIENTS!")
@@ -726,7 +880,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         if self.global_rank == 0:
             print(f"\n[Epoch {epoch}] Training resolution: {train_res}")
 
-        # ✅ LOG: Print learning rate at start of epoch
+        #  LOG: Print learning rate at start of epoch
         if self.optimizers() is not None:
             optimizer = self.optimizers()
             if isinstance(optimizer, list):
@@ -837,7 +991,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 constrained[pred_var_name] = pred
         
         return constrained
-
     def multistep(self, batch, phase=""):
         """
         Multi-resolution training with three strategies:
@@ -967,7 +1120,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         
         return total_loss, out
 
-    def total_variation_loss(self, pred, mask_interp, dilation_radius=2):
+    def total_variation_loss_classic(self, pred, mask_interp, dilation_radius=2):
         """
         Compute Total Variation loss on interpolated pixels and their neighborhood.
         Encourages spatial smoothness, especially at the boundary between 
@@ -1036,6 +1189,91 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             tv_w = torch.tensor(0.0, device=pred.device)
         
         tv_loss = tv_h + tv_w
+        
+        return tv_loss
+    
+    def total_variation_loss(self, pred, mask_interp, mask_obs, dilation_radius=2):
+        """
+        Compute Total Variation loss at the boundary between interpolated and observed pixels.
+        Penalizes abrupt spatial gradients at the transition zone.
+        
+        Args:
+            pred: (B, T, H, W) prediction
+            mask_interp: (B, T, H, W) boolean mask of interpolated pixels
+            mask_obs: (B, T, H, W) boolean mask of observed pixels
+            dilation_radius: number of pixels to extend each mask (default: 2)
+        
+        Returns:
+            tv_loss: scalar tensor
+        """
+        B, T, H, W = pred.shape
+        
+        #  1. Create boundary mask: intersection of dilated interpolation zone and dilated observation zone
+        if dilation_radius > 0:
+            kernel_size = 2 * dilation_radius + 1
+            kernel = torch.ones(1, 1, kernel_size, kernel_size, device=pred.device)
+            
+            # Reshape masks for conv2d: (B, T, H, W) -> (B*T, 1, H, W)
+            mask_interp_flat = mask_interp.float().reshape(B * T, 1, H, W)
+            mask_obs_flat = mask_obs.float().reshape(B * T, 1, H, W)
+            
+            # Dilate both masks
+            dilated_interp = F.conv2d(mask_interp_flat, kernel, padding=dilation_radius, stride=1)
+            dilated_obs = F.conv2d(mask_obs_flat, kernel, padding=dilation_radius, stride=1)
+            
+            # Threshold to get binary masks
+            dilated_interp = (dilated_interp > 0).reshape(B, T, H, W)
+            dilated_obs = (dilated_obs > 0).reshape(B, T, H, W)
+            
+            # Boundary mask = intersection of both dilated zones
+            boundary_mask = dilated_interp & dilated_obs
+        else:
+            # No dilation: direct intersection (rare case)
+            boundary_mask = mask_interp & mask_obs
+        
+        # 2. Compute spatial gradients of prediction
+        # Vertical gradient (using Sobel-like operator for robustness)
+        grad_y = pred[:, :, 1:, :] - pred[:, :, :-1, :]  # (B, T, H-1, W)
+        # Horizontal gradient
+        grad_x = pred[:, :, :, 1:] - pred[:, :, :, :-1]  # (B, T, H, W-1)
+        
+        # 3. Compute second derivatives (measure of gradient variation)
+        # Second derivative in y: d²f/dy² ≈ grad_y[i+1] - grad_y[i]
+        grad_yy = torch.abs(grad_y[:, :, 1:, :] - grad_y[:, :, :-1, :])  # (B, T, H-2, W)
+        
+        # Second derivative in x: d²f/dx²
+        grad_xx = torch.abs(grad_x[:, :, :, 1:] - grad_x[:, :, :, :-1])  # (B, T, H, W-2)
+        
+        # 4. Apply boundary mask to second derivatives
+        # Mask must match dimensions of second derivatives
+        # For grad_yy: need mask at (B, T, H-2, W)
+        mask_yy = boundary_mask[:, :, 1:-1, :]  # Remove first and last rows
+        
+        # For grad_xx: need mask at (B, T, H, W-2)
+        mask_xx = boundary_mask[:, :, :, 1:-1]  # Remove first and last columns
+        
+        #  PLOT TV LOSS COMPUTATION ZONES (every 100 steps)
+        #if self.global_step % 100 == 0 and self.trainer.is_global_zero:
+        #self.plot_tv_loss_zones(
+        #        pred, mask_interp, mask_obs, 
+        #        dilated_interp, dilated_obs, boundary_mask,
+        #        mask_yy, mask_xx, grad_yy, grad_xx
+        #    ) 
+        # 5. Compute TV loss only on boundary
+        n_valid_yy = mask_yy.sum()
+        n_valid_xx = mask_xx.sum()
+        
+        if n_valid_yy > 0:
+            tv_yy = (grad_yy[mask_yy]).mean()
+        else:
+            tv_yy = torch.tensor(0.0, device=pred.device)
+        
+        if n_valid_xx > 0:
+            tv_xx = (grad_xx[mask_xx]).mean()
+        else:
+            tv_xx = torch.tensor(0.0, device=pred.device)
+        
+        tv_loss = tv_yy + tv_xx
         
         return tv_loss
 
@@ -1120,7 +1358,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             else:
                 self.loss_ema = (1 - self.ema_alpha) * self.loss_ema + self.ema_alpha * losses.detach()
         
-        # ✅ Use the same EMA for both train and val (computed during training)
+        #  Use the same EMA for both train and val (computed during training)
         # Compute target magnitudes based on ratios
         total_ema = self.loss_ema.sum()
         if total_ema == 0:  # Safety check (should not happen after first batch)
@@ -1136,7 +1374,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         
         # Compute weights: target / current (with clipping to avoid instability)
         weights = target_magnitudes / (self.loss_ema + 1e-8)
-        weights = torch.clamp(weights, 0.1, 10.0)  # Prevent extreme weights
+        #weights = torch.clamp(weights, 0.00001, 10.0)  # Prevent extreme weights
         
         return {
             'base': weights[0].item(),
@@ -1177,7 +1415,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             total_grad_loss += grad_loss
             
             #  2. Total Variation on interpolated regions
-            tv_loss = self.total_variation_loss(pred, mask_interp, dilation_radius=2)
+            #tv_loss = self.total_variation_loss(pred, mask_interp, dilation_radius=2)
+            mask_target = batch._asdict()[var_name].isfinite()
+            tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
             total_tv_loss += tv_loss
             
             #  3. Spatial context with observations
@@ -1760,18 +2000,18 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     print(f"      Current:    {current_shape}")
                     print(f"      → Using current model's weight")
                     
-                    # ✅ Replace with current model's weight
+                    #  Replace with current model's weight
                     checkpoint_state[key] = current_state[key]
                     adapted_keys.append(key)
         
         if adapted_keys:
-            print(f"\n  ✅ Adapted {len(adapted_keys)} weight tensors:")
+            print(f"\n   Adapted {len(adapted_keys)} weight tensors:")
             for key in adapted_keys:
                 print(f"      - {key}")
         else:
-            print("  ✅ No weight adaptation needed (shapes match)")
+            print("   No weight adaptation needed (shapes match)")
         
         print("="*60 + "\n")
         
-        # ✅ Update checkpoint with adapted weights
+        #  Update checkpoint with adapted weights
         checkpoint["state_dict"] = checkpoint_state

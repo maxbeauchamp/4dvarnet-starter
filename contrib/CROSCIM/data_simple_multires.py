@@ -21,7 +21,7 @@ class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
         self.multires = multires
         self.input_vars = input_vars  # Store which variables are available
         self.db = {}
-        
+
         for res in self.multires:
             self.db[f"patch_x{res}"] = xr.open_dataset(paths[f"patch_x{res}"]).isel(record=split)
         
@@ -56,7 +56,6 @@ class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
             out[f"patch_x{res}"] = item
         
         return out
-
 
 class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
     def __init__(self, 

@@ -188,6 +188,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
+    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sic_res50.ckpt
     save_dir: /dmidata/users/maxb/results
 
 defaults:

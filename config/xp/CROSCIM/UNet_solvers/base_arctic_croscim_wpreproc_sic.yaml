@@ -83,7 +83,7 @@ datamodule:
   multires: [50, 10, 2]
   
   # Data splits
-  split_train: {_target_: builtins.slice, _args_: [0, 100]}
+  split_train: {_target_: builtins.slice, _args_: [0, 1450]}
   split_val: {_target_: builtins.slice, _args_: [1450, 1490]}
   split_test: {_target_: builtins.slice, _args_: [1490, 1500]}
   
