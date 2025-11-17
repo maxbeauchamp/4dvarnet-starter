@@ -417,7 +417,7 @@ def save_file_list(required_files, output_file="required_files.txt"):
 if __name__ == "__main__":
     # ✅ Configure your date range here
     START_DATE = "2022-02-01"
-    END_DATE = "2022-02-15"
+    END_DATE = "2022-02-16"
     
     # Extract required files (no DataModule instantiation needed!)
     required_files = extract_files_for_dates(

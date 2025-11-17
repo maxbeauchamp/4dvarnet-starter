@@ -3,6 +3,10 @@
 paths:
   src: /dmidata/users/maxb
   mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
+  asip: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3
+  cimr: /dmidata/users/maxb/CROSCIM_dataset/out_CIMR
+  cristal: /dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL
+  covariates: /dmidata/users/maxb/CROSCIM_dataset/atm_data
 
 domain: ???
 
@@ -75,15 +79,19 @@ datamodule:
   asip_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: asip
+    paths: ${paths}
   cimr_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: cimr
+    paths: ${paths}
   cristal_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: cristal
+    paths: ${paths}
   covariates_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: covariates
+    paths: ${paths}
   mask_path: ${paths.mask}
   domain_name: arctic_croscim
   domains:
@@ -219,8 +227,8 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet.ckpt
-    save_dir: /dmidata/users/maxb/results
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet.ckpt
+    save_dir: ${paths.src}/results
 
 defaults:
   - /domain: arctic_croscim

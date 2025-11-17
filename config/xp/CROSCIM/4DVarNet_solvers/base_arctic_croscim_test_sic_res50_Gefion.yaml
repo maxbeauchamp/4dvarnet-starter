@@ -1,12 +1,12 @@
 # @package _global_
 
 paths:
-  src: /dmidata/users/maxb
-  mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
-  asip: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3
-  cimr: /dmidata/users/maxb/CROSCIM_dataset/out_CIMR
-  cristal: /dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL
-  covariates: /dmidata/users/maxb/CROSCIM_dataset/atm_data
+  src: /dcai/users/beamax
+  mask: /dcai/users/beamax/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
+  asip: /dcai/projects/cu_0026/croscim_inference/asip
+  cimr: /dcai/projects/cu_0026/croscim_inference/cimr
+  cristal: /dcai/projects/cu_0026/croscim_inference/cristal
+  covariates: /dcai/projects/cu_0026/croscim_inference/covariates
 
 domain: ???
 
@@ -14,25 +14,21 @@ domain: ???
 var_config:
   # Satellite variables by source
   satellite_vars:
-    cimr: ["SIC", "SIT"]
-    cristal: ["SIT", "SSH"]
+    cimr: ["SIC"]
     asip: ["sic"]
   
   # Atmospheric covariates
   covariates: ["msl", "t2m", "u10", "v10"]
   
   # Target variables
-  target_vars: ["tgt_sic", "tgt_SIT"]
+  target_vars: ["tgt_sic"]
   
   # Mapping: which input variable initializes which target
   var_mapping:
     tgt_sic: asip_sic    # Target SIC initialized from ASIP SIC
-    tgt_SIT: cimr_SIT    # Target SIT initialized from CIMR SIT
   
   # Time steps per resolution
   time_steps:
-    patch_x2: 5
-    patch_x10: 10
     patch_x50: 15
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
@@ -107,17 +103,12 @@ datamodule:
     # TRAIN/VAL (unchanged)
     patch_dims: { time: 15, yc: 256, xc: 256}
     strides: { time: 1, yc: 28, xc: 28}
-    strides_test: {time: 1, yc: 200, xc: 200}
+    strides_test: {time: 1, yc: 294, xc: 304}
     # TEST: patch_dims_dict (different per resolution)
-        # TEST: patch_dims_dict (different per resolution)
     patch_dims_dict: 
       50: {time: 15, yc: 294, xc: 304}
-      10: {time: 15, yc: 256, xc: 256}
-      2: {time: 15, yc: 256, xc: 256}
     strides_test_dict: 
       50: {time: 1, yc: 294, xc: 304}
-      10: {time: 1, yc: 256, xc: 256}
-      2: {time: 1, yc: 256, xc: 256}  
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                     yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   dl_kw: {batch_size: 2, num_workers: 20}
@@ -152,12 +143,12 @@ datamodule:
     ssrd: {mean: -701143.5402508647, std: 785444.8336077137, type: zscore}
     strd: {mean: -1943008.2121575351, std: 466464.69271380285, type: zscore}
     tp: {mean: -0.0001834410365694742, std: 0.0005019462438424605, type: zscore}
-  multires: [50, 10, 2]
+  multires: [50]
 
 model:
   _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
   persist_rw: False
-  multires: [50, 10, 2]
+  multires: [50]
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}
@@ -174,48 +165,6 @@ model:
   solver:
     _target_: contrib.CROSCIM.solver.GradSolvers
     solvers:
-      solver_x2:
-        _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 10
-        lr_grad: 0.2
-        input_vars: ${computed.input_vars_all}
-        target_vars: ${var_config.target_vars}
-        var_mapping: ${var_config.var_mapping}
-        n_time: ${var_config.time_steps.patch_x2}
-        obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
-          w: 1.0
-          use_target: true
-        prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x2}"}
-          dim_hidden: 64
-          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x2}"}
-        grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
-          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x2}"}
-          dim_hidden: 64
-      solver_x10:
-        _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 10
-        lr_grad: 0.2
-        input_vars: ${computed.input_vars_all}
-        target_vars: ${var_config.target_vars}
-        var_mapping: ${var_config.var_mapping}
-        n_time: ${var_config.time_steps.patch_x10}
-        obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
-          w: 1.0
-          use_target: true
-        prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
-          dim_hidden: 64
-          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x10}"}
-        grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
-          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x10}"}
-          dim_hidden: 64
       solver_x50:
         _target_: contrib.CROSCIM.solver.GradSolver
         n_step: 10
@@ -231,28 +180,16 @@ model:
         prior_cost:
           _target_: contrib.CROSCIM.solver.BilinAEPriorCost
           dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 64
+          dim_hidden: 180
           dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
           _target_: contrib.CROSCIM.solver.ConvLstmGradModel
           dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 64
+          dim_hidden: 180
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
 
 optim_weight:
-  patch_x2:
-    _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 5, yc: 256, xc: 256}
-    crop: {time: 0, yc: 28, xc: 28}
-    offset: 1
-    dim_order: ["time", "yc", "xc"]
-  patch_x10:
-    _target_: src.utils.get_uniform_time_wei
-    patch_dims: {time: 10, yc: 256, xc: 256}
-    crop: {time: 0, yc: 28, xc: 28}
-    offset: 1
-    dim_order: ["time", "yc", "xc"]
   patch_x50:
     _target_: src.utils.get_uniform_time_wei
     patch_dims: {time: 15, yc: 294, xc: 304}
@@ -276,7 +213,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sic_res50.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

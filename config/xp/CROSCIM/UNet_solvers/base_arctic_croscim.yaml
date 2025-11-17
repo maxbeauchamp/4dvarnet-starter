@@ -75,15 +75,19 @@ datamodule:
   asip_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: asip
+    paths: ${paths}
   cimr_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: cimr
+    paths: ${paths}
   cristal_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: cristal
+    paths: ${paths}
   covariates_paths:
     _target_: contrib.CROSCIM.load_data.get_paths_for_source
     source: covariates
+    paths: ${paths}
   mask_path: ${paths.mask}
   domain_name: arctic_croscim
   domains:
@@ -209,7 +213,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    save_dir: /dmidata/users/maxb/results
+    save_dir: ${paths.src}/results
 
 defaults:
   - /domain: arctic_croscim

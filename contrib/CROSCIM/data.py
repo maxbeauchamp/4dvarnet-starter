@@ -190,11 +190,22 @@ class XrDataset(torch.utils.data.Dataset):
             )
             
             # Use load_mfdata which returns a dict
+            # Build paths_loaders with only active sources
+            paths_loaders = {}
+            if 'asip' in self.active_sources:
+                paths_loaders['asip'] = self.asip_paths
+            if 'cimr' in self.active_sources:
+                paths_loaders['cimr'] = self.cimr_paths
+            if 'cristal' in self.active_sources:
+                paths_loaders['cristal'] = self.cristal_paths
+            if self.covariates:
+                paths_loaders['covariates'] = self.covariates_paths
             datasets = load_mfdata(
                 times=time_slice,
                 satellite_vars=self.satellite_vars,  # Dict of {source: [vars]}
                 covariates=self.covariates,  # List of covariate names
                 slices=self.domain_limits,
+                path_loaders=paths_loaders,
                 type_coords="coords",
                 resize=self.resize,
                 domain_limits=self.domain_limits

@@ -145,15 +145,19 @@ def fast_coarsen_xr_array(da, factor_y=2, factor_x=2, dims=('yc', 'xc'), mode="m
         attrs=da.attrs
     )
 
-def load_data(type="asip"):
+def load_data(paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
+                     "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
+                     "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
+                     "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data"},
+                     type="asip"):
     if type == "asip":
-        return glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc')
+        return glob(paths["asip"] + "/*nc")
     elif type == "cimr":
-        return glob('/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc')
+        return glob(paths["cimr"] + "/CIMR5km_*nc")
     elif type == "cristal":
-        return glob('/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc')
+        return glob(paths["cristal"] + "/CRISTAL5km_*nc")
     else:
-        return glob('/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc')
+        return glob(paths["covariates"] + "/atm5km_*.nc")
 
 def concatenate(paths, var_list, slices=None, type_coords="index", resize=1, domain_limits=None):
     
@@ -323,7 +327,8 @@ def concatenate_parallel(paths, var_list, slices=None, type_coords="index", resi
 def load_mfdata(times, 
                 satellite_vars=None,
                 covariates=None,
-                slices=None, 
+                slices=None,
+                path_loaders=None,
                 type_coords="index",
                 resize=1,
                 domain_limits=None):
@@ -366,13 +371,7 @@ def load_mfdata(times,
                     for x in range((end-start).days)]
         return np.sort([f for f in files if any(s in f for s in dates)])
     
-    # Path loaders for each source
-    path_loaders = {
-        "asip": lambda: glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc'),
-        "cimr": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc'),
-        "cristal": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc'),
-    }
-    
+
     # Date format for each source
     date_formats = {
         "asip": "%Y%m%d",
@@ -390,7 +389,7 @@ def load_mfdata(times,
         print(f"Loading {source} data for variables: {vars_list}")
         
         # Get paths for this source
-        all_paths = path_loaders[source]()
+        all_paths = path_loaders[source]
         selected_paths = select_paths_from_dates(all_paths, times, fmt=date_formats[source])
         
         if len(selected_paths) == 0:
@@ -416,7 +415,7 @@ def load_mfdata(times,
     # Load covariates if requested
     if covariates:
         print(f"Loading covariates: {covariates}")
-        covariates_paths = glob('/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc')
+        covariates_paths =  path_loaders["covariates"]
         selected_cov_paths = select_paths_from_dates(covariates_paths, times, fmt="%Y-%m-%d")
         
         if len(selected_cov_paths) > 0:
@@ -431,12 +430,16 @@ def load_mfdata(times,
     return datasets
 
 
-def get_paths_for_source(source):
+def get_paths_for_source(source,
+                        paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
+                            "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
+                            "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
+                            "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data"}):
     """Get all paths for a given data source."""
     path_map = {
-        "asip": '/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc',
-        "cimr": '/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
-        "cristal": '/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
-        "covariates": '/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc',
+        "asip": paths["asip"]+'/*nc',
+        "cimr": paths["cimr"]+'/CIMR5km_*nc',
+        "cristal": paths["cristal"]+'/CRISTAL5km_*nc',
+        "covariates": paths["covariates"]+'/atm5km_*.nc',
     }
     return glob(path_map.get(source, ""))
