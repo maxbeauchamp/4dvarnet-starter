@@ -21,13 +21,7 @@ from skimage.morphology import closing, square
 from skimage.color import label2rgb
 from PIL import Image
 
-from src.ose.mod_inout import *
-from src.ose.mod_interp import *
-from src.ose.mod_stats import *
-from src.ose.mod_spectral import *
-from src.ose.mod_plot import *
-from src.ose.utils import *
-
+import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 

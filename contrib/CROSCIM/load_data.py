@@ -5,8 +5,8 @@ import xarray as xr
 import pyresample
 from numpy.lib.stride_tricks import as_strided
 from joblib import Parallel, delayed
-import cupy as cp
-from cupy.lib.stride_tricks import as_strided as as_strided_cp
+#import cupy as cp
+#from cupy.lib.stride_tricks import as_strided as as_strided_cp
 
 # Default values (can be overridden)
 DEFAULT_VAR_GROUPS = {

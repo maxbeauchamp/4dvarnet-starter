@@ -23,7 +23,9 @@ import shapely.geometry as sgeom
 import os
 from torch.utils.data.sampler import Sampler
 import torch.nn.functional as F
-
+import cartopy
+from cartopy.io.shapereader import Reader
+cartopy.config['pre_existing_data_dir'] = os.path.abspath('contrib/CROSCIM')
 
 # Create TrainingItem at module level with default config
 def create_training_item(satellite_vars, covariates, target_vars):
@@ -704,9 +706,17 @@ class BaseDataModule(pl.LightningDataModule):
                             "lat": (["yc","xc"], self.lat)
                             })
         land_mask = np.zeros((len(self.yc),len(self.xc)))
-        land_50m = cfeature.NaturalEarthFeature('physical','land','10m')
-        land_polygons_cartopy = list(land_50m.geometries())
-        land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=land_polygons_cartopy)
+        #land_10m = cfeature.NaturalEarthFeature('physical','land','10m')
+        #land_polygons_cartopy = list(land_10m.geometries())
+        zip_path = os.path.join(
+                    cartopy.config['pre_existing_data_dir'],
+                    'natural_earth',
+                    'physical',
+                    'ne_10m_land.zip'
+                )
+        reader = Reader(zip_path)
+        land_polygons_cartopy = list(reader.geometries())
+        land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=geoms)
         step_yc = np.concatenate((np.arange(len(self.yc),step=1000),np.array([len(self.yc)])))
         step_xc = np.concatenate((np.arange(len(self.xc),step=1000),np.array([len(self.xc)])))
         for i in range(len(step_yc)-1):
