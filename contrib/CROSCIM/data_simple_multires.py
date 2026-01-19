@@ -15,11 +15,12 @@ import torch.nn.functional as F
 
 class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
-    
-    def __init__(self, paths, split, multires, build_batch, input_vars=None):
+
+    def __init__(self, paths, split, multires, build_batch, input_vars=None, var_mapping=None):
         'Initialization'
         self.multires = multires
         self.input_vars = input_vars  # Store which variables are available
+        self.var_mapping = var_mapping or {}
         self.db = {}
 
         for res in self.multires:
@@ -57,6 +58,8 @@ class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
         
         return out
 
+
+
 class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
     def __init__(self, 
                  croscim_preproc_paths,
@@ -69,6 +72,7 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
                  satellite_vars=None,  # NEW: From config
                  covariates=None,      # NEW: From config
                  target_vars=None,     # NEW: From config
+                 var_mapping=None,
                  **kwargs):
 
         super().__init__()
@@ -84,7 +88,8 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
         self.covariates = covariates or DEFAULT_COVARIATES
         self.target_vars = target_vars or ["tgt_sic", "tgt_SIT"]
-        
+        self.var_mapping = var_mapping or {}
+
         # Construct input_vars automatically
         self.input_vars = self._construct_input_vars()
         
@@ -148,7 +153,8 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
             self.split_train, 
             self.multires, 
             build_batch,
-            input_vars=self.input_vars
+            input_vars=self.input_vars,
+            var_mapping=self.var_mapping
         )
         
         self.val_ds = XrDatasetMultiRes_simplify(
@@ -156,7 +162,8 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
             self.split_val, 
             self.multires, 
             build_batch,
-            input_vars=self.input_vars
+            input_vars=self.input_vars,
+            var_mapping=self.var_mapping
         )
         
         self.test_ds = XrDatasetMultiRes_simplify(
@@ -164,7 +171,8 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
             self.split_test, 
             self.multires, 
             build_batch,
-            input_vars=self.input_vars
+            input_vars=self.input_vars,
+            var_mapping=self.var_mapping
         )
         
         print(f"Datasets ready:")

@@ -1,6 +1,13 @@
 from hydra.core.config_store import ConfigStore
 from omegaconf import OmegaConf
-import esm_parser
+#import esm_parser
+
+def last_resolver(x):
+    if isinstance(x, list):
+        return x[-1]
+    return x
+
+OmegaConf.register_new_resolver("last", last_resolver)
 
 OmegaConf.register_new_resolver(
     "_singleton",

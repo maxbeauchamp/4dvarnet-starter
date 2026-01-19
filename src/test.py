@@ -15,13 +15,10 @@ def base_test(trainer, dm, lit_mod,
     lit_mod._norm_stats = dm.norm_stats()
     dm._norm_stats = dm.norm_stats()
     '''
-
-    version = 'version_' + str(random.randint(0, 100000))
-    logger_name = "lightning_logs"
-    print(os.path.join(save_dir, logger_name, version))
-    tb_logger = loggers.TensorBoardLogger(save_dir=save_dir,
-                                                   name=logger_name,
-                                                   version=version)
-    trainer.logger = tb_logger
+    if trainer.logger is not None:
+        print()
+        print("Logdir:", trainer.logger.log_dir)
+        print()
 
     trainer.test(lit_mod, datamodule=dm, ckpt_path=ckpt_path)
+

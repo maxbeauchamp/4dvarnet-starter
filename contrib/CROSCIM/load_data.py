@@ -5,6 +5,7 @@ import xarray as xr
 import pyresample
 from numpy.lib.stride_tricks import as_strided
 from joblib import Parallel, delayed
+import os
 #import cupy as cp
 #from cupy.lib.stride_tricks import as_strided as as_strided_cp
 
@@ -430,16 +431,36 @@ def load_mfdata(times,
     return datasets
 
 
-def get_paths_for_source(source,
-                        paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
-                            "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
-                            "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
-                            "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data"}):
-    """Get all paths for a given data source."""
-    path_map = {
-        "asip": paths["asip"]+'/*nc',
-        "cimr": paths["cimr"]+'/CIMR5km_*nc',
-        "cristal": paths["cristal"]+'/CRISTAL5km_*nc',
-        "covariates": paths["covariates"]+'/atm5km_*.nc',
+
+
+
+
+def get_paths_for_source(source, path):
+
+    # Forcer la validation du dossier parent
+    try:
+        _ = os.listdir(path)
+    except PermissionError:
+        print(f"Permission denied accessing {path} initially, retrying...")
+        _ = os.listdir(path)
+
+    # Construire le pattern selon la source
+    pattern_map = {
+        "asip": os.path.join(path, "*.nc"),
+        "cimr": os.path.join(path, "CIMR5km_*.nc"),
+        "cristal": os.path.join(path, "CRISTAL5km_*.nc"),
+        "covariates": os.path.join(path, "atm5km_*.nc"),
     }
-    return glob(path_map.get(source, ""))
+
+    pattern = pattern_map[source]
+
+    # Récupérer tous les fichiers correspondant
+    files = glob(pattern)
+    
+    # Avertir si aucun fichier n'a été trouvé
+    if not files:
+        print(f"Warning: no files found for source '{source}' with pattern '{pattern}'")
+    
+    return files
+
+    

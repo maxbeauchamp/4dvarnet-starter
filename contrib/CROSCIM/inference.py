@@ -17,8 +17,6 @@ from contrib.CROSCIM.data import *
 from dataclasses import dataclass
 from collections import Counter
 from scipy.interpolate import RegularGridInterpolator
-from torch.utils.data import DataLoader, TensorDataset
-
 
 # test push
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -125,14 +123,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         
         # Running averages for auto-balancing (EMA with alpha=0.1)
         self.register_buffer('loss_ema', torch.zeros(5))  # [base, grad, prior, tv, context]
-        self.ema_alpha = 0.2
+        self.ema_alpha = 0.1
         self.loss_names = ['base', 'grad', 'prior', 'tv', 'context']
-
-        #Sauvegarde de quelques visus de test
-        self.max_test_viz = 5  # nombre de batches à visualiser
-        self.test_viz = {}     # rés → liste d’exemples
-        self.test_viz_dir = Path("test_viz_plots")
-        self.test_viz_dir.mkdir(exist_ok=True)
 
     def _process_weights(self, weight_dict, prefix='_weight'):
         """
@@ -151,143 +143,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             processed[res_key] = getattr(self, buffer_name)
         
         return processed
-
-    #Fonction pour extraire les tenseurs et les sauvegarder pour affichage ultérieur
-    def _log_test_example(self, batch_res, out_patch, res):
-        """
-        Log a test example ONLY IF the target contains at least 5% of values non-NaN and > 0.
-        """
-        print(f"[DEBUG] _log_test_example called for resolution x{res}")
-
-        input_dict = {} 
-        tgt_dict = {}
-        out_dict = {}
-
-        for var in self.tgt_vars:
-
-            inp = batch_res._asdict()[self.var_mapping[var]]
-
-            # ---- Check that the target exists ----
-            if not hasattr(batch_res, var):
-                print(f"[DEBUG]   Missing target variable {var}, skipping.")
-                continue
-
-            tgt = getattr(batch_res, var)
-            if tgt is None:
-                print(f"[DEBUG]   Target {var} is None, skipping.")
-                continue
-
-            # Pred key
-            pred_var = f"pred_{var.split('_',1)[1]}" if "_" in var else f"pred_{var}"
-            if pred_var not in out_patch:
-                print(f"[DEBUG]   Missing pred {pred_var}, skipping.")
-                continue
-
-            # ---- Criterion: at least 5% of values non-NaN and > 0 ----
-            valid_mask = (~torch.isnan(tgt)) & (tgt > 0)
-            num_valid = valid_mask.sum().item()
-            num_total = tgt.numel()
-            ratio_valid = num_valid / num_total
-
-            print(f"[DEBUG]   Target {var}: {num_valid}/{num_total} valid pixels ({ratio_valid:.2%})")
-
-            if ratio_valid < 0.05:
-                print(f"[DEBUG]   Target {var} INVALID (<5% valid) → discarding batch")
-                return  # ignore completely this batch
-            else:
-                print(f"[DEBUG]   Target {var} VALID (>=5% valid)")
-
-            input_dict[var] = inp
-            tgt_dict[var] = tgt
-            out_dict[pred_var] = out_patch[pred_var]
-
-        # ---- Store valid sample ----
-        if res not in self.test_viz:
-            print(f"[DEBUG]   Creating new list for resolution x{res}")
-            self.test_viz[res] = []
-
-        self.test_viz[res].append((input_dict, tgt_dict, out_dict))
-        print(f"[DEBUG]   Sample ADDED for res x{res} → total = {len(self.test_viz[res])}")
-
-
-
-
-    # Fonction pour afficher les résultats de test
-    def plot_test_results(self):
-
-        if not hasattr(self, "test_viz") or len(self.test_viz) == 0:
-            print("[DEBUG] No test_viz data found.")
-            return
-
-        os.makedirs(self.test_viz_dir, exist_ok=True)
-
-        for res, samples in self.test_viz.items():
-            print(f"[DEBUG] Plotting resolution x{res}, nb samples = {len(samples)}")
-
-            vars_list = list(samples[0][0].keys())
-
-            for batch_idx, (input_dict, tgt_dict, out_dict) in enumerate(samples):
-
-                # Collect valid slices per variable
-                valid_slices_per_var = {}
-                for var in vars_list:
-                    tgt_tensor = tgt_dict[var][0]  # first element of batch
-                    valid_mask = (~torch.isnan(tgt_tensor)) & (tgt_tensor > 0)
-                    valid_slices = valid_mask.view(valid_mask.shape[0], -1).any(dim=1).nonzero(as_tuple=True)[0]
-                    valid_slices_per_var[var] = valid_slices
-
-                # Grid: rows = max valid slices, columns = 3 per variable (TGT / OUT / DIFF)
-                n_rows = max(len(s) for s in valid_slices_per_var.values())
-                n_cols = len(vars_list) * 4
-                fig, axs = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 3 * n_rows))
-
-                if n_rows == 1:
-                    axs = [axs]
-
-                for col_idx, var in enumerate(vars_list):
-                    slices = valid_slices_per_var[var]
-                    pred_var = f"pred_{var.split('_',1)[1]}" if "_" in var else f"pred_{var}"
-
-                    for row_idx in range(n_rows):
-                        ax_input = axs[row_idx][col_idx*3]
-                        ax_tgt  = axs[row_idx][col_idx*3 + 1]
-                        ax_out  = axs[row_idx][col_idx*3 + 2]
-                        ax_diff = axs[row_idx][col_idx*3 + 3]
-
-                        if row_idx < len(slices):
-                            t_idx = slices[row_idx]
-
-                            input_img = input_dict[var][0, t_idx].cpu().numpy()
-                            tgt_img = tgt_dict[var][0, t_idx].cpu().numpy()
-                            out_img = out_dict[pred_var][0, t_idx].cpu().numpy()
-
-                            diff_img = out_img - tgt_img
-                            diff_img = np.where(np.isnan(tgt_img), np.nan, diff_img)
-                            
-                            ax_input.imshow(input_img, cmap="viridis")
-                            ax_tgt.imshow(tgt_img, cmap="viridis")
-                            ax_out.imshow(out_img, cmap="viridis")
-                            ax_diff.imshow(diff_img, cmap="coolwarm")
-
-                        ax_input.axis("off")
-                        ax_tgt.axis("off")
-                        ax_out.axis("off")
-                        ax_diff.axis("off")
-
-                        if row_idx == 0:
-                            ax_input.set_title(f"INP {var}")                            
-                            ax_tgt.set_title(f"TGT {var}")
-                            ax_out.set_title(f"OUT {var}")
-                            ax_diff.set_title(f"DIFF {var}")
-
-                plt.suptitle(f"Resolution x{res} — Batch {batch_idx} valid slices")
-                out_path = os.path.join(self.test_viz_dir, f"res{res}_batch{batch_idx}_slices.png")
-                print(f"[DEBUG] Saving figure to {out_path}")
-                plt.savefig(out_path, dpi=150, bbox_inches="tight")
-                plt.close(fig)
-
-
-
 
     def _to_tensor(self, weight_fn):
         """
@@ -1263,15 +1118,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # Apply constraints
             out[f"patch_x{res}"] = self._apply_constraints(out[f"patch_x{res}"])
         
-            # ---------------- VISUALISATION POUR LA PHASE TEST ----------------
-            if phase == "test":
-                if len(self.test_viz.get(res, [])) < self.max_test_viz:
-                    self._log_test_example(
-                        batch_res,
-                        out[f"patch_x{res}"],
-                        res
-                    )
-
         return total_loss, out
 
     def total_variation_loss_classic(self, pred, mask_interp, dilation_radius=2):
@@ -1485,7 +1331,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 context_loss = torch.tensor(0.0, device=pred.device, requires_grad=True)
         
         return context_loss
- 
+
     def compute_balanced_weights(self, loss_values):
         """
         Compute weights to balance losses according to target ratios.
@@ -1505,8 +1351,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             loss_values['context']
         ])
         
-        #print(f"[compute_balanced_weights] losses:", losses.tolist())
-
         # Update EMA
         if self.training:
             if self.loss_ema.sum() == 0:  # First batch
@@ -1573,8 +1417,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             #  2. Total Variation on interpolated regions
             #tv_loss = self.total_variation_loss(pred, mask_interp, dilation_radius=2)
             mask_target = batch._asdict()[var_name].isfinite()
-            tv_loss = self.total_variation_loss_classic(pred, mask_target, dilation_radius=1)
-            #tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
+            tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
             total_tv_loss += tv_loss
             
             #  3. Spatial context with observations
@@ -1587,47 +1430,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             total_context_loss += context_loss
     
         # 4. Prior / SRNN loss
-        model = self.solver.solvers[f"solver_x{res}"]
-        if (hasattr(model, "prior_cost") and 'grad' in model.input_grad_update and 'subgrad' not in model.input_grad_update):
+        if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
             sbatch = self.format_batch_for_solver(batch)
-            model = model.to(device)
-            # prepare input
-            state_init = sbatch.input.nan_to_num().detach().requires_grad_(True)
-            # forward
-            prior = model.prior_cost.forward_ae(state_init)
-            # ---- DEBUG PRINTS ----
-            # if hasattr(self, "global_step") and self.global_step % 1 == 0:  # toutes les 10 itérations
-            #     print(f"\n[PRIOR DEBUG] Step {self.global_step} Res {res}")
-            #     print("  Input: min {:.4f}, max {:.4f}, mean {:.4f}".format(
-            #         state_init.min().item(), state_init.max().item(), state_init.mean().item()
-            #     ))
-            #     print("  Prior: min {:.4f}, max {:.4f}, mean {:.4f}".format(
-            #         prior.min().item(), prior.max().item(), prior.mean().item()
-            #     ))
-            #     diff = sbatch.tgt - prior
-            #     print("  Diff tgt-prior: min {:.4f}, max {:.4f}, mean {:.4f}".format(
-            #         diff.min().item(), diff.max().item(), diff.mean().item()
-            #     ))
-            #     # Optionnel: proportion de NaN ou Inf
-            #     print("  Input NaN %: {:.2f}, Prior NaN %: {:.2f}".format(
-            #         torch.isnan(state_init).float().mean().item() * 100,
-            #         torch.isnan(prior).float().mean().item() * 100
-            #     ))
-            #     print("  Input Inf %: {:.2f}, Prior Inf %: {:.2f}".format(
-            #         torch.isinf(state_init).float().mean().item() * 100,
-            #         torch.isinf(prior).float().mean().item() * 100
-            #     ))
-            #     # Vérifier les poids du modèle
-            #     max_param = max(p.abs().max().item() for p in model.prior_cost.parameters())
-            #     print(f"  Max prior_cost param: {max_param:.4f}")
-            # loss
-            total_prior_loss = self.weighted_mse(sbatch.tgt - prior, self.prior_weight[res_key])
-            # L2 régularisation
+            model = self.solver.solvers[f"solver_x{res}"].to(device)
+            prior = model.prior_cost.forward_ae(sbatch.input.nan_to_num())
+            total_prior_loss = self.weighted_mse(sbatch.tgt-prior,self.prior_weight[res_key])
+            # Add small L2 regularization to ensure all params are used
             l2_reg = sum(p.pow(2.0).sum() for p in model.prior_cost.parameters())
-            total_prior_loss = total_prior_loss + 1e-6 * l2_reg
+            total_prior_loss = total_prior_loss + 1e-6 * l2_reg  # Tiny regularization
         else:
             total_prior_loss = torch.tensor(0.0, device=device, requires_grad=True)
-
 
         # COMPUTE BALANCED WEIGHTS
         loss_values = {
@@ -1654,23 +1466,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         )
 
         # Log individual losses AND weights
-        # Anciens logs (agrégés sur toutes les résolutions)
         self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_gloss", total_grad_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_prior_loss", total_prior_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_tv_loss", total_tv_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_context_loss", total_context_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         
-        # Nouveaux logs avec résolution pour chaque échelle
-        self.log(f"{phase}_loss_x{res}", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_gloss_x{res}", total_grad_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_prior_loss_x{res}", total_prior_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_tv_loss_x{res}", total_tv_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_context_loss_x{res}", total_context_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        
         # Log weights
         if self.training and self.global_step % 50 == 0 and self.trainer.is_global_zero:
-            print(f"\n[Step {self.global_step}] Loss balancing - Res {res}:")
+            print(f"\n[Step {self.global_step}] Loss balancing:")
             print(f"  Base loss:    {loss.item():.6f} × {weights['base']:.3f} = {(weights['base']*loss).item():.6f}")
             print(f"  Grad loss:    {total_grad_loss.item():.6f} × {weights['grad']:.3f} = {(weights['grad']*total_grad_loss).item():.6f}")
             print(f"  Prior loss:   {total_prior_loss.item():.6f} × {weights['prior']:.3f} = {(weights['prior']*total_prior_loss).item():.6f}")
@@ -1681,144 +1485,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.log(f"{phase}_weight_base", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
         self.log(f"{phase}_weight_grad", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
         self.log(f"{phase}_weight_tv", weights['tv'], prog_bar=False, on_step=False, on_epoch=True)
-        
-        self.log(f"{phase}_weight_base_x{res}", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
-        self.log(f"{phase}_weight_grad_x{res}", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
-        self.log(f"{phase}_weight_tv_x{res}", weights['tv'], prog_bar=False, on_step=False, on_epoch=True)
 
         return training_loss, out
-
-
-    '''
-# ...existing code...
-    def compute_balanced_weights(self, loss_values):
-        """
-        Compute weights to balance losses according to target ratios.
-        Now supports a variable subset of losses (e.g. only 'base' and 'grad').
-
-        Args:
-            loss_values: dict of {loss_name: scalar_tensor}
-        Returns:
-            weights: dict of {loss_name: weight}
-        """
-        # Allowed names and their index in self.loss_ema
-        name_to_idx = {name: i for i, name in enumerate(self.loss_names)}
-        present_names = list(loss_values.keys())
-        device = next(iter(loss_values.values())).device
-
-        # Stack losses in the order of present_names
-        losses = torch.stack([loss_values[n] for n in present_names]).to(device)
-
-        # Update EMA for the corresponding indices only
-        idxs = torch.tensor([name_to_idx[n] for n in present_names], device=self.loss_ema.device, dtype=torch.long)
-
-        if self.training:
-            if self.loss_ema.sum() == 0:  # first time initializing EMA
-                # set only present indices
-                tmp = self.loss_ema.clone()
-                for j, idx in enumerate(idxs):
-                    tmp[idx] = losses[j].detach()
-                self.loss_ema = tmp
-            else:
-                # update only present indices with EMA rule
-                tmp = self.loss_ema.clone()
-                for j, idx in enumerate(idxs):
-                    tmp[idx] = (1 - self.ema_alpha) * tmp[idx] + self.ema_alpha * losses[j].detach()
-                self.loss_ema = tmp
-
-        # EMA values for present names
-        ema_present = torch.stack([self.loss_ema[name_to_idx[n]] for n in present_names]).to(device)
-
-        # Compute total magnitude as sum over present ema (fallback to losses if zero)
-        total_ema = ema_present.sum()
-        if total_ema == 0:
-            total_ema = losses.sum().detach()
-
-        # Build target magnitudes from configured ratios for present names
-        target_magnitudes = torch.tensor([self.loss_target_ratios.get(n, 0.0) for n in present_names],
-                                         device=device) * total_ema
-
-        # Compute weights = target / current_ema (avoid div by zero)
-        weights_tensor = target_magnitudes / (ema_present + 1e-8)
-
-        # Clip to reasonable range to avoid instability
-        weights_tensor = torch.clamp(weights_tensor, 1e-6, 1e3)
-
-        return {name: weights_tensor[i].item() for i, name in enumerate(present_names)}
-# ...existing code...
-    def step(self, batch, res, phase=""):
-
-        loss, out = self.base_step(batch, res=res, phase=phase)
-        res_key = f"patch_x{res}"
-    
-        total_grad_loss = 0.0
-        # prior, tv and context losses are intentionally removed from training loss
-        # total_prior_loss = 0.0
-        # total_tv_loss = 0.0
-        # total_context_loss = 0.0
-
-        for var_name in self.tgt_vars:
-            if not hasattr(batch, var_name):
-                raise ValueError(f"Batch missing variable: {var_name}")
-    
-            target = getattr(batch, var_name)
-            var_suffix = var_name.split('_', 1)[1]  # Get everything after first '_'
-            pred_var_name = f'pred_{var_suffix}'
-            pred = out[pred_var_name]
-    
-            # Masks
-            mask_interp = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
-            mask_obs = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
-            
-            # 1. Gradient loss
-            tgt_sobel = kfilts.sobel(target)
-            pred_sobel = kfilts.sobel(pred)
-            grad_loss = self.weighted_mse(pred_sobel - tgt_sobel, self.optim_weight[res_key])
-            total_grad_loss += grad_loss
-
-            # NOTE: prior, tv and spatial context losses removed here intentionally
-
-        # Prior removed → set to zero tensor for compatibility if needed elsewhere
-        total_prior_loss = torch.tensor(0.0, device=device, requires_grad=True)
-        total_tv_loss = torch.tensor(0.0, device=device, requires_grad=True)
-        total_context_loss = torch.tensor(0.0, device=device, requires_grad=True)
-
-        # COMPUTE BALANCED WEIGHTS (only for present losses: base + grad)
-        loss_values = {
-            'base': loss,
-            'grad': total_grad_loss
-        }
-        
-        if self.training:
-            weights = self.compute_balanced_weights(loss_values)
-        else:
-            # Use fixed weights for validation
-            weights = {'base': 1.0, 'grad': 1.0}
-        
-        # COMBINED LOSS with auto-balanced weights (only base + grad)
-        training_loss = (
-            weights['base'] * loss +
-            weights['grad'] * total_grad_loss
-        )
-
-        # Log individual losses
-        self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_gloss", total_grad_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        # removed logs for prior/tv/context
-
-        # Log weights (print occasionally)
-        if self.training and self.global_step % 50 == 0 and self.trainer.is_global_zero:
-            print(f"\n[Step {self.global_step}] Loss balancing (active terms):")
-            print(f"  Base loss: {loss.item():.6f} × {weights['base']:.3f} = {(weights['base']*loss).item():.6f}")
-            print(f"  Grad loss: {total_grad_loss.item():.6f} × {weights['grad']:.3f} = {(weights['grad']*total_grad_loss).item():.6f}")
-            print(f"  Total:     {training_loss.item():.6f}")
-
-        self.log(f"{phase}_weight_base", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
-        self.log(f"{phase}_weight_grad", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
-
-        return training_loss, out
-# ...existing code...
-    '''
 
     def base_step(self, batch, res, phase=""):
         """
@@ -1861,7 +1529,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             mask = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
             # Mask 2: Observation pixels (both input and target valid)
             mask2 = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
-
             # STATISTICS: Compute percentages
             n_mask = mask.sum().item()
             n_mask2 = mask2.sum().item()
@@ -1948,37 +1615,21 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         )
         return result_da
 
-    def filter_test_loader_by_res(self, loader, res_key):
-        # On crée un générateur qui yield uniquement batch[res_key]
-        def gen():
-            for batch in loader:
-                if res_key in batch:
-                    yield batch[res_key]
-                else:
-                    print(f"⚠️ Key {res_key} absente dans un batch.")
-        
-        # On crée un DataLoader "custom" à partir du générateur
-        return DataLoader(gen(), batch_size=None)
-
     def aggregate_batches_one_domain(self, idx_daw, idx_rec,
                                      test_data, 
                                      dataloader_idx=None,
                                      use_datamodule=False):
 
-        
+        dl = self.trainer.test_dataloaders[self.dataloader_keys[dataloader_idx]]
         
         res = self.multires[dataloader_idx]
         last = self.len_daw[res]
         res_key = f"patch_x{res}"
 
-
-        dl =  self.trainer.test_dataloaders
-        print(dl.dataset.times)
-
         netcdf_final = []
                                        
         for i in idx_rec:
-            #time = dl.dataset.times[-last:][idx_daw+i]
+            time = dl.dataset.times[-last:][idx_daw+i]
             print("Reconstructing LEADTIME "+str(i))
             if isinstance(dl,list):
                 dl = dl[0]
@@ -1986,6 +1637,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             if use_datamodule:
                 rec_da = dl.dataset.reconstruct(
                             [ test_data[j][:,[i],:,:].cpu() for j in range(nbatch) ],
+                            idx_daw, time,
+                            self.rec_weight[res_key].cpu().numpy()[[i],:,:]
+                    )
+            else:
+                rec_da = self.reconstruct(dl,
+                            [ test_data[j][:,[i],:,:].cpu() for j in range(nbatch) ],
+                            idx_daw, time,
                             self.rec_weight[res_key].cpu().numpy()[[i],:,:]
                     )
             test_data_ldt = rec_da.assign_coords(
@@ -2004,7 +1662,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                         dataloader_idx=None,
                         metrics=False,
                         write_netcdf=False,
-                        use_datamodule=True):
+                        use_datamodule=False):
 
         res = self.multires[dataloader_idx]
 
@@ -2168,140 +1826,137 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             complete_dict = {field: coarse_dict.get(field, None) for field in fields}
         return complete_dict
 
-
-    #Pas besoin pour le test step lors de l'entrainement
-    '''
     def on_test_start(self):
         # Stocker les dataloader keys dans l'ordre des indices
-        #self.dataloader_keys = list(self.trainer.test_dataloaders.keys())
+        self.dataloader_keys = list(self.trainer.test_dataloaders.keys())
     
-        # Calculer le nombre de batches 
-        self.num_test_batches = len(self.trainer.test_dataloaders)
+        # Calculer le nombre de batchs par dataloader
+        self.num_test_batches = {
+            i: len(dl)
+            for i, dl in enumerate(self.trainer.test_dataloaders.values())
+        }
 
-    def is_last_batch(self, batch_idx):
-        total_batches = self.num_test_batches
+    def is_last_batch(self, batch_idx, dataloader_idx):
+        total_batches = self.num_test_batches[dataloader_idx]
         return batch_idx == total_batches - 1
     
+    def test_step(self, batch, batch_idx, dataloader_idx=None):
 
+        # Fix for single resolution
+        if dataloader_idx is None:
+            dataloader_idx = 0
+        res = self.multires[dataloader_idx]
+        res_key = f"patch_x{res}"
+        last = self.len_daw[res]
 
-    def test_step(self, batch_, batch_idx):
+        print(f"Dataloader_{dataloader_idx}, Batch_{batch_idx}, res_{res}")
+        if (dataloader_idx == 0) and (batch_idx == 0) :
+            self.test_data = {}
+            self.test_times = {}
+            self.aggregate_results = {}
 
-        for i, res in enumerate(self.multires):
-
-            res_key = f"patch_x{res}"
-            last = self.len_daw[res]
-
-            batch = batch_[res_key]
-
-            print(f"Batch_{batch_idx}, res_{res}")
-            if (i == 0) and (batch_idx == 0) :
-                self.test_data = {}
-                self.test_times = {}
-                self.aggregate_results = {}
-
-            if batch_idx == 0:
-                self.test_data[res_key] = []
-                self.test_times[res_key] = []
+        if batch_idx == 0:
+            self.test_data[res_key] = []
+            self.test_times[res_key] = []
             
-            batch = self.modify_batch(batch, res)
+        batch = self.modify_batch(batch, res)
 
-            # Determine device from batch
-            device = batch.tgt_sic.device if hasattr(batch, 'tgt_sic') else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # Determine device from batch
+        device = batch.tgt_sic.device if hasattr(batch, 'tgt_sic') else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-            # anomaly conversion
-            if i > 0:
-                coarser_res = self.multires[i-1]
-                # project coarser_res batch on res batch
-                xc_target = torch.squeeze(batch.xc, dim=1)
-                yc_target = torch.squeeze(batch.yc, dim=1)
-                # identify batch daw / coarse daw equivalence for selection
-                coarse = self.aggregate_results[f"patch_x{coarser_res}"]
-                coarse = {
-                k: v.isel(time=np.arange(self.len_daw[coarser_res]-last,
-                                            self.len_daw[coarser_res]))
+        # anomaly conversion
+        if dataloader_idx > 0:
+            coarser_res = self.multires[dataloader_idx-1]
+            # project coarser_res batch on res batch
+            xc_target = torch.squeeze(batch.xc, dim=1)
+            yc_target = torch.squeeze(batch.yc, dim=1)
+            # identify batch daw / coarse daw equivalence for selection
+            coarse = self.aggregate_results[f"patch_x{coarser_res}"]
+            coarse = {
+               k: v.isel(time=np.arange(self.len_daw[coarser_res]-last,
+                                        self.len_daw[coarser_res]))
+               for k, v in coarse.items()
+            }
+            coarse = self.convert_xr_to_batch(coarse, batch)       
+            # Move all coarse tensors to device
+            coarse = {
+                k: v.to(device) if isinstance(v, torch.Tensor) else v
                 for k, v in coarse.items()
-                }
-                coarse = self.convert_xr_to_batch(coarse, batch)       
-                # Move all coarse tensors to device
-                coarse = {
-                    k: v.to(device) if isinstance(v, torch.Tensor) else v
-                    for k, v in coarse.items()
-                }
-                xc_coarse = torch.squeeze(coarse["xc"], dim=1)
-                yc_coarse = torch.squeeze(coarse["yc"], dim=1)
-                itrp_coarse = self.interpolate_torch(coarse,#._asdict(),
-                                                    xc_coarse, yc_coarse,
-                                                    xc_target, yc_target)
-                #itrp_coarse = self.crop_daw(itrp_coarse,res)
-                # modify batch to work on anomaly compared to coarser resolution
-                batch = self.update_batch_as_anomaly(batch, 
-                                                    {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')
-                                                    }
-                                )
+            }
+            xc_coarse = torch.squeeze(coarse["xc"], dim=1)
+            yc_coarse = torch.squeeze(coarse["yc"], dim=1)
+            itrp_coarse = self.interpolate_torch(coarse,#._asdict(),
+                                                 xc_coarse, yc_coarse,
+                                                 xc_target, yc_target)
+            #itrp_coarse = self.crop_daw(itrp_coarse,res)
+            # modify batch to work on anomaly compared to coarser resolution
+            batch = self.update_batch_as_anomaly(batch, 
+                                                 {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')
+                                                }
+                            )
 
-            sbatch = self.format_batch_for_solver(batch)
+        sbatch = self.format_batch_for_solver(batch)
 
-            out = self(batch=sbatch, res=res)
-            out = self.split_tensor_to_dict(out)
+        out = self(batch=sbatch, res=res)
+        out = self.split_tensor_to_dict(out)
         
-            # add coarser resolution to output
-            land_mask_repeat = batch.land_mask.unsqueeze(1).repeat(1, 15, 1, 1)
-            if i > 0:
-                out = {k: out[k] + itrp_coarse[k] for k in out}
-            for var in out:
-                out[var] = torch.where(land_mask_repeat==1., np.nan, out[var])
+        # add coarser resolution to output
+        if dataloader_idx > 0:
+            out = {k: out[k] + itrp_coarse[k] for k in out}
+        for var in out:
+            out[var] = torch.where(batch.land_mask==1., np.nan, out[var])
 
-            # Stockage des sorties et des cibles
-            # Unnormalization is done in aggregate
-            out_norm, tgt_norm = {}, {}
-            for i, var in enumerate(self.tgt_vars):
-                # Convert var_name to pred_var_name
-                if '_' in var:
-                    var_suffix = var.split('_', 1)[1]
-                    pred_var_name = f'pred_{var_suffix}'
-                else:
-                    pred_var_name = f'pred_{var}'
-                pred = out[pred_var_name]
-                out_norm[pred_var_name] = pred
-                tgt_norm[var] = getattr(batch, var)
-                if i > 0:
-                    tgt_norm[var] += itrp_coarse[pred_var_name]
+        # Stockage des sorties et des cibles
+        # Unnormalization is done in aggregate
+        out_norm, tgt_norm = {}, {}
+        for i, var in enumerate(self.tgt_vars):
+            # Convert var_name to pred_var_name
+            if '_' in var:
+                var_suffix = var.split('_', 1)[1]
+                pred_var_name = f'pred_{var_suffix}'
+            else:
+                pred_var_name = f'pred_{var}'
+            pred = out[pred_var_name]
+            out_norm[pred_var_name] = pred
+            tgt_norm[var] = getattr(batch, var)
+            if dataloader_idx > 0:
+                tgt_norm[var] += itrp_coarse[pred_var_name]
         
-            # apply constraints
-            out_norm = self._apply_constraints(out_norm)
-            #tgt_norm = self._apply_constraints(tgt_norm)
-            
-            combined = list(out_norm.values()) + list(tgt_norm.values())
-            stacked = torch.stack(combined, dim=1)
+        # apply constraints
+        out_norm = self._apply_constraints(out_norm)
+        #tgt_norm = self._apply_constraints(tgt_norm)
+        
+        combined = list(out_norm.values()) + list(tgt_norm.values())
+        stacked = torch.stack(combined, dim=1)
 
-            # stacked has shape (B,V,T,H,W) with V the number of variables
-            self.test_data[res_key].append(stacked)
-            self.test_times[res_key].append(torch.squeeze(batch.time, dim=1))
+        # stacked has shape (B,V,T,H,W) with V the number of variables
+        self.test_data[res_key].append(stacked)
+        self.test_times[res_key].append(torch.squeeze(batch.time, dim=1))
 
-            # if last batch, agreggate (as an xarray dataset with the estimation for a given resolution)
-            if self.is_last_batch(batch_idx):
-                self.test_data[res_key] = list(itertools.chain(*self.test_data[res_key]))
-                self.test_times[res_key] = list(itertools.chain(*self.test_times[res_key]))
-                if i == (len(self.multires)-1):
-                    #idx_rec = np.arange(batch.time.shape[-1]-self.frcst_lead+1,
-                    #                    batch.time.shape[-1])
-                    idx_rec = np.arange(batch.time.shape[-1])
-                    write_netcdf = True
-                else:
-                    idx_rec = np.arange(batch.time.shape[-1])
-                    write_netcdf = True
-                # the idea behind: the aggregation is :
-                # on the full window for coarser resolutions
-                # only for nowcast/forecast lead times for final resolution
-                self.aggregate_results[res_key] = self.aggregate_batches(idx_rec,
-                                                                        self.test_data[res_key],
-                                                                        self.test_times[res_key],
-                                                                        i,
-                                                                        metrics=True,
-                                                                        write_netcdf=write_netcdf)
-                print(self.aggregate_results[res_key])
-            batch, out = None, None
+        # if last batch, agreggate (as an xarray dataset with the estimation for a given resolution)
+        if self.is_last_batch(batch_idx, dataloader_idx):
+            self.test_data[res_key] = list(itertools.chain(*self.test_data[res_key]))
+            self.test_times[res_key] = list(itertools.chain(*self.test_times[res_key]))
+            if dataloader_idx == (len(self.multires)-1):
+                #idx_rec = np.arange(batch.time.shape[-1]-self.frcst_lead+1,
+                #                    batch.time.shape[-1])
+                idx_rec = np.arange(batch.time.shape[-1])
+                write_netcdf = True
+            else:
+                idx_rec = np.arange(batch.time.shape[-1])
+                write_netcdf = True
+            # the idea behind: the aggregation is :
+            # on the full window for coarser resolutions
+            # only for nowcast/forecast lead times for final resolution
+            self.aggregate_results[res_key] = self.aggregate_batches(idx_rec,
+                                                                     self.test_data[res_key],
+                                                                     self.test_times[res_key],
+                                                                     dataloader_idx,
+                                                                     metrics=False,
+                                                                     write_netcdf=write_netcdf)
+            print(self.aggregate_results[res_key])
 
+        batch, out = None, None
 
     @property
     def test_quantities(self):
@@ -2309,18 +1964,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
     def on_test_epoch_end(self):
         print("hello")
-
-    '''
-
-    def on_test_start(self):
-        self.test_viz = {}
-
-    def test_step(self, batch, batch_idx):
-        return self.multistep(batch, "test")[0]
-
-
-    def on_test_epoch_end(self):
-        self.plot_test_results()
 
     def on_load_checkpoint(self, checkpoint):
         """

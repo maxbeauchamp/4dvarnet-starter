@@ -710,13 +710,14 @@ class BaseDataModule(pl.LightningDataModule):
         #land_polygons_cartopy = list(land_10m.geometries())
         zip_path = os.path.join(
                     cartopy.config['pre_existing_data_dir'],
-                    'natural_earth',
-                    'physical',
+                    #'natural_earth',
+                    #'physical',
                     'ne_10m_land.zip'
                 )
         reader = Reader(zip_path)
         land_polygons_cartopy = list(reader.geometries())
-        land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=geoms)
+        # CORRECTION, geoms n'existe pas. land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=geoms)
+        land_gdf = gpd.GeoDataFrame(crs='epsg:4326', geometry=land_polygons_cartopy)
         step_yc = np.concatenate((np.arange(len(self.yc),step=1000),np.array([len(self.yc)])))
         step_xc = np.concatenate((np.arange(len(self.xc),step=1000),np.array([len(self.xc)])))
         for i in range(len(step_yc)-1):

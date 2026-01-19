@@ -1,8 +1,10 @@
+# ⚠️ IMPORTANT: Import resolvers BEFORE anything else
+import config  # <-- assure que config/__init__.py s'exécute
+from src import resolvers  # tes resolvers
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-# ⚠️ IMPORTANT: Import resolvers BEFORE anything else
-from src import resolvers  # This auto-registers the resolvers
+
 
 @hydra.main(config_path='config', config_name='main', version_base='1.3')
 def main(cfg: DictConfig):
