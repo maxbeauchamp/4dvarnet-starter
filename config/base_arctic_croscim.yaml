@@ -3,10 +3,6 @@
 paths:
   src: /dmidata/users/maxb
   mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
-  asip: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3
-  cimr: /dmidata/users/maxb/CROSCIM_dataset/out_CIMR
-  cristal: /dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL
-  covariates: /dmidata/users/maxb/CROSCIM_dataset/atm_data
 
 domain: ???
 
@@ -104,19 +100,9 @@ datamodule:
     test:
       time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
   xrds_kw:
-    # TRAIN/VAL (unchanged)
     patch_dims: { time: 15, yc: 256, xc: 256}
     strides: { time: 1, yc: 28, xc: 28}
     strides_test: {time: 1, yc: 200, xc: 200}
-    # TEST: patch_dims_dict (different per resolution)
-    patch_dims_dict: 
-      50: {time: 15, yc: 294, xc: 304}
-      10: {time: 15, yc: 256, xc: 256}
-      2: {time: 15, yc: 256, xc: 256}
-    strides_test_dict: 
-      50: {time: 1, yc: 294, xc: 304}
-      10: {time: 1, yc: 200, xc: 200}
-      2: {time: 1, yc: 200, xc: 200}  
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                     yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   dl_kw: {batch_size: 2, num_workers: 20}
@@ -199,15 +185,15 @@ optim_weight:
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x10:
-    _target_: src.utils.get_uniform_time_wei
+    _target_: src.utils.get_linear_time_wei
     patch_dims: {time: 10, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x50:
-    _target_: src.utils.get_uniform_time_wei
-    patch_dims: {time: 15, yc: 294, xc: 304}
-    crop: {time: 0, yc: 0, xc: 0}
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 15, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
 
@@ -223,11 +209,10 @@ metrics:
     lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
 
 entrypoints:
-  - _target_: src.test.base_test
+  - _target_: src.train.base_training
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

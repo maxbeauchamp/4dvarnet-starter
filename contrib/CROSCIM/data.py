@@ -28,10 +28,11 @@ from cartopy.io.shapereader import Reader
 cartopy.config['pre_existing_data_dir'] = os.path.abspath('contrib/CROSCIM')
 
 # Create TrainingItem at module level with default config
-def create_training_item(satellite_vars, covariates, target_vars):
+def create_training_item(satellite_vars, covariates, target_vars, models_vars=None):
     """
     Dynamically create a TrainingItem namedtuple with fields for:
     - All satellite variables (e.g., 'asip_sic', 'cimr_SIC', etc.)
+    - All model variables (e.g., 'models_SIC', 'models_SIT')  # ✅ NEW
     - All target variables (e.g., 'tgt_sic', 'tgt_SIT')
     - All covariates
     - Coordinates and mask
@@ -39,9 +40,18 @@ def create_training_item(satellite_vars, covariates, target_vars):
     fields = []
     
     # Satellite variables (e.g., 'asip_sic', 'cimr_SIC', 'cristal_SIT')
+    # Exclude 'models' from satellite_vars to avoid duplicates
     for source, vars_list in satellite_vars.items():
+        if source == 'models':  # ✅ Skip models here
+            continue
         for var in vars_list:
             fields.append(f"{source}_{var}")
+    
+    # Model variables (e.g., 'models_SIC', 'models_SIT')
+    # These are added separately to avoid duplicates
+    if models_vars:
+        for var in models_vars:
+            fields.append(f"models_{var}")
     
     # Target variables (e.g., 'tgt_sic', 'tgt_SIT')
     fields.extend(target_vars)
@@ -52,6 +62,11 @@ def create_training_item(satellite_vars, covariates, target_vars):
     # Coordinates and mask
     fields.extend(['lat', 'lon', 'land_mask', 'time', 'yc', 'xc'])
     
+    # Debug: print fields to verify no duplicates
+    if len(fields) != len(set(fields)):
+        duplicates = [f for f in fields if fields.count(f) > 1]
+        raise ValueError(f"Duplicate fields detected: {set(duplicates)}")
+    
     # Create namedtuple
     return namedtuple("TrainingItem", fields)
 
@@ -59,9 +74,10 @@ def create_training_item(satellite_vars, covariates, target_vars):
 # Create TrainingItem at MODULE LEVEL with default configuration
 # This makes it picklable for multiprocessing
 TrainingItem = create_training_item(
-    satellite_vars=DEFAULT_VAR_GROUPS,
+    satellite_vars=DEFAULT_VAR_GROUPS,  # ✅ No longer contains 'models'
     covariates=DEFAULT_COVARIATES,
-    target_vars=["tgt_sic", "tgt_SIT"]  # Default target vars
+    target_vars=["tgt_sic", "tgt_SIT"],
+    models_vars=["SIC", "SIT"]  # Models handled separately
 )
 
 class IncompleteScanConfiguration(Exception):
@@ -564,6 +580,137 @@ class XrDataset(torch.utils.data.Dataset):
         )
         return result_da
 
+class XrDatasetSupervised(XrDataset):
+    """
+    Extension of XrDataset with support for numerical model inputs.
+    """
+    
+    def __init__(self, models_paths=None, models_vars=None, *args, **kwargs):
+        """
+        Args:
+            models_paths: Paths to numerical model files
+            models_vars: List of model variable names (e.g., ["SIC", "SIT"])
+            *args, **kwargs: Passed to parent XrDataset
+        """
+        # Store models configuration BEFORE calling parent
+        self.models_paths = models_paths if models_paths is not None else np.array([])
+        self.models_vars = models_vars if models_vars is not None else []
+        
+        # Call parent __init__
+        super().__init__(*args, **kwargs)
+        
+        # Add 'models' to active sources if configured
+        if self.models_vars and len(self.models_vars) > 0 and 'models' not in self.active_sources:
+            self.active_sources.append('models')
+        
+        print(f"XrDatasetSupervised initialized:")
+        print(f"  Models vars: {self.models_vars}")
+        print(f"  Models paths: {len(self.models_paths)} files")
+        print(f"  Active sources: {self.active_sources}")
+    
+    def __getitem__(self, idx):
+        """Override to add model data loading and interpolation."""
+        
+        # ✅ Call parent's __getitem__ to get the sample (returns a dict, not TrainingItem yet)
+        # The parent returns a dict before applying postpro_fn
+        # We need to intercept BEFORE postpro_fn converts it to TrainingItem
+        
+        # Save the original postpro_fn
+        original_postpro_fn = self.postpro_fn
+        
+        # Temporarily disable postpro_fn to get raw dict
+        self.postpro_fn = None
+        
+        # Get raw sample dict from parent
+        sample = super().__getitem__(idx)
+        
+        # Restore postpro_fn
+        self.postpro_fn = original_postpro_fn
+        
+        # ✅ If no model data configured, apply postpro and return
+        if not self.models_vars or len(self.models_paths) == 0:
+            if self.postpro_fn is not None:
+                sample = self.postpro_fn(sample)
+            return sample
+        
+        # ✅ Calculate the actual idx used by parent (after subsel_patch)
+        actual_idx = self.idx_patches_in_ocean[idx] if self.subsel_patch else idx
+        
+        # Get the slice for this patch
+        sl = {
+            dim: slice(self.strides.get(dim, 1) * idx_dim,
+                      self.strides.get(dim, 1) * idx_dim + self.patch_dims[dim])
+            for dim, idx_dim in zip(self.ds_size.keys(), np.unravel_index(actual_idx, tuple(self.ds_size.values())))
+        }
+        
+        time_indices = np.arange(sl["time"].start, sl["time"].stop)
+        
+        # ✅ Load model data
+        if self.load_data:
+            # Use pre-loaded full dataset
+            if hasattr(self, 'full_models'):
+                models_ds = self.full_models.isel(time=sl["time"])
+            else:
+                # No pre-loaded model data, apply postpro and return
+                if self.postpro_fn is not None:
+                    sample = self.postpro_fn(sample)
+                return sample
+        else:
+            # Load on-the-fly
+            if len(self.models_paths) > 0 and len(time_indices) > 0:
+                # Select model files for this time range
+                selected_model_paths = self.models_paths[time_indices]
+                
+                models_ds = concatenate_parallel(
+                    selected_model_paths,
+                    var_list=self.models_vars,
+                    slices=None,
+                    type_coords="coords",
+                    resize=1,
+                    domain_limits=self.domain_limits,
+                    model=True,  # ✅ Subtract noise
+                    n_jobs=5  # Fewer jobs for smaller batches
+                )
+            else:
+                # No model data available, apply postpro and return
+                if self.postpro_fn is not None:
+                    sample = self.postpro_fn(sample)
+                return sample
+        
+        # ✅ Interpolate model data onto ASIP grid
+        # sample is a dict with keys like 'xc', 'yc', 'lon', 'lat'
+        if self.itrp_from_regular:
+            # Get ASIP coords from sample dict - remove batch dimension
+            asip_xc = np.squeeze(sample['xc'])  # Shape: (xc,)
+            asip_yc = np.squeeze(sample['yc'])  # Shape: (yc,)
+            target_grid = (asip_xc, asip_yc)
+        else:
+            lon = np.squeeze(sample['lon'])  # Shape: (yc, xc)
+            lat = np.squeeze(sample['lat'])  # Shape: (yc, xc)
+            target_grid = pyresample.geometry.SwathDefinition(
+                lons=lon,
+                lats=lat
+            )
+        
+        # Interpolate each model variable
+        model_vars = self.interpolate_dataset(
+            target_grid, 
+            models_ds, 
+            self.models_vars, 
+            prefix="models"
+        )
+        
+        # ✅ Add model variables to sample dict
+        sample.update(model_vars)
+        
+        print(f"  Added {len(model_vars)} model variables: {list(model_vars.keys())}")
+        
+        # ✅ NOW apply postpro_fn to convert dict to TrainingItem
+        if self.postpro_fn is not None:
+            sample = self.postpro_fn(sample)
+        
+        return sample
+    
 class XrConcatDataset(torch.utils.data.ConcatDataset):
     """
     Concatenation of XrDatasets
@@ -619,6 +766,7 @@ class BaseDataModule(pl.LightningDataModule):
                  target_vars,
                  satellite_vars=None,  # NEW
                  var_mapping=None,     # NEW
+                 models_vars=None,  # ✅ Accept models_vars
                  mask_path=None,
                  domain_name=None, domains=None,
                  xrds_kw=None, dl_kw=None, 
@@ -633,16 +781,21 @@ class BaseDataModule(pl.LightningDataModule):
         # Store variable configuration
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
         self.covariates = covariates or DEFAULT_COVARIATES
+        self.models_vars = models_vars if models_vars is not None else []
         self.target_vars = target_vars
         self.var_mapping = var_mapping or {}
 
-        # Recreate TrainingItem at module level if config differs from default
+        # CRITICAL: Recreate TrainingItem with models support
+        # This must be done at MODULE level so it's available in apply_norm()
         global TrainingItem
         TrainingItem = create_training_item(
             satellite_vars=self.satellite_vars,
             covariates=self.covariates,
-            target_vars=self.target_vars
+            target_vars=self.target_vars,
+            models_vars=self.models_vars
         )
+        
+        print(f"\n✅ TrainingItem recreated with fields: {TrainingItem._fields}")
 
         # Determine active sources
         self.active_sources = [src for src, vars in self.satellite_vars.items() if vars]

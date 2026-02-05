@@ -113,8 +113,8 @@ datamodule:
       2: {time: 15, yc: 256, xc: 256}
     strides_test_dict: 
       50: {time: 1, yc: 294, xc: 304}
-      10: {time: 1, yc: 256, xc: 256}
-      2: {time: 1, yc: 256, xc: 256}  
+      10: {time: 1, yc: 200, xc: 200}
+      2: {time: 1, yc: 200, xc: 200}  
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                     yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   dl_kw: {batch_size: 2, num_workers: 20}
