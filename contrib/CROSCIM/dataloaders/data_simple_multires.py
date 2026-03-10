@@ -1,7 +1,7 @@
 from random import sample
 import contrib
 from contrib.CROSCIM.load_data import *
-from contrib.CROSCIM.data_simple import *
+from contrib.CROSCIM.dataloaders.data_simple import *
 import datetime
 import pyresample
 import pandas as pd
@@ -66,9 +66,9 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
                  split_test,
                  norm_stats,
                  norm_stats_covs,
-                 satellite_vars=None,  # NEW: From config
-                 covariates=None,      # NEW: From config
-                 target_vars=None,     # NEW: From config
+                 satellite_vars=None,  
+                 covariates=None,      
+                 target_vars=None,    
                  **kwargs):
 
         super().__init__()
@@ -191,9 +191,16 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
                 for var in self.input_vars:
                     if var not in available_vars:
                         missing_vars.append(var)
-                
+
+                # Get resolution-specific target_vars
+                if isinstance(self.target_vars, dict) and path_key in self.target_vars:
+                    target_vars = self.target_vars[path_key]
+                else:
+                    # Fallback to base target_vars (for backward compatibility)
+                    target_vars = self.target_vars
+
                 # Check if all target vars are present
-                for var in self.target_vars:
+                for var in target_vars:
                     if var not in available_vars:
                         missing_vars.append(var)
                 
@@ -208,7 +215,7 @@ class BaseDataModuleMultiRes_simplify(pl.LightningDataModule):
                 ds.close()
                 
             except Exception as e:
-                print(f"❌ Error validating {path_key}: {e}")
+                print(f" Error validating {path_key}: {e}")
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(

@@ -2,8 +2,8 @@ import sys
 import os
 os.environ['HDF5_USE_FILE_LOCKING']='FALSE'
 print(os.getcwd())
-sys.path.append('../..')
-from contrib.CROSCIM.data_multires import *
+sys.path.append('../../..')
+from contrib.CROSCIM.dataloaders.data_multires import *
 from contrib.CROSCIM.load_data import *
 from src.utils import *
 from src.models import *

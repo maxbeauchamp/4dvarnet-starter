@@ -1,4 +1,4 @@
-from contrib.CROSCIM.data import *
+from contrib.CROSCIM.dataloaders.data import *
 
 import matplotlib
 matplotlib.use("Agg")
@@ -385,12 +385,21 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
             mapping = self.var_mapping
         
         # Initialize targets from their sources
-        for target_var in self.target_vars:
-            source_var = mapping.get(target_var)
-            if source_var and source_var in sample:
+        for target_var, source_var in mapping.items():
+            # If target starts with models_XXX, create tgt_XXX from models_XXX
+            if target_var.startswith('models_') and '_' in target_var:
+                suffix = target_var.split('_', 1)[1]  # Extract XXX from models_XXX
+                tgt_var = f"tgt_{suffix}"
+                if target_var in sample:
+                    sample[tgt_var] = sample[target_var].copy()
+                    print(f"  {res_key}: Created {tgt_var} <- {target_var}")
+                else:
+                    print(f"  WARNING ({res_key}): Could not find {target_var} to create {tgt_var}")
+            # If target starts with tgt_XXX, use the source_var directly
+            elif target_var.startswith('tgt_') and source_var in sample:
                 sample[target_var] = sample[source_var].copy()
                 print(f"  {res_key}: Mapped {target_var} <- {source_var}")
-            else:
+            elif target_var.startswith('tgt_'):
                 print(f"  WARNING ({res_key}): Could not map {target_var} from {source_var}. Available keys: {list(sample.keys())}")
 
         # Keep track of the coordinates
@@ -401,7 +410,7 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
         sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
         sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
 
-        # ✅ Apply postprocessing WITH resolution key
+        # Apply postprocessing WITH resolution key
         if self.postpro_fn is not None:
             # Check if postpro_fn expects resolution_key argument
             import inspect
@@ -461,12 +470,14 @@ class XrDatasetMultiResTestSupervised:
             self.patch_dims_dict = {res: default_patch_dims.copy() for res in multires}
             print(f" No patch_dims_dict provided, using {default_patch_dims} for all resolutions")
 
-         # Handle strides_test_dict
+        # Handle strides_test_dict
         if strides_test_dict is not None:
             self.strides_test_dict = strides_test_dict
             for res in multires:
                 if res not in strides_test_dict:
                     raise ValueError(f"strides_test_dict missing entry for resolution {res}")
+        else:
+            # Fallback: use strides_test from kwargs if present, else compute from patch_dims
             default_strides_test = kwargs.get('strides_test', None)
             if default_strides_test:
                 self.strides_test_dict = {res: default_strides_test.copy() for res in multires}
@@ -494,7 +505,7 @@ class XrDatasetMultiResTestSupervised:
             res_kwargs['strides_test'] = strides_test
             res_kwargs['resize'] = res
             
-            # ✅ Remove models_paths and models_vars before passing to XrDataset
+            #  Remove models_paths and models_vars before passing to XrDataset
             res_kwargs_clean = {k: v for k, v in res_kwargs.items() if k not in ['models_paths', 'models_vars']}
             
             print(f"  Resolution x{res}:")
@@ -537,7 +548,8 @@ class BaseDataModuleMultiRes(BaseDataModule):
                  satellite_vars=None,
                  var_mapping=None,
                  multires=[50, 10, 2],
-                norm_stats_models=None,
+                 norm_stats_models=None,
+                 rand_obs=False,
                  **kwargs):
         """
         Multi-resolution data module extending BaseDataModule.
@@ -552,7 +564,8 @@ class BaseDataModuleMultiRes(BaseDataModule):
         # Store models configuration
         self.models_paths = models_paths if models_paths is not None else []
         self.models_vars = models_vars if models_vars is not None else []        
-        self._norm_stats_models = norm_stats_models 
+        self._norm_stats_models = norm_stats_models
+        self.rand_obs = rand_obs 
 
         # Extract patch_dims_dict from xrds_kw if present (only for test)
         xrds_kw = kwargs.get('xrds_kw', {})
@@ -580,7 +593,38 @@ class BaseDataModuleMultiRes(BaseDataModule):
         # Store multi-resolution configuration
         self.multires = multires
         self.resize = self.multires[-1]
-        
+
+        # Convert target_vars to dict (handle OmegaConf)
+        from omegaconf import OmegaConf
+        if target_vars is not None:
+            if hasattr(target_vars, '_metadata'):
+                self.target_vars = OmegaConf.to_container(target_vars, resolve=True)
+            else:
+                self.target_vars = target_vars
+        else:
+            self.target_vars = []
+
+        # Convert var_mapping to dict (handle OmegaConf)
+        if var_mapping is not None:
+            if hasattr(var_mapping, '_metadata'):
+                self.var_mapping = OmegaConf.to_container(var_mapping, resolve=True)
+            else:
+                self.var_mapping = dict(var_mapping)
+        else:
+            self.var_mapping = {}
+
+        # Get all unique target vars (flatten if resolution-specific)
+        all_target_vars = self._get_all_target_vars()
+
+        global TrainingItem
+        TrainingItem = create_training_item(
+            satellite_vars=self.satellite_vars,
+            covariates=self.covariates,
+            target_vars=all_target_vars,  # Use flattened list
+            models_vars=self.models_vars
+        )
+        print(f"TrainingItem fields: {TrainingItem._fields}")
+
         print(f"\n{'='*60}")
         print(f"BaseDataModuleMultiRes configuration:")
         print(f"{'='*60}")
@@ -596,6 +640,37 @@ class BaseDataModuleMultiRes(BaseDataModule):
             print(f"  Using same patch_dims for all resolutions (train behavior)")
         print(f"{'='*60}\n")
 
+    def _get_all_target_vars(self):
+        """
+        Get all unique target variables across all resolutions.
+        If target_vars is a dict, concatenate all values and deduplicate.
+        If target_vars is a list, return as-is.
+        """
+        if isinstance(self.target_vars, dict):
+            # Flatten all resolution-specific target vars
+            all_vars = []
+            for res_vars in self.target_vars.values():
+                all_vars.extend(res_vars)
+            # Remove duplicates while preserving order
+            return list(dict.fromkeys(all_vars))
+        else:
+            # Already a simple list
+            return self.target_vars
+
+    def _get_target_vars_for_resolution(self, res):
+        """
+        Get target variables for a specific resolution.
+        Args:
+            res: resolution number (e.g., 50 for patch_x50)
+        Returns:
+            List of target variable names for this resolution
+        """
+        res_key = f"patch_x{res}"
+        if isinstance(self.target_vars, dict):
+            return self.target_vars.get(res_key, [])
+        else:
+            return self.target_vars
+        
     def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, 
                                       save_dir="/dmidata/users/maxb/PREPROC/"):
         """
@@ -673,11 +748,26 @@ class BaseDataModuleMultiRes(BaseDataModule):
             print(f"Saved: {save_path}")
 
     def post_fn(self, rand_obs=False):
-        """Post-processing with resolution-dependent target initialization."""
+        """
+        Post-processing with resolution-dependent target initialization.
+        
+        Args:
+            rand_obs: Either a boolean (apply to all satellite vars if True) 
+                     or a list of variable names to apply random masking to
+        """
         
         norm_sats = self._norm_stats
         norm_covs = self._norm_stats_covs
         norm_models = self._norm_stats_models
+        
+        # Determine which variables should have random masking
+        if isinstance(self.rand_obs, bool):
+            apply_rand_obs_to_all = self.rand_obs
+            rand_obs_vars = []
+        else:
+            # rand_obs is a list of variable names
+            apply_rand_obs_to_all = False
+            rand_obs_vars = self.rand_obs if self.rand_obs else []
         
         def normalize_var(x, stats):
             if stats['type'] == 'zscore':
@@ -722,15 +812,43 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 mapping = self.var_mapping
             
             # Initialize target variables from their RESOLUTION-SPECIFIC sources
+            #for target_var, source_var in mapping.items():
+            #    if source_var in item:
+            #        item[target_var] = item[source_var].copy()
+            #        print(f"  {resolution_key}: Initialized {target_var} from {source_var}")
+            
+            # Create TrainingItem - handle missing fields with None defaults
+            item_with_defaults = {field: item.get(field, None) for field in TrainingItem._fields}
+            data = TrainingItem(**item_with_defaults)
+            
+            # Determine which normalization stats to use for each variable
+            # For target variables, use their own stats (e.g., models_SIT uses norm_models['SIT'])
+            # For input variables that map to targets, use the target's stats for consistency
+            
+            # Build a dict: {var_name: norm_params} for all variables
+            norm_mapping = {}
+            
+            # First, assign stats for target variables
+            for target_var in self.target_vars:
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_SIT -> use norm_models['SIT']
+                    var_suffix = target_var.split('_', 1)[1]
+                    norm_mapping[target_var] = norm_models[var_suffix]
+                else:
+                    # Use var_mapping to find the source variable and its stats
+                    source_var = mapping.get(target_var)
+                    if source_var and '_' in source_var:
+                        group, var = source_var.split('_', 1)
+                        if group in norm_sats:
+                            norm_mapping[target_var] = norm_sats[group][var]
+            
+            # For input variables, use the same stats as their corresponding target
             for target_var, source_var in mapping.items():
-                if source_var in item:
-                    item[target_var] = item[source_var].copy()
-                    print(f"  {resolution_key}: Initialized {target_var} from {source_var}")
+                if target_var in norm_mapping and source_var in item:
+                    # cristal_SIT -> use same stats as models_SIT
+                    norm_mapping[source_var] = norm_mapping[target_var]
             
-            # Create TrainingItem
-            data = TrainingItem(**item)
-            
-            # Normalize satellite variables
+            # Apply normalization to satellite variables
             for source in self.active_sources:
                 if source == 'models':
                     continue
@@ -738,41 +856,51 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     var_key = f"{source}_{var}"
                     if hasattr(data, var_key):
                         var_data = getattr(data, var_key)
-                        if rand_obs:
+                        # Skip if None (field was missing)
+                        if var_data is None:
+                            continue
+                        # Apply random obs mask if requested for this variable
+                        should_apply_mask = apply_rand_obs_to_all or (var_key in rand_obs_vars)
+                        if should_apply_mask:
                             var_data = generate_random_obs_mask(var_data)
-                        norm_params = norm_sats[source][var]
+                        
+                        # Use mapped stats if available, else default satellite stats
+                        norm_params = norm_mapping.get(var_key, norm_sats[source][var])
                         var_data = normalize_var(var_data, norm_params)
                         data = data._replace(**{var_key: var_data})
             
-            # Normalize model variables
+            # Normalize model variables (inputs)
             for var in self.models_vars:
                 var_key = f"models_{var}"
                 if hasattr(data, var_key):
+                    var_data = getattr(data, var_key)
+                    # Skip if None (field was missing)
+                    if var_data is None:
+                        continue
                     norm_params = norm_models[var]
-                    var_data = normalize_var(getattr(data, var_key), norm_params)
+                    var_data = normalize_var(var_data, norm_params)
                     data = data._replace(**{var_key: var_data})
             
-            # Normalize target variables using their SOURCE normalization
+            # Normalize target variables
             for target_var in self.target_vars:
                 if hasattr(data, target_var):
-                    source_var = mapping.get(target_var)
-                    if source_var and '_' in source_var:
-                        group, var = source_var.split('_', 1)
-                        
-                        # Choose correct norm_stats based on source
-                        if group == 'models':
-                            norm_params = norm_models[var]
-                        else:
-                            norm_params = norm_sats[group][var]
-                        
-                        var_data = normalize_var(getattr(data, target_var), norm_params)
+                    var_data = getattr(data, target_var)
+                    # Skip if None (field was missing)
+                    if var_data is None:
+                        continue
+                    if target_var in norm_mapping:
+                        var_data = normalize_var(var_data, norm_mapping[target_var])
                         data = data._replace(**{target_var: var_data})
             
             # Normalize covariates
             for cov in self.covariates:
                 if hasattr(data, cov):
+                    cov_data = getattr(data, cov)
+                    # Skip if None (field was missing)
+                    if cov_data is None:
+                        continue
                     norm_params = norm_covs[cov]
-                    cov_data = normalize_var(getattr(data, cov), norm_params)
+                    cov_data = normalize_var(cov_data, norm_params)
                     data = data._replace(**{cov: cov_data})
             
             # Normalize coordinates
@@ -786,16 +914,23 @@ class BaseDataModuleMultiRes(BaseDataModule):
         def post_fn_with_resolution(batch_dict):
             """Apply post-processing to multi-resolution batch."""
             
-            if isinstance(batch_dict, dict) and 'patch_x2' in batch_dict:
+            # Generate resolution keys dynamically from self.multires
+            res_keys = [f'patch_x{factor}' for factor in self.multires]
+            
+            # Check if this is a multi-resolution batch by looking for any of the resolution keys
+            is_multires_batch = isinstance(batch_dict, dict) and any(key in batch_dict for key in res_keys)
+            
+            if is_multires_batch:
                 # Multi-resolution batch
                 processed = {}
-                for res_key in ['patch_x2', 'patch_x10', 'patch_x50']:
+                for res_key in res_keys:
                     if res_key in batch_dict:
                         processed[res_key] = apply_norm(batch_dict[res_key], res_key)
                 return processed
             else:
-                # Single resolution batch (fallback)
-                return apply_norm(batch_dict, 'patch_x2')
+                # Single resolution batch (fallback) - use the first resolution
+                fallback_res = res_keys[0] if res_keys else 'patch_x1'
+                return apply_norm(batch_dict, fallback_res)
         
         return post_fn_with_resolution
 
@@ -861,7 +996,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     paths_dict[f"{source}_paths"] = np.array([])
             
             # Add models paths if configured
-            if self.models_vars:
+            if self.models_vars is not None and len(self.models_vars) > 0:
                 models_paths, _ = select_paths(
                     self.models_paths,
                     self.domains[split]['time'],
@@ -893,7 +1028,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     mask=self.mask,
                     times=times,
                     **self.xrds_kw,
-                    postpro_fn=self.post_fn(rand_obs=False),
+                    postpro_fn=self.post_fn(rand_obs=self.rand_obs),
                     res=self.res,
                     pad=self.pads[2],
                     stride_test=True,
@@ -924,7 +1059,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
 
         self.train_ds = create_dataset('train')
         self.val_ds = create_dataset('val')
-        #self.test_ds = create_dataset('test')
+        self.test_ds = create_dataset('test')
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_ds, shuffle=True, **self.dl_kw)

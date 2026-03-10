@@ -2,8 +2,8 @@ import sys
 import os
 os.environ['HDF5_USE_FILE_LOCKING']='FALSE'
 print(os.getcwd())
-sys.path.append('../..')
-from contrib.CROSCIM.data_multires_supervised import *
+sys.path.append('../../..')
+from contrib.CROSCIM.dataloaders.data_multires_supervised import *
 from contrib.CROSCIM.load_data import *
 from src.utils import *
 from src.models import *
@@ -25,32 +25,31 @@ satellite_vars = {
 }
 
 # NEW: Model variables
-models_vars = ['SIC', 'SIT']
+models_vars = ['SIC', 'SIT', 'HS', 'SSH']
 
 # MODIFIED: Reduced covariates (t2m, msl now from models)
 covariates = ["t2m", "msl", "u10", "v10"]
 
-target_vars = ["tgt_sic", "tgt_SIT"]
-
-# ✅ NEW: Variable mapping BY RESOLUTION
-var_mapping = {
-    'patch_x2': {
-        # High resolution: use satellite observations as targets
-        'tgt_sic': 'asip_sic',        # ASIP SIC (high quality satellite)
-        'tgt_SIT': 'cimr_SIT'         # CIMR SIT (satellite)
-    },
-    'patch_x10': {
-        # Medium resolution: use model outputs as targets
-        'tgt_sic': 'models_SIC',      # Model SIC
-        'tgt_SIT': 'models_SIT'       # Model SIT
-    },
-    'patch_x50': {
-        # Low resolution: use model outputs as targets
-        'tgt_sic': 'models_SIC',      # Model SIC
-        'tgt_SIT': 'models_SIT'       # Model SIT
-    }
+target_vars = {
+    "patch_x50": ["models_SIT", "models_SIC"],
+    "patch_x10": ["models_SIT", "models_SIC"],
+    "patch_x2": ["models_SIT", "tgt_SIC"],
 }
 
+var_mapping = {
+    "patch_x50": {
+        "models_SIT": "cristal_SIT",
+        "models_SIC": "cimr_SIC",
+    },
+    "patch_x10": {
+        "models_SIT": "cristal_SIT",
+        "models_SIC": "cimr_SIC",
+    },
+    "patch_x2": {
+        "models_SIT": "cristal_SIT",
+        "tgt_SIC": "asip_sic",
+    },
+}
 # ===== NORMALIZATION STATS =====
 norm_stats = {
     'asip': {
@@ -62,24 +61,20 @@ norm_stats = {
         'SIC': {'min': -0.049950417409564574, 'max': 1.0498479215517267, 'type': 'minmax'},
         'SIT': {'mean': 0.09544839558401243, 'std': 0.13231399596810897, 'type': 'zscore'},
         'Tsurf': {'mean': -7.098038910302271, 'std': 9.410905679026854, 'type': 'zscore'},
-        'SICnoise': {'mean': 9.402084735405344e-07, 'std': 0.007446822627062462, 'type': 'zscore'},
-        'SITnoise': {'mean': -1.244936869388826e-05, 'std': 0.003507472996277258, 'type': 'zscore'},
-        'Tsurfnoise': {'mean': -1.6181464698155027e-05, 'std': 0.0901130348999105, 'type': 'zscore'}
     },
     'cristal': {
         'HS': {'mean': 0.15701109538657623, 'std': 0.14167074971036836, 'type': 'zscore'},
         'SIT': {'mean': 1.713899766845625, 'std': 1.0358012026065266, 'type': 'zscore'},
         'SSH': {'mean': 0.36872446726198005, 'std': 0.3961191636146796, 'type': 'zscore'},
-        'HSnoise': {'mean': 0.237219498422366, 'std': 0.11141783328896704, 'type': 'zscore'},
-        'SITnoise': {'mean': 1.7138151410883338, 'std': 1.0360327276131651, 'type': 'zscore'},
-        'SSHnoise': {'mean': 0.36873967481665904, 'std': 0.3961927398202259, 'type': 'zscore'}
     }
 }
 
-# ✅ NEW: Normalization stats for model variables
+# NEW: Normalization stats for model variables
 norm_stats_models = {
     'SIC': {'min': -0.049950417409564574, 'max': 1.0498479215517267, 'type': 'minmax'},
-    'SIT': {'mean': 0.09544839558401243, 'std': 0.13231399596810897, 'type': 'zscore'}
+    'SIT': {'mean': 0.09544839558401243, 'std': 0.13231399596810897, 'type': 'zscore'},
+    'HS': {'mean': 0.15701109538657623, 'std': 0.14167074971036836, 'type': 'zscore'},
+    'SSH': {'mean': 0.36872446726198005, 'std': 0.3961191636146796, 'type': 'zscore'}
 }
 
 norm_stats_covs = {
@@ -101,14 +96,14 @@ datamodule = BaseDataModuleMultiRes(
     cimr_paths=get_paths_for_source("cimr"),
     cristal_paths=get_paths_for_source("cristal"),
     covariates_paths=get_paths_for_source("covariates"),
-    models_paths=get_paths_for_source("models"),  # ✅ NEW
+    models_paths=get_paths_for_source("models"),
     
     # Variable configuration
     satellite_vars=satellite_vars,
     covariates=covariates,
-    models_vars=models_vars,  # ✅ NEW
+    models_vars=models_vars, 
     target_vars=target_vars,
-    var_mapping=var_mapping,  # ✅ NOW RESOLUTION-DEPENDENT
+    var_mapping=var_mapping,  # NOW RESOLUTION-DEPENDENT
     
     # Mask and domain
     mask_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc",
@@ -116,9 +111,12 @@ datamodule = BaseDataModuleMultiRes(
     
     # Time domains
     domains={
-        'train': {'time': slice('2022-05-01', '2022-12-31')},
-        'val': {'time': [slice('2022-05-01', '2022-06-30'), slice('2022-07-01', '2022-12-31')]},
+        'train': {'time': slice('2022-01-01', '2022-03-28')},
+        'val': {'time': slice('2022-01-01', '2022-02-28')},
         'test': {'time': slice('2022-02-01', '2022-02-15')}
+        #'train': {'time': slice('2022-05-01', '2022-12-31')},
+        #'val': {'time': [slice('2022-05-01', '2022-06-30'), slice('2022-07-01', '2022-12-31')]},
+        #'test': {'time': slice('2022-02-01', '2022-02-15')}
     },
     
     # Dataset configuration
@@ -141,7 +139,7 @@ datamodule = BaseDataModuleMultiRes(
     multires=[50, 10, 2],
     norm_stats=norm_stats,
     norm_stats_covs=norm_stats_covs,
-    norm_stats_models=norm_stats_models  # ✅ NEW
+    norm_stats_models=norm_stats_models  # NEW
 )
 
 print("\n" + "="*70)
@@ -229,7 +227,7 @@ def remove_useless_patches_multires(batch, multires, vars_tgt=['tgt_sic', 'tgt_S
 
 def verify_target_initialization(batch, var_mapping, multires):
     """
-    ✅ NEW: Verify that targets were correctly initialized from their sources
+    NEW: Verify that targets were correctly initialized from their sources
     according to resolution-dependent var_mapping.
     
     Args:
@@ -291,7 +289,7 @@ for i, batch in enumerate(data_loader):
     if i % 10 == 0:
         print(f"Processing batch {i}/{len(data_loader)}...")
     
-    # ✅ Verify target initialization on first batch
+    # Verify target initialization on first batch
     if not first_batch_verified:
         verify_target_initialization(batch, var_mapping, datamodule.multires)
         first_batch_verified = True

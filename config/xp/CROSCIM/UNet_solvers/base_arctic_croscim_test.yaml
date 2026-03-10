@@ -67,7 +67,7 @@ trainer:
       filename: '{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.CROSCIM.data_multires.BaseDataModuleMultiRes
+  _target_: contrib.CROSCIM.dataloaders.data_multires.BaseDataModuleMultiRes
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}

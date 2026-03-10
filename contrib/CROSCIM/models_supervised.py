@@ -18,14 +18,14 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
             norm_stats_models: dict of normalization stats for model variables
             **kwargs: passed to parent Lit4dVarNet_CROSCIM
         """
-        # ✅ Store models-specific config BEFORE calling super().__init__
+        #  Store models-specific config BEFORE calling super().__init__
         self.models_vars = models_vars or []
         self.norm_stats_models = norm_stats_models or {}
         
-        # ✅ Call parent init - this will set self.satellite_vars, self.covariates, etc.
+        #  Call parent init - this will set self.satellite_vars, self.covariates, etc.
         super().__init__(**kwargs)
         
-        # ✅ NOW we can safely modify active_sources (after parent has created it)
+        #  NOW we can safely modify active_sources (after parent has created it)
         if not hasattr(self, 'active_sources'):
             # Parent didn't create it, so create it ourselves
             self.active_sources = [src for src, vars in self.satellite_vars.items() if vars]
@@ -34,10 +34,10 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
         if self.models_vars and 'models' not in self.active_sources:
             self.active_sources.append('models')
         
-        # ✅ Build model input variable names
+        #  Build model input variable names
         self.input_vars_models = [f"models_{var}" for var in self.models_vars]
         
-        # ✅ Update input_vars_satellite if not already set by parent
+        #  Update input_vars_satellite if not already set by parent
         if not hasattr(self, 'input_vars_satellite'):
             self.input_vars_satellite = [
                 f"{source}_{var}" 
@@ -45,7 +45,7 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
                 for var in vars
             ]
         
-        # ✅ Update total input vars list (satellite + models + covariates)
+        #  Update total input vars list (satellite + models + covariates)
         self.input_vars_all = self.input_vars_satellite + self.input_vars_models + self.covariates
         
         print(f"\n{'='*60}")
@@ -64,10 +64,10 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
         """
         Extends parent normalize_data to also normalize model variables.
         """
-        # ✅ First normalize satellite vars and covariates (parent behavior)
+        #  First normalize satellite vars and covariates (parent behavior)
         batch_dict = super().normalize_data(batch_dict)
         
-        # ✅ Then normalize model variables
+        #  Then normalize model variables
         for key, batch in batch_dict.items():
             for var in self.models_vars:
                 var_name = f"models_{var}"
@@ -120,3 +120,5 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
             return input_tensor
         else:
             raise ValueError("No input tensors found in batch")
+    
+    

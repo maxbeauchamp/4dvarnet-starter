@@ -68,7 +68,7 @@ trainer:
       max_depth: 2
 
 datamodule:
-  _target_: contrib.CROSCIM.data_simple_multires.BaseDataModuleMultiRes_simplify
+  _target_: contrib.CROSCIM.dataloaders.data_simple_multires.BaseDataModuleMultiRes_simplify
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}

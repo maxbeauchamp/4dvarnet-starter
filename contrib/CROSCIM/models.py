@@ -13,7 +13,7 @@ import xarray as xr
 from datetime import datetime
 from src.utils import get_last_time_wei, get_frcst_time_wei, get_linear_time_wei
 from src.models import Lit4dVarNet
-from contrib.CROSCIM.data import *
+from contrib.CROSCIM.dataloaders.data import *
 from dataclasses import dataclass
 from collections import Counter
 from scipy.interpolate import RegularGridInterpolator
@@ -48,6 +48,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             norm_stats=None,          # Already exists
             norm_stats_covs=None,
             training_strategy='progressive',  # NEW PARAMETER
+            include_masks=False,
             *args, **kwargs):
 
         # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
@@ -60,8 +61,33 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Store variable configuration
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
         self.covariates = covariates or DEFAULT_COVARIATES
-        self.tgt_vars = tgt_vars
-        self.var_mapping = var_mapping or {}  # e.g., {"tgt_sic": "asip_sic", "tgt_SIT": "cimr_SIT"}
+        
+        # Convert var_mapping to dict (handle OmegaConf)
+        from omegaconf import OmegaConf
+        if var_mapping is not None:
+            if hasattr(var_mapping, '_metadata'):
+                self.var_mapping = OmegaConf.to_container(var_mapping, resolve=True)
+            else:
+                self.var_mapping = dict(var_mapping)
+        else:
+            self.var_mapping = {}
+        
+        # Process tgt_vars: can be resolution-specific or global (handle OmegaConf)
+        if tgt_vars is not None:
+            if hasattr(tgt_vars, '_metadata'):
+                self.tgt_vars_config = OmegaConf.to_container(tgt_vars, resolve=True)
+            else:
+                self.tgt_vars_config = tgt_vars
+        else:
+            self.tgt_vars_config = ["tgt_sic", "tgt_SIT"]
+        
+        # Detect if tgt_vars is resolution-specific
+        if isinstance(self.tgt_vars_config, dict):
+            # Resolution-specific: {"patch_x50": ["tgt_sic"], "patch_x10": ["tgt_sic", "tgt_SIT"]}
+            self.tgt_vars = self._get_all_target_vars()
+        else:
+            # Global tgt_vars
+            self.tgt_vars = self.tgt_vars_config
          
         # Construct input_vars list
         self.input_vars = []
@@ -71,7 +97,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         if self.covariates:
             self.input_vars.extend(self.covariates)
 
-
+        self.include_masks = include_masks
         self.frcst_lead = frcst_lead
         self.domain_limits = domain_limits
         self.multires = multires
@@ -125,6 +151,43 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.register_buffer('loss_ema', torch.zeros(5))  # [base, grad, prior, tv, context]
         self.ema_alpha = 0.1
         self.loss_names = ['base', 'grad', 'prior', 'tv', 'context']
+    
+    def _get_all_target_vars(self):
+        """Extract all unique target variables from resolution-specific config, preserving order."""
+        if isinstance(self.tgt_vars_config, dict):
+            # Use a list to preserve order (not a set!)
+            all_vars = []
+            seen = set()
+            # Iterate through resolutions in a consistent order
+            # Use the order from the dict itself (preserved in Python 3.7+)
+            for res_key, res_vars in self.tgt_vars_config.items():
+                for var in res_vars:
+                    if var not in seen:
+                        all_vars.append(var)
+                        seen.add(var)
+            print(f"\n[DEBUG _get_all_target_vars] Collected vars in order: {all_vars}")
+            print(f"[DEBUG _get_all_target_vars] From tgt_vars_config: {self.tgt_vars_config}")
+            return all_vars
+        else:
+            return self.tgt_vars_config
+    
+    def _get_target_vars_for_resolution(self, res):
+        """
+        Get target_vars for a specific resolution.
+        
+        Args:
+            res: resolution factor (e.g., 50 for patch_x50)
+            
+        Returns:
+            list: target variables for this resolution
+        """
+        if isinstance(self.tgt_vars_config, dict):
+            res_key = f"patch_x{res}"
+            result = self.tgt_vars_config.get(res_key, [])
+            return result
+        else:
+            # Global tgt_vars apply to all resolutions
+            return self.tgt_vars_config
 
     def _process_weights(self, weight_dict, prefix='_weight'):
         """
@@ -278,8 +341,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Determine which input variables are mapped to targets
         # var_mapping: {'tgt_sic': 'asip_sic', 'tgt_SIT': 'cimr_SIT'}
         input_target_pairs = []
+        res_key = f"patch_x{res}"
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
         
-        for tgt_var, src_var in self.var_mapping.items():
+        for tgt_var, src_var in mapping.items():
             if src_var in batch_dict and tgt_var in batch_dict:
                 input_target_pairs.append((src_var, tgt_var))
         
@@ -621,27 +691,72 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         batch = type(batch)(**new_item)
         return batch
 
-    def format_batch_for_solver(self, batch):
+
+    def format_batch_for_solver(self, batch, include_masks=False, res=None):
         """
-        À partir d'un batch de type TrainingItem, retourne un dictionnaire avec uniquement :
+        À partir d'un batch de type TrainingItem, retourne un dictionnaire avec :
         - 'input' : concaténation des input_vars (satellite + covariates)
         - 'tgt'   : concaténation des variables de tgt_vars
+        
+        Args:
+            batch: TrainingItem namedtuple with all variables
+            include_masks: bool, if True intercale data et mask pour chaque variable
+                        [data_var1, mask_var1, data_var2, mask_var2, ...]
+                        if False, juste les données comme avant
+            res: resolution key (e.g., 50 for patch_x50) to get resolution-specific target vars
+        
+        Returns:
+            sBatch with input and tgt tensors
         """
+        # Get resolution-specific target vars
+        if res is not None:
+            tgt_vars = self._get_target_vars_for_resolution(res)
+        else:
+            tgt_vars = self.tgt_vars
+        
         input_tensors = []
-    
-        # Use self.input_vars instead of iterating over var_groups + covariates
-        for var in self.input_vars:
-            if hasattr(batch, var):
-                input_tensors.append(getattr(batch, var))
-            else:
-                print(f"⚠️  Warning: batch missing input variable '{var}'")
-    
+        
+        if include_masks:
+            # OPTION 2: Intercaler data et mask pour chaque variable
+            for var in self.input_vars:
+                if hasattr(batch, var):
+                    data = getattr(batch, var)
+                    input_tensors.append(data)
+                    
+                    # Créer le masque de validité (1 = valide, 0 = NaN)
+                    mask = data.isfinite().float()
+                    input_tensors.append(mask)
+                else:
+                    print(f"  Warning: batch missing input variable '{var}'")
+        else:
+            # Mode original: seulement les données
+            for var in self.input_vars:
+                if hasattr(batch, var):
+                    input_tensors.append(getattr(batch, var))
+                else:
+                    print(f"  Warning: batch missing input variable '{var}'")
+        
+        # Collecter les targets (inchangé)
         tgt_tensors = []
-        for var in self.tgt_vars:
+        for var in tgt_vars:
             if hasattr(batch, var):
                 tgt_tensors.append(getattr(batch, var))
             else:
                 raise ValueError(f" Batch missing target variable '{var}'")
+        
+        # ✅ DEBUG: Vérifier les dimensions (tous les 50 steps)
+        if include_masks and self.global_step % 50 == 0 and self.trainer.is_global_zero:
+            input_final = torch.cat(input_tensors, dim=1)
+            n_vars = len(self.input_vars)
+            n_channels = input_final.shape[1]
+            n_time = n_channels // (2 * n_vars)  # 2 car data + mask
+            
+            print(f"\n[Step {self.global_step}] format_batch_for_solver (include_masks=True):")
+            print(f"  Variables: {n_vars}")
+            print(f"  Timesteps: {n_time}")
+            print(f"  Total channels: {n_channels} (= {n_vars} × {n_time} × 2)")
+            print(f"  Spatial: {input_final.shape[2]} × {input_final.shape[3]}")
+            print(f"  Expected UNet n_channels: {n_channels}")
 
         return sBatch(
             input=torch.cat(input_tensors, dim=1).float(),
@@ -816,16 +931,24 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             
             return interpolated
 
-    def split_tensor_to_dict(self, tensor):
+    def split_tensor_to_dict(self, tensor, res=None):
         """
         Découpe un tenseur interpolé (B, C, H, W) en dictionnaire {var: (B, T, H, W)}.
         Args:
             tensor: torch.Tensor de shape (B, C=T*V, H, W)
+            res: resolution key (e.g., 50 for patch_x50) to get resolution-specific target vars
         Returns:
             dict {pred_var_name: tensor de shape (B, T, H, W)}
         """
+        # Get resolution-specific target vars
+        if res is not None:
+            tgt_vars = self._get_target_vars_for_resolution(res)
+        else:
+            tgt_vars = self.tgt_vars
+        
         B, C, H, W = tensor.shape
-        V = len(self.tgt_vars)
+        V = len(tgt_vars)
+
         time_steps = C // V
         assert C == time_steps * V, f"Expected C={time_steps}×{V}, but got {C}"
     
@@ -833,7 +956,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         tensor_reshaped = tensor_reshaped.permute(0, 2, 1, 3, 4)  # (B, T, V, H, W)
     
         out_dict = {}
-        for i, var in enumerate(self.tgt_vars):
+        for i, var in enumerate(tgt_vars):
             # Replace any prefix before '_' with 'pred_'
             if '_' in var:
                 var_suffix = var.split('_', 1)[1]  # Get everything after first '_'
@@ -909,7 +1032,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 if self.trainer.is_global_zero:
                     print(f"  solver_x{res}: EVAL mode - gradients frozen")
 
-    def _apply_constraints(self, out_dict):
+    def _apply_constraints(self, out_dict, res):
         """
         Apply physical constraints to predictions based on norm_stats.
         Works on NORMALIZED data (as stored in the model).
@@ -921,6 +1044,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             out_dict: Constrained predictions
         """
         constrained = {}
+
+        res_key = f"patch_x{res}"
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
         
         for pred_var_name, pred in out_dict.items():
             if pred is None:
@@ -935,14 +1066,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             matching_tgt_var = f'tgt_{canonical_var}'
             
             # Check if this target variable exists in var_mapping
-            if matching_tgt_var not in self.var_mapping:
+            if matching_tgt_var not in mapping:
                 # No mapping, no constraint
                 constrained[pred_var_name] = pred
                 continue
             
             # Get source variable from var_mapping
             # e.g., tgt_sic -> asip_sic
-            source_var = self.var_mapping[matching_tgt_var]
+            source_var = mapping[matching_tgt_var]
             
             # Parse source_var (e.g., 'asip_sic' -> group='asip', var='sic')
             if '_' not in source_var:
@@ -991,6 +1122,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 constrained[pred_var_name] = pred
         
         return constrained
+        
     def multistep(self, batch, phase=""):
         """
         Multi-resolution training with three strategies:
@@ -1102,7 +1234,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                         _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
                 
                 # Add coarse resolution back
-                for var_name in self.tgt_vars:
+                # Get resolution-specific target vars
+                tgt_vars = self._get_target_vars_for_resolution(res)
+                for var_name in tgt_vars:
                     if '_' in var_name:
                         var_suffix = var_name.split('_', 1)[1]
                         pred_var_name = f'pred_{var_suffix}'
@@ -1116,7 +1250,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     )
             
             # Apply constraints
-            out[f"patch_x{res}"] = self._apply_constraints(out[f"patch_x{res}"])
+            out[f"patch_x{res}"] = self._apply_constraints(out[f"patch_x{res}"], res)
         
         return total_loss, out
 
@@ -1294,8 +1428,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         """
         B, T, H, W = pred.shape
         
+        # Ensure all tensors are float32
+        pred = pred.float()
+        target = target.float()
+        input_obs = input_obs.float()
+        
         # Create kernel for averaging neighborhood
-        kernel = torch.ones(1, 1, 2*radius+1, 2*radius+1, device=pred.device) / ((2*radius+1)**2)
+        kernel = torch.ones(1, 1, 2*radius+1, 2*radius+1, device=pred.device, dtype=torch.float32) / ((2*radius+1)**2)
         
         # Reshape for conv2d
         pred_flat = pred.reshape(B*T, 1, H, W)
@@ -1384,18 +1523,40 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             'context': weights[4].item()
         }
 
-
     def step(self, batch, res, phase=""):
+    
 
         loss, out = self.base_step(batch, res=res, phase=phase)
         res_key = f"patch_x{res}"
-    
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
+
+        # Get resolution-specific target vars
+        tgt_vars = self._get_target_vars_for_resolution(res)
+
+        # Get source_vars for global_input_valid computation
+        batch_dict = batch._asdict()
+        global_input_valid = torch.ones_like(batch_dict[tgt_vars[0]], dtype=torch.bool)
+        source_vars = list(mapping.values())
+        
+        for var in self.input_vars:
+            if var in batch_dict and var not in source_vars:
+                global_input_valid &= batch_dict[var].isfinite()
+        
+        for cov in self.covariates:
+            if cov in batch_dict:
+                global_input_valid &= batch_dict[cov].isfinite()
+
         total_grad_loss = 0.0
         total_prior_loss = 0.0
         total_tv_loss = 0.0
         total_context_loss = 0.0
 
-        for var_name in self.tgt_vars:
+        for var_name in tgt_vars:
             if not hasattr(batch, var_name):
                 raise ValueError(f"Batch missing variable: {var_name}")
     
@@ -1404,24 +1565,35 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             pred_var_name = f'pred_{var_suffix}'
             pred = out[pred_var_name]
     
+            # Create masks
+            source_var = batch_dict[mapping[var_name]]
+            mask_interp = (~source_var.isfinite()) & target.isfinite() & global_input_valid
+            mask_obs = source_var.isfinite() & target.isfinite() & global_input_valid
+        
             # Masks
-            mask_interp = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
-            mask_obs = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            mask_grad = target.isfinite() & global_input_valid
             
             # 1. Gradient loss
             tgt_sobel = kfilts.sobel(target)
             pred_sobel = kfilts.sobel(pred)
-            grad_loss = self.weighted_mse(pred_sobel - tgt_sobel, self.optim_weight[res_key])
+            # Apply mask to gradient difference
+            grad_diff = pred_sobel - tgt_sobel
+            grad_diff_masked = torch.where(
+                mask_grad,
+                grad_diff,
+                torch.tensor(float('nan'), device=pred.device)
+            )
+            
+            grad_loss = self.weighted_mse(grad_diff_masked, self.optim_weight[res_key])
             total_grad_loss += grad_loss
             
             #  2. Total Variation on interpolated regions
-            #tv_loss = self.total_variation_loss(pred, mask_interp, dilation_radius=2)
             mask_target = batch._asdict()[var_name].isfinite()
             tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
             total_tv_loss += tv_loss
             
             #  3. Spatial context with observations
-            input_obs = batch._asdict()[self.var_mapping[var_name]]
+            input_obs = batch._asdict()[mapping[var_name]]
             context_loss = self.spatial_context_loss(
                 pred, target, input_obs, mask_interp, 
                 radius=3, 
@@ -1431,7 +1603,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     
         # 4. Prior / SRNN loss
         if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
-            sbatch = self.format_batch_for_solver(batch)
+            sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
             model = self.solver.solvers[f"solver_x{res}"].to(device)
             prior = model.prior_cost.forward_ae(sbatch.input.nan_to_num())
             total_prior_loss = self.weighted_mse(sbatch.tgt-prior,self.prior_weight[res_key])
@@ -1498,8 +1670,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
            loss: total loss
            out: model output tensor
         """
+        res_key = f"patch_x{res}"
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
 
-        sbatch = self.format_batch_for_solver(batch)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
         self.plot_counter += 1  
         # === PLOT DEBUG (every N batches) ===
         if (self.plot_counter % 100 == 0) and (res==50):  # Plot every 10 batches
@@ -1510,11 +1689,29 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 print(f"Warning: Failed to create debug plot: {e}")
 
         out = self(batch=sbatch, res=res)  # out is a tensor 
-        out = self.split_tensor_to_dict(out)
+        out = self.split_tensor_to_dict(out, res=res)
         res_key = f"patch_x{res}"
 
+        # Get resolution-specific target vars
+        tgt_vars = self._get_target_vars_for_resolution(res)
+
+        # Create global mask for all input variables
+        batch_dict = batch._asdict()
+        # Start with all True (all pixels valid initially)
+        global_input_valid = torch.ones_like(batch_dict[tgt_vars[0]], dtype=torch.bool)
+        # Get list of source variables from var_mapping
+        source_vars = list(mapping.values())  
+        # For each input variable, check if finite
+        for var in self.input_vars:
+            if var in batch_dict and var not in source_vars:
+                global_input_valid &= batch_dict[var].isfinite()
+        # Also check covariates
+        for cov in self.covariates:
+            if cov in batch_dict:
+                global_input_valid &= batch_dict[cov].isfinite()
+
         total_loss = 0.0
-        for i, var_name in enumerate(self.tgt_vars):
+        for i, var_name in enumerate(tgt_vars):
             if not hasattr(batch, var_name):
                 raise ValueError(f"Batch does not contain variable '{var_name}'")
             target = getattr(batch, var_name)  # (B, T, Y, X)
@@ -1526,9 +1723,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 pred_var_name = f'pred_{var_name}'
             pred = out[pred_var_name]  # (B, T, Y, X)
             # Mask 1: Interpolation pixels (input NaN, target valid)
-            mask = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            mask = ~batch._asdict()[mapping[var_name]].isfinite() & target.isfinite()  & global_input_valid
             # Mask 2: Observation pixels (both input and target valid)
-            mask2 = batch._asdict()[self.var_mapping[var_name]].isfinite() & target.isfinite()
+            mask2 = batch._asdict()[mapping[var_name]].isfinite() & target.isfinite()  & global_input_valid
             # STATISTICS: Compute percentages
             n_mask = mask.sum().item()
             n_mask2 = mask2.sum().item()
@@ -1549,6 +1746,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     print(f"  Target range: [{target_masked.min().item():.4f}, {target_masked.max().item():.4f}]")
                 else:
                     print(f"  Target range: [No valid values]")
+            
             # Compute losses
             loss = self.weighted_mse(
                 torch.where(mask, pred, torch.tensor(float('nan'), device=pred.device)) - target,
@@ -1625,6 +1823,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         res = self.multires[dataloader_idx]
         last = self.len_daw[res]
         res_key = f"patch_x{res}"
+        
+        # Get resolution-specific target vars and build variable names
+        tgt_vars = self._get_target_vars_for_resolution(res)
+        pred_vars = []
+        for var in tgt_vars:
+            if "_" in var:
+                suffix = var.split("_", 1)[-1]
+                pred_vars.append(f"pred_{suffix}")
+            else:
+                pred_vars.append(f"pred_{var}")
+        var_names = pred_vars + tgt_vars
 
         netcdf_final = []
                                        
@@ -1646,9 +1855,24 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                             idx_daw, time,
                             self.rec_weight[res_key].cpu().numpy()[[i],:,:]
                     )
-            test_data_ldt = rec_da.assign_coords(
-                dict(v0=self.test_quantities)
-            ).to_dataset(dim='v0')
+            
+            # Instead of using generic v0 dimension, create Dataset directly with variable names
+            # rec_da has shape (nvars, time, yc, xc) where nvars = len(var_names)
+            data_vars = {}
+            for idx, var_name in enumerate(var_names):
+                data_vars[var_name] = (("time", "yc", "xc"), rec_da.data[idx])
+            
+            test_data_ldt = xr.Dataset(
+                data_vars=data_vars,
+                coords={
+                    "time": rec_da.coords["time"],
+                    "yc": rec_da.coords["yc"],
+                    "xc": rec_da.coords["xc"],
+                    "lon": rec_da.coords["lon"],
+                    "lat": rec_da.coords["lat"]
+                }
+            )
+            
             # crop (if necessary) 
             test_data_ldt = test_data_ldt.sel(**(self.domain_limits or {}))
             # stack each time 
@@ -1665,6 +1889,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                         use_datamodule=False):
 
         res = self.multires[dataloader_idx]
+        res_key = f"patch_x{res}"
+
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
+
+        # Get resolution-specific target vars
+        tgt_vars = self._get_target_vars_for_resolution(res)
 
         # On convertit chaque time en tuple Python (hashable)
         time_groups = [tuple(d.cpu().tolist()) for d in test_times]
@@ -1681,31 +1916,54 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         
         def unnormalize(varname, data):
             """
-            Unnormalize using var_mapping to find the correct source variable.
+            Unnormalize using stats from the target variable.
+            For pred_SIC and models_SIC, use the same stats (from models_SIC).
+            
             Args:
-                varname: target variable name (e.g., 'tgt_sic')
+                varname: variable name (e.g., 'pred_SIC', 'models_SIC', 'tgt_sic')
                 data: normalized data tensor
             """
-            # Find source variable from var_mapping
-            source_var = self.var_mapping.get(varname)
-            
-            if source_var is None:
-                raise ValueError(f"No mapping found for target variable '{varname}'")
-            
-            # Parse source_var (e.g., 'asip_sic' -> group='asip', var='sic')
-            if '_' in source_var:
-                group, var = source_var.split('_', 1)
+            # Find the corresponding target variable
+            # If it's a pred_* variable, find its target in tgt_vars
+            if varname.startswith('pred_'):
+                suffix = varname.split('_', 1)[1]  # 'pred_SIC' -> 'SIC'
+                # Find matching target variable with this suffix
+                target_var = None
+                for tvar in tgt_vars:
+                    if tvar.endswith('_' + suffix) or tvar == suffix:
+                        target_var = tvar
+                        break
+                if target_var is None:
+                    raise ValueError(f"No target variable found for prediction '{varname}'")
             else:
-                raise ValueError(f"Invalid source variable format: '{source_var}'")
+                # It's already a target variable
+                target_var = varname
             
-            stats = self.norm_stats[group][var]
+            # Get stats from target variable
+            if target_var.startswith('models_') and hasattr(self, 'norm_stats_models'):
+                # models_SIT -> use norm_stats_models['SIT']
+                var_suffix = target_var.split('_', 1)[1]
+                stats = self.norm_stats_models[var_suffix]
+            else:
+                # Use var_mapping to find source stats
+                source_var = mapping.get(target_var)
+                if source_var is None:
+                    raise ValueError(f"No mapping found for target variable '{target_var}'")
+                
+                if '_' in source_var:
+                    group, var = source_var.split('_', 1)
+                else:
+                    raise ValueError(f"Invalid source variable format: '{source_var}'")
+                
+                stats = self.norm_stats[group][var]
             
+            # Apply denormalization
             if stats["type"] == "zscore":
                 return data * stats["std"] + stats["mean"]
             elif stats["type"] == "minmax":
                 return data * (stats["max"] - stats["min"]) + stats["min"]
             else:
-                raise ValueError(f"Unknown normalization type for {source_var}")
+                raise ValueError(f"Unknown normalization type for {target_var}")
 
         for idx_daw in torch.unique(daws):
             sel_daw = torch.where(daws==idx_daw)[0]
@@ -1717,7 +1975,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # Prepare unnormalization for metrics and storage
             test_data_unnorm = test_data_uniq.copy(deep=False)
             
-            for var in self.tgt_vars:
+            for var in tgt_vars:
                 # Get the variable suffix (e.g., 'tgt_sic' -> 'sic')
                 if '_' in var:
                     var_suffix = var.split('_', 1)[1]
@@ -1729,8 +1987,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                         unnormalize(var, test_data_uniq[f"pred_{var_suffix}"].data))
                 })
                 test_data_unnorm = test_data_unnorm.update({
-                    f"tgt_{var_suffix}": (("time", "yc", "xc"),
-                                        unnormalize(var, test_data_uniq[f"tgt_{var_suffix}"].data))
+                    var: (("time", "yc", "xc"),
+                                        unnormalize(var, test_data_uniq[var].data))
                 })
             if metrics:
                 metric_data = test_data_unnorm.pipe(self.pre_metric_fn),
@@ -1754,7 +2012,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return { f"daw_{i}": nc for i, nc in enumerate(netcdf_final) }
         #return xr.concat(netcdf_final, dim="daw").assign_coords(daw=torch.unique(daws)).sortby("daw")
 
-    def convert_xr_to_batch(self, coarse, batch, spatial_sel=False):
+    def convert_xr_to_batch(self, coarse, batch, spatial_sel=False, res=None):
         """
         Convert an xarray.Dataset (coarse) to a dictionary of PyTorch tensors,
         matching the batch's temporal indices.
@@ -1762,9 +2020,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             coarse (xr.Dataset): xarray with dims (time, yc, xc)
             batch (dict): Dictionary with keys 'time', 'yc', 'xc' etc., 
                           values are tensors of shape (B, T, H, W)
+            spatial_sel (bool): Whether to perform spatial selection
+            res: resolution key (e.g., 50 for patch_x50) to get resolution-specific target vars
         Returns:
             coarse_dict: dict with same keys as coarse.data_vars, each of shape (B, T, H, W)
         """
+        # Get resolution-specific target vars
+        if res is not None:
+            tgt_vars = self._get_target_vars_for_resolution(res)
+        else:
+            tgt_vars = self.tgt_vars
+        
         times = batch.time.cpu().numpy().astype('datetime64[s]').astype('datetime64[ns]')
         times = times.astype('datetime64[D]').astype('datetime64[ns]')
         nbatch = len(batch.time)  # batch.time: shape (B, T)
@@ -1774,24 +2040,36 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Pour chaque variable du Dataset
         # Include both tgt_vars and their pred_* equivalents
         pred_vars = []
-        for var in self.tgt_vars:
+        for var in tgt_vars:
             if '_' in var:
                 var_suffix = var.split('_', 1)[1]
                 pred_vars.append(f'pred_{var_suffix}')
             else:
                 pred_vars.append(f'pred_{var}')  
-        for var in self.tgt_vars + pred_vars + ["time", "yc", "xc"]:
+        for var in tgt_vars + pred_vars + ["time", "yc", "xc"]:
             B_array = []
             for i in range(nbatch):
                 times_i = np.squeeze(times[i])  # (T,)
                 xcs_i = batch.xc[i].cpu().numpy()      # (W,)
                 ycs_i = batch.yc[i].cpu().numpy()      # (H,)
+                
                 # temporal selection
-                matching_key = [
-                                key
-                                for key, ds in coarse.items()
-                                if set(ds.time.values) == set(times_i)
-                                ][0]
+                matching_keys = [
+                    key
+                    for key, ds in coarse.items()
+                    if set(ds.time.values) == set(times_i)
+                ]
+                
+                if not matching_keys:
+                    print(f"ERROR: No matching time found in coarse dataset!")
+                    print(f"  Looking for times: {times_i}")
+                    print(f"  Available keys in coarse: {list(coarse.keys())}")
+                    if coarse:
+                        first_key = list(coarse.keys())[0]
+                        print(f"  Example times in coarse['{first_key}']: {coarse[first_key].time.values}")
+                    raise ValueError(f"No dataset in coarse matches times {times_i}")
+                
+                matching_key = matching_keys[0]
                 sel_time = coarse[matching_key]
                 # spatial selection
                 if spatial_sel:
@@ -1807,8 +2085,31 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                         )
                 else:
                     sel_patch = sel_time
+                
+                # Find variable in dataset by suffix matching
+                # If looking for 'tgt_SIC', also accept 'models_SIC', 'pred_SIC', etc.
+                var_name_in_ds = None
+                if var in ["time", "yc", "xc", "lon", "lat"]:
+                    # Coordinates - use exact name
+                    var_name_in_ds = var if var in sel_patch else None
+                elif var in sel_patch:
+                    # Exact match
+                    var_name_in_ds = var
+                else:
+                    # Try suffix matching (e.g., tgt_SIC matches models_SIC)
+                    if '_' in var:
+                        suffix = var.split('_', 1)[1]  # Extract SIC from tgt_SIC
+                        for ds_var in sel_patch.data_vars:
+                            if '_' in ds_var and ds_var.split('_', 1)[1] == suffix:
+                                var_name_in_ds = ds_var
+                                break
+                
+                if var_name_in_ds is None:
+                    # Variable not found - skip it (will be None in output)
+                    continue
+                
                 # Convertir en numpy
-                arr = sel_patch[var].values  # (T, H, W)
+                arr = sel_patch[var_name_in_ds].values  # (T, H, W)
                 if var == "time":
                     arr = arr.astype('datetime64[ns]').astype('int64')
                 if var in ["time", "yc", "xc"]:
@@ -1860,7 +2161,6 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             self.test_times[res_key] = []
             
         batch = self.modify_batch(batch, res)
-
         # Determine device from batch
         device = batch.tgt_sic.device if hasattr(batch, 'tgt_sic') else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -1877,11 +2177,12 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                         self.len_daw[coarser_res]))
                for k, v in coarse.items()
             }
-            coarse = self.convert_xr_to_batch(coarse, batch)       
-            # Move all coarse tensors to device
+            coarse = self.convert_xr_to_batch(coarse, batch, res=res)       
+            # Move all coarse tensors to device and filter out None values
             coarse = {
                 k: v.to(device) if isinstance(v, torch.Tensor) else v
                 for k, v in coarse.items()
+                if v is not None  # Skip None values
             }
             xc_coarse = torch.squeeze(coarse["xc"], dim=1)
             yc_coarse = torch.squeeze(coarse["yc"], dim=1)
@@ -1895,10 +2196,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                                 }
                             )
 
-        sbatch = self.format_batch_for_solver(batch)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
 
         out = self(batch=sbatch, res=res)
-        out = self.split_tensor_to_dict(out)
+        out = self.split_tensor_to_dict(out, res=res)
+        
+        # Get resolution-specific target vars
+        tgt_vars = self._get_target_vars_for_resolution(res)
         
         # add coarser resolution to output
         if dataloader_idx > 0:
@@ -1909,7 +2213,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Stockage des sorties et des cibles
         # Unnormalization is done in aggregate
         out_norm, tgt_norm = {}, {}
-        for i, var in enumerate(self.tgt_vars):
+        for i, var in enumerate(tgt_vars):
             # Convert var_name to pred_var_name
             if '_' in var:
                 var_suffix = var.split('_', 1)[1]
@@ -1923,8 +2227,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 tgt_norm[var] += itrp_coarse[pred_var_name]
         
         # apply constraints
-        out_norm = self._apply_constraints(out_norm)
-        #tgt_norm = self._apply_constraints(tgt_norm)
+        out_norm = self._apply_constraints(out_norm, res)
+        #tgt_norm = self._apply_constraints(tgt_norm, res)
         
         combined = list(out_norm.values()) + list(tgt_norm.values())
         stacked = torch.stack(combined, dim=1)
@@ -1960,7 +2264,18 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
     @property
     def test_quantities(self):
-        return [prefix + var.split("_", 1)[-1] for prefix in ["pred_", "tgt_"] for var in self.tgt_vars]
+        # Create pred_suffix list, then keep original tgt_vars names
+        pred_vars = []
+        for var in self.tgt_vars:
+            if "_" in var:
+                suffix = var.split("_", 1)[-1]
+                pred_vars.append(f"pred_{suffix}")
+            else:
+                pred_vars.append(f"pred_{var}")
+        result = pred_vars + self.tgt_vars
+        #print(f"\n[DEBUG test_quantities] self.tgt_vars: {self.tgt_vars}")
+        #print(f"[DEBUG test_quantities] result: {result}")
+        return result
 
     def on_test_epoch_end(self):
         print("hello")

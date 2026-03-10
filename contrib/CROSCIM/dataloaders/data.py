@@ -32,7 +32,7 @@ def create_training_item(satellite_vars, covariates, target_vars, models_vars=No
     """
     Dynamically create a TrainingItem namedtuple with fields for:
     - All satellite variables (e.g., 'asip_sic', 'cimr_SIC', etc.)
-    - All model variables (e.g., 'models_SIC', 'models_SIT')  # ✅ NEW
+    - All model variables (e.g., 'models_SIC', 'models_SIT')  #  NEW
     - All target variables (e.g., 'tgt_sic', 'tgt_SIT')
     - All covariates
     - Coordinates and mask
@@ -42,7 +42,7 @@ def create_training_item(satellite_vars, covariates, target_vars, models_vars=No
     # Satellite variables (e.g., 'asip_sic', 'cimr_SIC', 'cristal_SIT')
     # Exclude 'models' from satellite_vars to avoid duplicates
     for source, vars_list in satellite_vars.items():
-        if source == 'models':  # ✅ Skip models here
+        if source == 'models':  #  Skip models here
             continue
         for var in vars_list:
             fields.append(f"{source}_{var}")
@@ -53,8 +53,18 @@ def create_training_item(satellite_vars, covariates, target_vars, models_vars=No
         for var in models_vars:
             fields.append(f"models_{var}")
     
-    # Target variables (e.g., 'tgt_sic', 'tgt_SIT')
-    fields.extend(target_vars)
+    # Target variables (e.g., 'tgt_sic', 'tgt_SIT', or 'models_SIC', 'models_SIT')
+    # Target vars might include model vars, so we need to deduplicate
+    for var in target_vars:
+        if var not in fields:
+            fields.append(var)
+    
+    # Ensure each models_XXX has a corresponding tgt_XXX field
+    if models_vars:
+        for var in models_vars:
+            tgt_var = f"tgt_{var}"
+            if tgt_var not in fields:
+                fields.append(tgt_var)
     
     # Covariates (e.g., 'msl', 't2m', 'u10', 'v10')
     fields.extend(covariates)
@@ -62,22 +72,42 @@ def create_training_item(satellite_vars, covariates, target_vars, models_vars=No
     # Coordinates and mask
     fields.extend(['lat', 'lon', 'land_mask', 'time', 'yc', 'xc'])
     
+    # Remove any remaining duplicates while preserving order
+    seen = set()
+    fields = [x for x in fields if not (x in seen or seen.add(x))]
+    
     # Debug: print fields to verify no duplicates
     if len(fields) != len(set(fields)):
         duplicates = [f for f in fields if fields.count(f) > 1]
         raise ValueError(f"Duplicate fields detected: {set(duplicates)}")
     
-    # Create namedtuple
-    return namedtuple("TrainingItem", fields)
+    # Create namedtuple with custom __reduce__ for pickling
+    TrainingItemBase = namedtuple("TrainingItem", fields)
+    
+    class PicklableTrainingItem(TrainingItemBase):
+        """TrainingItem with pickling support."""
+        def __reduce__(self):
+            # Store parameters to recreate the class
+            return (
+                _rebuild_training_item,
+                (satellite_vars, covariates, target_vars, models_vars, tuple(self))
+            )
+    
+    return PicklableTrainingItem
+
+def _rebuild_training_item(satellite_vars, covariates, target_vars, models_vars, values):
+    """Helper function to rebuild TrainingItem during unpickling."""
+    TrainingItemClass = create_training_item(satellite_vars, covariates, target_vars, models_vars)
+    return TrainingItemClass(*values)
 
 
 # Create TrainingItem at MODULE LEVEL with default configuration
 # This makes it picklable for multiprocessing
 TrainingItem = create_training_item(
-    satellite_vars=DEFAULT_VAR_GROUPS,  # ✅ No longer contains 'models'
+    satellite_vars=DEFAULT_VAR_GROUPS, 
     covariates=DEFAULT_COVARIATES,
     target_vars=["tgt_sic", "tgt_SIT"],
-    models_vars=["SIC", "SIT"]  # Models handled separately
+    models_vars=["SIC", "SIT", "HS", "SSH"]  # Models handled separately - includes all possible model vars
 )
 
 class IncompleteScanConfiguration(Exception):
@@ -516,11 +546,28 @@ class XrDataset(torch.utils.data.Dataset):
         sample["lon"] = np.expand_dims(lon_patch, axis=0)
         
         # Add target variables using var_mapping
-        for target_var in self.target_vars:
-            # Find source variable from var_mapping
-            source_var = self.var_mapping.get(target_var)
-            if source_var and source_var in sample:
-                sample[target_var] = sample[source_var]
+        # If target_vars and var_mapping are resolution-specific dicts, use the minimum resolution
+        if isinstance(self.target_vars, dict):
+            # Get the minimum resolution key (e.g., patch_x2 from [patch_x50, patch_x10, patch_x2])
+            res_keys = [int(k.split('_x')[-1]) for k in self.target_vars.keys() if '_x' in k]
+            min_res = min(res_keys) if res_keys else list(self.target_vars.keys())[0]
+            min_res_key = f"patch_x{min_res}" if isinstance(min_res, int) else min_res
+            var_mapping_to_use = self.var_mapping.get(min_res_key, {}) if isinstance(self.var_mapping, dict) else {}
+        else:
+            # Simple list case
+            var_mapping_to_use = self.var_mapping
+        
+        # Initialize targets from their sources (same logic as data_multires_supervised.py)
+        for target_var, source_var in var_mapping_to_use.items():
+            # If target starts with models_XXX, create tgt_XXX from models_XXX
+            if target_var.startswith('models_') and '_' in target_var:
+                suffix = target_var.split('_', 1)[1]  # Extract XXX from models_XXX
+                tgt_var = f"tgt_{suffix}"
+                if target_var in sample:
+                    sample[tgt_var] = sample[target_var].copy()
+            # If target starts with tgt_XXX, use the source_var directly
+            elif target_var.startswith('tgt_') and source_var in sample:
+                sample[target_var] = sample[source_var].copy()
 
         # Keep track of coordinates
         sample["time"] = np.expand_dims(
@@ -600,8 +647,52 @@ class XrDatasetSupervised(XrDataset):
         super().__init__(*args, **kwargs)
         
         # Add 'models' to active sources if configured
-        if self.models_vars and len(self.models_vars) > 0 and 'models' not in self.active_sources:
+        if self.models_vars is not None and len(self.models_vars) > 0 and 'models' not in self.active_sources:
             self.active_sources.append('models')
+
+        # Load data in memory (for inference) - only active sources
+        if self.load_data:
+            time_slice = slice(
+                datetime.datetime.strftime(self.times[0], "%Y-%m-%d"),
+                datetime.datetime.strftime(self.times[-1] + datetime.timedelta(days=1), "%Y-%m-%d")
+            )
+            
+            # Use load_mfdata which returns a dict
+            # Build paths_loaders with only active sources
+            paths_loaders = {}
+            if 'asip' in self.active_sources:
+                paths_loaders['asip'] = self.asip_paths
+            if 'cimr' in self.active_sources:
+                paths_loaders['cimr'] = self.cimr_paths
+            if 'cristal' in self.active_sources:
+                paths_loaders['cristal'] = self.cristal_paths
+            if self.covariates:
+                paths_loaders['covariates'] = self.covariates_paths
+            if 'models' in self.active_sources:
+                paths_loaders['models'] = self.models_paths
+            datasets = load_mfdata(
+                times=time_slice,
+                satellite_vars=self.satellite_vars,  # Dict of {source: [vars]}
+                covariates=self.covariates,  # List of covariate names
+                models_vars=self.models_vars,  # List of model variable names
+                slices=self.domain_limits,
+                path_loaders=paths_loaders,
+                type_coords="coords",
+                resize=self.resize,
+                domain_limits=self.domain_limits
+            )
+            
+            # Extract datasets from the returned dict
+            self.full_asip = datasets.get('asip', None)
+            self.full_cimr = datasets.get('cimr', None)
+            self.full_cristal = datasets.get('cristal', None)
+            self.full_covs = datasets.get('covariates', None)
+            self.full_models = datasets.get('models', None)
+            
+            # Validate that ASIP is loaded (required as reference)
+            if self.full_asip is None:
+                raise ValueError("ASIP dataset is required as reference grid but was not loaded")
+
         
         print(f"XrDatasetSupervised initialized:")
         print(f"  Models vars: {self.models_vars}")
@@ -611,7 +702,7 @@ class XrDatasetSupervised(XrDataset):
     def __getitem__(self, idx):
         """Override to add model data loading and interpolation."""
         
-        # ✅ Call parent's __getitem__ to get the sample (returns a dict, not TrainingItem yet)
+        #  Call parent's __getitem__ to get the sample (returns a dict, not TrainingItem yet)
         # The parent returns a dict before applying postpro_fn
         # We need to intercept BEFORE postpro_fn converts it to TrainingItem
         
@@ -627,13 +718,13 @@ class XrDatasetSupervised(XrDataset):
         # Restore postpro_fn
         self.postpro_fn = original_postpro_fn
         
-        # ✅ If no model data configured, apply postpro and return
-        if not self.models_vars or len(self.models_paths) == 0:
+        #  If no model data configured, apply postpro and return
+        if self.models_vars is None:
             if self.postpro_fn is not None:
                 sample = self.postpro_fn(sample)
             return sample
         
-        # ✅ Calculate the actual idx used by parent (after subsel_patch)
+        #  Calculate the actual idx used by parent (after subsel_patch)
         actual_idx = self.idx_patches_in_ocean[idx] if self.subsel_patch else idx
         
         # Get the slice for this patch
@@ -645,7 +736,7 @@ class XrDatasetSupervised(XrDataset):
         
         time_indices = np.arange(sl["time"].start, sl["time"].stop)
         
-        # ✅ Load model data
+        #  Load model data
         if self.load_data:
             # Use pre-loaded full dataset
             if hasattr(self, 'full_models'):
@@ -668,7 +759,6 @@ class XrDatasetSupervised(XrDataset):
                     type_coords="coords",
                     resize=1,
                     domain_limits=self.domain_limits,
-                    model=True,  # ✅ Subtract noise
                     n_jobs=5  # Fewer jobs for smaller batches
                 )
             else:
@@ -677,7 +767,7 @@ class XrDatasetSupervised(XrDataset):
                     sample = self.postpro_fn(sample)
                 return sample
         
-        # ✅ Interpolate model data onto ASIP grid
+        #  Interpolate model data onto ASIP grid
         # sample is a dict with keys like 'xc', 'yc', 'lon', 'lat'
         if self.itrp_from_regular:
             # Get ASIP coords from sample dict - remove batch dimension
@@ -700,12 +790,12 @@ class XrDatasetSupervised(XrDataset):
             prefix="models"
         )
         
-        # ✅ Add model variables to sample dict
+        #  Add model variables to sample dict
         sample.update(model_vars)
         
         print(f"  Added {len(model_vars)} model variables: {list(model_vars.keys())}")
         
-        # ✅ NOW apply postpro_fn to convert dict to TrainingItem
+        #  NOW apply postpro_fn to convert dict to TrainingItem
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)
         
@@ -766,14 +856,15 @@ class BaseDataModule(pl.LightningDataModule):
                  target_vars,
                  satellite_vars=None,  # NEW
                  var_mapping=None,     # NEW
-                 models_vars=None,  # ✅ Accept models_vars
+                 models_vars=None,  #  Accept models_vars
                  mask_path=None,
                  domain_name=None, domains=None,
                  xrds_kw=None, dl_kw=None, 
                  norm_stats=None, norm_stats_covs=None,
                  aug_kw=None, res=500, pads=[False,False,False], 
                  resize=1,
-                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM",
+                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/patch_in_ocean",
+                 rand_obs=False,
                  **kwargs):
         
         super().__init__()
@@ -783,10 +874,10 @@ class BaseDataModule(pl.LightningDataModule):
         self.covariates = covariates or DEFAULT_COVARIATES
         self.models_vars = models_vars if models_vars is not None else []
         self.target_vars = target_vars
-        self.var_mapping = var_mapping or {}
+        self.var_mapping = dict(var_mapping) or {}
 
-        # CRITICAL: Recreate TrainingItem with models support
-        # This must be done at MODULE level so it's available in apply_norm()
+        # Recreate TrainingItem with current configuration
+        # Now pickable thanks to custom __reduce__ method
         global TrainingItem
         TrainingItem = create_training_item(
             satellite_vars=self.satellite_vars,
@@ -794,8 +885,7 @@ class BaseDataModule(pl.LightningDataModule):
             target_vars=self.target_vars,
             models_vars=self.models_vars
         )
-        
-        print(f"\n✅ TrainingItem recreated with fields: {TrainingItem._fields}")
+        print(f"TrainingItem fields: {TrainingItem._fields}")
 
         # Determine active sources
         self.active_sources = [src for src, vars in self.satellite_vars.items() if vars]
@@ -818,7 +908,8 @@ class BaseDataModule(pl.LightningDataModule):
         self._norm_stats = norm_stats
         self._norm_stats_covs = norm_stats_covs
         self.subsel_path = subsel_path
-       
+        self.rand_obs = rand_obs
+
         print(f"\n{'='*60}")
         print(f"BaseDataModule configuration:")
         print(f"{'='*60}")
@@ -905,6 +996,15 @@ class BaseDataModule(pl.LightningDataModule):
         norm_sats = self._norm_stats
         norm_covs = self._norm_stats_covs
 
+        # Determine which variables should have random masking
+        if isinstance(self.rand_obs, bool):
+            apply_rand_obs_to_all = self.rand_obs
+            rand_obs_vars = []
+        else:
+            # rand_obs is a list of variable names
+            apply_rand_obs_to_all = False
+            rand_obs_vars = self.rand_obs if self.rand_obs else []
+
         def normalize_var(x, stats):
             if stats['type'] == 'zscore':
                 return (x - stats['mean']) / stats['std']
@@ -933,44 +1033,102 @@ class BaseDataModule(pl.LightningDataModule):
             
         def apply_norm(item):
             """Normalize a batch item according to configuration."""
-            # Use static TrainingItem class directly
-            data = TrainingItem(**item)
-
-            # Normalize target variables using var_mapping
+            # Recreate TrainingItem with current configuration to ensure correct fields
+            TrainingItemClass = create_training_item(
+                satellite_vars=self.satellite_vars,
+                covariates=self.covariates,
+                target_vars=self.target_vars if not isinstance(self.target_vars, dict) else list(set(
+                    var for vars_list in self.target_vars.values() for var in vars_list
+                )),
+                models_vars=self.models_vars
+            )
+            # Handle missing fields: use None as default for fields not present in item
+            item_with_defaults = {field: item.get(field, None) for field in TrainingItemClass._fields}
+            data = TrainingItemClass(**item_with_defaults)
+            
+            # Build a dict: {var_name: norm_params} for all variables
+            norm_mapping = {}
+                       
+            # First, assign stats for target variables using var_mapping
             for target_var in self.target_vars:
-                if hasattr(data, target_var):
-                    # Find source variable to get normalization stats
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_SIT -> use norm_models['SIT']
+                    var_suffix = target_var.split('_', 1)[1]
+                    norm_mapping[target_var] = norm_models[var_suffix]
+                else:
+                    # tgt_sic or other targets -> use var_mapping to find source stats
                     source_var = self.var_mapping.get(target_var)
                     if source_var and '_' in source_var:
                         group, var = source_var.split('_', 1)
-                        norm_params = norm_sats[group][var]
-                        var_data = normalize_var(getattr(data, target_var), norm_params)
-                        data = data._replace(**{target_var: var_data})
-
-            # Normalize satellite variables
+                        if group in norm_sats:
+                            norm_mapping[target_var] = norm_sats[group][var]
+            
+            # For input variables, use the same stats as their corresponding target
+            for target_var, source_var in self.var_mapping.items():
+                if target_var in norm_mapping and source_var in item:
+                    # cristal_SIT -> use same stats as models_SIT
+                    norm_mapping[source_var] = norm_mapping[target_var]
+            
+            # Apply normalization to satellite variables
             for source in self.active_sources:
+                if source == 'models':
+                    continue
                 for var in self.satellite_vars[source]:
                     var_key = f"{source}_{var}"
                     if hasattr(data, var_key):
                         var_data = getattr(data, var_key)
-                        if rand_obs:
+                        # Skip if None (field was missing)
+                        if var_data is None:
+                            continue
+                        # Apply random obs mask if requested for this variable
+                        should_apply_mask = apply_rand_obs_to_all or (var_key in rand_obs_vars)
+                        if should_apply_mask:
                             var_data = generate_random_obs_mask(var_data)
-                        norm_params = norm_sats[source][var]
+                        
+                        # Use mapped stats if available, else default satellite stats
+                        norm_params = norm_mapping.get(var_key, norm_sats[source][var])
                         var_data = normalize_var(var_data, norm_params)
                         data = data._replace(**{var_key: var_data})
-
+            
+            # Normalize model variables (inputs)
+            for var in self.models_vars:
+                var_key = f"models_{var}"
+                if hasattr(data, var_key):
+                    var_data = getattr(data, var_key)
+                    # Skip if None (field was missing)
+                    if var_data is None:
+                        continue
+                    norm_params = norm_models[var]
+                    var_data = normalize_var(var_data, norm_params)
+                    data = data._replace(**{var_key: var_data})
+            
+            # Normalize target variables
+            for target_var in self.target_vars:
+                if hasattr(data, target_var):
+                    var_data = getattr(data, target_var)
+                    # Skip if None (field was missing)
+                    if var_data is None:
+                        continue
+                    if target_var in norm_mapping:
+                        var_data = normalize_var(var_data, norm_mapping[target_var])
+                        data = data._replace(**{target_var: var_data})
+            
             # Normalize covariates
             for cov in self.covariates:
                 if hasattr(data, cov):
+                    cov_data = getattr(data, cov)
+                    # Skip if None (field was missing)
+                    if cov_data is None:
+                        continue
                     norm_params = norm_covs[cov]
-                    cov_data = normalize_var(getattr(data, cov), norm_params)
+                    cov_data = normalize_var(cov_data, norm_params)
                     data = data._replace(**{cov: cov_data})
-
+            
             # Normalize coordinates
             data = data._replace(land_mask=data.land_mask)
             data = data._replace(lat=normalize_var(data.lat, {"type": "minmax", "min": 50, "max": 90}))
             data = data._replace(lon=normalize_var(data.lon, {"type": "minmax", "min": -180, "max": 180}))
-
+            
             return data
 
         return ft.partial(ft.reduce, lambda i, f: f(i), [apply_norm])
@@ -1124,7 +1282,7 @@ class ConcatDataModule(BaseDataModule):
 
     def setup(self, stage='test'):
         # Postprocessing functions
-        post_fn_train = self.post_fn(rand_obs=True)
+        post_fn_train = self.post_fn(rand_obs=self.rand_obs)
         post_fn_eval = self.post_fn(rand_obs=False)
 
         # Training set

@@ -47,7 +47,7 @@ trainer:
   #gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  accumulate_grad_batches: 2
+  accumulate_grad_batches: 8
   limit_train_batches: 1000.
   limit_val_batches: 50.
   max_epochs: 150
@@ -68,7 +68,7 @@ trainer:
       max_depth: 2
 
 datamodule:
-  _target_: contrib.CROSCIM.data_simple_multires.BaseDataModuleMultiRes_simplify
+  _target_: contrib.CROSCIM.dataloaders.data_simple_multires.BaseDataModuleMultiRes_simplify
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
@@ -154,21 +154,24 @@ model:
         target_vars: ${var_config.target_vars}
         var_mapping: ${var_config.var_mapping}
         n_time: ${var_config.time_steps.patch_x50}
+        include_masks: ${model.include_masks}
         obs_cost:
           _target_: contrib.CROSCIM.solver.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
           _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 180
+          dim_in: ${python_eval:"2 * len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50} if ${model.include_masks} else len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+          dim_hidden: 360
           dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
           _target_: contrib.CROSCIM.solver.ConvLstmGradModel
-          dim_in: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 180
+          dim_in: ${python_eval:"2 * len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50} if ${model.include_masks} else len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
+          dim_hidden: 360
+          dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
+  include_masks: False
 
 optim_weight:
   patch_x50:

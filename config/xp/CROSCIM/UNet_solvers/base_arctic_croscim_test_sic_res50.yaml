@@ -7,6 +7,7 @@ paths:
   cimr: /dmidata/users/maxb/CROSCIM_dataset/out_CIMR
   cristal: /dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL
   covariates: /dmidata/users/maxb/CROSCIM_dataset/atm_data
+  models: /dmidata/users/maxb/CROSCIM_dataset/out_CIMR
 
 domain: ???
 
@@ -63,7 +64,7 @@ trainer:
       filename: '{val_mse:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.CROSCIM.data_multires.BaseDataModuleMultiRes
+  _target_: contrib.CROSCIM.dataloaders.data_multires.BaseDataModuleMultiRes
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}

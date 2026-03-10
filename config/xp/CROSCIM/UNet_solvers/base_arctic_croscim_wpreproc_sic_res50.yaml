@@ -50,7 +50,7 @@ trainer:
   accumulate_grad_batches: 2
   limit_train_batches: 1000.
   limit_val_batches: 500.
-  max_epochs: 60
+  max_epochs: 150
   logger:
     _target_: pytorch_lightning.loggers.CSVLogger
     save_dir: ${hydra:runtime.output_dir}
@@ -64,7 +64,7 @@ trainer:
       filename: '{val_loss:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.CROSCIM.data_simple_multires.BaseDataModuleMultiRes_simplify
+  _target_: contrib.CROSCIM.dataloaders.data_simple_multires.BaseDataModuleMultiRes_simplify
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
@@ -81,7 +81,7 @@ datamodule:
   multires: [50]
   
   # Data splits
-  split_train: {_target_: builtins.slice, _args_: [0, 300]}
+  split_train: {_target_: builtins.slice, _args_: [0, 1450]}
   split_val: {_target_: builtins.slice, _args_: [1450, 1490]}
   split_test: {_target_: builtins.slice, _args_: [1490, 1500]}
   

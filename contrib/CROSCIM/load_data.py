@@ -1,3 +1,6 @@
+import os
+os.environ['HDF5_USE_FILE_LOCKING']='FALSE'
+
 from glob import glob
 import datetime
 import numpy as np
@@ -7,6 +10,7 @@ from numpy.lib.stride_tricks import as_strided
 from joblib import Parallel, delayed
 #import cupy as cp
 #from cupy.lib.stride_tricks import as_strided as as_strided_cp
+
 
 # Default values (can be overridden)
 DEFAULT_VAR_GROUPS = {
@@ -150,8 +154,9 @@ def load_data(paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
                      "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
                      "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
                      "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data",
-                     "models":"/dmidata/users/maxb/CROSCIM_dataset/CIMR"},
+                     "models":"/dmidata/users/maxb/CROSCIM_dataset/outMOD"},
                      type="asip"):
+    
     """Load file paths for a given data type."""
     if type == "asip":
         return glob(paths["asip"] + "/*nc")
@@ -160,7 +165,7 @@ def load_data(paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
     elif type == "cristal":
         return glob(paths["cristal"] + "/CRISTAL5km_*nc")
     elif type == "models":  
-        return glob(paths["models"] + "/CIMR5km_*nc")
+        return glob(paths["models"] + "/MOD5km_*nc")
         return glob(paths["covariates"] + "/atm5km_*.nc")
 
 
@@ -242,7 +247,7 @@ def concatenate(paths, var_list, slices=None, type_coords="index", resize=1, dom
     return concat
 
 def process_single_file(path, var_list, slices, type_coords, resize, domain_limits, 
-                        return_coords=False, model=False):
+                        return_coords=False):
     """Process a single netCDF file and return the data."""
     from omegaconf import ListConfig
     # Convert OmegaConf ListConfig to Python list
@@ -253,26 +258,7 @@ def process_single_file(path, var_list, slices, type_coords, resize, domain_limi
         ds = ds.sel(**(domain_limits or {}))
     time = ds.time[0].data
 
-
-    # If model=True, compute var - var_noise for each variable
-    if model:
-        processed_vars = {}
-        for var in var_list:
-            var_noise = f"{var}noise"
-            if var in ds and var_noise in ds:
-                # Compute: var = var - var_noise (remove noise to get clean model output)
-                processed_vars[var] = ds[var] - ds[var_noise]
-            else:
-                print(f"  Warning: {var} not found in dataset")
-        
-        # Replace ds with processed variables
-        ds = xr.Dataset(
-            {var: processed_vars[var] for var in processed_vars},
-            coords=ds.coords
-        )
-    else:
-        # Original behavior: just select variables
-        ds = ds[var_list]
+    ds = ds[var_list]
 
     if slices is not None:
         if type_coords == "index":
@@ -296,18 +282,22 @@ def process_single_file(path, var_list, slices, type_coords, resize, domain_limi
         ds.close()
         return time, result
 
-def concatenate_parallel(paths, var_list, model=False,
-                        slices=None, type_coords="index", resize=1, domain_limits=None, n_jobs=15):
+def concatenate_parallel(paths, var_list, 
+                        slices=None, type_coords="index",
+                        resize=1, domain_limits=None, n_jobs=15):
+
+    print(slices)
     
     # Process first file separately to get coordinates
     time0, result0, coords, dims = process_single_file(
-        paths[0], var_list, slices, type_coords, resize, domain_limits, return_coords=True, model=model 
+        paths[0], var_list, slices, type_coords, resize, domain_limits, return_coords=True
     )
     
     # Parallel processing of remaining files
     if len(paths) > 1:
+        # Use 'loky' backend instead of 'threading' to avoid HDF5 thread-safety issues
         results = Parallel(n_jobs=n_jobs, backend='loky', verbose=10)(
-            delayed(process_single_file)(path, var_list, slices, type_coords, resize, domain_limits, return_coords=False, model=model)
+            delayed(process_single_file)(path, var_list, slices, type_coords, resize, domain_limits, return_coords=False)
             for path in paths[1:]
         )
         # Combine first result with parallel results
@@ -371,7 +361,7 @@ def load_mfdata(times,
                         If None, uses DEFAULT_VAR_GROUPS
         covariates: list of covariate names, e.g., ["u10", "v10"]
                     If None, uses DEFAULT_COVARIATES
-        models_vars: list of model variable names, e.g., ["t2m", "msl", "sic", "sit"]  # ✅ NEW
+        models_vars: list of model variable names, e.g., ["t2m", "msl", "sic", "sit"]
                      If None or empty, no model data is loaded
         slices: Optional spatial slices
         path_loaders: dict of {source: list_of_paths}
@@ -463,7 +453,7 @@ def load_mfdata(times,
                 # Models are assumed to be at same resolution as CIMR/CRISTAL (5km)
                 datasets['models'] = concatenate_parallel(
                     selected_model_paths, models_vars, None, type_coords,
-                    domain_limits=domain_limits, model=True
+                    domain_limits=domain_limits
                 )
                 print(f"  Loaded models: {list(datasets['models'].data_vars)}, shape: {datasets['models'].dims}")
             else:
@@ -497,13 +487,13 @@ def get_paths_for_source(source,
                             "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
                             "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
                             "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data",
-                            "models":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR"}):
+                            "models":"/dmidata/users/maxb/CROSCIM_dataset/out_MOD"}):
     """Get all paths for a given data source."""
     path_map = {
         "asip": paths["asip"]+'/*nc',
         "cimr": paths["cimr"]+'/CIMR5km_*nc',
         "cristal": paths["cristal"]+'/CRISTAL5km_*nc',
         "covariates": paths["covariates"]+'/atm5km_*.nc',
-        "models": paths["models"]+'/CIMR5km_*nc'
+        "models": paths["models"]+'/MOD5km_*nc'
     }
     return glob(path_map.get(source, ""))

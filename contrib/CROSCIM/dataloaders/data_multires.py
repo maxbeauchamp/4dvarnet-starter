@@ -1,4 +1,4 @@
-from contrib.CROSCIM.data import *
+from contrib.CROSCIM.dataloaders.data import *
 
 import matplotlib
 matplotlib.use("Agg")
@@ -309,9 +309,27 @@ class XrDatasetMultiResTrain(XrDataset):
         sample["lat"] = np.expand_dims(lat_target, axis=0)
         sample["lon"] = np.expand_dims(lon_target, axis=0)
 
+
+        # Determine which resolution key to use based on factor
+        res_key = f"patch_x{factor * self.resize}"
+        
+        # Get resolution-specific mapping
+        if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
+            mapping = self.var_mapping[res_key]
+        else:
+            # Fallback to base var_mapping (for backward compatibility)
+            mapping = self.var_mapping
+
+        # Get resolution-specific target_vars
+        if isinstance(self.target_vars, dict) and res_key in self.target_vars:
+            target_vars = self.target_vars[res_key]
+        else:
+            # Fallback to base target_vars (for backward compatibility)
+            target_vars = self.target_vars
+
         # Add target variables based on var_mapping configuration
-        for target_var in self.target_vars:
-            source_var = self.var_mapping.get(target_var)
+        for target_var in target_vars:
+            source_var = var_mapping.get(target_var)
             if source_var and source_var in sample:
                 sample[target_var] = sample[source_var]
             else:
@@ -444,6 +462,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                  satellite_vars=None,
                  var_mapping=None,
                  multires=[50, 10, 2],  # Multi-resolution specific
+                 rand_obs=False,
                  **kwargs):
         """
         Multi-resolution data module extending BaseDataModule.
@@ -478,7 +497,27 @@ class BaseDataModuleMultiRes(BaseDataModule):
         # Store multi-resolution configuration
         self.multires = multires
         self.resize = self.multires[-1]
+        self.rand_obs = rand_obs
         
+        # Convert target_vars to dict (handle OmegaConf)
+        from omegaconf import OmegaConf
+        if target_vars is not None:
+            if hasattr(target_vars, '_metadata'):
+                self.target_vars = OmegaConf.to_container(target_vars, resolve=True)
+            else:
+                self.target_vars = target_vars
+        else:
+            self.target_vars = []
+
+        # Convert var_mapping to dict (handle OmegaConf)
+        if var_mapping is not None:
+            if hasattr(var_mapping, '_metadata'):
+                self.var_mapping = OmegaConf.to_container(var_mapping, resolve=True)
+            else:
+                self.var_mapping = dict(var_mapping)
+        else:
+            self.var_mapping = {}
+
         print(f"\n{'='*60}")
         print(f"BaseDataModuleMultiRes configuration:")
         print(f"{'='*60}")
@@ -502,12 +541,12 @@ class BaseDataModuleMultiRes(BaseDataModule):
         """
         os.makedirs(save_dir, exist_ok=True)
 
-        for key, batch in batch_dict.items():
+        for res_key, batch in batch_dict.items():
             # Extrait le facteur de résolution (ex: x10 -> 10)
             try:
-                factor = int(key.split("x")[-1])
+                factor = int(res_key.split("x")[-1])
             except:
-                print(f"Warning: can't parse resolution factor in {key}")
+                print(f"Warning: can't parse resolution factor in {res_key}")
                 continue
 
             patch_dims = patch_dims_dict[factor]
@@ -540,11 +579,20 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 'land_mask': (('sample', 'yc', 'xc'), torch.squeeze(batch.land_mask, dim=1).detach().cpu()),
             })
 
+
+            # Get resolution-specific target_vars
+            if isinstance(self.target_vars, dict) and res_key in self.target_vars:
+                target_vars = self.target_vars[res_key]
+            else:
+                # Fallback to base target_vars (for backward compatibility)
+                target_vars = self.target_vars
+
             # Target variables (dynamically based on config)
-            for target_var in self.target_vars:
+            for target_var in target_vars:
                 if hasattr(batch, target_var):
                     tensor = getattr(batch, target_var)
-                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+            
+            if torch.is_tensor(tensor) and tensor.ndim == 4:
                         data_vars[target_var] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
             # Coordonnées
@@ -645,7 +693,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     mask=self.mask,
                     times=times,
                     **self.xrds_kw,
-                    postpro_fn=self.post_fn(rand_obs=False),
+                    postpro_fn=self.post_fn(rand_obs=self.rand_obs),
                     res=self.res,
                     pad=self.pads[2],
                     stride_test=True,

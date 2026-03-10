@@ -13,6 +13,7 @@ import gc
 from random import sample
 import contrib
 from contrib.CROSCIM.load_data import *
+from contrib.CROSCIM.dataloaders.data import *
 import datetime
 import pyresample
 import pandas as pd
@@ -23,52 +24,6 @@ import shapely.geometry as sgeom
 import os
 from torch.utils.data.sampler import Sampler
 import torch.nn.functional as F
-
-
-def create_training_item(satellite_vars, covariates, target_vars):
-    """
-    Dynamically create a TrainingItem namedtuple with variables from satellite_vars, covariates, and targets.
-    
-    Args:
-        satellite_vars: dict of {source: [var_list]}, e.g., {"cimr": ["SIC", "SIT"], "asip": ["sic"]}
-        covariates: list of covariate names, e.g., ["msl", "t2m", "u10", "v10"]
-        target_vars: list of target variable names, e.g., ["tgt_sic", "tgt_SIT"]
-    
-    Returns:
-        namedtuple class with all required fields
-    """
-    fields = []
-    
-    # Add satellite variables with source prefix
-    for source, vars_list in satellite_vars.items():
-        for var in vars_list:
-            fields.append(f"{source}_{var}")
-    
-    # Add target variables
-    fields.extend(target_vars)
-    
-    # Add covariates
-    if covariates:
-        fields.extend(covariates)
-    
-    # Add coordinates and metadata
-    fields.extend(['lat', 'lon', 'land_mask', "time", "yc", "xc"])
-    
-    # Remove duplicates while preserving order
-    fields = list(dict.fromkeys(fields))
-    
-    print(f"TrainingItem fields: {fields}")
-    
-    return namedtuple("TrainingItem", fields)
-
-
-# Default TrainingItem (will be overridden by config)
-TrainingItem = create_training_item(
-    satellite_vars=DEFAULT_VAR_GROUPS,
-    covariates=DEFAULT_COVARIATES,
-    target_vars=["tgt_sic", "tgt_SIT"]
-)
-
 
 class XrDataset_simplify(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
