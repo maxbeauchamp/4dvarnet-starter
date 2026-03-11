@@ -127,7 +127,7 @@ datamodule = BaseDataModuleMultiRes(
         'domain_limits': dict(
             xc=slice(-3849750., 3749750.),
             yc=slice(2473750., -4896250.)
-        )
+        ),
     },
     
     # DataLoader configuration
@@ -139,7 +139,8 @@ datamodule = BaseDataModuleMultiRes(
     multires=[50, 10, 2],
     norm_stats=norm_stats,
     norm_stats_covs=norm_stats_covs,
-    norm_stats_models=norm_stats_models  # NEW
+    norm_stats_models=norm_stats_models,
+    rand_obs=["asip_sic"]#, "cristal_SIT"]
 )
 
 print("\n" + "="*70)
@@ -225,58 +226,6 @@ def remove_useless_patches_multires(batch, multires, vars_tgt=['tgt_sic', 'tgt_S
 
     return batch_filtered
 
-def verify_target_initialization(batch, var_mapping, multires):
-    """
-    NEW: Verify that targets were correctly initialized from their sources
-    according to resolution-dependent var_mapping.
-    
-    Args:
-        batch: dict with keys 'patch_x2', 'patch_x10', 'patch_x50'
-        var_mapping: dict mapping resolution keys to {target: source} dicts
-        multires: list of resolution factors
-    """
-    print("\n" + "="*70)
-    print("VERIFYING TARGET INITIALIZATION BY RESOLUTION")
-    print("="*70)
-    
-    for res_factor in multires:
-        res_key = f"patch_x{res_factor}"
-        
-        if res_key not in batch:
-            print(f"  {res_key}: NOT FOUND in batch")
-            continue
-        
-        batch_res = batch[res_key]
-        mapping = var_mapping.get(res_key, {})
-        
-        print(f"\n{res_key}:")
-        print(f"  Mapping: {mapping}")
-        
-        for tgt_var, src_var in mapping.items():
-            if hasattr(batch_res, tgt_var) and hasattr(batch_res, src_var):
-                tgt_data = getattr(batch_res, tgt_var)
-                src_data = getattr(batch_res, src_var)
-                
-                # Check if they match (allowing for numerical precision)
-                match = torch.allclose(tgt_data, src_data, rtol=1e-5, atol=1e-5, equal_nan=True)
-                
-                print(f"    {tgt_var} <- {src_var}: ", end="")
-                if match:
-                    print(f"✓ MATCH (shape: {tgt_data.shape})")
-                else:
-                    print(f"✗ MISMATCH!")
-                    print(f"      Target range: [{tgt_data.nanmin():.4f}, {tgt_data.nanmax():.4f}]")
-                    print(f"      Source range: [{src_data.nanmin():.4f}, {src_data.nanmax():.4f}]")
-            else:
-                missing = []
-                if not hasattr(batch_res, tgt_var):
-                    missing.append(tgt_var)
-                if not hasattr(batch_res, src_var):
-                    missing.append(src_var)
-                print(f"    {tgt_var} <- {src_var}: ✗ MISSING ({', '.join(missing)})")
-    
-    print("="*70 + "\n")
-
 # ===== MAIN PREPROCESSING LOOP =====
 print("\nStarting preprocessing (supervised mode with resolution-dependent targets)...")
 print(f"Processing {len(data_loader)} batches\n")
@@ -289,16 +238,11 @@ for i, batch in enumerate(data_loader):
     if i % 10 == 0:
         print(f"Processing batch {i}/{len(data_loader)}...")
     
-    # Verify target initialization on first batch
-    if not first_batch_verified:
-        verify_target_initialization(batch, var_mapping, datamodule.multires)
-        first_batch_verified = True
-    
     # Filter useless patches
     batch_filtered = remove_useless_patches_multires(
         batch, 
         multires=[50, 10, 2],
-        vars_tgt=target_vars,
+        vars_tgt=target_vars["patch_x2"],  # Use finest resolution targets
         threshold_num=0.2,
         threshold_var=0.02
     )

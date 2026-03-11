@@ -692,13 +692,22 @@ class BaseDataModuleMultiRes(BaseDataModule):
 
             data_vars = {}
 
+            # Helper function to check if a field is non-empty
+            def is_valid_field(tensor):
+                """Check if tensor is valid (not empty array from None replacement)."""
+                if torch.is_tensor(tensor):
+                    return tensor.numel() > 0 and tensor.ndim == 4
+                elif isinstance(tensor, np.ndarray):
+                    return tensor.size > 0
+                return False
+
             # Variables satellites (dynamically based on config)
             for source in self.active_sources:
                 for var in self.satellite_vars.get(source, []):
                     var_name = f"{source}_{var}"
                     if hasattr(batch, var_name):
                         tensor = getattr(batch, var_name)
-                        if torch.is_tensor(tensor) and tensor.ndim == 4:
+                        if is_valid_field(tensor):
                             data_vars[var_name] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
             # Model variables
@@ -706,17 +715,17 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 var_name = f"models_{var}"
                 if hasattr(batch, var_name):
                     tensor = getattr(batch, var_name)
-                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+                    if is_valid_field(tensor):
                         data_vars[var_name] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
             # Covariates
             for cov in self.covariates:
                 if hasattr(batch, cov):
                     tensor = getattr(batch, cov)
-                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+                    if is_valid_field(tensor):
                         data_vars[cov] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
-            # Coordonnées et masque
+            # Coordonnées et masque (always present, not filtered)
             data_vars.update({
                 'times': (('sample', 'time'), torch.squeeze(batch.time, dim=1).detach().cpu().numpy().astype("datetime64[s]")),
                 'ycs': (('sample', 'yc'), torch.squeeze(batch.yc, dim=1).detach().cpu()),
@@ -726,11 +735,29 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 'land_mask': (('sample', 'yc', 'xc'), torch.squeeze(batch.land_mask, dim=1).detach().cpu()),
             })
 
-            # Target variables (dynamically based on config)
-            for target_var in self.target_vars:
+            # Target variables (dynamically based on config and resolution)
+            # Get target_vars for this specific resolution
+            if isinstance(self.target_vars, dict):
+                res_key = f"patch_x{factor}"
+                target_vars_for_res = self.target_vars.get(res_key, [])
+            else:
+                target_vars_for_res = self.target_vars
+            
+            # Build list of all target variables to save (including tgt_XXX variants)
+            all_target_vars = []
+            for target_var in target_vars_for_res:
+                all_target_vars.append(target_var)
+                # If target_var is models_XXX or other prefix, also save tgt_XXX
+                if '_' in target_var:
+                    prefix, suffix = target_var.split('_', 1)
+                    tgt_var = f"tgt_{suffix}"
+                    if tgt_var not in all_target_vars:
+                        all_target_vars.append(tgt_var)
+            
+            for target_var in all_target_vars:
                 if hasattr(batch, target_var):
                     tensor = getattr(batch, target_var)
-                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+                    if is_valid_field(tensor):
                         data_vars[target_var] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
             # Coordonnées
@@ -767,7 +794,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
         else:
             # rand_obs is a list of variable names
             apply_rand_obs_to_all = False
-            rand_obs_vars = self.rand_obs if self.rand_obs else []
+            rand_obs_vars = self.rand_obs if len(self.rand_obs) > 0 else []
         
         def normalize_var(x, stats):
             if stats['type'] == 'zscore':
@@ -811,6 +838,13 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 # Fallback to single mapping (backward compatibility)
                 mapping = self.var_mapping
             
+            # Get resolution-specific target_vars
+            if isinstance(self.target_vars, dict) and resolution_key in self.target_vars:
+                target_vars_for_res = self.target_vars[resolution_key]
+            else:
+                # Fallback: use all target vars if not resolution-specific
+                target_vars_for_res = self._get_all_target_vars()
+            
             # Initialize target variables from their RESOLUTION-SPECIFIC sources
             #for target_var, source_var in mapping.items():
             #    if source_var in item:
@@ -821,34 +855,22 @@ class BaseDataModuleMultiRes(BaseDataModule):
             item_with_defaults = {field: item.get(field, None) for field in TrainingItem._fields}
             data = TrainingItem(**item_with_defaults)
             
-            # Determine which normalization stats to use for each variable
-            # For target variables, use their own stats (e.g., models_SIT uses norm_models['SIT'])
-            # For input variables that map to targets, use the target's stats for consistency
+            # ==================================================================
+            # NORMALIZATION LOGIC
+            # ==================================================================
             
-            # Build a dict: {var_name: norm_params} for all variables
-            norm_mapping = {}
+            # Build a mapping to determine which stats to use for each variable
+            # This avoids double normalization
+            stats_to_use = {}
             
-            # First, assign stats for target variables
-            for target_var in self.target_vars:
-                if target_var.startswith('models_') and '_' in target_var:
-                    # models_SIT -> use norm_models['SIT']
-                    var_suffix = target_var.split('_', 1)[1]
-                    norm_mapping[target_var] = norm_models[var_suffix]
-                else:
-                    # Use var_mapping to find the source variable and its stats
-                    source_var = mapping.get(target_var)
-                    if source_var and '_' in source_var:
-                        group, var = source_var.split('_', 1)
-                        if group in norm_sats:
-                            norm_mapping[target_var] = norm_sats[group][var]
-            
-            # For input variables, use the same stats as their corresponding target
+            # Check var_mapping to determine if satellite variables should use model stats
             for target_var, source_var in mapping.items():
-                if target_var in norm_mapping and source_var in item:
-                    # cristal_SIT -> use same stats as models_SIT
-                    norm_mapping[source_var] = norm_mapping[target_var]
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_XXX -> satellite source should use model stats
+                    var_suffix = target_var.split('_', 1)[1]
+                    stats_to_use[source_var] = norm_models[var_suffix]
             
-            # Apply normalization to satellite variables
+            # 1. Normalize satellite variables
             for source in self.active_sources:
                 if source == 'models':
                     continue
@@ -856,40 +878,47 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     var_key = f"{source}_{var}"
                     if hasattr(data, var_key):
                         var_data = getattr(data, var_key)
-                        # Skip if None (field was missing)
                         if var_data is None:
                             continue
-                        # Apply random obs mask if requested for this variable
+                        # Apply random obs mask if requested
                         should_apply_mask = apply_rand_obs_to_all or (var_key in rand_obs_vars)
+                        print(f"  DEBUG {resolution_key}: var={var_key}, should_apply_mask={should_apply_mask}, "
+                              f"apply_rand_obs_to_all={apply_rand_obs_to_all}, var_key in rand_obs_vars={var_key in rand_obs_vars}, "
+                              f"rand_obs_vars={rand_obs_vars}")
                         if should_apply_mask:
                             var_data = generate_random_obs_mask(var_data)
-                        
                         # Use mapped stats if available, else default satellite stats
-                        norm_params = norm_mapping.get(var_key, norm_sats[source][var])
-                        var_data = normalize_var(var_data, norm_params)
+                        norm_stats = stats_to_use.get(var_key, norm_sats[source][var])
+                        var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{var_key: var_data})
             
-            # Normalize model variables (inputs)
+            # 2. Normalize models variables
             for var in self.models_vars:
                 var_key = f"models_{var}"
                 if hasattr(data, var_key):
                     var_data = getattr(data, var_key)
-                    # Skip if None (field was missing)
                     if var_data is None:
                         continue
-                    norm_params = norm_models[var]
-                    var_data = normalize_var(var_data, norm_params)
+                    # Normalize with models stats
+                    var_data = normalize_var(var_data, norm_models[var])
                     data = data._replace(**{var_key: var_data})
             
-            # Normalize target variables
-            for target_var in self.target_vars:
-                if hasattr(data, target_var):
+            # 3. Normalize target variables based on their source
+            for target_var, source_var in mapping.items():
+                if target_var.startswith('tgt_') and hasattr(data, target_var):
+                    # tgt_XXX -> normalize with source stats
                     var_data = getattr(data, target_var)
-                    # Skip if None (field was missing)
                     if var_data is None:
                         continue
-                    if target_var in norm_mapping:
-                        var_data = normalize_var(var_data, norm_mapping[target_var])
+                    if '_' in source_var:
+                        group, var = source_var.split('_', 1)
+                        if group in norm_sats:
+                            norm_stats = norm_sats[group][var]
+                        elif group == 'models':
+                            norm_stats = norm_models[var]
+                        else:
+                            continue
+                        var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{target_var: var_data})
             
             # Normalize covariates
@@ -908,11 +937,28 @@ class BaseDataModuleMultiRes(BaseDataModule):
             data = data._replace(lat=normalize_var(data.lat, {"type": "minmax", "min": 50, "max": 90}))
             data = data._replace(lon=normalize_var(data.lon, {"type": "minmax", "min": -180, "max": 180}))
             
-            return data
+            # Filter out None fields by creating a new TrainingItem with only present fields
+            # Keep only fields that are not None (indicating they exist at this resolution)
+            data_dict = data._asdict()
+            filtered_dict = {}
+            for field in data._fields:
+                if data_dict[field] is not None:
+                    filtered_dict[field] = data_dict[field]
+                else:
+                    # Replace None with empty array so TrainingItem stays same class (for pickling)
+                    # These will be filtered during NetCDF save and model processing
+                    filtered_dict[field] = np.array([], dtype=np.float32)
+            
+            return type(data)(**filtered_dict)
         
         # Return a function that applies normalization with resolution context
-        def post_fn_with_resolution(batch_dict):
-            """Apply post-processing to multi-resolution batch."""
+        def post_fn_with_resolution(batch_dict, resolution_key=None):
+            """Apply post-processing to multi-resolution batch.
+            
+            Args:
+                batch_dict: Either a multi-res dict with patch_xXX keys, or a single sample dict
+                resolution_key: Optional resolution key to use for single sample (e.g., 'patch_x50')
+            """
             
             # Generate resolution keys dynamically from self.multires
             res_keys = [f'patch_x{factor}' for factor in self.multires]
@@ -928,9 +974,11 @@ class BaseDataModuleMultiRes(BaseDataModule):
                         processed[res_key] = apply_norm(batch_dict[res_key], res_key)
                 return processed
             else:
-                # Single resolution batch (fallback) - use the first resolution
-                fallback_res = res_keys[0] if res_keys else 'patch_x1'
-                return apply_norm(batch_dict, fallback_res)
+                # Single resolution batch (fallback)
+                # Use provided resolution_key or fallback to first resolution
+                if resolution_key is None:
+                    resolution_key = res_keys[0] if res_keys else 'patch_x1'
+                return apply_norm(batch_dict, resolution_key)
         
         return post_fn_with_resolution
 
@@ -1056,7 +1104,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     resize=self.resize,
                     subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
                 )
-
+            
         self.train_ds = create_dataset('train')
         self.val_ds = create_dataset('val')
         self.test_ds = create_dataset('test')

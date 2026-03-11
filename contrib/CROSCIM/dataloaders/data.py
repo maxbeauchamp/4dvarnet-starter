@@ -788,16 +788,54 @@ class XrDatasetSupervised(XrDataset):
             models_ds, 
             self.models_vars, 
             prefix="models"
-        )
+        ) 
         
         #  Add model variables to sample dict
         sample.update(model_vars)
         
         print(f"  Added {len(model_vars)} model variables: {list(model_vars.keys())}")
         
+        #  Initialize target variables from their sources (like in data_multires_supervised.py)
+        if self.var_mapping:
+            # Handle resolution-specific var_mapping (dict) vs simple mapping
+            if isinstance(self.var_mapping, dict) and any(k.startswith('patch_x') for k in self.var_mapping.keys()):
+                # Multi-resolution case: use the finest resolution (self.resize)
+                res_key = f"patch_x{self.resize}"
+                mapping = self.var_mapping.get(res_key, {})
+                print(f"  Using var_mapping for {res_key}")
+            else:
+                # Simple case: var_mapping is a flat dict
+                mapping = self.var_mapping
+            
+            for target_var, source_var in mapping.items():
+                # If target starts with models_XXX, create tgt_XXX from models_XXX
+                if target_var.startswith('models_') and '_' in target_var:
+                    suffix = target_var.split('_', 1)[1]  # Extract XXX from models_XXX
+                    tgt_var = f"tgt_{suffix}"
+                    if target_var in sample:
+                        sample[tgt_var] = sample[target_var].copy()
+                        print(f"  Created {tgt_var} <- {target_var}")
+                    else:
+                        print(f"  WARNING: Could not find {target_var} to create {tgt_var}")
+                # If target starts with tgt_XXX, use the source_var directly
+                elif target_var.startswith('tgt_') and source_var in sample:
+                    sample[target_var] = sample[source_var].copy()
+                    print(f"  Mapped {target_var} <- {source_var}")
+                elif target_var.startswith('tgt_'):
+                    print(f"  WARNING: Could not map {target_var} from {source_var}. Available keys: {list(sample.keys())}")
+        
         #  NOW apply postpro_fn to convert dict to TrainingItem
         if self.postpro_fn is not None:
-            sample = self.postpro_fn(sample)
+            # Check if postpro_fn accepts resolution_key parameter
+            import inspect
+            sig = inspect.signature(self.postpro_fn)
+            if 'resolution_key' in sig.parameters:
+                # Pass the resolution key (use self.resize for the current resolution)
+                res_key = f"patch_x{self.resize}"
+                sample = self.postpro_fn(sample, resolution_key=res_key)
+            else:
+                # Old-style postpro_fn without resolution_key
+                sample = self.postpro_fn(sample)
         
         return sample
     
@@ -1003,7 +1041,7 @@ class BaseDataModule(pl.LightningDataModule):
         else:
             # rand_obs is a list of variable names
             apply_rand_obs_to_all = False
-            rand_obs_vars = self.rand_obs if self.rand_obs else []
+            rand_obs_vars = self.rand_obs if len(self.rand_obs) > 0 else []
 
         def normalize_var(x, stats):
             if stats['type'] == 'zscore':
@@ -1046,30 +1084,22 @@ class BaseDataModule(pl.LightningDataModule):
             item_with_defaults = {field: item.get(field, None) for field in TrainingItemClass._fields}
             data = TrainingItemClass(**item_with_defaults)
             
-            # Build a dict: {var_name: norm_params} for all variables
-            norm_mapping = {}
-                       
-            # First, assign stats for target variables using var_mapping
-            for target_var in self.target_vars:
-                if target_var.startswith('models_') and '_' in target_var:
-                    # models_SIT -> use norm_models['SIT']
-                    var_suffix = target_var.split('_', 1)[1]
-                    norm_mapping[target_var] = norm_models[var_suffix]
-                else:
-                    # tgt_sic or other targets -> use var_mapping to find source stats
-                    source_var = self.var_mapping.get(target_var)
-                    if source_var and '_' in source_var:
-                        group, var = source_var.split('_', 1)
-                        if group in norm_sats:
-                            norm_mapping[target_var] = norm_sats[group][var]
+            # ==================================================================
+            # NORMALIZATION LOGIC
+            # ==================================================================
             
-            # For input variables, use the same stats as their corresponding target
+            # Build a mapping to determine which stats to use for each variable
+            # This avoids double normalization
+            stats_to_use = {}
+            
+            # Check var_mapping to determine if satellite variables should use model stats
             for target_var, source_var in self.var_mapping.items():
-                if target_var in norm_mapping and source_var in item:
-                    # cristal_SIT -> use same stats as models_SIT
-                    norm_mapping[source_var] = norm_mapping[target_var]
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_XXX -> satellite source should use model stats
+                    var_suffix = target_var.split('_', 1)[1]
+                    stats_to_use[source_var] = norm_models[var_suffix]
             
-            # Apply normalization to satellite variables
+            # 1. Normalize satellite variables
             for source in self.active_sources:
                 if source == 'models':
                     continue
@@ -1077,40 +1107,44 @@ class BaseDataModule(pl.LightningDataModule):
                     var_key = f"{source}_{var}"
                     if hasattr(data, var_key):
                         var_data = getattr(data, var_key)
-                        # Skip if None (field was missing)
                         if var_data is None:
                             continue
-                        # Apply random obs mask if requested for this variable
+                        # Apply random obs mask if requested
                         should_apply_mask = apply_rand_obs_to_all or (var_key in rand_obs_vars)
                         if should_apply_mask:
                             var_data = generate_random_obs_mask(var_data)
-                        
                         # Use mapped stats if available, else default satellite stats
-                        norm_params = norm_mapping.get(var_key, norm_sats[source][var])
-                        var_data = normalize_var(var_data, norm_params)
+                        norm_stats = stats_to_use.get(var_key, norm_sats[source][var])
+                        var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{var_key: var_data})
             
-            # Normalize model variables (inputs)
+            # 2. Normalize models variables
             for var in self.models_vars:
                 var_key = f"models_{var}"
                 if hasattr(data, var_key):
                     var_data = getattr(data, var_key)
-                    # Skip if None (field was missing)
                     if var_data is None:
                         continue
-                    norm_params = norm_models[var]
-                    var_data = normalize_var(var_data, norm_params)
+                    # Normalize with models stats
+                    var_data = normalize_var(var_data, norm_models[var])
                     data = data._replace(**{var_key: var_data})
             
-            # Normalize target variables
-            for target_var in self.target_vars:
-                if hasattr(data, target_var):
+            # 3. Normalize target variables based on their source
+            for target_var, source_var in self.var_mapping.items():
+                if target_var.startswith('tgt_') and hasattr(data, target_var):
+                    # tgt_XXX -> normalize with source stats
                     var_data = getattr(data, target_var)
-                    # Skip if None (field was missing)
                     if var_data is None:
                         continue
-                    if target_var in norm_mapping:
-                        var_data = normalize_var(var_data, norm_mapping[target_var])
+                    if '_' in source_var:
+                        group, var = source_var.split('_', 1)
+                        if group in norm_sats:
+                            norm_stats = norm_sats[group][var]
+                        elif group == 'models':
+                            norm_stats = norm_models[var]
+                        else:
+                            continue
+                        var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{target_var: var_data})
             
             # Normalize covariates
@@ -1129,7 +1163,15 @@ class BaseDataModule(pl.LightningDataModule):
             data = data._replace(lat=normalize_var(data.lat, {"type": "minmax", "min": 50, "max": 90}))
             data = data._replace(lon=normalize_var(data.lon, {"type": "minmax", "min": -180, "max": 180}))
             
-            return data
+            # Replace None fields with empty tensors to avoid collate issues
+            # This keeps the same TrainingItem class (picklable) but allows collate to work
+            data_dict = data._asdict()
+            for field in data._fields:
+                if data_dict[field] is None:
+                    # Create empty tensor with shape (0,) - will be filtered out during model processing
+                    data_dict[field] = np.array([], dtype=np.float32)
+            
+            return type(data)(**data_dict)
 
         return ft.partial(ft.reduce, lambda i, f: f(i), [apply_norm])
 
@@ -1138,30 +1180,39 @@ class BaseDataModule(pl.LightningDataModule):
         
         data_vars = {}
 
+        # Helper function to check if a field is non-empty
+        def is_valid_field(tensor):
+            """Check if tensor is valid (not empty array from None replacement)."""
+            if torch.is_tensor(tensor):
+                return tensor.numel() > 0 and tensor.ndim == 4
+            elif isinstance(tensor, np.ndarray):
+                return tensor.size > 0
+            return False
+
         # Satellite variables (dynamically from config)
         for source in self.active_sources:
             for var in self.satellite_vars[source]:
                 var_key = f"{source}_{var}"
                 if hasattr(batch, var_key):
                     tensor = getattr(batch, var_key)
-                    if torch.is_tensor(tensor) and tensor.ndim == 4:
+                    if is_valid_field(tensor):
                         data_vars[var_key] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
         # Covariates
         for cov in self.covariates:
             if hasattr(batch, cov):
                 tensor = getattr(batch, cov)
-                if torch.is_tensor(tensor) and tensor.ndim == 4:
+                if is_valid_field(tensor):
                     data_vars[cov] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
         # Target variables
         for target_var in self.target_vars:
             if hasattr(batch, target_var):
                 tensor = getattr(batch, target_var)
-                if torch.is_tensor(tensor) and tensor.ndim == 4:
+                if is_valid_field(tensor):
                     data_vars[target_var] = (('sample', 'time', 'yc', 'xc'), tensor.detach().cpu())
 
-        # Coordinates and mask
+        # Coordinates and mask (always present, not filtered)
         data_vars.update({
             'times': (('sample', 'time'), torch.squeeze(batch.time, dim=1).detach().cpu().numpy().astype("datetime64[s]")),
             'ycs': (('sample', 'yc'), torch.squeeze(batch.yc, dim=1).detach().cpu()),

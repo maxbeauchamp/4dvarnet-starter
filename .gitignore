@@ -63,3 +63,4 @@ Notebooks/ASIP_OSISAF/checkpoints/epoch=204.ckpt
 Notebooks/ASIP_OSISAF/checkpoints/epoch=104.ckpt
 Notebooks/checkpoints_CT_few_steps_time_embedding/cm/model.pt
 Notebooks/checkpoints/cm/model.pt
+ckpt/CROSCIM/base_croscim_UNet_res50_res10_supervised.ckpt

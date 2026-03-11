@@ -123,7 +123,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         # Dictionnaire d'équivalences : var canonique → liste d'alias
         self.equivalence_map = {
-            "sic": ["sic", "SIC", "sea_ice_concentration"],
+            "SIC": ["sic", "SIC", "sea_ice_concentration"],
             "SIT": ["sit", "SIT", "sea_ice_thickness"]
         }
 
@@ -721,6 +721,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             for var in self.input_vars:
                 if hasattr(batch, var):
                     data = getattr(batch, var)
+                    # Skip empty tensors (variables not present at this resolution)
+                    if torch.is_tensor(data) and data.numel() == 0:
+                        continue
                     input_tensors.append(data)
                     
                     # Créer le masque de validité (1 = valide, 0 = NaN)
@@ -732,7 +735,11 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # Mode original: seulement les données
             for var in self.input_vars:
                 if hasattr(batch, var):
-                    input_tensors.append(getattr(batch, var))
+                    data = getattr(batch, var)
+                    # Skip empty tensors (variables not present at this resolution)
+                    if torch.is_tensor(data) and data.numel() == 0:
+                        continue
+                    input_tensors.append(data)
                 else:
                     print(f"  Warning: batch missing input variable '{var}'")
         
@@ -740,11 +747,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         tgt_tensors = []
         for var in tgt_vars:
             if hasattr(batch, var):
-                tgt_tensors.append(getattr(batch, var))
+                data = getattr(batch, var)
+                # Skip empty tensors (variables not present at this resolution)
+                if torch.is_tensor(data) and data.numel() == 0:
+                    continue
+                tgt_tensors.append(data)
             else:
                 raise ValueError(f" Batch missing target variable '{var}'")
         
-        # ✅ DEBUG: Vérifier les dimensions (tous les 50 steps)
+        #  DEBUG: Vérifier les dimensions (tous les 50 steps)
         if include_masks and self.global_step % 50 == 0 and self.trainer.is_global_zero:
             input_final = torch.cat(input_tensors, dim=1)
             n_vars = len(self.input_vars)
@@ -773,11 +784,20 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         for pred_var, coarse_prediction in out.items():
             if coarse_prediction is None:
                 continue
+            # Skip empty tensors from coarse resolution
+            if torch.is_tensor(coarse_prediction) and coarse_prediction.numel() == 0:
+                continue
+                
             # Extrait la variable canonique (ex: "pred_sic" → "sic")
             canon_var = pred_var.replace("pred_", "") if pred_var.startswith("pred_") else pred_var
             aliases = self.equivalence_map.get(canon_var, [canon_var])
             # Compute the anomaly
             for batch_var in batch_dict:
+                batch_tensor = batch_dict[batch_var]
+                # Skip if batch variable is empty (doesn't exist at this resolution)
+                if torch.is_tensor(batch_tensor) and batch_tensor.numel() == 0:
+                    continue
+                    
                 for alias in aliases:
                     if batch_var.lower().endswith(alias.lower()):
                         batch_dict[batch_var] = batch_dict[batch_var] - coarse_prediction
@@ -1944,8 +1964,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 # models_SIT -> use norm_stats_models['SIT']
                 var_suffix = target_var.split('_', 1)[1]
                 stats = self.norm_stats_models[var_suffix]
-            else:
-                # Use var_mapping to find source stats
+            elif target_var.startswith('tgt_') or target_var in mapping:
+                # tgt_XXX or other mapped variable -> use source stats from var_mapping
                 source_var = mapping.get(target_var)
                 if source_var is None:
                     raise ValueError(f"No mapping found for target variable '{target_var}'")
@@ -1956,6 +1976,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     raise ValueError(f"Invalid source variable format: '{source_var}'")
                 
                 stats = self.norm_stats[group][var]
+            else:
+                raise ValueError(f"Cannot determine stats for target variable '{target_var}'")
             
             # Apply denormalization
             if stats["type"] == "zscore":
@@ -1990,6 +2012,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     var: (("time", "yc", "xc"),
                                         unnormalize(var, test_data_uniq[var].data))
                 })
+
             if metrics:
                 metric_data = test_data_unnorm.pipe(self.pre_metric_fn),
                 metrics = pd.Series({
