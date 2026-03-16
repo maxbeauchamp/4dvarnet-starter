@@ -7,7 +7,7 @@ from glob import glob
 from collections import defaultdict
 
 # Nombre de fichiers à échantillonner
-N_SAMPLES = 5
+N_SAMPLES = 100
 
 # Spécifie les types de normalisation attendus
 norm_types = {
@@ -50,6 +50,14 @@ COVARIATES = {
     "ssrd": "zscore",
     "strd": "zscore",
     "tp": "zscore"
+}
+
+# Model variables (numerical model outputs)
+MODEL_VARS = {
+    "SIC": "minmax",
+    "SIT": "zscore",
+    "HS": "zscore",
+    "SSH": "zscore"
 }
 
 
@@ -109,7 +117,7 @@ def normalize_group(path, variables, norm_types, N_SAMPLES=50):
     files = random.sample(files, min(N_SAMPLES, len(files)))
     return compute_stats_from_files(files, variables, norm_types)
 
-def build_all_normalization_dicts(asip_dir, cimr_dir, cristal_dir, era5_dir):
+def build_all_normalization_dicts(asip_dir, cimr_dir, cristal_dir, era5_dir, models_dir):
     print("🧊 Calcul des stats ASIP...")
     asip_stats = normalize_group(asip_dir, VAR_GROUPS["asip"], norm_types)
 
@@ -122,22 +130,26 @@ def build_all_normalization_dicts(asip_dir, cimr_dir, cristal_dir, era5_dir):
     print("🌦️  Calcul des stats COVARIATES...")
     covs_stats = normalize_group(era5_dir, COVARIATES, norm_types)
 
+    print("🔢 Calcul des stats MODELS...")
+    models_stats = normalize_group(models_dir, MODEL_VARS, norm_types)
+
     norm_stats = {
         "asip": asip_stats,
         "cimr": cimr_stats,
         "cristal": cristal_stats
     }
 
-    return norm_stats, covs_stats
+    return norm_stats, covs_stats, models_stats
 
 
 asip_path = glob("/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc")
-cimr_path = glob("/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc")
+cimr_path = glob("/dmidata/users/maxb/CROSCIM_dataset/data_noise/CIMR5km_*nc")
 cristal_path = glob("/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc")
 era5_path = glob("/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc")
+models_path = glob("/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*.nc")
 
-norm_stats, norm_stats_covs = build_all_normalization_dicts(
-    asip_path, cimr_path, cristal_path, era5_path
+norm_stats, norm_stats_covs, norm_stats_models = build_all_normalization_dicts(
+    asip_path, cimr_path, cristal_path, era5_path, models_path
 )
 
 # Enregistrement .txt (format Python)
@@ -147,10 +159,16 @@ with open("norm_stats.txt", "w") as f:
     f.write("\n\n")
     f.write("norm_stats_covs = ")
     f.write(repr(norm_stats_covs))
+    f.write("\n\n")
+    f.write("norm_stats_models = ")
+    f.write(repr(norm_stats_models))
 
 import yaml
 
 # Enregistrement .yaml (config)
 with open("norm_stats.yaml", "w") as f:
-    yaml.dump({"norm_stats": norm_stats, "norm_stats_covs": norm_stats_covs}, 
-              f, sort_keys=False, default_flow_style=False)
+    yaml.dump({
+        "norm_stats": norm_stats, 
+        "norm_stats_covs": norm_stats_covs,
+        "norm_stats_models": norm_stats_models
+    }, f, sort_keys=False, default_flow_style=False)

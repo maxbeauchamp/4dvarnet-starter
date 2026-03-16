@@ -151,10 +151,10 @@ def fast_coarsen_xr_array(da, factor_y=2, factor_x=2, dims=('yc', 'xc'), mode="m
 
 
 def load_data(paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
-                     "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
+                     "cimr":"/dmidata/users/maxb/CROSCIM_dataset/data_noise",
                      "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
                      "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data",
-                     "models":"/dmidata/users/maxb/CROSCIM_dataset/outMOD"},
+                     "models":"/dmidata/users/maxb/CROSCIM_dataset/out_MOD"},
                      type="asip"):
     
     """Load file paths for a given data type."""
@@ -484,7 +484,7 @@ def load_mfdata(times,
 
 def get_paths_for_source(source,
                         paths={"asip":"/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3",
-                            "cimr":"/dmidata/users/maxb/CROSCIM_dataset/out_CIMR",
+                            "cimr":"/dmidata/users/maxb/CROSCIM_dataset/data_noise",
                             "cristal":"/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL",
                             "covariates":"/dmidata/users/maxb/CROSCIM_dataset/atm_data",
                             "models":"/dmidata/users/maxb/CROSCIM_dataset/out_MOD"}):

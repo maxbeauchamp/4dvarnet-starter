@@ -5,8 +5,8 @@ norm_stats:
       max: 100.0
       type: minmax
     standard_deviation_sic:
-      mean: 1.952899634621331
-      std: 4.922985470259985
+      mean: 1.8761531586097209
+      std: 4.922335431544444
       type: zscore
     status_flag:
       min: 0.0
@@ -14,88 +14,81 @@ norm_stats:
       type: minmax
   cimr:
     SIC:
-      min: -0.049950417409564574
-      max: 1.0498479215517267
+      min: 0.0
+      max: 1.0
       type: minmax
     SIT:
-      mean: 0.09544839558401243
-      std: 0.13231399596810897
+      mean: 0.02392856443828687
+      std: 0.08694672390807144
       type: zscore
     Tsurf:
-      mean: -7.098038910302271
-      std: 9.410905679026854
-      type: zscore
-    SICnoise:
-      mean: 9.402084735405344e-07
-      std: 0.007446822627062462
-      type: zscore
-    SITnoise:
-      mean: -1.244936869388826e-05
-      std: 0.003507472996277258
-      type: zscore
-    Tsurfnoise:
-      mean: -1.6181464698155027e-05
-      std: 0.0901130348999105
+      mean: -6.3703807274976665
+      std: 9.394544766238061
       type: zscore
   cristal:
     HS:
-      mean: 0.15701109538657623
-      std: 0.14167074971036836
+      mean: 0.15517908473300512
+      std: 0.13962813089282153
       type: zscore
     SIT:
-      mean: 1.713899766845625
-      std: 1.0358012026065266
+      mean: 1.3583107984977745
+      std: 0.7628621685375375
       type: zscore
     SSH:
-      mean: 0.36872446726198005
-      std: 0.3961191636146796
-      type: zscore
-    HSnoise:
-      mean: 0.237219498422366
-      std: 0.11141783328896704
-      type: zscore
-    SITnoise:
-      mean: 1.7138151410883338
-      std: 1.0360327276131651
-      type: zscore
-    SSHnoise:
-      mean: 0.36873967481665904
-      std: 0.3961927398202259
+      mean: 0.1912636630889516
+      std: 0.41697635927509086
       type: zscore
 norm_stats_covs:
   msl:
-    mean: 101397.28559169156
-    std: 1178.6647666762826
+    mean: 101261.65922657882
+    std: 1112.7187312302365
     type: zscore
   t2m:
-    mean: 271.533815513639
-    std: 14.303287836457294
+    mean: -2.5985455071070955
+    std: 13.613745769755358
     type: zscore
   u10:
-    mean: 0.5536510314408732
-    std: 4.341491519336185
+    mean: 0.6010106010949151
+    std: 4.545559141871505
     type: zscore
   v10:
-    mean: 0.031581173569483305
-    std: 4.287231013697467
+    mean: -0.2104646166032582
+    std: 4.707062023219409
     type: zscore
   tcc:
+    min: 1.0896958883677144e-05
+    max: 0.024753304198384285
+    type: minmax
+  d2m:
+    mean: 2.4095910147380064e-08
+    std: 4.900962447374831e-08
+    type: zscore
+  ssrd:
+    mean: 95.72918023746189
+    std: 93.44316534428312
+    type: zscore
+  strd:
+    mean: 265.25246499467744
+    std: 63.12553499850183
+    type: zscore
+  tp:
+    mean: 2.4095910147380064e-08
+    std: 4.900962447374831e-08
+    type: zscore
+norm_stats_models:
+  SIC:
     min: 0.0
     max: 1.0
     type: minmax
-  d2m:
-    mean: 268.22918333426907
-    std: 13.96055261063253
+  SIT:
+    mean: 0.5695980677516013
+    std: 0.8216149733058172
     type: zscore
-  ssrd:
-    mean: -701143.5402508647
-    std: 785444.8336077137
+  HS:
+    mean: 0.06844576249551623
+    std: 0.1137041260225963
     type: zscore
-  strd:
-    mean: -1943008.2121575351
-    std: 466464.69271380285
-    type: zscore
-  tp:
-    mean: -0.0001834410365694742
-    std: 0.0005019462438424605
+  SSH:
+    mean: 0.21988234269231605
+    std: 0.2757902493660287
     type: zscore

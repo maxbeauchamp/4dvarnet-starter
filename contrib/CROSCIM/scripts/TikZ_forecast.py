@@ -8,108 +8,187 @@ import subprocess
 # -----------------------------
 ncfile = "/data/users/maxb/PREPROC/preproc_CROSCIM_x50.nc"
 
-variables = ["asip_sic","cimr_SIC","cimr_SIT","cristal_SIT","cristal_SSH"]
+variables = [
+    "asip_sic",
+    "cimr_SIC",
+    "cimr_SIT",
+    "cristal_SIT",
+    "cristal_SSH"
+]
+
 ntime = 15
-t_input_end = 11  # tfinal-3
+t_input_end = 11   # tfinal - 3
 record = 0
 sample = 0
 
-out = Path("figures")
-slice_dir = out / "slices"
-slice_dir.mkdir(parents=True, exist_ok=True)
+outdir = Path("figures")
+slicedir = outdir / "slices"
+
+outdir.mkdir(exist_ok=True)
+slicedir.mkdir(exist_ok=True)
 
 # -----------------------------
 # Load NetCDF
 # -----------------------------
+print("Loading NetCDF...")
 ds = xr.open_dataset(ncfile)
 
 # -----------------------------
-# Export PNGs for each variable and time step
+# Export PNG slices
 # -----------------------------
-print("Exporting slices as PNGs...")
+print("Exporting images...")
+
 for var in variables:
+
     arr = ds[var].isel(record=record, sample=sample)
+
     for t in range(ntime):
+
         field = arr.isel(time=t).values
+
         plt.figure(figsize=(2,2))
-        plt.imshow(field)
+        plt.imshow(field, cmap="viridis")
         plt.axis("off")
-        fname = slice_dir / f"{var}_t{t}.png"
-        plt.savefig(fname, dpi=200, bbox_inches="tight", pad_inches=0)
+
+        fname = slicedir / f"{var}_t{t}.png"
+
+        plt.savefig(
+            fname,
+            dpi=200,
+            bbox_inches="tight",
+            pad_inches=0,
+            facecolor="white"
+        )
+
         plt.close()
-print("All slices exported.")
+
+print("Images exported.")
+
 
 # -----------------------------
-# Generate TikZ code
+# Generate TikZ
 # -----------------------------
-print("Generating TikZ file...")
+print("Generating TikZ...")
 
 tikz = []
-tikz.append(r"\documentclass[tikz,border=2mm]{standalone}")
+
+tikz.append(r"\documentclass[tikz,border=3mm]{standalone}")
 tikz.append(r"\usepackage{graphicx}")
+tikz.append(r"\graphicspath{{slices/}}")
+
 tikz.append(r"\begin{document}")
-tikz.append(r"\begin{tikzpicture}["
-             r"forecast/.style={draw,dashed,minimum width=2cm,minimum height=2cm},"
-             r"nn/.style={draw,fill=green!20,minimum width=3cm,minimum height=1.8cm},"
-             r"stackshift/.style={xshift=0.15cm,yshift=0.15cm}]")
 
-xspace = 2.6
-yspace = 2.2
+tikz.append(r"""
+\begin{tikzpicture}[
+forecast/.style={draw,dashed,minimum width=2cm,minimum height=2cm},
+nn/.style={draw,fill=green!20,minimum width=3.5cm,minimum height=2cm}
+]
+""")
 
-# Stacks for each variable and time
+xspace = 2.8
+yspace = 2.3
+
+stack_shift = 0.18
+
+# -----------------------------
+# Draw stacks
+# -----------------------------
 for iv, var in enumerate(variables):
+
     y = -iv * yspace
-    var_tex = var.replace("_", r"\_")  # escape underscores
-    tikz.append(rf"\node[left] at (-1,{y}) {{{var_tex}}};")
+    var_tex = var.replace("_", r"\_")
+
+    tikz.append(
+        rf"\node[left] at (-1.5,{y}) {{{var_tex}}};"
+    )
 
     for t in range(ntime):
+
         x = t * xspace
+
         if t <= t_input_end:
-            # Stack 3D with small shifts
-            tikz.append(rf"""
-\node at ({x},{y}) {{\includegraphics[width=2cm]{{slices/{var}_t{t}.png}}}};
-\node[stackshift] at ({x},{y}) {{\includegraphics[width=2cm]{{slices/cimr_SIC_t{t}.png}}}};
-\node[stackshift] at ({x},{y}) {{\includegraphics[width=2cm]{{slices/cimr_SIT_t{t}.png}}}};
-\node[stackshift] at ({x},{y}) {{\includegraphics[width=2cm]{{slices/cristal_SIT_t{t}.png}}}};
-\node[stackshift] at ({x},{y}) {{\includegraphics[width=2cm]{{slices/cristal_SSH_t{t}.png}}}};
-""")
+
+            # 3D stack using all variables
+            for k, svar in enumerate(variables):
+
+                shift = k * stack_shift
+
+                tikz.append(
+rf"""
+\node at ({x+shift},{y+shift})
+{{\includegraphics[width=2cm]{{{svar}_t{t}.png}}}};
+"""
+                )
+
         else:
-            tikz.append(rf"\node[forecast] at ({x},{y}) {{}};")
 
+            tikz.append(
+                rf"\node[forecast] at ({x},{y}) {{}};"
+            )
+
+# -----------------------------
 # Timeline labels
+# -----------------------------
 for t in range(ntime):
+
     x = t * xspace
-    tikz.append(rf"\node[below] at ({x},1) {{$t_{t}$}};")
 
+    tikz.append(
+        rf"\node[below] at ({x},1) {{$t_{{{t}}}$}};"
+    )
+
+# -----------------------------
 # Neural Network block
-nn_x = 11*xspace + 3
+# -----------------------------
+nn_x = (t_input_end + 1.5) * xspace
 nn_y = -2.5
-tikz.append(rf"\node[nn] (nn) at ({nn_x},{nn_y}) {{Spatio-temporal\\Neural Network}};")
 
-# Horizontal arrows
-tikz.append(rf"\draw[->,thick] ({11*xspace},{nn_y}) -- (nn);")
-tikz.append(rf"\draw[->,thick] (nn) -- ({14*xspace+1},{nn_y});")
-tikz.append(rf"\node at ({14*xspace+1.5},{nn_y}) {{Forecast}};")
+tikz.append(
+rf"\node[nn] (nn) at ({nn_x},{nn_y}) {{Spatio-temporal\\Neural Network}};"
+)
+
+# Arrow from inputs to NN
+tikz.append(
+rf"\draw[->,thick] ({t_input_end*xspace},{nn_y}) -- (nn);"
+)
+
+# Arrow from NN to forecast
+tikz.append(
+rf"\draw[->,thick] (nn) -- ({(ntime-1)*xspace+1},{nn_y});"
+)
+
+tikz.append(
+rf"\node at ({(ntime-1)*xspace+1.5},{nn_y}) {{Forecast}};"
+)
 
 tikz.append(r"\end{tikzpicture}")
 tikz.append(r"\end{document}")
 
-# Save TikZ to file
-tikz_file = out / "tensor_pipeline_3D.tex"
-with open(tikz_file, "w") as f:
+# -----------------------------
+# Save tex
+# -----------------------------
+texfile = outdir / "spatiotemporal_pipeline.tex"
+
+with open(texfile, "w") as f:
     f.write("\n".join(tikz))
 
-print(f"TikZ file written → {tikz_file}")
+print("TikZ file written:", texfile)
+
 
 # -----------------------------
-# Compile to PDF
+# Compile PDF
 # -----------------------------
-print("Compiling TikZ to PDF...")
-try:
-    subprocess.run(
-        ["pdflatex", "-output-directory", str(out), str(tikz_file)],
-        check=True
-    )
-    print("PDF compilation complete.")
-except Exception as e:
-    print("Error during PDF compilation:", e)
+print("Compiling PDF...")
+
+subprocess.run(
+    [
+        "pdflatex",
+        "-interaction=nonstopmode",
+        "-output-directory",
+        str(outdir),
+        str(texfile)
+    ]
+)
+
+print("Done.")
+print("Output PDF:", outdir / "spatiotemporal_pipeline.pdf")

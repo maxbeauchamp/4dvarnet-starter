@@ -140,10 +140,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         # Loss balancing configuration
         self.loss_target_ratios = {
-            'base': 0.8,      # 70% of total loss
+            'base': 0.9,      # 80% of total loss
             'grad': 0.1,      # 10% of total loss
-            'prior': 0.05,     # 5% of total loss
-            'tv': 0.05,#0.10,        # 10% of total loss
+            'prior': 0.,     # 5% of total loss
+            'tv': 0.,#0.10,       3356232 # 10% of total loss
             'context': 0.#0.05    # 5% of total loss
         }
         
@@ -993,20 +993,35 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return self.multistep(batch, "train")[0]
 
     def on_after_backward(self):
-        if self.hook_backward:
-            """Called once per optimizer step (after gradient accumulation)"""
-            if self.global_step % 10 == 0 and self.trainer.is_global_zero:
-                grad_norms = [
-                    p.grad.norm().item() 
-                    for p in self.parameters() 
-                    if p.requires_grad and p.grad is not None and p.grad.norm().item() > 0
-                ]
-            
-                if grad_norms:
-                    print(f"Step {self.global_step}:  {len(grad_norms)} params with gradients")
-                    print(f"  Mean: {np.mean(grad_norms):.6e}, Max: {np.max(grad_norms):.6e}, Min: {np.min(grad_norms):.6e}")
-                else:
-                    print(f"Step {self.global_step}: NO GRADIENTS!")
+        """Called after every backward pass. Diagnose missing gradients."""
+        if not self.trainer.is_global_zero:
+            return
+
+        if self.global_step % 20 == 0:
+            print(f"\n[Step {self.global_step}] ── Gradient audit ──────────────────────")
+            for res in self.multires:
+                solver_key = f"solver_x{res}"
+                solver = self.solver.solvers[solver_key]
+                params = list(solver.named_parameters())
+                with_grad    = [(n, p) for n, p in params if p.requires_grad and p.grad is not None]
+                no_grad_req  = [(n, p) for n, p in params if not p.requires_grad]
+                grad_missing = [(n, p) for n, p in params if p.requires_grad and p.grad is None]
+                zero_grad    = [(n, p) for n, p in params if p.requires_grad and p.grad is not None and p.grad.norm().item() == 0]
+
+                print(f"  solver_x{res}:")
+                print(f"    requires_grad=True  & grad ok   : {len(with_grad)}")
+                print(f"    requires_grad=True  & grad None : {len(grad_missing)}"
+                      + (f"  ← PROBLEM" if grad_missing else ""))
+                print(f"    requires_grad=True  & grad==0   : {len(zero_grad)}"
+                      + (f"  ← suspicious" if zero_grad else ""))
+                print(f"    requires_grad=False (frozen)    : {len(no_grad_req)}")
+
+                # Detail the missing ones (first 5)
+                for name, p in grad_missing[:5]:
+                    print(f"      !! no grad: {name}  shape={tuple(p.shape)}")
+                for name, p in zero_grad[:5]:
+                    print(f"      !! zero grad: {name}  shape={tuple(p.shape)}")
+            print(f"────────────────────────────────────────────────────────")
     
     def validation_step(self, batch, batch_idx):
         return self.multistep(batch, "val")[0]
@@ -1185,13 +1200,20 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         else:  # 'simultaneous'
             # Train all resolutions at once
             train_resolutions = self.multires
-        
+
+        # active_resolutions: résolutions pour lesquelles on logue les métriques
+        # En progressive/hybrid partiel: seulement la résolution active
+        # En simultané: toutes
+        active_resolutions = train_resolutions
+
         total_loss = 0.
         
         for i, res in enumerate(self.multires):
             batch_res = batch[f"patch_x{res}"]
             should_train = (res in train_resolutions) and (phase == "train")
-            
+            # Loguer les métriques seulement pour la résolution active
+            log_phase = phase if (res in active_resolutions) else ""
+
             if i == 0:
                 # First resolution (coarsest)
                 if should_train:
@@ -1200,7 +1222,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 else:
                     # Inference only (validation/test or frozen resolution)
                     with torch.no_grad():
-                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
+                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=log_phase)
             else:
                 # Finer resolutions
                 coarser_res = self.multires[i-1]
@@ -1251,7 +1273,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     total_loss += loss
                 else:
                     with torch.no_grad():
-                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
+                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=log_phase)
                 
                 # Add coarse resolution back
                 # Get resolution-specific target vars
@@ -1479,16 +1501,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         diff_masked = torch.where(mask_interp, diff, torch.tensor(float('nan'), device=pred.device))
         
         # Compute MSE with optional weighting
+        valid_diff = diff_masked[mask_interp]
+        if valid_diff.numel() == 0:
+            return torch.tensor(0.0, device=pred.device, requires_grad=True)
+
         if weight is not None:
             context_loss = self.weighted_mse(diff_masked, weight)
         else:
-            # Simple mean of squared differences (ignoring NaN)
-            valid_diff = diff_masked[mask_interp]
-            if valid_diff.numel() > 0:
-                context_loss = (valid_diff ** 2).mean()
-            else:
-                context_loss = torch.tensor(0.0, device=pred.device, requires_grad=True)
-        
+            context_loss = (valid_diff ** 2).mean()
+
         return context_loss
 
     def compute_balanced_weights(self, loss_values):
@@ -1589,36 +1610,45 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             source_var = batch_dict[mapping[var_name]]
             mask_interp = (~source_var.isfinite()) & target.isfinite() & global_input_valid
             mask_obs = source_var.isfinite() & target.isfinite() & global_input_valid
-        
+
+            _zero = torch.tensor(0.0, device=pred.device, requires_grad=True)
+
             # Masks
             mask_grad = target.isfinite() & global_input_valid
-            
-            # 1. Gradient loss
-            tgt_sobel = kfilts.sobel(target)
-            pred_sobel = kfilts.sobel(pred)
-            # Apply mask to gradient difference
-            grad_diff = pred_sobel - tgt_sobel
-            grad_diff_masked = torch.where(
-                mask_grad,
-                grad_diff,
-                torch.tensor(float('nan'), device=pred.device)
-            )
-            
-            grad_loss = self.weighted_mse(grad_diff_masked, self.optim_weight[res_key])
+
+            # 1. Gradient loss — skip if no valid target pixels
+            if mask_grad.any():
+                tgt_sobel = kfilts.sobel(target)
+                pred_sobel = kfilts.sobel(pred)
+                grad_diff = pred_sobel - tgt_sobel
+                grad_diff_masked = torch.where(
+                    mask_grad,
+                    grad_diff,
+                    torch.tensor(float('nan'), device=pred.device)
+                )
+                grad_loss = self.weighted_mse(grad_diff_masked, self.optim_weight[res_key])
+            else:
+                grad_loss = _zero
             total_grad_loss += grad_loss
-            
-            #  2. Total Variation on interpolated regions
+
+            #  2. Total Variation on interpolated regions — skip if no interp pixels
             mask_target = batch._asdict()[var_name].isfinite()
-            tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
+            if mask_interp.any():
+                tv_loss = self.total_variation_loss(pred, mask_target, ~mask_target, dilation_radius=1)
+            else:
+                tv_loss = _zero
             total_tv_loss += tv_loss
-            
-            #  3. Spatial context with observations
+
+            #  3. Spatial context with observations — skip if no interp pixels
             input_obs = batch._asdict()[mapping[var_name]]
-            context_loss = self.spatial_context_loss(
-                pred, target, input_obs, mask_interp, 
-                radius=3, 
-                weight=self.optim_weight[res_key] 
-            )
+            if mask_interp.any():
+                context_loss = self.spatial_context_loss(
+                    pred, target, input_obs, mask_interp,
+                    radius=3,
+                    weight=self.optim_weight[res_key]
+                )
+            else:
+                context_loss = _zero
             total_context_loss += context_loss
     
         # 4. Prior / SRNN loss
@@ -1626,10 +1656,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
             model = self.solver.solvers[f"solver_x{res}"].to(device)
             prior = model.prior_cost.forward_ae(sbatch.input.nan_to_num())
-            total_prior_loss = self.weighted_mse(sbatch.tgt-prior,self.prior_weight[res_key])
-            # Add small L2 regularization to ensure all params are used
-            l2_reg = sum(p.pow(2.0).sum() for p in model.prior_cost.parameters())
-            total_prior_loss = total_prior_loss + 1e-6 * l2_reg  # Tiny regularization
+            prior_diff = sbatch.tgt - prior
+            prior_weight = self.prior_weight[res_key].to(device)
+            prior_valid = prior_diff.isfinite() & ((torch.ones_like(prior_diff) * prior_weight[None, ...]) != 0.0)
+            if prior_valid.any():
+                total_prior_loss = self.weighted_mse(prior_diff, prior_weight)
+                # Add small L2 regularization to ensure all params are used
+                l2_reg = sum(p.pow(2.0).sum() for p in model.prior_cost.parameters())
+                total_prior_loss = total_prior_loss + 1e-6 * l2_reg  # Tiny regularization
+            else:
+                total_prior_loss = _zero
         else:
             total_prior_loss = torch.tensor(0.0, device=device, requires_grad=True)
 
@@ -1657,26 +1693,37 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             weights['context'] * total_context_loss
         )
 
-        # Log individual losses AND weights
-        self.log(f"{phase}_loss", loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_gloss", total_grad_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_prior_loss", total_prior_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_tv_loss", total_tv_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(f"{phase}_context_loss", total_context_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        
-        # Log weights
-        if self.training and self.global_step % 50 == 0 and self.trainer.is_global_zero:
-            print(f"\n[Step {self.global_step}] Loss balancing:")
-            print(f"  Base loss:    {loss.item():.6f} × {weights['base']:.3f} = {(weights['base']*loss).item():.6f}")
-            print(f"  Grad loss:    {total_grad_loss.item():.6f} × {weights['grad']:.3f} = {(weights['grad']*total_grad_loss).item():.6f}")
-            print(f"  Prior loss:   {total_prior_loss.item():.6f} × {weights['prior']:.3f} = {(weights['prior']*total_prior_loss).item():.6f}")
-            print(f"  TV loss:      {total_tv_loss.item():.6f} × {weights['tv']:.3f} = {(weights['tv']*total_tv_loss).item():.6f}")
-            print(f"  Context loss: {total_context_loss.item():.6f} × {weights['context']:.3f} = {(weights['context']*total_context_loss).item():.6f}")
-            print(f"  Total:        {training_loss.item():.6f}")
+        # ── Auxiliary losses summary (every batch, rank 0) ─────────────────
+        if self.trainer.is_global_zero:
+            def _fmt(v, w):
+                val = v.item() if hasattr(v, 'item') else float(v)
+                contrib = w * val
+                flag = " ❌ NaN"  if not np.isfinite(val)  else \
+                       " ⚠️ >10"   if val > 10.             else \
+                       " ⚠️ >1"    if val > 1.              else ""
+                return f"{val:.6f} × {w:.3f} = {contrib:.6f}{flag}"
 
-        self.log(f"{phase}_weight_base", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
-        self.log(f"{phase}_weight_grad", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
-        self.log(f"{phase}_weight_tv", weights['tv'], prog_bar=False, on_step=False, on_epoch=True)
+            print(f"  ── Auxiliary losses (x{res}) ──")
+            print(f"    base    : {_fmt(loss,                weights['base'])}")
+            print(f"    grad    : {_fmt(total_grad_loss,     weights['grad'])}")
+            print(f"    prior   : {_fmt(total_prior_loss,    weights['prior'])}")
+            print(f"    tv      : {_fmt(total_tv_loss,       weights['tv'])}")
+            print(f"    context : {_fmt(total_context_loss,  weights['context'])}")
+            tl = training_loss.item() if hasattr(training_loss, 'item') else float(training_loss)
+            flag_total = " ❌ NaN" if not np.isfinite(tl) else " ⚠️ >10" if tl > 10. else ""
+            print(f"    TOTAL   : {tl:.6f}{flag_total}")
+
+        # Log individual losses AND weights (seulement si phase est défini)
+        if phase:
+            self.log(f"{phase}_loss",         loss,               prog_bar=True,  on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_gloss",        total_grad_loss,    prog_bar=False, on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_prior_loss",   total_prior_loss,   prog_bar=False, on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_tv_loss",      total_tv_loss,      prog_bar=False, on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_context_loss", total_context_loss, prog_bar=False, on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_total_loss",   training_loss,      prog_bar=True,  on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{phase}_weight_base",  weights['base'],    prog_bar=False, on_step=False, on_epoch=True)
+            self.log(f"{phase}_weight_grad",  weights['grad'],    prog_bar=False, on_step=False, on_epoch=True)
+            self.log(f"{phase}_weight_tv",    weights['tv'],      prog_bar=False, on_step=False, on_epoch=True)
 
         return training_loss, out
 
@@ -1731,6 +1778,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 global_input_valid &= batch_dict[cov].isfinite()
 
         total_loss = 0.0
+        do_print = self.trainer.is_global_zero and (self.global_step % 50 == 0)
+
+        if do_print:
+            print(f"\n{'='*70}")
+            print(f"[Step {self.global_step:05d}] {phase.upper():5s} | res=x{res}")
+            print(f"{'='*70}")
+
         for i, var_name in enumerate(tgt_vars):
             if not hasattr(batch, var_name):
                 raise ValueError(f"Batch does not contain variable '{var_name}'")
@@ -1742,49 +1796,87 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             else:
                 pred_var_name = f'pred_{var_name}'
             pred = out[pred_var_name]  # (B, T, Y, X)
+
             # Mask 1: Interpolation pixels (input NaN, target valid)
-            mask = ~batch._asdict()[mapping[var_name]].isfinite() & target.isfinite()  & global_input_valid
+            mask  = ~batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() & global_input_valid
             # Mask 2: Observation pixels (both input and target valid)
-            mask2 = batch._asdict()[mapping[var_name]].isfinite() & target.isfinite()  & global_input_valid
-            # STATISTICS: Compute percentages
-            n_mask = mask.sum().item()
+            mask2 =  batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() & global_input_valid
+
+            n_mask  = mask.sum().item()
             n_mask2 = mask2.sum().item()
             n_total = target.numel()
-            
-            pct_mask = 100.0 * n_mask / n_total if n_total > 0 else 0.0
+            pct_mask  = 100.0 * n_mask  / n_total if n_total > 0 else 0.0
             pct_mask2 = 100.0 * n_mask2 / n_total if n_total > 0 else 0.0
-            
-            # PRINT: Log every 50 steps
-            if self.global_step % 50 == 0 and self.trainer.is_global_zero:
-                print(f"\n[Step {self.global_step}] Res {res} - {phase} - Variable: {var_name}")
-                print(f"  Mask (interpolation):  {n_mask:7d} / {n_total:7d} ({pct_mask:5.2f}%)")
-                print(f"  Mask2 (observations):  {n_mask2:7d} / {n_total:7d} ({pct_mask2:5.2f}%)")
-                print(f"  Pred range: [{pred.min():.4f}, {pred.max():.4f}]")
-                # Simplest: mask NaN values
-                target_masked = target[~torch.isnan(target)]
-                if target_masked.numel() > 0:
-                    print(f"  Target range: [{target_masked.min().item():.4f}, {target_masked.max().item():.4f}]")
-                else:
-                    print(f"  Target range: [No valid values]")
-            
-            # Compute losses
-            loss = self.weighted_mse(
-                torch.where(mask, pred, torch.tensor(float('nan'), device=pred.device)) - target,
-                self.optim_weight[res_key]
-            )
-            loss2 = self.weighted_mse(
-                torch.where(mask2, pred, torch.tensor(float('nan'), device=pred.device)) - target,
-                self.optim_weight[res_key]
-            )
-            # LOG: Print loss values
-            if self.global_step % 50 == 0 and self.trainer.is_global_zero:
-                print(f"  Loss (interpolation): {loss.item():.6f}")
-                print(f"  Loss (observations):  {loss2.item():.6f}")
-            # Log to tensorboard/wandb
-            self.log(f"{phase}_mask_pct_interp_{var_name}", pct_mask, on_step=False, on_epoch=True,sync_dist=True)
-            self.log(f"{phase}_mask_pct_obs_{var_name}", pct_mask2, on_step=False, on_epoch=True,sync_dist=True)
+
+            # Compute losses — return 0 when the mask is empty (e.g. full satellite coverage)
+            _zero = torch.tensor(0.0, device=pred.device, requires_grad=True)
+            if n_mask > 0:
+                loss = self.weighted_mse(
+                    torch.where(mask,  pred, torch.tensor(float('nan'), device=pred.device)) - target,
+                    self.optim_weight[res_key]
+                )
+            else:
+                loss = _zero
+
+            if n_mask2 > 0:
+                loss2 = self.weighted_mse(
+                    torch.where(mask2, pred, torch.tensor(float('nan'), device=pred.device)) - target,
+                    self.optim_weight[res_key]
+                )
+            else:
+                loss2 = _zero
+
+            # ── per-variable diagnostics ──────────────────────────────────
+            if do_print:
+                target_valid = target[target.isfinite()]
+                pred_finite   = pred[pred.isfinite()]
+
+                t_min  = target_valid.min().item() if target_valid.numel() > 0 else float('nan')
+                t_max  = target_valid.max().item() if target_valid.numel() > 0 else float('nan')
+                t_mean = target_valid.mean().item() if target_valid.numel() > 0 else float('nan')
+                p_min  = pred_finite.min().item()   if pred_finite.numel()  > 0 else float('nan')
+                p_max  = pred_finite.max().item()   if pred_finite.numel()  > 0 else float('nan')
+                p_mean = pred_finite.mean().item()  if pred_finite.numel()  > 0 else float('nan')
+                p_nan_pct = 100.0 * (~pred.isfinite()).sum().item() / pred.numel()
+
+                flag_mask  = " ❌ NO INTERP PIXELS"  if n_mask  == 0 else \
+                             " ⚠️  <1% interp"        if pct_mask  < 1.0 else ""
+                flag_mask2 = " ❌ NO OBS PIXELS"     if n_mask2 == 0 else \
+                             " ⚠️  <1% obs"           if pct_mask2 < 1.0 else ""
+                flag_loss  = " ❌ NaN loss"           if not loss.isfinite()  else \
+                             " ⚠️  loss>10"            if loss.item()  > 10.  else \
+                             " ⚠️  loss>1"             if loss.item()  > 1.   else ""
+                flag_loss2 = " ❌ NaN loss"           if not loss2.isfinite() else \
+                             " ⚠️  loss>10"            if loss2.item() > 10.  else \
+                             " ⚠️  loss>1"             if loss2.item() > 1.   else ""
+                flag_pred  = " ❌ NaN pred"           if p_nan_pct > 50.     else \
+                             " ⚠️  NaN in pred"        if p_nan_pct > 0.      else ""
+                flag_range = " ⚠️  pred out of target range" \
+                             if pred_finite.numel() > 0 and target_valid.numel() > 0 and \
+                                (p_min < t_min - abs(t_min) or p_max > t_max + abs(t_max)) else ""
+
+                print(f"  ── {var_name} ──")
+                print(f"    Target : [{t_min:+.4f}, {t_max:+.4f}]  mean={t_mean:+.4f}  "
+                      f"valid={100.*(target_valid.numel()/n_total):.1f}%")
+                print(f"    Pred   : [{p_min:+.4f}, {p_max:+.4f}]  mean={p_mean:+.4f}  "
+                      f"NaN={p_nan_pct:.1f}%{flag_pred}{flag_range}")
+                print(f"    Interp : {n_mask:7d}/{n_total:7d} ({pct_mask:5.2f}%){flag_mask}")
+                print(f"    Obs    : {n_mask2:7d}/{n_total:7d} ({pct_mask2:5.2f}%){flag_mask2}")
+                print(f"    Loss_interp = {loss.item():.6f}{flag_loss}")
+                print(f"    Loss_obs    = {loss2.item():.6f}{flag_loss2}")
+
+            # Log to tensorboard/wandb (seulement si phase est défini)
+            if phase:
+                self.log(f"{phase}_loss_interp_{var_name}", loss,  on_step=True, on_epoch=True, sync_dist=True)
+                self.log(f"{phase}_loss_obs_{var_name}",    loss2, on_step=True, on_epoch=True, sync_dist=True)
+                self.log(f"{phase}_mask_pct_interp_{var_name}", pct_mask,  on_step=False, on_epoch=True, sync_dist=True)
+                self.log(f"{phase}_mask_pct_obs_{var_name}",    pct_mask2, on_step=False, on_epoch=True, sync_dist=True)
             total_loss += loss + loss2
-        
+
+        if do_print:
+            print(f"  ── TOTAL base_loss = {total_loss.item():.6f} {'❌ NaN' if not total_loss.isfinite() else ''}")
+            print(f"{'='*70}")
+
         return total_loss, out
 
     def reconstruct(self, dl, items, daw, time, weight=None):

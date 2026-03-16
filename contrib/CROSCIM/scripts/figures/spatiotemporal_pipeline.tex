@@ -1,0 +1,1251 @@
+\documentclass[tikz,border=3mm]{standalone}
+\usepackage{graphicx}
+\graphicspath{{slices/}}
+\begin{document}
+
+\begin{tikzpicture}[
+forecast/.style={draw,dashed,minimum width=2cm,minimum height=2cm},
+nn/.style={draw,fill=green!20,minimum width=3.5cm,minimum height=2cm}
+]
+
+\node[left] at (-1.5,0.0) {asip\_sic};
+
+\node at (0.0,0.0)
+{\includegraphics[width=2cm]{asip_sic_t0.png}};
+
+
+\node at (0.18,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t0.png}};
+
+
+\node at (0.36,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t0.png}};
+
+
+\node at (0.54,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t0.png}};
+
+
+\node at (0.72,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t0.png}};
+
+
+\node at (2.8,0.0)
+{\includegraphics[width=2cm]{asip_sic_t1.png}};
+
+
+\node at (2.98,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t1.png}};
+
+
+\node at (3.1599999999999997,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t1.png}};
+
+
+\node at (3.34,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t1.png}};
+
+
+\node at (3.5199999999999996,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t1.png}};
+
+
+\node at (5.6,0.0)
+{\includegraphics[width=2cm]{asip_sic_t2.png}};
+
+
+\node at (5.779999999999999,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t2.png}};
+
+
+\node at (5.96,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t2.png}};
+
+
+\node at (6.14,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t2.png}};
+
+
+\node at (6.319999999999999,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t2.png}};
+
+
+\node at (8.399999999999999,0.0)
+{\includegraphics[width=2cm]{asip_sic_t3.png}};
+
+
+\node at (8.579999999999998,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t3.png}};
+
+
+\node at (8.759999999999998,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t3.png}};
+
+
+\node at (8.939999999999998,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t3.png}};
+
+
+\node at (9.12,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t3.png}};
+
+
+\node at (11.2,0.0)
+{\includegraphics[width=2cm]{asip_sic_t4.png}};
+
+
+\node at (11.379999999999999,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t4.png}};
+
+
+\node at (11.559999999999999,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t4.png}};
+
+
+\node at (11.739999999999998,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t4.png}};
+
+
+\node at (11.92,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t4.png}};
+
+
+\node at (14.0,0.0)
+{\includegraphics[width=2cm]{asip_sic_t5.png}};
+
+
+\node at (14.18,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t5.png}};
+
+
+\node at (14.36,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t5.png}};
+
+
+\node at (14.54,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t5.png}};
+
+
+\node at (14.72,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t5.png}};
+
+
+\node at (16.799999999999997,0.0)
+{\includegraphics[width=2cm]{asip_sic_t6.png}};
+
+
+\node at (16.979999999999997,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t6.png}};
+
+
+\node at (17.159999999999997,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t6.png}};
+
+
+\node at (17.339999999999996,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t6.png}};
+
+
+\node at (17.519999999999996,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t6.png}};
+
+
+\node at (19.599999999999998,0.0)
+{\includegraphics[width=2cm]{asip_sic_t7.png}};
+
+
+\node at (19.779999999999998,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t7.png}};
+
+
+\node at (19.959999999999997,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t7.png}};
+
+
+\node at (20.139999999999997,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t7.png}};
+
+
+\node at (20.319999999999997,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t7.png}};
+
+
+\node at (22.4,0.0)
+{\includegraphics[width=2cm]{asip_sic_t8.png}};
+
+
+\node at (22.58,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t8.png}};
+
+
+\node at (22.759999999999998,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t8.png}};
+
+
+\node at (22.939999999999998,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t8.png}};
+
+
+\node at (23.119999999999997,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t8.png}};
+
+
+\node at (25.2,0.0)
+{\includegraphics[width=2cm]{asip_sic_t9.png}};
+
+
+\node at (25.38,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t9.png}};
+
+
+\node at (25.56,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t9.png}};
+
+
+\node at (25.74,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t9.png}};
+
+
+\node at (25.919999999999998,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t9.png}};
+
+
+\node at (28.0,0.0)
+{\includegraphics[width=2cm]{asip_sic_t10.png}};
+
+
+\node at (28.18,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t10.png}};
+
+
+\node at (28.36,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t10.png}};
+
+
+\node at (28.54,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t10.png}};
+
+
+\node at (28.72,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t10.png}};
+
+
+\node at (30.799999999999997,0.0)
+{\includegraphics[width=2cm]{asip_sic_t11.png}};
+
+
+\node at (30.979999999999997,0.18)
+{\includegraphics[width=2cm]{cimr_SIC_t11.png}};
+
+
+\node at (31.159999999999997,0.36)
+{\includegraphics[width=2cm]{cimr_SIT_t11.png}};
+
+
+\node at (31.339999999999996,0.54)
+{\includegraphics[width=2cm]{cristal_SIT_t11.png}};
+
+
+\node at (31.519999999999996,0.72)
+{\includegraphics[width=2cm]{cristal_SSH_t11.png}};
+
+\node[forecast] at (33.599999999999994,0.0) {};
+\node[forecast] at (36.4,0.0) {};
+\node[forecast] at (39.199999999999996,0.0) {};
+\node[left] at (-1.5,-2.3) {cimr\_SIC};
+
+\node at (0.0,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t0.png}};
+
+
+\node at (0.18,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t0.png}};
+
+
+\node at (0.36,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t0.png}};
+
+
+\node at (0.54,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t0.png}};
+
+
+\node at (0.72,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t0.png}};
+
+
+\node at (2.8,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t1.png}};
+
+
+\node at (2.98,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t1.png}};
+
+
+\node at (3.1599999999999997,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t1.png}};
+
+
+\node at (3.34,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t1.png}};
+
+
+\node at (3.5199999999999996,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t1.png}};
+
+
+\node at (5.6,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t2.png}};
+
+
+\node at (5.779999999999999,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t2.png}};
+
+
+\node at (5.96,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t2.png}};
+
+
+\node at (6.14,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t2.png}};
+
+
+\node at (6.319999999999999,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t2.png}};
+
+
+\node at (8.399999999999999,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t3.png}};
+
+
+\node at (8.579999999999998,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t3.png}};
+
+
+\node at (8.759999999999998,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t3.png}};
+
+
+\node at (8.939999999999998,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t3.png}};
+
+
+\node at (9.12,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t3.png}};
+
+
+\node at (11.2,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t4.png}};
+
+
+\node at (11.379999999999999,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t4.png}};
+
+
+\node at (11.559999999999999,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t4.png}};
+
+
+\node at (11.739999999999998,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t4.png}};
+
+
+\node at (11.92,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t4.png}};
+
+
+\node at (14.0,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t5.png}};
+
+
+\node at (14.18,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t5.png}};
+
+
+\node at (14.36,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t5.png}};
+
+
+\node at (14.54,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t5.png}};
+
+
+\node at (14.72,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t5.png}};
+
+
+\node at (16.799999999999997,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t6.png}};
+
+
+\node at (16.979999999999997,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t6.png}};
+
+
+\node at (17.159999999999997,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t6.png}};
+
+
+\node at (17.339999999999996,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t6.png}};
+
+
+\node at (17.519999999999996,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t6.png}};
+
+
+\node at (19.599999999999998,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t7.png}};
+
+
+\node at (19.779999999999998,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t7.png}};
+
+
+\node at (19.959999999999997,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t7.png}};
+
+
+\node at (20.139999999999997,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t7.png}};
+
+
+\node at (20.319999999999997,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t7.png}};
+
+
+\node at (22.4,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t8.png}};
+
+
+\node at (22.58,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t8.png}};
+
+
+\node at (22.759999999999998,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t8.png}};
+
+
+\node at (22.939999999999998,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t8.png}};
+
+
+\node at (23.119999999999997,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t8.png}};
+
+
+\node at (25.2,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t9.png}};
+
+
+\node at (25.38,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t9.png}};
+
+
+\node at (25.56,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t9.png}};
+
+
+\node at (25.74,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t9.png}};
+
+
+\node at (25.919999999999998,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t9.png}};
+
+
+\node at (28.0,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t10.png}};
+
+
+\node at (28.18,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t10.png}};
+
+
+\node at (28.36,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t10.png}};
+
+
+\node at (28.54,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t10.png}};
+
+
+\node at (28.72,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t10.png}};
+
+
+\node at (30.799999999999997,-2.3)
+{\includegraphics[width=2cm]{asip_sic_t11.png}};
+
+
+\node at (30.979999999999997,-2.1199999999999997)
+{\includegraphics[width=2cm]{cimr_SIC_t11.png}};
+
+
+\node at (31.159999999999997,-1.94)
+{\includegraphics[width=2cm]{cimr_SIT_t11.png}};
+
+
+\node at (31.339999999999996,-1.7599999999999998)
+{\includegraphics[width=2cm]{cristal_SIT_t11.png}};
+
+
+\node at (31.519999999999996,-1.5799999999999998)
+{\includegraphics[width=2cm]{cristal_SSH_t11.png}};
+
+\node[forecast] at (33.599999999999994,-2.3) {};
+\node[forecast] at (36.4,-2.3) {};
+\node[forecast] at (39.199999999999996,-2.3) {};
+\node[left] at (-1.5,-4.6) {cimr\_SIT};
+
+\node at (0.0,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t0.png}};
+
+
+\node at (0.18,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t0.png}};
+
+
+\node at (0.36,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t0.png}};
+
+
+\node at (0.54,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t0.png}};
+
+
+\node at (0.72,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t0.png}};
+
+
+\node at (2.8,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t1.png}};
+
+
+\node at (2.98,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t1.png}};
+
+
+\node at (3.1599999999999997,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t1.png}};
+
+
+\node at (3.34,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t1.png}};
+
+
+\node at (3.5199999999999996,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t1.png}};
+
+
+\node at (5.6,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t2.png}};
+
+
+\node at (5.779999999999999,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t2.png}};
+
+
+\node at (5.96,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t2.png}};
+
+
+\node at (6.14,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t2.png}};
+
+
+\node at (6.319999999999999,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t2.png}};
+
+
+\node at (8.399999999999999,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t3.png}};
+
+
+\node at (8.579999999999998,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t3.png}};
+
+
+\node at (8.759999999999998,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t3.png}};
+
+
+\node at (8.939999999999998,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t3.png}};
+
+
+\node at (9.12,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t3.png}};
+
+
+\node at (11.2,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t4.png}};
+
+
+\node at (11.379999999999999,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t4.png}};
+
+
+\node at (11.559999999999999,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t4.png}};
+
+
+\node at (11.739999999999998,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t4.png}};
+
+
+\node at (11.92,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t4.png}};
+
+
+\node at (14.0,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t5.png}};
+
+
+\node at (14.18,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t5.png}};
+
+
+\node at (14.36,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t5.png}};
+
+
+\node at (14.54,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t5.png}};
+
+
+\node at (14.72,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t5.png}};
+
+
+\node at (16.799999999999997,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t6.png}};
+
+
+\node at (16.979999999999997,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t6.png}};
+
+
+\node at (17.159999999999997,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t6.png}};
+
+
+\node at (17.339999999999996,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t6.png}};
+
+
+\node at (17.519999999999996,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t6.png}};
+
+
+\node at (19.599999999999998,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t7.png}};
+
+
+\node at (19.779999999999998,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t7.png}};
+
+
+\node at (19.959999999999997,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t7.png}};
+
+
+\node at (20.139999999999997,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t7.png}};
+
+
+\node at (20.319999999999997,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t7.png}};
+
+
+\node at (22.4,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t8.png}};
+
+
+\node at (22.58,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t8.png}};
+
+
+\node at (22.759999999999998,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t8.png}};
+
+
+\node at (22.939999999999998,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t8.png}};
+
+
+\node at (23.119999999999997,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t8.png}};
+
+
+\node at (25.2,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t9.png}};
+
+
+\node at (25.38,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t9.png}};
+
+
+\node at (25.56,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t9.png}};
+
+
+\node at (25.74,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t9.png}};
+
+
+\node at (25.919999999999998,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t9.png}};
+
+
+\node at (28.0,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t10.png}};
+
+
+\node at (28.18,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t10.png}};
+
+
+\node at (28.36,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t10.png}};
+
+
+\node at (28.54,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t10.png}};
+
+
+\node at (28.72,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t10.png}};
+
+
+\node at (30.799999999999997,-4.6)
+{\includegraphics[width=2cm]{asip_sic_t11.png}};
+
+
+\node at (30.979999999999997,-4.42)
+{\includegraphics[width=2cm]{cimr_SIC_t11.png}};
+
+
+\node at (31.159999999999997,-4.239999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t11.png}};
+
+
+\node at (31.339999999999996,-4.06)
+{\includegraphics[width=2cm]{cristal_SIT_t11.png}};
+
+
+\node at (31.519999999999996,-3.88)
+{\includegraphics[width=2cm]{cristal_SSH_t11.png}};
+
+\node[forecast] at (33.599999999999994,-4.6) {};
+\node[forecast] at (36.4,-4.6) {};
+\node[forecast] at (39.199999999999996,-4.6) {};
+\node[left] at (-1.5,-6.8999999999999995) {cristal\_SIT};
+
+\node at (0.0,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t0.png}};
+
+
+\node at (0.18,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t0.png}};
+
+
+\node at (0.36,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t0.png}};
+
+
+\node at (0.54,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t0.png}};
+
+
+\node at (0.72,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t0.png}};
+
+
+\node at (2.8,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t1.png}};
+
+
+\node at (2.98,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t1.png}};
+
+
+\node at (3.1599999999999997,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t1.png}};
+
+
+\node at (3.34,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t1.png}};
+
+
+\node at (3.5199999999999996,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t1.png}};
+
+
+\node at (5.6,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t2.png}};
+
+
+\node at (5.779999999999999,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t2.png}};
+
+
+\node at (5.96,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t2.png}};
+
+
+\node at (6.14,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t2.png}};
+
+
+\node at (6.319999999999999,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t2.png}};
+
+
+\node at (8.399999999999999,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t3.png}};
+
+
+\node at (8.579999999999998,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t3.png}};
+
+
+\node at (8.759999999999998,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t3.png}};
+
+
+\node at (8.939999999999998,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t3.png}};
+
+
+\node at (9.12,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t3.png}};
+
+
+\node at (11.2,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t4.png}};
+
+
+\node at (11.379999999999999,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t4.png}};
+
+
+\node at (11.559999999999999,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t4.png}};
+
+
+\node at (11.739999999999998,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t4.png}};
+
+
+\node at (11.92,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t4.png}};
+
+
+\node at (14.0,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t5.png}};
+
+
+\node at (14.18,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t5.png}};
+
+
+\node at (14.36,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t5.png}};
+
+
+\node at (14.54,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t5.png}};
+
+
+\node at (14.72,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t5.png}};
+
+
+\node at (16.799999999999997,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t6.png}};
+
+
+\node at (16.979999999999997,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t6.png}};
+
+
+\node at (17.159999999999997,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t6.png}};
+
+
+\node at (17.339999999999996,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t6.png}};
+
+
+\node at (17.519999999999996,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t6.png}};
+
+
+\node at (19.599999999999998,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t7.png}};
+
+
+\node at (19.779999999999998,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t7.png}};
+
+
+\node at (19.959999999999997,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t7.png}};
+
+
+\node at (20.139999999999997,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t7.png}};
+
+
+\node at (20.319999999999997,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t7.png}};
+
+
+\node at (22.4,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t8.png}};
+
+
+\node at (22.58,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t8.png}};
+
+
+\node at (22.759999999999998,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t8.png}};
+
+
+\node at (22.939999999999998,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t8.png}};
+
+
+\node at (23.119999999999997,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t8.png}};
+
+
+\node at (25.2,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t9.png}};
+
+
+\node at (25.38,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t9.png}};
+
+
+\node at (25.56,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t9.png}};
+
+
+\node at (25.74,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t9.png}};
+
+
+\node at (25.919999999999998,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t9.png}};
+
+
+\node at (28.0,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t10.png}};
+
+
+\node at (28.18,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t10.png}};
+
+
+\node at (28.36,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t10.png}};
+
+
+\node at (28.54,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t10.png}};
+
+
+\node at (28.72,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t10.png}};
+
+
+\node at (30.799999999999997,-6.8999999999999995)
+{\includegraphics[width=2cm]{asip_sic_t11.png}};
+
+
+\node at (30.979999999999997,-6.72)
+{\includegraphics[width=2cm]{cimr_SIC_t11.png}};
+
+
+\node at (31.159999999999997,-6.539999999999999)
+{\includegraphics[width=2cm]{cimr_SIT_t11.png}};
+
+
+\node at (31.339999999999996,-6.359999999999999)
+{\includegraphics[width=2cm]{cristal_SIT_t11.png}};
+
+
+\node at (31.519999999999996,-6.18)
+{\includegraphics[width=2cm]{cristal_SSH_t11.png}};
+
+\node[forecast] at (33.599999999999994,-6.8999999999999995) {};
+\node[forecast] at (36.4,-6.8999999999999995) {};
+\node[forecast] at (39.199999999999996,-6.8999999999999995) {};
+\node[left] at (-1.5,-9.2) {cristal\_SSH};
+
+\node at (0.0,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t0.png}};
+
+
+\node at (0.18,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t0.png}};
+
+
+\node at (0.36,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t0.png}};
+
+
+\node at (0.54,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t0.png}};
+
+
+\node at (0.72,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t0.png}};
+
+
+\node at (2.8,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t1.png}};
+
+
+\node at (2.98,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t1.png}};
+
+
+\node at (3.1599999999999997,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t1.png}};
+
+
+\node at (3.34,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t1.png}};
+
+
+\node at (3.5199999999999996,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t1.png}};
+
+
+\node at (5.6,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t2.png}};
+
+
+\node at (5.779999999999999,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t2.png}};
+
+
+\node at (5.96,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t2.png}};
+
+
+\node at (6.14,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t2.png}};
+
+
+\node at (6.319999999999999,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t2.png}};
+
+
+\node at (8.399999999999999,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t3.png}};
+
+
+\node at (8.579999999999998,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t3.png}};
+
+
+\node at (8.759999999999998,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t3.png}};
+
+
+\node at (8.939999999999998,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t3.png}};
+
+
+\node at (9.12,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t3.png}};
+
+
+\node at (11.2,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t4.png}};
+
+
+\node at (11.379999999999999,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t4.png}};
+
+
+\node at (11.559999999999999,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t4.png}};
+
+
+\node at (11.739999999999998,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t4.png}};
+
+
+\node at (11.92,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t4.png}};
+
+
+\node at (14.0,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t5.png}};
+
+
+\node at (14.18,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t5.png}};
+
+
+\node at (14.36,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t5.png}};
+
+
+\node at (14.54,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t5.png}};
+
+
+\node at (14.72,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t5.png}};
+
+
+\node at (16.799999999999997,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t6.png}};
+
+
+\node at (16.979999999999997,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t6.png}};
+
+
+\node at (17.159999999999997,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t6.png}};
+
+
+\node at (17.339999999999996,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t6.png}};
+
+
+\node at (17.519999999999996,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t6.png}};
+
+
+\node at (19.599999999999998,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t7.png}};
+
+
+\node at (19.779999999999998,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t7.png}};
+
+
+\node at (19.959999999999997,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t7.png}};
+
+
+\node at (20.139999999999997,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t7.png}};
+
+
+\node at (20.319999999999997,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t7.png}};
+
+
+\node at (22.4,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t8.png}};
+
+
+\node at (22.58,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t8.png}};
+
+
+\node at (22.759999999999998,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t8.png}};
+
+
+\node at (22.939999999999998,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t8.png}};
+
+
+\node at (23.119999999999997,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t8.png}};
+
+
+\node at (25.2,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t9.png}};
+
+
+\node at (25.38,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t9.png}};
+
+
+\node at (25.56,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t9.png}};
+
+
+\node at (25.74,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t9.png}};
+
+
+\node at (25.919999999999998,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t9.png}};
+
+
+\node at (28.0,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t10.png}};
+
+
+\node at (28.18,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t10.png}};
+
+
+\node at (28.36,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t10.png}};
+
+
+\node at (28.54,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t10.png}};
+
+
+\node at (28.72,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t10.png}};
+
+
+\node at (30.799999999999997,-9.2)
+{\includegraphics[width=2cm]{asip_sic_t11.png}};
+
+
+\node at (30.979999999999997,-9.02)
+{\includegraphics[width=2cm]{cimr_SIC_t11.png}};
+
+
+\node at (31.159999999999997,-8.84)
+{\includegraphics[width=2cm]{cimr_SIT_t11.png}};
+
+
+\node at (31.339999999999996,-8.66)
+{\includegraphics[width=2cm]{cristal_SIT_t11.png}};
+
+
+\node at (31.519999999999996,-8.479999999999999)
+{\includegraphics[width=2cm]{cristal_SSH_t11.png}};
+
+\node[forecast] at (33.599999999999994,-9.2) {};
+\node[forecast] at (36.4,-9.2) {};
+\node[forecast] at (39.199999999999996,-9.2) {};
+\node[below] at (0.0,1) {$t_{0}$};
+\node[below] at (2.8,1) {$t_{1}$};
+\node[below] at (5.6,1) {$t_{2}$};
+\node[below] at (8.399999999999999,1) {$t_{3}$};
+\node[below] at (11.2,1) {$t_{4}$};
+\node[below] at (14.0,1) {$t_{5}$};
+\node[below] at (16.799999999999997,1) {$t_{6}$};
+\node[below] at (19.599999999999998,1) {$t_{7}$};
+\node[below] at (22.4,1) {$t_{8}$};
+\node[below] at (25.2,1) {$t_{9}$};
+\node[below] at (28.0,1) {$t_{10}$};
+\node[below] at (30.799999999999997,1) {$t_{11}$};
+\node[below] at (33.599999999999994,1) {$t_{12}$};
+\node[below] at (36.4,1) {$t_{13}$};
+\node[below] at (39.199999999999996,1) {$t_{14}$};
+\node[nn] (nn) at (35.0,-2.5) {Spatio-temporal\\Neural Network};
+\draw[->,thick] (30.799999999999997,-2.5) -- (nn);
+\draw[->,thick] (nn) -- (40.199999999999996,-2.5);
+\node at (40.699999999999996,-2.5) {Forecast};
+\end{tikzpicture}
+\end{document}

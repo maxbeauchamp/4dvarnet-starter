@@ -35,11 +35,7 @@ def process_single_date(cristal_file):
     try:
         date_str = extract_date_from_filename(cristal_file)
         
-        # Create date_strp1 (next day)
-        date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-        date_strp1 = (date_obj + datetime.timedelta(days=365)).strftime("%Y-%m-%d")
-        
-        print(f"  Processing date: {date_str} (next day: {date_strp1})")
+        print(f"  Processing date: {date_str}")
         
         # Find corresponding CIMR file
         cimr_file = os.path.join(CIMR_DIR, f"CIMR5km_{date_str}_mod.nc")

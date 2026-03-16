@@ -565,7 +565,6 @@ class BaseDataModuleMultiRes(BaseDataModule):
         self.models_paths = models_paths if models_paths is not None else []
         self.models_vars = models_vars if models_vars is not None else []        
         self._norm_stats_models = norm_stats_models
-        self.rand_obs = rand_obs 
 
         # Extract patch_dims_dict from xrds_kw if present (only for test)
         xrds_kw = kwargs.get('xrds_kw', {})
@@ -576,7 +575,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
         if 'xrds_kw' in kwargs:
             kwargs['xrds_kw'] = xrds_kw
 
-        # Call parent with explicit required arguments
+        # Call parent with explicit required arguments (including rand_obs)
         super().__init__(
             asip_paths=asip_paths,
             cimr_paths=cimr_paths,
@@ -586,7 +585,8 @@ class BaseDataModuleMultiRes(BaseDataModule):
             target_vars=target_vars,
             satellite_vars=satellite_vars,
             var_mapping=var_mapping,
-            models_vars=self.models_vars, 
+            models_vars=self.models_vars,
+            rand_obs=rand_obs,
             **kwargs
         )
         
@@ -882,9 +882,6 @@ class BaseDataModuleMultiRes(BaseDataModule):
                             continue
                         # Apply random obs mask if requested
                         should_apply_mask = apply_rand_obs_to_all or (var_key in rand_obs_vars)
-                        print(f"  DEBUG {resolution_key}: var={var_key}, should_apply_mask={should_apply_mask}, "
-                              f"apply_rand_obs_to_all={apply_rand_obs_to_all}, var_key in rand_obs_vars={var_key in rand_obs_vars}, "
-                              f"rand_obs_vars={rand_obs_vars}")
                         if should_apply_mask:
                             var_data = generate_random_obs_mask(var_data)
                         # Use mapped stats if available, else default satellite stats
@@ -920,6 +917,20 @@ class BaseDataModuleMultiRes(BaseDataModule):
                             continue
                         var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{target_var: var_data})
+            
+            # 4. Normalize tgt_XXX variables created from models_XXX (not in mapping)
+            # These are typically created in extract_enlarged_patch_from_datasets
+            for target_var in target_vars_for_res:
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_XXX -> also normalize tgt_XXX if it exists
+                    var_suffix = target_var.split('_', 1)[1]
+                    tgt_var = f"tgt_{var_suffix}"
+                    if hasattr(data, tgt_var):
+                        var_data = getattr(data, tgt_var)
+                        if var_data is not None:
+                            # Use same normalization as models_XXX
+                            var_data = normalize_var(var_data, norm_models[var_suffix])
+                            data = data._replace(**{tgt_var: var_data})
             
             # Normalize covariates
             for cov in self.covariates:
@@ -1042,7 +1053,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
             for source in ['asip', 'cimr', 'cristal']:
                 if f"{source}_paths" not in paths_dict:
                     paths_dict[f"{source}_paths"] = np.array([])
-            
+        
             # Add models paths if configured
             if self.models_vars is not None and len(self.models_vars) > 0:
                 models_paths, _ = select_paths(
@@ -1105,8 +1116,8 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
                 )
             
-        self.train_ds = create_dataset('train')
-        self.val_ds = create_dataset('val')
+        #self.train_ds = create_dataset('train')
+        #self.val_ds = create_dataset('val')
         self.test_ds = create_dataset('test')
 
     def train_dataloader(self):

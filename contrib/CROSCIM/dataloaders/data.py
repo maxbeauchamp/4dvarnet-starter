@@ -1147,6 +1147,23 @@ class BaseDataModule(pl.LightningDataModule):
                         var_data = normalize_var(var_data, norm_stats)
                         data = data._replace(**{target_var: var_data})
             
+            # 4. Normalize tgt_XXX variables created from models_XXX (not in mapping)
+            # These are typically created when models_XXX is in target_vars
+            target_vars_list = self.target_vars if not isinstance(self.target_vars, dict) else list(set(
+                var for vars_list in self.target_vars.values() for var in vars_list
+            ))
+            for target_var in target_vars_list:
+                if target_var.startswith('models_') and '_' in target_var:
+                    # models_XXX -> also normalize tgt_XXX if it exists
+                    var_suffix = target_var.split('_', 1)[1]
+                    tgt_var = f"tgt_{var_suffix}"
+                    if hasattr(data, tgt_var):
+                        var_data = getattr(data, tgt_var)
+                        if var_data is not None:
+                            # Use same normalization as models_XXX
+                            var_data = normalize_var(var_data, norm_models[var_suffix])
+                            data = data._replace(**{tgt_var: var_data})
+            
             # Normalize covariates
             for cov in self.covariates:
                 if hasattr(data, cov):
