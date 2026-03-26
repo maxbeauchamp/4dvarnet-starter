@@ -217,7 +217,7 @@ optim_weight:
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x50:
-    _target_: src.utils.get_linear_time_wei
+    _target_: src.utils.get_uniform_time_wei
     patch_dims: {time: 15, yc: 294, xc: 304}
     crop: {time: 0, yc: 0, xc: 0}
     offset: 1

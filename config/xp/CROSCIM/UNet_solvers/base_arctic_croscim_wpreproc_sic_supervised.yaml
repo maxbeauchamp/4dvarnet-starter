@@ -10,12 +10,11 @@ domain: ???
 var_config:
   # Satellite variables by source
   satellite_vars:
-    cristal: ["SIT"]
-    cimr: ["SIT","SIC"]
+    cimr: ["SIC"]
     asip: ["sic"]
   
   # Numerical model variables
-  models_vars: null #["SIT"]
+  models_vars: ["SIC"]
   
   # Atmospheric covariates (reduced since some moved to models)
   covariates: ["t2m", "msl", "u10", "v10"]
@@ -25,23 +24,29 @@ var_config:
   target_vars:
     patch_x50:
       # Low resolution: use model outputs as targets
-      - models_SIT 
+      - models_SIC
     patch_x10:
-      - models_SIT
+      - models_SIC
+    patch_x2:
+      - tgt_SIC
 
   # Mapping: which input variable initializes which target
   var_mapping:
     patch_x50:
       # Low resolution: use model outputs as targets
       #tgt_sit: models_SIT
-      models_SIT: cristal_SIT 
+      models_SIC: cimr_SIC
     patch_x10:
-      models_SIT: cristal_SIT
+      models_SIC: cimr_SIC
+    patch_x2:
+      tgt_SIC: asip_sic
   
   # Time steps per resolution 
   time_steps:
     patch_x50: 15
-    patch_x10: 8
+    patch_x10: 10
+    patch_x2: 5
+
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
 computed:
@@ -60,14 +65,14 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   #devices: 1
-  devices: [1]
+  devices: [3]
   #strategy:
   #  _target_: pytorch_lightning.strategies.DDPStrategy
   #  find_unused_parameters: True
-  accumulate_grad_batches: 3
-  limit_train_batches: 1000.
-  limit_val_batches: 500.
-  max_epochs: 100
+  accumulate_grad_batches: 4
+  limit_train_batches: 1000
+  limit_val_batches: 500
+  max_epochs: 150
   logger:
     _target_: pytorch_lightning.loggers.CSVLogger
     save_dir: ${hydra:runtime.output_dir}
@@ -93,13 +98,16 @@ datamodule:
   croscim_preproc_paths:
     patch_x2: ${paths.preproc}/preproc_CROSCIM_x2.nc
     patch_x10: ${paths.preproc}/preproc_CROSCIM_x10.nc
-    patch_x50: ${paths.preproc}/preproc_CROSCIM_x50.nc  
+    patch_x50: ${paths.preproc}/preproc_CROSCIM_x50.nc
+  
   # Multi-resolution configuration
-  multires: [50,10]
+  multires: [50,10,2]
+  
   # Data splits
   split_train: {_target_: builtins.slice, _args_: [0, 2000]}
   split_val: {_target_: builtins.slice, _args_: [2000, 2050]}
-  split_test: {_target_: builtins.slice, _args_: [2000,2050]}
+  split_test: {_target_: builtins.slice, _args_: [2025,2051]}
+
   norm_stats:
     asip:
       sic: {min: 0.0, max: 100.0, type: minmax}
@@ -114,7 +122,8 @@ datamodule:
       HS: {mean: 0.15517908473300512, std: 0.13962813089282153, type: zscore}
       #SIT: {mean: 1.3583107984977745, std: 0.7628621685375375, type: zscore}
       SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
-      SSH: {mean: 0.1912636630889516, std: 0.41697635927509086, type: zscore}
+      #SSH: {mean: 0.1912636630889516, std: 0.41697635927509086, type: zscore}
+      SSH: {mean: 0.21988234269231605, std: 0.2757902493660287, type: zscore}
   norm_stats_models:
     SIC: {min: 0.0, max: 1.0, type: minmax}
     SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
@@ -134,7 +143,7 @@ datamodule:
 model:
   _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
   persist_rw: False
-  multires: [50,10]
+  multires: [50,10,2]
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}
@@ -162,6 +171,11 @@ model:
         n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_hidden: 180
         n_classes: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+      solver_x2:
+        _target_: contrib.CROSCIM.UNet.UNetSolver
+        n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x2}"}
+        n_hidden: 180
+        n_classes: ${python_eval:"len(${var_config.target_vars.patch_x2}) * ${var_config.time_steps.patch_x2}"}
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
   norm_stats_models: ${datamodule.norm_stats_models} 
@@ -174,8 +188,14 @@ optim_weight:
     offset: 1
     dim_order: ["time", "yc", "xc"]
   patch_x10:
-    _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 8, yc: 256, xc: 256}
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 10, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x2:
+    _target_: src.utils.get_last_time_wei
+    patch_dims: {time: 5, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
@@ -196,7 +216,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_sit_supervised.ckpt
+    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_sic_supervised.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

@@ -15,7 +15,7 @@ var_config:
     asip: ["sic"]
   
   # Numerical model variables
-  models_vars: null #["SIT"]
+  models_vars: ["SIT"]
   
   # Atmospheric covariates (reduced since some moved to models)
   covariates: ["t2m", "msl", "u10", "v10"]
@@ -60,10 +60,10 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   #devices: 1
-  devices: [1]
-  #strategy:
-  #  _target_: pytorch_lightning.strategies.DDPStrategy
-  #  find_unused_parameters: True
+  devices: [2,3]
+  strategy:
+    _target_: pytorch_lightning.strategies.DDPStrategy
+    find_unused_parameters: True
   accumulate_grad_batches: 3
   limit_train_batches: 1000.
   limit_val_batches: 500.
@@ -76,9 +76,9 @@ trainer:
   callbacks:
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      monitor: val_total_loss
+      monitor: val_loss
       save_top_k: 3
-      filename: '{val_total_loss:.5f}-{epoch:03d}'
+      filename: '{val_loss:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_simple_multires_supervised.BaseDataModuleMultiResSupervised_simplify
@@ -148,20 +148,54 @@ model:
   rec_weight: ${optim_weight}
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
-  frcst_lead: 0
+  frcst_lead: 2
   solver:
     _target_: contrib.CROSCIM.solver.GradSolvers
     solvers:
-      solver_x50:
-        _target_: contrib.CROSCIM.UNet.UNetSolver
-        n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
-        n_hidden: 180
-        n_classes: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
       solver_x10:
-        _target_: contrib.CROSCIM.UNet.UNetSolver
-        n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
-        n_hidden: 180
-        n_classes: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        _target_: contrib.CROSCIM.solver.GradSolver
+        n_step: 10
+        lr_grad: 0.2
+        input_vars: ${computed.input_vars_all}
+        target_vars: ${var_config.target_vars.patch_x10}
+        var_mapping: ${var_config.var_mapping.patch_x10}
+        n_time: ${var_config.time_steps.patch_x10}
+        obs_cost:
+          _target_: contrib.CROSCIM.solver.BaseObsCost
+          w: 1.0
+          use_target: true
+        prior_cost:
+          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
+          dim_hidden: 64
+          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        grad_mod:
+          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          dim_in: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+          dim_hidden: 64
+      solver_x50:
+        _target_: contrib.CROSCIM.solver.GradSolver
+        n_step: 10
+        lr_grad: 0.2
+        input_vars: ${computed.input_vars_all}
+        target_vars: ${var_config.target_vars.patch_x50}
+        var_mapping: ${var_config.var_mapping.patch_x50}
+        n_time: ${var_config.time_steps.patch_x50}
+        obs_cost:
+          _target_: contrib.CROSCIM.solver.BaseObsCost
+          w: 1.0
+          use_target: true
+        prior_cost:
+          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+          dim_hidden: 64
+          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+        grad_mod:
+          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          dim_in: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+          dim_hidden: 64
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
   norm_stats_models: ${datamodule.norm_stats_models} 
@@ -196,7 +230,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_sit_supervised.ckpt
+    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

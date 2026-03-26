@@ -647,6 +647,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         """
         Applique un masquage temporel sur toutes les résolutions du batch multi-échelle.
         """
+        # Variables satellites : seules celles-ci reçoivent le masquage frcst_lead
+        satellite_var_names = {
+            f"{src}_{var}"
+            for src, vars in self.satellite_vars.items()
+            for var in vars
+        }
+
         for key, item in batch.items():
             if not key.startswith("patch_x"):
                 continue  # sécurité pour ne traiter que les bons items
@@ -659,8 +666,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             for var in item_dict:
                 data = item_dict[var]
                 if isinstance(data, torch.Tensor) and data.ndim == 4 and data.shape[1] > 1:
-                    # Masquage temporel (on suppose dim=1 correspond au temps)
-                    if self.frcst_lead is not None and self.frcst_lead > 0:
+                    # Masquage temporel : uniquement les variables satellites
+                    if self.frcst_lead is not None and self.frcst_lead > 0 and var in satellite_var_names:
                         data[:, -self.frcst_lead:, :, :] = torch.nan
                     new_item[var] = data.to(device)
                 else:
@@ -674,6 +681,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         """
         Applique un masquage temporel sur le batch
         """
+        # Variables satellites : seules celles-ci reçoivent le masquage frcst_lead
+        satellite_var_names = {
+            f"{src}_{var}"
+            for src, vars in self.satellite_vars.items()
+            for var in vars
+        }
+
         item_dict = batch._asdict()
         item_dict = self.crop_daw(item_dict, res)
 
@@ -681,8 +695,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         for var in item_dict:
             data = item_dict[var]
             if isinstance(data, torch.Tensor) and data.ndim == 4 and data.shape[1] > 1:
-                # Masquage temporel (on suppose dim=1 correspond au temps)
-                if self.frcst_lead is not None and self.frcst_lead > 0:
+                # Masquage temporel : uniquement les variables satellites
+                if self.frcst_lead is not None and self.frcst_lead > 0 and var in satellite_var_names:
                     data[:, -self.frcst_lead:, :, :] = torch.nan
                 new_item[var] = data.to(device)
             else:
@@ -1034,6 +1048,25 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         epoch = self.current_epoch
         res_idx = min(epoch // (self.trainer.max_epochs // len(self.multires)), len(self.multires) - 1)
         train_res = self.multires[res_idx]
+
+        # When the training resolution switches, the loss magnitude changes
+        # (more timesteps / higher resolution → different loss scale).
+        # Reset all ModelCheckpoint "best" scores so the new phase starts fresh
+        # and doesn't inherit stale thresholds from the previous resolution.
+        prev_res_idx = getattr(self, '_prev_res_idx', None)
+        if prev_res_idx is not None and res_idx != prev_res_idx:
+            from pytorch_lightning.callbacks import ModelCheckpoint
+            for cb in self.trainer.callbacks:
+                if isinstance(cb, ModelCheckpoint):
+                    cb.best_model_score = None
+                    cb.best_model_path = ""
+                    cb.best_k_models = {}
+                    cb.kth_best_model_path = ""
+                    cb.kth_value = None
+            if self.global_rank == 0:
+                print(f"  ↺  Resolution switch x{self.multires[prev_res_idx]} → x{train_res}: "
+                      f"ModelCheckpoint best scores reset.")
+        self._prev_res_idx = res_idx
 
         if self.global_rank == 0:
             print(f"\n[Epoch {epoch}] Training resolution: {train_res}")
@@ -1556,13 +1589,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         weights = target_magnitudes / (self.loss_ema + 1e-8)
         #weights = torch.clamp(weights, 0.00001, 10.0)  # Prevent extreme weights
         
-        return {
+        result = {
             'base': weights[0].item(),
             'grad': weights[1].item(),
             'prior': weights[2].item(),
             'tv': weights[3].item(),
             'context': weights[4].item()
         }
+        # Persist for reuse during validation
+        self._last_balanced_weights = result
+        return result
 
     def step(self, batch, res, phase=""):
     
@@ -1608,13 +1644,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     
             # Create masks
             source_var = batch_dict[mapping[var_name]]
-            mask_interp = (~source_var.isfinite()) & target.isfinite() & global_input_valid
-            mask_obs = source_var.isfinite() & target.isfinite() & global_input_valid
+            mask_interp = (~source_var.isfinite()) & target.isfinite() #& global_input_valid
+            mask_obs = source_var.isfinite() & target.isfinite() #& global_input_valid
 
             _zero = torch.tensor(0.0, device=pred.device, requires_grad=True)
 
             # Masks
-            mask_grad = target.isfinite() & global_input_valid
+            mask_grad = target.isfinite() #& global_input_valid
 
             # 1. Gradient loss — skip if no valid target pixels
             if mask_grad.any():
@@ -1681,8 +1717,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         if self.training:
             weights = self.compute_balanced_weights(loss_values)
         else:
-            # Use fixed weights for validation
-            weights = {'base': 1.0, 'grad': 1.0, 'prior': 1.0, 'tv': 1.0, 'context': 1.0}
+            # Reuse the last balanced weights from training (fall back to uniform if not yet available)
+            weights = getattr(self, '_last_balanced_weights',
+                              {'base': 1.0, 'grad': 1.0, 'prior': 1.0, 'tv': 1.0, 'context': 1.0})
         
         # COMBINED LOSS with auto-balanced weights
         training_loss = (
@@ -1798,9 +1835,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             pred = out[pred_var_name]  # (B, T, Y, X)
 
             # Mask 1: Interpolation pixels (input NaN, target valid)
-            mask  = ~batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() & global_input_valid
+            mask  = ~batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() #& global_input_valid
             # Mask 2: Observation pixels (both input and target valid)
-            mask2 =  batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() & global_input_valid
+            mask2 =  batch._asdict()[mapping[var_name]].isfinite() & target.isfinite() #& global_input_valid
 
             n_mask  = mask.sum().item()
             n_mask2 = mask2.sum().item()
@@ -2322,8 +2359,25 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # add coarser resolution to output
         if dataloader_idx > 0:
             out = {k: out[k] + itrp_coarse[k] for k in out}
+
+        # Masque de domaine : si une variable models_XXX est présente dans le batch,
+        # on utilise ses NaN comme masque (NaN → pixel invalide/hors domaine).
+        # Sinon on replie sur le land_mask classique (land_mask==1 → invalide).
+        batch_dict = batch._asdict()
+        models_mask_var = next(
+            (k for k in batch_dict if k.startswith("models_")
+             and isinstance(batch_dict[k], torch.Tensor)
+             and batch_dict[k].numel() > 0),
+            None
+        )
+        if models_mask_var is not None:
+            # True où le pixel est invalide (au moins un NaN sur l'axe temporel)
+            domain_invalid = ~batch_dict[models_mask_var].isfinite().any(dim=1, keepdim=True)
+        else:
+            domain_invalid = (batch.land_mask == 1.)
+
         for var in out:
-            out[var] = torch.where(batch.land_mask==1., np.nan, out[var])
+            out[var] = torch.where(domain_invalid, torch.tensor(float('nan'), device=out[var].device, dtype=out[var].dtype), out[var])
 
         # Stockage des sorties et des cibles
         # Unnormalization is done in aggregate
