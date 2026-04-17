@@ -1,0 +1,1 @@
+{"channels": 5, "dim_hidden": 96, "kernel_size": 3, "dropout": 0.1, "downsamp": null}

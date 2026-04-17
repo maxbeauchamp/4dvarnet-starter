@@ -1,0 +1,1 @@
+{"dim_in": 15, "dim_hidden": 64, "kernel_size": 3, "downsamp": null, "bilin_quad": true}

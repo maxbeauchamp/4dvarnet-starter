@@ -43,3 +43,14 @@ consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/
 consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/epoch=078-step=1027-train_loss=0.2358.ckpt
 consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/epoch=093-step=1222-train_loss=0.2253.ckpt
 consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/last.ckpt
+SPDE/SPDE_diffusion_dataset_2.nc
+SPDE/SPDE_diffusion_dataset_1.nc
+consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/best_model/model.pt
+consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/epoch=382-step=4979-train_loss=0.0778.ckpt
+consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/epoch=270-step=3523-train_loss=0.0947.ckpt
+consistency/Notebooks/Notebooks_SSH_GF/ODE/logs_PWCM_variational/cm/checkpoints/epoch=385-step=5018-train_loss=0.0958.ckpt
+consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/v0/best_model/model_4dvarnet_unet.pt
+consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/v0/checkpoints/epoch=379-step=18960-val_loss=0.5937.ckpt
+consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/v0/checkpoints/epoch=347-step=17296-val_loss=0.5921.ckpt
+consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/v0/checkpoints/epoch=443-step=22288-val_loss=0.5925.ckpt
+consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/v0/checkpoints/last.ckpt
