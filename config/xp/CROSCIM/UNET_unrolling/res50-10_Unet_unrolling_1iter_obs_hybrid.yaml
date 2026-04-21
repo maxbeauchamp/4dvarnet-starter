@@ -60,11 +60,11 @@ trainer:
   #gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  accumulate_grad_batches: 2
-  limit_train_batches: 50
+  accumulate_grad_batches: 20
+  limit_train_batches: 500
   limit_val_batches: 50.
   limit_test_batches: 50.
-  max_epochs: 100
+  max_epochs: 200
   logger:
     _target_: pytorch_lightning.loggers.tensorboard.TensorBoardLogger
     save_dir: ${hydra:runtime.output_dir}

@@ -37,9 +37,11 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     def __init__(self,
             optim_weight,
             prior_weight,
+            fill_weight,
             domain_limits,
             persist_rw=True, 
             frcst_lead=0,
+            cimr_constraint=False,
             multires=[1], 
             tgt_vars=["tgt_sic","tgt_SIT"],
             satellite_vars=None,      # NEW: satellite variable config
@@ -63,6 +65,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.tgt_vars = tgt_vars
         self.var_mapping = var_mapping or {}  # e.g., {"tgt_sic": "asip_sic", "tgt_SIT": "cimr_SIT"}
          
+        self.cimr_constraint = cimr_constraint
         # Construct input_vars list
         self.input_vars = []
         for source, vars in self.satellite_vars.items():
@@ -89,7 +92,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Single function to process both weight dicts
         self.optim_weight = self._process_weights(optim_weight, prefix='_optim_weight')
         self.prior_weight = self._process_weights(prior_weight, prefix='_prior_weight')
-        
+        self.fill_weight = self._process_weights(fill_weight, prefix='_fill_weight')
+
         print(f"\n[Model Init] Instantiated weights:")
         for res_key in self.optim_weight.keys():
             weight = self.optim_weight[res_key]
@@ -114,17 +118,19 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         # Loss balancing configuration
         self.loss_target_ratios = {
-            'base': 0.8,      # 70% of total loss
+            'base': 0.7,      # 70% of total loss
             'grad': 0.1,      # 10% of total loss
             'prior': 0.05,     # 5% of total loss
             'tv': 0.05,#0.10,        # 10% of total loss
-            'context': 0.#0.05    # 5% of total loss
+            'context': 0.,#0.05    # 5% of total loss
+            'fill': 0.0,
+            'cimr_constraint': 0.1
         }
         
         # Running averages for auto-balancing (EMA with alpha=0.1)
-        self.register_buffer('loss_ema', torch.zeros(5))  # [base, grad, prior, tv, context]
+        self.register_buffer('loss_ema', torch.zeros(7))  # [base, grad, prior, tv, context, fill, cimr_constraint]
         self.ema_alpha = 0.1
-        self.loss_names = ['base', 'grad', 'prior', 'tv', 'context']
+        self.loss_names = ['base', 'grad', 'prior', 'tv', 'context', 'fill']
 
     def _process_weights(self, weight_dict, prefix='_weight'):
         """
@@ -1348,7 +1354,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             loss_values['grad'],
             loss_values['prior'],
             loss_values['tv'],
-            loss_values['context']
+            loss_values['context'],
+            loss_values['fill'],
+            loss_values['cimr_constraint']
         ])
         
         # Update EMA
@@ -1369,7 +1377,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             self.loss_target_ratios['grad'],
             self.loss_target_ratios['prior'],
             self.loss_target_ratios['tv'],
-            self.loss_target_ratios['context']
+            self.loss_target_ratios['context'],
+            self.loss_target_ratios['fill'],
+            self.loss_target_ratios['cimr_constraint']
         ], device=losses.device) * total_ema
         
         # Compute weights: target / current (with clipping to avoid instability)
@@ -1381,7 +1391,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             'grad': weights[1].item(),
             'prior': weights[2].item(),
             'tv': weights[3].item(),
-            'context': weights[4].item()
+            'context': weights[4].item(),
+            'fill': weights[5].item(),
+            'cimr_constraint': weights[6].item()
         }
 
 
@@ -1441,20 +1453,45 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         else:
             total_prior_loss = torch.tensor(0.0, device=device, requires_grad=True)
 
+        # 5. Fill model loss
+        #model = self.solver.solvers[f"solver_x{res}"]
+        if (model.fill_missing_inp):
+            model = model.to(device)
+            # forward
+            cimr_SIC = getattr(batch, "cimr_SIC")
+            fill = model.fill_mod(cimr_SIC.nan_to_num().to(dtype=torch.float32))
+            # loss
+            total_fill_loss = self.weighted_mse(cimr_SIC - fill, self.fill_weight[res_key])
+        else:
+            total_fill_loss = torch.tensor(0.0, device=device, requires_grad=True)
+
+        # 6. CIMR constraint loss (if applicable)
+        if self.cimr_constraint and res == 50:
+            cimr_SIC = getattr(batch, "cimr_SIC")
+            mask_cimr_interpolate = ~batch._asdict()[self.var_mapping[var_name]].isfinite() & cimr_SIC.isfinite()
+            total_cimr_constraint_loss = self.weighted_mse(
+                torch.where(mask_cimr_interpolate, pred, torch.tensor(float('nan'), device=pred.device)) - cimr_SIC,
+                self.optim_weight[f"patch_x{res}"]
+            )
+        else:
+            total_cimr_constraint_loss = torch.tensor(0.0, device=device, requires_grad=True)
+
         # COMPUTE BALANCED WEIGHTS
         loss_values = {
             'base': loss,
             'grad': total_grad_loss,
             'prior': total_prior_loss,
             'tv': total_tv_loss,
-            'context': total_context_loss
+            'context': total_context_loss,
+            'fill': total_fill_loss,
+            'cimr_constraint': total_cimr_constraint_loss
         }
         
         if self.training:
             weights = self.compute_balanced_weights(loss_values)
         else:
             # Use fixed weights for validation
-            weights = {'base': 1.0, 'grad': 1.0, 'prior': 1.0, 'tv': 1.0, 'context': 1.0}
+            weights = {'base': 1.0, 'grad': 1.0, 'prior': 1.0, 'tv': 1.0, 'context': 1.0, 'fill': 1.0, 'cimr_constraint': 1.0}
         
         # COMBINED LOSS with auto-balanced weights
         training_loss = (
@@ -1462,7 +1499,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             weights['grad'] * total_grad_loss +
             weights['prior'] * total_prior_loss +
             weights['tv'] * total_tv_loss +
-            weights['context'] * total_context_loss
+            weights['context'] * total_context_loss + 
+            weights['fill'] * total_fill_loss +
+            weights['cimr_constraint'] * total_cimr_constraint_loss
         )
 
         # Log individual losses AND weights
@@ -1471,7 +1510,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.log(f"{phase}_prior_loss", total_prior_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_tv_loss", total_tv_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
         self.log(f"{phase}_context_loss", total_context_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
-        
+        self.log(f"{phase}_fill_loss", total_fill_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+        self.log(f"{phase}_cimr_constraint_loss", total_cimr_constraint_loss, prog_bar=False, on_step=False, on_epoch=True, sync_dist=True)
+
         # Log weights
         if self.training and self.global_step % 50 == 0 and self.trainer.is_global_zero:
             print(f"\n[Step {self.global_step}] Loss balancing:")
@@ -1480,11 +1521,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             print(f"  Prior loss:   {total_prior_loss.item():.6f} × {weights['prior']:.3f} = {(weights['prior']*total_prior_loss).item():.6f}")
             print(f"  TV loss:      {total_tv_loss.item():.6f} × {weights['tv']:.3f} = {(weights['tv']*total_tv_loss).item():.6f}")
             print(f"  Context loss: {total_context_loss.item():.6f} × {weights['context']:.3f} = {(weights['context']*total_context_loss).item():.6f}")
+            print(f"  Fill loss:    {total_fill_loss.item():.6f} × {weights['fill']:.3f} = {(weights['fill']*total_fill_loss).item():.6f}")
+            print(f"  CIMR constraint loss: {total_cimr_constraint_loss.item():.6f} × {weights['cimr_constraint']:.3f} = {(weights['cimr_constraint']*total_cimr_constraint_loss).item():.6f}")
             print(f"  Total:        {training_loss.item():.6f}")
 
         self.log(f"{phase}_weight_base", weights['base'], prog_bar=False, on_step=False, on_epoch=True)
         self.log(f"{phase}_weight_grad", weights['grad'], prog_bar=False, on_step=False, on_epoch=True)
         self.log(f"{phase}_weight_tv", weights['tv'], prog_bar=False, on_step=False, on_epoch=True)
+        self.log(f"{phase}_weight_fill", weights['fill'], prog_bar=False, on_step=False, on_epoch=True)
 
         return training_loss, out
 
@@ -1732,6 +1776,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     f"tgt_{var_suffix}": (("time", "yc", "xc"),
                                         unnormalize(var, test_data_uniq[f"tgt_{var_suffix}"].data))
                 })
+            # Add squared anomalies between target and prediction
+            for var in self.tgt_vars:
+                if '_' in var:
+                    var_suffix = var.split('_', 1)[1]
+                else:
+                    var_suffix = var
+                squared_anomalies = (test_data_unnorm[f"pred_{var_suffix}"].data - test_data_unnorm[f"tgt_{var_suffix}"].data) ** 2
+                test_data_unnorm = test_data_unnorm.update({
+                    f"anomaly_sq_{var_suffix}": (("time", "yc", "xc"), squared_anomalies)
+                })
+            
             if metrics:
                 metric_data = test_data_unnorm.pipe(self.pre_metric_fn),
                 metrics = pd.Series({
@@ -1934,6 +1989,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.test_times[res_key].append(torch.squeeze(batch.time, dim=1))
 
         # if last batch, agreggate (as an xarray dataset with the estimation for a given resolution)
+        print("IS LAST BATCH?", self.is_last_batch(batch_idx, dataloader_idx))
         if self.is_last_batch(batch_idx, dataloader_idx):
             self.test_data[res_key] = list(itertools.chain(*self.test_data[res_key]))
             self.test_times[res_key] = list(itertools.chain(*self.test_times[res_key]))
@@ -1948,6 +2004,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # the idea behind: the aggregation is :
             # on the full window for coarser resolutions
             # only for nowcast/forecast lead times for final resolution
+            print("IDX_REC:", idx_rec)
+            print("TIME SHAPE:", batch.time.shape)  
             self.aggregate_results[res_key] = self.aggregate_batches(idx_rec,
                                                                      self.test_data[res_key],
                                                                      self.test_times[res_key],
@@ -1986,7 +2044,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         checkpoint_state = checkpoint["state_dict"]
         
         # Keys that need size adaptation
-        weight_prefixes = ["_rec_weight", "_optim_weight", "_prior_weight", "_sr_weight"]
+        weight_prefixes = ["_rec_weight", "_optim_weight", "_prior_weight","_fill_weight", "_sr_weight"]
         
         adapted_keys = []
         for key in current_state.keys():

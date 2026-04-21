@@ -1,0 +1,327 @@
+# @package _global_
+
+paths:
+  src: /Odyssey/private/p25denai/CROSCIM
+  mask: /Odyssey/private/p25denai/CROSCIM/contrib/CROSCIM/mask_PanArctic.nc
+  asip: /Odyssey/private/m19beauc/CROSCIM_dataset/croscim_inference_new/asip
+  cimr: /Odyssey/private/m19beauc/CROSCIM_dataset/croscim_inference_new/cimr
+  cristal: /Odyssey/private/m19beauc/CROSCIM_dataset/croscim_inference_new/cristal
+  covariates: /Odyssey/private/m19beauc/CROSCIM_dataset/croscim_inference_new/covariates
+  models: /Odyssey/private/m19beauc/CROSCIM_dataset/croscim_inference_new/models
+
+
+hydra:
+  run:
+    dir: ${paths.src}/results/${now:%Y-%m-%d}/${now:%H:%M:%S}
+
+xp_name: ${last:${hydra:runtime.choices.xp}}
+
+domain: ???
+
+# ===== CENTRALIZED VARIABLE CONFIGURATION =====
+var_config:
+  # Satellite variables by source
+  satellite_vars:
+    cimr: ["SIC"]
+    asip: ["sic"]
+  
+  # Numerical model variables
+  models_vars: ["SIC"]
+  
+  # Atmospheric covariates (reduced since some moved to models)
+  covariates: ["t2m", "msl", "u10", "v10"]
+  
+  # Target variables
+  #target_vars: ["tgt_sit"]
+  target_vars:
+    patch_x50:
+      # Low resolution: use model outputs as targets
+      - models_SIC
+    patch_x10:
+      - models_SIC
+    patch_x2:
+      - tgt_SIC
+
+  # Mapping: which input variable initializes which target
+  var_mapping:
+    patch_x50:
+      # Low resolution: use model outputs as targets
+      #tgt_sit: models_SIT
+      models_SIC: cimr_SIC
+    patch_x10:
+      models_SIC: cimr_SIC
+    patch_x2:
+      tgt_SIC: asip_sic
+  
+  # Time steps per resolution 
+  time_steps:
+    patch_x50: 15
+    patch_x10: 10
+    patch_x2: 5
+
+
+# ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
+computed:
+  # Flatten satellite vars: ['asip_sic', 'cimr_SIC', 'cimr_SIT', 'cristal_SIT', 'cristal_SSH']
+  input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
+  
+  # Add model vars with prefix: ['models_t2m', 'models_msl', 'models_sic', 'models_sit']
+  input_vars_models: ${python_eval:"[f'models_{var}' for var in ${var_config.models_vars}]"}
+  
+  # Combine all inputs: satellite + models + covariates
+  input_vars_all: ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
+
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  #devices: 1
+  devices: 1
+  accumulate_grad_batches: 10 #20
+  limit_train_batches: 300 #500
+  limit_val_batches: 50 #50.
+  limit_test_batches: 1000 #50.
+  max_epochs:  120
+  logger:
+    _target_: pytorch_lightning.loggers.tensorboard.TensorBoardLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${xp_name}
+    version: ''
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    # 🔹 Sauvegarde du meilleur modèle 
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_loss
+      mode: min
+      save_top_k: 1
+      filename: 'best'
+      save_last: True   # optionnel : garde aussi le dernier
+    # 🔹 Sauvegarde tous les 10 epochs
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      every_n_epochs: 10
+      save_top_k: -1
+      filename: 'epoch-{epoch:03d}'
+    - _target_: pytorch_lightning.callbacks.RichProgressBar
+      leave: True
+    - _target_: pytorch_lightning.callbacks.RichModelSummary
+      max_depth: 2
+
+
+
+datamodule:
+  _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
+  
+  # Variable configuration
+  satellite_vars: ${var_config.satellite_vars}
+  covariates: ${var_config.covariates}
+  models_vars: ${var_config.models_vars} 
+  target_vars: ${var_config.target_vars}
+  var_mapping: ${var_config.var_mapping}
+  
+  # Data paths
+  asip_paths:
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: asip
+    paths: ${paths}
+  cimr_paths:
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: cimr
+    paths: ${paths}
+  cristal_paths:
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: cristal
+    paths: ${paths}
+  covariates_paths:
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: covariates
+    paths: ${paths}
+  models_paths:
+    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    source: models
+    paths: ${paths}
+  
+  mask_path: ${paths.mask}
+  domain_name: arctic_croscim
+  domains:
+    train:
+      time: {_target_: builtins.slice, _args_: ['2022-05-01', '2022-12-31']}
+    val:
+      time:
+        - {_target_: builtins.slice, _args_: ['2022-05-01', '2022-06-30']}
+        - {_target_: builtins.slice, _args_: ['2022-07-01', '2022-12-31']}
+    test:
+      time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
+  xrds_kw:
+    # TRAIN/VAL (unchanged)
+    patch_dims: { time: 15, yc: 256, xc: 256}
+    strides: { time: 1, yc: 28, xc: 28}
+    strides_test: {time: 1, yc: 200, xc: 200}
+    # TEST: patch_dims_dict (different per resolution)
+    patch_dims_dict: 
+      50: {time: 15, yc: 294, xc: 304}
+      10: {time: 15, yc: 256, xc: 256}
+      2: {time: 15, yc: 256, xc: 256}
+    strides_test_dict: 
+      50: {time: 1, yc: 294, xc: 304}
+      10: {time: 1, yc: 200, xc: 200}
+      2: {time: 1, yc: 200, xc: 200}
+    domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
+                    yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
+  dl_kw: {batch_size: 2, num_workers: 5, persistent_workers: True}
+  res: 500
+  pads: [False, False, True]
+
+  noise_level:
+    cimr_SIC: 0.05 #5% noise relative to physical value
+    cimr_SIT: 0.1 #10% noise relative to physical value
+    cristal_SIT: 0.1 #0.1m noise relative to physical value
+
+  add_noise: True
+
+  norm_stats:
+    asip:
+      sic: {min: 0.0, max: 100.0, type: minmax}
+      standard_deviation_sic: {mean: 1.8761531586097209, std: 4.922335431544444, type: zscore}
+      status_flag: {min: 0.0, max: 1536.0, type: minmax}
+    cimr:
+      SIC: {min: 0.0, max: 1.0, type: minmax}
+      #SIT: {mean: 0.02392856443828687, std: 0.08694672390807144, type: zscore}
+      SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+      Tsurf: {mean: -6.3703807274976665, std: 9.394544766238061, type: zscore}
+    cristal:
+      HS: {mean: 0.15517908473300512, std: 0.13962813089282153, type: zscore}
+      #SIT: {mean: 1.3583107984977745, std: 0.7628621685375375, type: zscore}
+      SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+      SSH: {mean: 0.1912636630889516, std: 0.41697635927509086, type: zscore}
+  norm_stats_models:
+    SIC: {min: 0.0, max: 1.0, type: minmax}
+    SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+    HS: {mean: 0.06844576249551623, std: 0.1137041260225963, type: zscore}
+    SSH: {mean: 0.21988234269231605, std: 0.2757902493660287, type: zscore}
+  norm_stats_covs:
+    msl: {mean: 101261.65922657882, std: 1112.7187312302365, type: zscore}
+    t2m: {mean: -2.5985455071070955, std: 13.613745769755358, type: zscore}
+    u10: {mean: 0.6010106010949151, std: 4.545559141871505, type: zscore}
+    v10: {mean: -0.2104646166032582, std: 4.707062023219409, type: zscore}
+    tcc: {min: 1.0896958883677144e-05, max: 0.024753304198384285, type: minmax}
+    d2m: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
+    ssrd: {mean: 95.72918023746189, std: 93.44316534428312, type: zscore}
+    strd: {mean: 265.25246499467744, std: 63.12553499850183, type: zscore}
+    tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
+  multires: [50, 10, 2]
+
+
+model:
+  _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
+  persist_rw: False
+  multires: [50,10,2]
+  opt_fn: null
+  # Variable configuration
+  tgt_vars: ${var_config.target_vars}
+  satellite_vars: ${var_config.satellite_vars}
+  covariates: ${var_config.covariates}
+  models_vars: ${var_config.models_vars} 
+  var_mapping: ${var_config.var_mapping}
+  domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
+                  yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
+  rec_weight: ${optim_weight}
+  optim_weight: ${optim_weight}
+  prior_weight: ${optim_weight}
+  frcst_lead: 3
+  solver:
+    _target_: contrib.CROSCIM.solver.GradSolvers
+    solvers:
+      solver_x50:
+        _target_: contrib.CROSCIM.unet.UNetModel3
+        in_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+        out_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+        #out_channels: 3
+        model_channels: 64
+        num_res_blocks: 1
+        channel_mult: [1,2]
+        attention_resolutions: []
+        use_checkpoint: true
+        dropout: 0.1
+        bias: false
+        interp_mode: bilinear
+        fill_missing_inp: false
+      solver_x10:
+        _target_: contrib.CROSCIM.unet.UNetModel3
+        in_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
+        out_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        #out_channels: 3
+        model_channels: 64
+        num_res_blocks: 1
+        channel_mult: [1,2]
+        attention_resolutions: []
+        use_checkpoint: true
+        dropout: 0.1
+        bias: false
+        interp_mode: bilinear
+        fill_missing_inp: false
+      solver_x2:
+        _target_: contrib.CROSCIM.unet.UNetModel3
+        in_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x2}"}
+        out_channels: ${python_eval:"len(${var_config.target_vars.patch_x2}) * ${var_config.time_steps.patch_x2}"}
+        #out_channels: 3
+        model_channels: 64
+        num_res_blocks: 1
+        channel_mult: [1,2]
+        attention_resolutions: []
+        use_checkpoint: true
+        dropout: 0.1
+        bias: false
+        interp_mode: bilinear
+        fill_missing_inp: false
+  norm_stats: ${datamodule.norm_stats}
+  norm_stats_covs: ${datamodule.norm_stats_covs}
+  norm_stats_models: ${datamodule.norm_stats_models} 
+  ensemble_mean: True
+
+optim_weight:
+  patch_x50:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 15, yc: 294, xc: 304}
+    crop: {time: 0, yc: 0, xc: 0}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x10:
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 10, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 0
+    dim_order: ["time", "yc", "xc"]
+  patch_x2:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 5, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+
+metrics:
+  nrmse_scores:
+    _target_: src.utils.rmse_based_scores_from_ds
+    _partial_: True
+
+entrypoints:
+  - _target_: src.test.base_test
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    ckpt_path: ${paths.src}/results/2026-04-03/15:53:44/CROSCIM/SUPERVISED/res50-10-2_Unet_supervised/checkpoints/last.ckpt
+    save_dir: ${paths.src}/inference
+
+# entrypoints:
+#   - _target_: src.train.train_from_pretrained_model
+#     trainer: ${trainer}
+#     lit_mod: ${model}
+#     dm: ${datamodule}
+#     test: True
+#     config_path: ${config_path}
+#     ckpt_path: ${ckpt}
+#     save_dir: ${paths.src}/results
+
+defaults:
+  - /domain: arctic_croscim

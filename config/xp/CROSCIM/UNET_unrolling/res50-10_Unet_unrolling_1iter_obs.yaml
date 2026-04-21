@@ -42,7 +42,7 @@ var_config:
   # Time steps per resolution
   time_steps:
     patch_x50: 15
-    patch_x10: 8
+    patch_x10: 7
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
 # Automatically construct input_vars from satellite_vars + covariates
@@ -60,11 +60,11 @@ trainer:
   #gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  accumulate_grad_batches: 2
-  limit_train_batches: 50
+  accumulate_grad_batches: 20
+  limit_train_batches: 500
   limit_val_batches: 50.
   limit_test_batches: 50.
-  max_epochs: 100
+  max_epochs: 200
   logger:
     _target_: pytorch_lightning.loggers.tensorboard.TensorBoardLogger
     save_dir: ${hydra:runtime.output_dir}
@@ -156,6 +156,7 @@ model:
   rec_weight: ${optim_weight}
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
+  fill_weight: ${optim_weight}
   frcst_lead: 0
   solver:
     _target_: contrib.CROSCIM.solver.GradSolvers
@@ -205,6 +206,20 @@ model:
             dropout: 0.1
             bias: false
             interp_mode: bilinear
+        fill_missing_inp: True
+        fill_mod:
+          _target_: contrib.CROSCIM.unet.UNetModel
+          in_channels: ${var_config.time_steps.patch_x50}
+          out_channels: ${var_config.time_steps.patch_x50}
+          model_channels: 32
+          num_res_blocks: 1
+          channel_mult:
+          - 1
+          - 2
+          attention_resolutions: []
+          use_checkpoint: true
+          dropout: 0.1
+          bias: false
       solver_x10:
         _target_: contrib.CROSCIM.solver.GradSolver
         n_step: 1
@@ -250,22 +265,37 @@ model:
             dropout: 0.1
             bias: false
             interp_mode: bilinear
+        fill_missing_inp: True
+        fill_mod:
+          _target_: contrib.CROSCIM.unet.UNetModel
+          in_channels: ${var_config.time_steps.patch_x10}
+          out_channels: ${var_config.time_steps.patch_x10}
+          model_channels: 32
+          num_res_blocks: 1
+          channel_mult:
+          - 1
+          - 2
+          attention_resolutions: []
+          use_checkpoint: true
+          dropout: 0.1
+          bias: false
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
-  #training_strategy: 'simultaneous'  
+  training_strategy: 'progressive'  
+
 
 optim_weight:
+  patch_x10:
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 7, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
   patch_x50:
     _target_: src.utils.get_uniform_time_wei
     patch_dims: {time: 15, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
-    offset: 0
-    dim_order: ["time", "yc", "xc"]
-  patch_x10:
-    _target_: src.utils.get_uniform_time_wei
-    patch_dims: {time: 8, yc: 256, xc: 256}
-    crop: {time: 0, yc: 28, xc: 28}
-    offset: 0
+    offset: 1
     dim_order: ["time", "yc", "xc"]
 
 metrics:

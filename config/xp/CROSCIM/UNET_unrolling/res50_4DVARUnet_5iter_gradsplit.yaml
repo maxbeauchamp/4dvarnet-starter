@@ -58,7 +58,7 @@ trainer:
   #gradient_clip_val: 0.5
   accelerator: gpu
   devices: 1
-  accumulate_grad_batches: 10
+  accumulate_grad_batches: 20
   limit_train_batches: 500
   limit_val_batches: 50.
   limit_test_batches: 50.
@@ -154,6 +154,7 @@ model:
   rec_weight: ${optim_weight}
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
+  fill_weight: ${optim_weight}
   frcst_lead: 0
   solver:
     _target_: contrib.CROSCIM.solver.GradSolvers
@@ -211,6 +212,20 @@ model:
             dropout: 0.1
             bias: false
             interp_mode: bilinear
+        fill_missing_inp: True
+        fill_mod:
+          _target_: contrib.CROSCIM.unet.UNetModel
+          in_channels: ${var_config.time_steps.patch_x50}
+          out_channels: ${var_config.time_steps.patch_x50}
+          model_channels: 32
+          num_res_blocks: 1
+          channel_mult:
+          - 1
+          - 2
+          attention_resolutions: []
+          use_checkpoint: true
+          dropout: 0.1
+          bias: false
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
 

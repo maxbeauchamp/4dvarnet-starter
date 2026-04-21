@@ -7,6 +7,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
+import os
+from typing import Optional
+
 
 class GradSolver(nn.Module):
     def __init__(self, 
@@ -19,6 +23,8 @@ class GradSolver(nn.Module):
                  target_vars,          # e.g., ['tgt_sic', 'tgt_SIT']
                  var_mapping,          # e.g., {'tgt_sic': 'asip_sic', 'tgt_SIT': 'cimr_SIT'}
                  n_time,               # Number of time steps per variable
+                 fill_missing_inp,
+                 fill_mod: Optional[nn.Module] = None,
                  lr_grad=0.2, 
                  **kwargs):
         """
@@ -37,6 +43,10 @@ class GradSolver(nn.Module):
         self.grad_mod = grad_mod
         self.n_step = n_step
         self.lr_grad = lr_grad
+        
+        #Fill model for CIMR_SIC
+        self.fill_missing_inp = fill_missing_inp
+        self.fill_mod = fill_mod
         
         # Store variable configuration
         self.input_vars = input_vars
@@ -194,6 +204,48 @@ class GradSolver(nn.Module):
             state_dict: dict {var_name: (B, N_time, H, W)}
         """
 
+        # Fill missing values for CIMR SIC if specified
+        if self.fill_missing_inp:
+            cimr_inp = state_dict['cimr_SIC']
+            # # Debug: Check fill_mod state
+            # print(f"\nDebug fill_mod state:")
+            # print(f"  Training mode: {self.fill_mod.training}")
+            # total_params = sum(p.numel() for p in self.fill_mod.parameters())
+            # trainable_params = sum(p.numel() for p in self.fill_mod.parameters() if p.requires_grad)
+            # print(f"  Total params: {total_params}, Trainable: {trainable_params}")
+            
+            # # Check if output layer is zero (THIS IS THE PROBLEM!)
+            # out_weights = list(self.fill_mod.out.parameters())
+            # if out_weights:
+            #     print(f"  Output layer min={out_weights[0].min():.6f}, max={out_weights[0].max():.6f}")
+            #     if out_weights[0].abs().max() < 1e-6:
+            #         print("  ⚠️  OUTPUT LAYER IS ZERO! Model output will be all zeros.")
+            #         print("  This is a zero_module initialization that needs training.")
+            
+            # # Plot input variable before applying fill_mod (take first batch, first time step)
+            # os.makedirs('/Odyssey/private/p25denai/CROSCIM/input_before', exist_ok=True)
+            # plt.figure(figsize=(10, 5))
+            # plt.imshow(cimr_inp[0, 0, :, :].detach().cpu().numpy(), cmap='viridis')
+            # plt.title(f'Input Variable Before: cimr_SIC')
+            # plt.colorbar()
+            # plt.savefig(os.path.join('/Odyssey/private/p25denai/CROSCIM/input_before', f'cimr_SIC_before.png'))
+            # plt.close()
+
+            # Apply fill_mod
+            filled = self.fill_mod(cimr_inp.nan_to_num(), timesteps=None, extra=[])
+            # print(f"Debug fill_mod: input shape {cimr_inp.shape} → output shape {filled.shape}")
+            # print(f"Debug fill_mod: output min={filled.min()}, max={filled.max()}, mean={filled.mean()}")
+            state_dict['cimr_SIC'] = filled
+
+            # Plot input variable after applying fill_mod (take first batch, first time step)
+            os.makedirs('/Odyssey/private/p25denai/CROSCIM/input_after_inf', exist_ok=True)
+            plt.figure(figsize=(10, 5))
+            plt.imshow(state_dict['cimr_SIC'][0, 0, :, :].detach().cpu().numpy(), cmap='viridis')
+            plt.title(f'Input Variable After: cimr_SIC')
+            plt.colorbar()
+            plt.savefig(os.path.join('/Odyssey/private/p25denai/CROSCIM/input_after', f'cimr_SIC_after.png'))
+            plt.close()
+
 
 
         # Get target-mapped input variables (the ones being optimized)
@@ -273,6 +325,7 @@ class GradSolver(nn.Module):
         #print(f"  FINAL grad: NaN%={nan_pct:.2f}%, Zero%={zero_pct:.2f}%")
 
         # Apply gradient model 
+        print('X DIMENSION : ', grad.shape, flush=True)
         gmod = self.grad_mod(grad, timesteps=t, extra=[])
         
         # Compute state 
@@ -327,6 +380,14 @@ class GradSolver(nn.Module):
             )
             self.grad_mod.reset_state(target_init)
             
+            os.makedirs('/Odyssey/private/p25denai/CROSCIM/input_before', exist_ok=True)
+            plt.figure(figsize=(10, 5))
+            plt.imshow(state_dict['cimr_SIC'][0, 0, :, :].detach().cpu().numpy(), cmap='viridis')
+            plt.title(f'Input Variable Before: cimr_SIC')
+            plt.colorbar()
+            plt.savefig(os.path.join('/Odyssey/private/p25denai/CROSCIM/input_before', f'cimr_SIC_before.png'))
+            plt.close()
+
             # Iterative optimization
             for step in range(self.n_step):
                 alpha_step = 1. / self.n_step
@@ -762,7 +823,7 @@ class GradModelWithCondition(torch.nn.Module):
 
         x = self.dropout(x)
 
-
+        
 
         out = self.grad_model.predict(x, timesteps=timesteps, extra=extra)
 
