@@ -1,4 +1,8 @@
 # @package _global_
+#
+# Consistency Model solver for CROSCIM multi-resolution framework.
+# Based on UNet_solvers/base_arctic_croscim_wpreproc_sit_supervised.yaml
+# but uses ConsistencyUNetSolver with pairwise consistency training.
 
 paths:
   src: /dmidata/users/maxb
@@ -13,62 +17,63 @@ domain: ???
 
 # ===== CENTRALIZED VARIABLE CONFIGURATION =====
 var_config:
-  # Satellite variables by source
   satellite_vars:
     cristal: ["SIT"]
     cimr: ["SIT","SIC"]
     asip: ["sic"]
   
-  # Numerical model variables
   models_vars: ["SIT"]
   
-  # Atmospheric covariates (reduced since some moved to models)
   covariates: ["t2m", "msl", "u10", "v10"]
   
-  # Target variables
-  #target_vars: ["tgt_sit"]
   target_vars:
     patch_x50:
-      # Low resolution: use model outputs as targets
       - models_SIT 
     patch_x10:
       - models_SIT
 
-  # Mapping: which input variable initializes which target
   var_mapping:
     patch_x50:
-      # Low resolution: use model outputs as targets
-      #tgt_sit: models_SIT
       models_SIT: cristal_SIT 
     patch_x10:
       models_SIT: cristal_SIT
   
-  # Time steps per resolution 
   time_steps:
     patch_x50: 15
     patch_x10: 8
 
-# ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
+# ===== COMPUTED VARIABLES =====
 computed:
-  # Flatten satellite vars: ['asip_sic', 'cimr_SIC', 'cimr_SIT', 'cristal_SIT', 'cristal_SSH']
   input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
-  
-  # Add model vars with prefix: ['models_t2m', 'models_msl', 'models_sic', 'models_sit']
-  input_vars_models: ${python_eval:"[f'models_{var}' for var in ${var_config.models_vars}]"}
-  
-  # Combine all inputs: satellite + models + covariates
   input_vars_all: ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
+
+# ===== CONSISTENCY MODEL CONFIGURATION =====
+consistency_config:
+  sigma_min: 0.002
+  sigma_max: 80.0
+  rho: 7.0
+  sigma_data: 1.0
+  initial_timesteps: 2
+  final_timesteps: 17
+  total_training_steps: 10000
+  initial_ema_decay_rate: 0.95
+  student_model_ema_decay_rate: 0.99993
+  lr: 1e-4
+  betas: [0.9, 0.995]
+  lr_scheduler_start_factor: 1e-5
+  lr_scheduler_iters: 10000
 
 trainer:
   _target_: pytorch_lightning.Trainer
   inference_mode: False
   gradient_clip_val: 0.5
   accelerator: gpu
-  devices: 1
-  accumulate_grad_batches: 10
+  devices: [2]
+  accumulate_grad_batches: 1
   limit_train_batches: 1000.
   limit_val_batches: 500.
-  max_epochs: 150
+  max_epochs: 20
+  precision: 16-mixed
   logger:
     _target_: pytorch_lightning.loggers.CSVLogger
     save_dir: ${hydra:runtime.output_dir}
@@ -76,10 +81,12 @@ trainer:
     version: ''
   callbacks:
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
       monitor: val_loss
       save_top_k: 3
-      filename: '{val_loss:.5f}-{epoch:03d}'
+      save_last: true
+      filename: '{val_consistency_loss:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
@@ -123,7 +130,7 @@ datamodule:
         - {_target_: builtins.slice, _args_: ['2022-05-01', '2022-06-30']}
         - {_target_: builtins.slice, _args_: ['2022-07-01', '2022-12-31']}
     test:
-      time: {_target_: builtins.slice, _args_: ['2021-02-01', '2021-02-15']}
+      time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
   xrds_kw:
     # TRAIN/VAL (unchanged)
     patch_dims: { time: 15, yc: 256, xc: 256}
@@ -173,17 +180,17 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
   multires: [50, 10]
 
-
 model:
-  _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
+  _target_: contrib.CROSCIM.models_consistency.Lit4dVarNet_CROSCIM_Consistency
   persist_rw: False
-  multires: [50, 10]
+  multires: [50,10]
   opt_fn: null
-  # Variable configuration
+
+  # Variable configuration (same as UNet solver)
   tgt_vars: ${var_config.target_vars}
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}
-  models_vars: ${var_config.models_vars}  # ✅ Now accepted
+  models_vars: ${var_config.models_vars} 
   var_mapping: ${var_config.var_mapping}
   
   domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
@@ -191,65 +198,46 @@ model:
   rec_weight: ${optim_weight}
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
-  frcst_lead: 2
+  frcst_lead: 0
+
+  # Consistency model configuration
+  consistency_config: ${consistency_config}
+
+  # Solver: ConsistencyGradSolvers wrapping per-resolution ConsistencyUNetSolver
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.consistency_solver.ConsistencyGradSolvers
     solvers:
-      solver_x10:
-        _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 10
-        lr_grad: 0.2
-        input_vars: ${computed.input_vars_all}
-        target_vars: ${var_config.target_vars.patch_x10}
-        var_mapping: ${var_config.var_mapping.patch_x10}
-        n_time: ${var_config.time_steps.patch_x10}
-        obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
-          w: 1.0
-          use_target: true
-        prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
-          dim_hidden: 64
-          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
-        grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
-          dim_in: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
-          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
-          dim_hidden: 64
       solver_x50:
-        _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 10
-        lr_grad: 0.2
-        input_vars: ${computed.input_vars_all}
-        target_vars: ${var_config.target_vars.patch_x50}
-        var_mapping: ${var_config.var_mapping.patch_x50}
-        n_time: ${var_config.time_steps.patch_x50}
-        obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
-          w: 1.0
-          use_target: true
-        prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
-          dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 64
-          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
-        grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
-          dim_in: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
-          dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
-          dim_hidden: 64
+        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+        n_hidden: 128
+        sigma_min: ${consistency_config.sigma_min}
+        sigma_max: ${consistency_config.sigma_max}
+        rho: ${consistency_config.rho}
+        sigma_data: ${consistency_config.sigma_data}
+        sampling_steps: 15
+      solver_x10:
+        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        n_hidden: 128
+        sigma_min: ${consistency_config.sigma_min}
+        sigma_max: ${consistency_config.sigma_max}
+        rho: ${consistency_config.rho}
+        sigma_data: ${consistency_config.sigma_data}
+        sampling_steps: 15
+
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
   norm_stats_models: ${datamodule.norm_stats_models} 
 
 optim_weight:
   patch_x10:
-    _target_: src.utils.get_frcst_time_wei
+    _target_: src.utils.get_linear_time_wei
     patch_dims: {time: 8, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
-    frcst_lead: 2
     dim_order: ["time", "yc", "xc"]
   patch_x50:
     _target_: src.utils.get_uniform_time_wei
@@ -274,7 +262,8 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
     save_dir: ${paths.src}/results
+
 defaults:
   - /domain: arctic_croscim

@@ -56,7 +56,7 @@ consistency_config:
   lr: 1e-4
   betas: [0.9, 0.995]
   lr_scheduler_start_factor: 1e-5
-  lr_scheduler_iters: 20000
+  lr_scheduler_iters: 10000
 
 trainer:
   _target_: pytorch_lightning.Trainer
@@ -67,7 +67,7 @@ trainer:
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
-  accumulate_grad_batches: 2
+  accumulate_grad_batches: 1
   limit_train_batches: 1000.
   limit_val_batches: 500.
   max_epochs: 100
@@ -210,11 +210,11 @@ metrics:
     lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
 
 entrypoints:
-  - _target_: src.train.base_training
+  - _target_: src.test.base_test
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

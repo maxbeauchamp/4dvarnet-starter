@@ -243,6 +243,19 @@ class ConsistencyUNet(nn.Module):
             kernel_size=3, padding="same",
         )
 
+    @staticmethod
+    def _pad_to_multiple(t: Tensor, multiple: int = 8):
+        """Pad H and W to the nearest multiple of `multiple` (reflect padding)."""
+        _, _, H, W = t.shape
+        pad_h = (multiple - H % multiple) % multiple
+        pad_w = (multiple - W % multiple) % multiple
+        return F.pad(t, (0, pad_w, 0, pad_h), mode="reflect"), (pad_h, pad_w)
+
+    @staticmethod
+    def _unpad(t: Tensor, pad_h: int, pad_w: int) -> Tensor:
+        H, W = t.shape[-2], t.shape[-1]
+        return t[..., : H - pad_h if pad_h else H, : W - pad_w if pad_w else W]
+
     def forward(self, x: Tensor, y: Tensor, time: Tensor, time_prime: Tensor) -> Tensor:
         """
         Args:
@@ -255,7 +268,17 @@ class ConsistencyUNet(nn.Module):
         """
         mask_obs = ~torch.isnan(y)
         y_clean = torch.nan_to_num(y)
-        h = self.input_projection(torch.cat((x, y_clean, mask_obs.float()), dim=1))
+        inp = torch.cat((x, y_clean, mask_obs.float()), dim=1)
+
+        # Pad to multiple of 8 so all Downsample layers (ph=2,pw=2) can divide evenly
+        n_downsamples = sum(
+            1 for blocks in (self.top_encoder_blocks, self.mid_encoder_blocks)
+            for b in blocks if isinstance(b, Downsample)
+        )
+        multiple = 2 ** n_downsamples
+        inp, (pad_h, pad_w) = self._pad_to_multiple(inp, multiple)
+
+        h = self.input_projection(inp)
 
         emb1 = self.time_level_embedding(time)
         emb2 = self.time_level_embedding(time_prime)
@@ -291,7 +314,7 @@ class ConsistencyUNet(nn.Module):
             else:
                 h = block(h)
 
-        return self.output_projection(h)
+        return self._unpad(self.output_projection(h), pad_h, pad_w)
 
     # ── Encoder / Decoder block construction ──────────────────────────
 
@@ -406,12 +429,15 @@ class ConsistencyUNetSolver(nn.Module):
     In *test* mode (inference / sampling), this wrapper runs iterative
     consistency sampling to produce a prediction from the sBatch.
     
-    Args:
-        unet_config: ConsistencyUNetConfig for building the UNet.
-        n_input_channels: Total observation channels (n_input_vars * n_time).
-        n_output_channels: Total target channels (n_target_vars * n_time).
-        sigma_min, sigma_max, rho, sigma_data: Noise schedule parameters.
-        sampling_steps: Number of denoising steps at inference.
+        Args:
+            unet_config: ConsistencyUNetConfig for building the UNet.
+            n_input_channels: Total observation channels (n_input_vars * n_time).
+            n_output_channels: Total target channels (n_target_vars * n_time).
+            sigma_min, sigma_max, rho, sigma_data: Noise schedule parameters.
+            sampling_steps: Number of denoising steps at inference.
+            stochastic: If True, use reverse-SDE sampling (re-noise between steps
+                for ensemble diversity). If False (default), use deterministic
+                probability-flow ODE sampling.
     """
 
     def __init__(
@@ -425,6 +451,7 @@ class ConsistencyUNetSolver(nn.Module):
         rho: float = 7.0,
         sigma_data: float = 1.0,
         sampling_steps: int = 15,
+        stochastic: bool = False,
     ):
         super().__init__()
 
@@ -448,6 +475,7 @@ class ConsistencyUNetSolver(nn.Module):
         self.rho = rho
         self.sigma_data = sigma_data
         self.sampling_steps = sampling_steps
+        self.stochastic = stochastic
 
     # ── Raw UNet access (for training) ────────────────────────────────
 
@@ -467,15 +495,20 @@ class ConsistencyUNetSolver(nn.Module):
         1. Extract observations y = batch.input (the full obs tensor).
         2. Start from pure noise scaled to sigma(T).
         3. Iteratively denoise using the consistency model.
+
+        When ``self.stochastic=True``, reverse-SDE sampling is used: after each
+        denoising step the prediction is re-noised to the sigma level of the next
+        step, increasing sample diversity (Song et al. 2023, Algorithm 2).
+        When ``self.stochastic=False`` (default), deterministic probability-flow
+        ODE sampling is used.
         """
-        y = batch.input.nan_to_num()
+        y = batch.input
         B, _, H, W = y.shape
         device = y.device
         dtype = y.dtype
 
         # Karras schedule (descending in time: T → 0)
         nsteps = self.sampling_steps
-        rho_inv = 1.0 / self.rho
         steps = torch.arange(nsteps, device=device, dtype=dtype) / max(nsteps - 1, 1)
         # steps goes 0 → 1; we flip for sampling (1 → 0)
         times = torch.flip(steps, dims=[0])
@@ -488,10 +521,19 @@ class ConsistencyUNetSolver(nn.Module):
             t_curr = torch.full((B,), times[i].item(), device=device, dtype=dtype)
             t_next = torch.full((B,), times[i + 1].item(), device=device, dtype=dtype)
 
+            # ── Denoising step (ODE or SDE) ──────────────────────────────────
             x = consistency_forward_wrapper(
                 self.unet, x, y, t_curr, t_next,
                 self.sigma_data, self.sigma_min, self.sigma_max,
             )
+
+            # ── SDE: re-noise to sigma level of the *next* step ──────────────
+            # x̂ = f_θ(x_noisy) is our denoised estimate.  We then add noise
+            # scaled to σ(t_{i+2}) before the following denoising call,
+            # following the stochastic consistency sampling of Song et al. 2023.
+            if self.stochastic and i < nsteps - 2:
+                sigma_next = compute_sigma(times[i + 1], self.sigma_min, self.sigma_max)
+                x = x + sigma_next * torch.randn_like(x)
 
         return x
 
@@ -515,5 +557,21 @@ class ConsistencyGradSolvers(nn.Module):
         super().__init__()
         self.solvers = nn.ModuleDict(solvers)
 
-    def forward(self, batch, res=1):
-        return self.solvers[f"solver_x{res}"](batch)
+    def forward(self, batch, res=1, stochastic: bool = None):
+        """Run the solver for the given resolution.
+
+        Args:
+            batch: sBatch with `input` tensor.
+            res: Resolution key (e.g. 50 → ``solver_x50``).
+            stochastic: Override the solver's ``stochastic`` flag for this call.
+                If None (default), use the flag set at construction time.
+        """
+        solver = self.solvers[f"solver_x{res}"]
+        if stochastic is not None:
+            # Temporarily override stochastic flag without modifying the module
+            orig = solver.stochastic
+            solver.stochastic = stochastic
+            out = solver(batch)
+            solver.stochastic = orig
+            return out
+        return solver(batch)

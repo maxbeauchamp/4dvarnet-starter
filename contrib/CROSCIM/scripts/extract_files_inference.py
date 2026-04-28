@@ -2,7 +2,7 @@
 Extract and list all files required by load_mfdata for a specific date range.
 """
 import sys
-sys.path.append('../..')
+sys.path.append('../../..')
 
 from contrib.CROSCIM.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
 from glob import glob
@@ -63,8 +63,9 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
     # Path loaders for each source (same as in load_mfdata)
     path_loaders = {
         "asip": lambda: glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc'),
-        "cimr": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc'),
+        "cimr": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/data_noise/CIMR5km_*nc'),
         "cristal": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc'),
+        "models": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*nc'),
     }
     
     # Date format for each source (same as in load_mfdata)
@@ -72,6 +73,7 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
         "asip": "%Y%m%d",
         "cimr": "%Y-%m-%d",
         "cristal": "%Y-%m-%d",
+        "models": "%Y-%m-%d",
     }
     
     required_files = {}
@@ -117,6 +119,19 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
             print(f"  Last file:  {Path(selected_cov_paths[-1]).name}")
         else:
             print(f"  ⚠️  No files found!")
+    
+    # ✅ Extract model output file paths
+    print(f"\nMODELS: Output files from out_MOD")
+    models_paths = glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*.nc')
+    print(f"  Total files available: {len(models_paths)}")
+    selected_mod_paths = select_paths_from_dates(models_paths, times, fmt="%Y-%m-%d")
+    required_files['models'] = list(selected_mod_paths)
+    print(f"  Files matching date range: {len(selected_mod_paths)}")
+    if len(selected_mod_paths) > 0:
+        print(f"  First file: {Path(selected_mod_paths[0]).name}")
+        print(f"  Last file:  {Path(selected_mod_paths[-1]).name}")
+    else:
+        print(f"  ⚠️  No files found!")
     
     # Print summary
     print("\n" + "="*70)
@@ -281,6 +296,7 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
         "asip": lambda: glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc'),
         "cimr": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc'),
         "cristal": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc'),
+        "models": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*nc'),
     }
     
     # Date format for each source (same as in load_mfdata)
@@ -288,6 +304,7 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
         "asip": "%Y%m%d",
         "cimr": "%Y-%m-%d",
         "cristal": "%Y-%m-%d",
+        "models": "%Y-%m-%d",
     }
     
     required_files = {}
@@ -333,6 +350,19 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
             print(f"  Last file:  {Path(selected_cov_paths[-1]).name}")
         else:
             print(f"  ⚠️  No files found!")
+    
+    # ✅ Extract model output file paths
+    print(f"\nMODELS: Output files from out_MOD")
+    models_paths = glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*.nc')
+    print(f"  Total files available: {len(models_paths)}")
+    selected_mod_paths = select_paths_from_dates(models_paths, times, fmt="%Y-%m-%d")
+    required_files['models'] = list(selected_mod_paths)
+    print(f"  Files matching date range: {len(selected_mod_paths)}")
+    if len(selected_mod_paths) > 0:
+        print(f"  First file: {Path(selected_mod_paths[0]).name}")
+        print(f"  Last file:  {Path(selected_mod_paths[-1]).name}")
+    else:
+        print(f"  ⚠️  No files found!")
     
     # Print summary
     print("\n" + "="*70)

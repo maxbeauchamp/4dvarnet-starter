@@ -2280,21 +2280,84 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return complete_dict
 
     def on_test_start(self):
-        # Stocker les dataloader keys dans l'ordre des indices
-        self.dataloader_keys = list(self.trainer.test_dataloaders.keys())
-    
-        # Calculer le nombre de batchs par dataloader
-        self.num_test_batches = {
-            i: len(dl)
-            for i, dl in enumerate(self.trainer.test_dataloaders.values())
-        }
+        # Handle both dict (multiple dataloaders) and single DataLoader
+        tdl = self.trainer.test_dataloaders
+        if isinstance(tdl, dict):
+            self.dataloader_keys = list(tdl.keys())
+            self.num_test_batches = {
+                i: len(dl)
+                for i, dl in enumerate(tdl.values())
+            }
+        else:
+            # Single DataLoader — wrap it
+            self.dataloader_keys = [0]
+            self.num_test_batches = {0: len(tdl)}
 
     def is_last_batch(self, batch_idx, dataloader_idx):
         total_batches = self.num_test_batches[dataloader_idx]
         return batch_idx == total_batches - 1
-    
+
+    def _is_simple_datamodule(self):
+        """Return True if the datamodule is a *_simplify variant."""
+        dm = getattr(self, '_datamodule', None) or getattr(self.trainer, 'datamodule', None)
+        return dm is not None and 'simplif' in type(dm).__name__.lower()
+
+    def _simple_test_step(self, batch, batch_idx, dataloader_idx=0):
+        """Lightweight test step for *_simplify datamodules.
+
+        Just does a forward pass per resolution and computes RMSE / μ-score
+        (pred vs tgt) on normalised data.  Results are printed and logged.
+        No reconstruction, no xarray, no multi-daw aggregation.
+        """
+        if dataloader_idx is None:
+            dataloader_idx = 0
+        res = self.multires[dataloader_idx]
+
+        # Simple datamodule returns a dict {patch_xN: NamedTuple}; extract the
+        # resolution-specific item before calling methods that expect a NamedTuple.
+        if isinstance(batch, dict):
+            res_key = f"patch_x{res}"
+            batch = batch.get(res_key, next(iter(batch.values())))
+
+        batch = self.modify_batch(batch, res)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
+        out = self(batch=sbatch, res=res)
+        out = self.split_tensor_to_dict(out, res=res)
+
+        tgt_vars = self._get_target_vars_for_resolution(res)
+        metrics = {}
+        for var in tgt_vars:
+            var_suffix = var.split('_', 1)[1] if '_' in var else var
+            pred = out[f'pred_{var_suffix}']
+            tgt  = getattr(batch, var)
+            valid = tgt.isfinite() & pred.isfinite()
+            if valid.any():
+                diff   = (pred[valid] - tgt[valid])
+                rmse   = diff.pow(2).mean().sqrt().item()
+                mu     = 1.0 - rmse / (tgt[valid].std().item() + 1e-8)
+                metrics[f'test_rmse_{var}_x{res}'] = rmse
+                metrics[f'test_mu_{var}_x{res}']   = mu
+            else:
+                metrics[f'test_rmse_{var}_x{res}'] = float('nan')
+                metrics[f'test_mu_{var}_x{res}']   = float('nan')
+
+        for k, v in metrics.items():
+            self.log(k, v, prog_bar=False, on_step=True, on_epoch=True, sync_dist=True)
+
+        if self.trainer.is_global_zero and batch_idx % 20 == 0:
+            print(f"\n[simple_test_step] batch={batch_idx} res=x{res}")
+            for k, v in metrics.items():
+                print(f"  {k}: {v:.4f}")
+
+        return metrics
+
     def test_step(self, batch, batch_idx, dataloader_idx=None):
 
+        # ── Simple datamodule path ────────────────────────────────────────
+        if self._is_simple_datamodule():
+            return self._simple_test_step(batch, batch_idx, dataloader_idx)
+
+        # ── Full multi-resolution path (default) ──────────────────────────
         # Fix for single resolution
         if dataloader_idx is None:
             dataloader_idx = 0

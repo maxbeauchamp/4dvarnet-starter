@@ -317,21 +317,19 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
 
             output = self.consistency_training(
                 student_unet, teacher_unet,
-                x, y,
+                x.nan_to_num(), y,  # consistency training expects no NaNs in input
                 self.global_step, self.total_training_steps,
             )
             self.num_timesteps = output["num_timesteps"]
 
             # Pure consistency loss: MSE(student prediction, teacher target)
-            # Exactly as in the notebook:
-            #   loss = F.mse_loss(
-            #       output.predicted_next_from_intermediate,
-            #       output.target_next_from_current,
-            #   )
-            loss = F.mse_loss(output["predicted"], output["target"])
+            mask = torch.isfinite(x)
+            loss = F.mse_loss(torch.where(mask, output["predicted"], torch.zeros_like(output["predicted"])),
+                              torch.where(mask, output["target"], torch.zeros_like(output["target"]))
+                             )
 
             # Use student prediction as the output for downstream (multistep)
-            out_tensor = output["predicted"]
+            out_tensor = self.solver.solvers[solver_key](sbatch)
 
             # Logging (same structure as notebook)
             if phase:
@@ -348,7 +346,9 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             out_tensor = self.solver.solvers[solver_key](sbatch)
             
             # Reconstruction loss against ground truth (for monitoring only)
-            loss = F.mse_loss(out_tensor.nan_to_num(), x.nan_to_num())
+            mask = torch.isfinite(x)
+            loss = F.mse_loss(torch.where(mask, out_tensor, torch.zeros_like(out_tensor)),
+                              torch.where(mask, x, torch.zeros_like(x)))
 
             if phase:
                 self.log(f"{phase}_loss", loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
@@ -440,7 +440,6 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         return result
 
     # ── Utility: save/load EMA models ─────────────────────────────────
-
     def save_ema_models(self, base_path: str):
         """Save all EMA student models."""
         import os
