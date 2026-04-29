@@ -1916,12 +1916,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         return total_loss, out
 
-    def reconstruct(self, dl, items, daw, time, weight=None):
+    def reconstruct(self, dl, items, daw, time, weight=None, patch_coords=None):
         """
         takes as input a list of tensor of dimensions (V, *patch_dims)
         return a stitched xarray.DataArray with the coords of patch_dims
         items: list of torch tensor corresponding to batches without shuffle
         weight: tensor of size patch_dims corresponding to the weight of a prediction depending on the position on the patch (default to ones everywhere)
+        patch_coords: optional list of (yc_1d, xc_1d) numpy arrays, one per item.
+                      When provided the items are placed by their actual spatial
+                      coordinates instead of by their sequential index in the
+                      dataset – required for correct multi-GPU reconstruction.
         overlapping patches will be averaged with weighting 
         """
 
@@ -1935,12 +1939,18 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                    float('nan'))
         count_tensor = torch.zeros((nvars, 1, dl.dataset.da_dims['yc'], dl.dataset.da_dims['xc']))
 
-        coords = dl.dataset.get_coords()[(daw*len(items)):((daw+1)*len(items))]
+        if patch_coords is not None:
+            # Multi-GPU path: use explicit coordinates stored alongside each prediction
+            coord_iter = patch_coords
+        else:
+            # Single-GPU legacy path: derive coordinates from the dataset by index
+            ds_coords = dl.dataset.get_coords()[(daw * len(items)):((daw + 1) * len(items))]
+            coord_iter = [(c.yc.values, c.xc.values) for c in ds_coords]
 
         for idx, item in enumerate(items):
-            c = coords[idx]
-            iy = [np.where(dl.dataset.yc == y)[0][0] for y in c.yc.values]
-            ix = [np.where(dl.dataset.xc == x)[0][0] for x in c.xc.values]
+            yc_patch, xc_patch = coord_iter[idx]
+            iy = [np.where(dl.dataset.yc == y)[0][0] for y in yc_patch]
+            ix = [np.where(dl.dataset.xc == x)[0][0] for x in xc_patch]
             result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1] = torch.where(torch.isnan(result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1]),
                                                                               0.,
                                                                               result_tensor[:, 0, iy[0]:iy[-1]+1, ix[0]:ix[-1]+1])
@@ -1965,7 +1975,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     def aggregate_batches_one_domain(self, idx_daw, idx_rec,
                                      test_data, 
                                      dataloader_idx=None,
-                                     use_datamodule=False):
+                                     use_datamodule=False,
+                                     patch_coords=None):
 
         dl = self.trainer.test_dataloaders[self.dataloader_keys[dataloader_idx]]
         
@@ -2002,7 +2013,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 rec_da = self.reconstruct(dl,
                             [ test_data[j][:,[i],:,:].cpu() for j in range(nbatch) ],
                             idx_daw, time,
-                            self.rec_weight[res_key].cpu().numpy()[[i],:,:]
+                            self.rec_weight[res_key].cpu().numpy()[[i],:,:],
+                            patch_coords=patch_coords
                     )
             
             # Instead of using generic v0 dimension, create Dataset directly with variable names
@@ -2035,7 +2047,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                         dataloader_idx=None,
                         metrics=False,
                         write_netcdf=False,
-                        use_datamodule=False):
+                        use_datamodule=False,
+                        patch_coords=None):
 
         res = self.multires[dataloader_idx]
         res_key = f"patch_x{res}"
@@ -2119,10 +2132,12 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         for idx_daw in torch.unique(daws):
             sel_daw = torch.where(daws==idx_daw)[0]
             test_data_sel = [test_data[i] for i in sel_daw.tolist()]
+            coords_sel = [patch_coords[i] for i in sel_daw.tolist()] if patch_coords is not None else None
             test_data_uniq = self.aggregate_batches_one_domain(idx_daw, idx_rec,
                                                             test_data_sel,
                                                             dataloader_idx,
-                                                            use_datamodule)
+                                                            use_datamodule,
+                                                            patch_coords=coords_sel)
             # Prepare unnormalization for metrics and storage
             test_data_unnorm = test_data_uniq.copy(deep=False)
             
@@ -2369,11 +2384,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         if (dataloader_idx == 0) and (batch_idx == 0) :
             self.test_data = {}
             self.test_times = {}
+            self.test_coords = {}
             self.aggregate_results = {}
 
         if batch_idx == 0:
             self.test_data[res_key] = []
             self.test_times[res_key] = []
+            self.test_coords[res_key] = []
             
         batch = self.modify_batch(batch, res)
         # Determine device from batch
@@ -2469,28 +2486,24 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.test_data[res_key].append(stacked)
         self.test_times[res_key].append(torch.squeeze(batch.time, dim=1))
 
-        # if last batch, agreggate (as an xarray dataset with the estimation for a given resolution)
+        # Store patch spatial coordinates per item in the batch so that
+        # reconstruction can use explicit coords and is order-independent
+        # (needed for multi-GPU where patches arrive out of global order).
+        # batch.yc / batch.xc: (B, 1, H) / (B, 1, W)  →  squeeze to (H,) / (W,)
+        batch_size = stacked.shape[0]
+        patch_coords_batch = []
+        for b in range(batch_size):
+            yc_b = batch.yc[b].squeeze().detach().cpu().numpy()
+            xc_b = batch.xc[b].squeeze().detach().cpu().numpy()
+            patch_coords_batch.append((yc_b, xc_b))
+        self.test_coords[res_key].append(patch_coords_batch)
+
+        # If last batch for this dataloader, aggregate immediately so that
+        # finer-resolution dataloaders can access aggregate_results[res_key].
+        # The helper handles multi-GPU gathering before reconstruction.
         if self.is_last_batch(batch_idx, dataloader_idx):
-            self.test_data[res_key] = list(itertools.chain(*self.test_data[res_key]))
-            self.test_times[res_key] = list(itertools.chain(*self.test_times[res_key]))
-            if dataloader_idx == (len(self.multires)-1):
-                #idx_rec = np.arange(batch.time.shape[-1]-self.frcst_lead+1,
-                #                    batch.time.shape[-1])
-                idx_rec = np.arange(batch.time.shape[-1])
-                write_netcdf = True
-            else:
-                idx_rec = np.arange(batch.time.shape[-1])
-                write_netcdf = True
-            # the idea behind: the aggregation is :
-            # on the full window for coarser resolutions
-            # only for nowcast/forecast lead times for final resolution
-            self.aggregate_results[res_key] = self.aggregate_batches(idx_rec,
-                                                                     self.test_data[res_key],
-                                                                     self.test_times[res_key],
-                                                                     dataloader_idx,
-                                                                     metrics=False,
-                                                                     write_netcdf=write_netcdf)
-            print(self.aggregate_results[res_key])
+            idx_rec = np.arange(batch.time.shape[-1])
+            self._finalize_res(dataloader_idx, idx_rec, write_netcdf=True)
 
         batch, out = None, None
 
@@ -2509,8 +2522,80 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         #print(f"[DEBUG test_quantities] result: {result}")
         return result
 
+    def _finalize_res(self, dataloader_idx, idx_rec, write_netcdf=True):
+        """
+        Flatten locally accumulated patches for one resolution, optionally
+        gather them across all GPUs (DDP), then reconstruct on rank 0.
+
+        This is called from ``test_step`` at ``is_last_batch`` so that
+        ``aggregate_results[res_key]`` is available before the next
+        (finer) resolution's dataloader begins.
+        """
+        res     = self.multires[dataloader_idx]
+        res_key = f"patch_x{res}"
+
+        # ── Flatten per-batch lists ───────────────────────────────────────────
+        data   = list(itertools.chain(*self.test_data[res_key]))
+        times  = list(itertools.chain(*self.test_times[res_key]))
+        coords = list(itertools.chain(*self.test_coords[res_key]))
+
+        # ── Multi-GPU gathering (collective → all ranks must enter) ───────────
+        if self.trainer.world_size > 1:
+            import torch.distributed as dist
+            gathered = [None] * self.trainer.world_size
+            dist.all_gather_object(
+                gathered,
+                {
+                    'data':   data,
+                    'times':  [t.cpu() for t in times],
+                    'coords': coords,
+                }
+            )
+            data   = [item for g in gathered for item in g['data']]
+            times  = [t    for g in gathered for t    in g['times']]
+            coords = [c    for g in gathered for c    in g['coords']]
+
+        # ── Reconstruction on rank 0 only, then broadcast to all ranks ────────
+        # Running aggregate_batches on every rank causes hangs (xarray/joblib
+        # worker contention).  Instead rank 0 reconstructs and broadcasts the
+        # resulting xr.Dataset dict to the other ranks so that every rank has
+        # aggregate_results[res_key] populated (required by the finer-res
+        # test_step: coarse = self.aggregate_results[...]).
+        if self.trainer.world_size > 1:
+            import torch.distributed as dist
+            if self.trainer.is_global_zero:
+                result = self.aggregate_batches(
+                    idx_rec,
+                    data,
+                    times,
+                    dataloader_idx,
+                    metrics=False,
+                    write_netcdf=write_netcdf,
+                    patch_coords=coords,
+                )
+                print(result)
+            else:
+                result = None
+            # broadcast_object_list is a collective: all ranks must call it
+            container = [result]
+            dist.broadcast_object_list(container, src=0)
+            self.aggregate_results[res_key] = container[0]
+        else:
+            # Single-GPU: straightforward
+            self.aggregate_results[res_key] = self.aggregate_batches(
+                idx_rec,
+                data,
+                times,
+                dataloader_idx,
+                metrics=False,
+                write_netcdf=write_netcdf,
+                patch_coords=coords,
+            )
+            print(self.aggregate_results[res_key])
+
     def on_test_epoch_end(self):
-        print("hello")
+        # Aggregation is done inside test_step via _finalize_res.
+        pass
 
     def on_load_checkpoint(self, checkpoint):
         """
