@@ -183,9 +183,9 @@ model:
     solvers:
       solver_x50:
         _target_: contrib.CROSCIM.solver_expanded.GradSolver
-        n_step: 5
+        n_step: 10
         lr_grad: 0.2
-        input_grad_update: 'grad'
+        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
         input_vars: ${computed.input_vars_all}
         target_vars: ${var_config.target_vars.patch_x50}
         var_mapping: ${var_config.var_mapping.patch_x50}
@@ -218,10 +218,10 @@ model:
             interp_mode: bilinear
         fill_missing_inp: false
       solver_x10:
-        _target_: contrib.CROSCIM.solver.GradSolver
-        n_step: 5
+        _target_: contrib.CROSCIM.solver_expanded.GradSolver
+        n_step: 10
         lr_grad: 0.2
-        input_grad_update: 'grad'
+        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
         input_vars: ${computed.input_vars_all}
         target_vars: ${var_config.target_vars.patch_x10}
         var_mapping: ${var_config.var_mapping.patch_x10}

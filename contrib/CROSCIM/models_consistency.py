@@ -35,6 +35,10 @@ from .consistency_solver import (
     pad_dims_like,
     skip_scaling,
     output_scaling,
+    make_boundary_mask,
+    build_boundary_conditioning,
+    raster_order_from_coords,
+    random_boundary_dropout,
 )
 
 # Re-use the Karras schedule and EMA helpers
@@ -208,11 +212,14 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
     def __init__(
         self,
         consistency_config: dict = None,
+        add_bounds: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         cfg = consistency_config or {}
+
+        self.add_bounds = add_bounds
 
         # Consistency hyper-parameters
         self.sigma_min = cfg.get("sigma_min", 0.002)
@@ -276,13 +283,41 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             print(f"  {key}: {n_params:,} params (student)")
         print(f"{'='*60}\n")
 
-    # ── Override forward: just call solver (for test / inference) ─────
+    # ── Override forward: capture inputs + call solver ────────────────
 
     def forward(self, batch, res=1):
-        """At test time, the solver does consistency sampling internally."""
+        """At test time, stores observations into _bound_inputs if add_bounds=True."""
+        if self.add_bounds and not self.training:
+            res_key = f"patch_x{res}"
+            if not hasattr(self, '_bound_inputs'):
+                self._bound_inputs = {}
+            if res_key not in self._bound_inputs:
+                self._bound_inputs[res_key] = []
+            self._bound_inputs[res_key].append(batch.input.detach().cpu())
         return self.solver.solvers[f"solver_x{res}"](batch)
 
-    # ── Override base_step for consistency training ───────────────────
+    # ── Override on_test_start: set up boundary masks ─────────────────────
+
+    def on_test_start(self):
+        """Inherit parent setup (dataloader_keys) then build boundary masks if needed."""
+        super().on_test_start()
+        if not self.add_bounds:
+            return
+        for dataloader_idx, res in enumerate(self.multires):
+            key = f"solver_x{res}"
+            dl  = self.trainer.test_dataloaders[self.dataloader_keys[dataloader_idx]]
+            ds  = dl.dataset
+            patch_h  = ds.patch_dims['yc']
+            patch_w  = ds.patch_dims['xc']
+            stride_h = ds.strides.get('yc', patch_h)
+            stride_w = ds.strides.get('xc', patch_w)
+            border_h = (patch_h - stride_h) // 2
+            border_w = (patch_w - stride_w) // 2
+            print(f"[add_bounds] {key}: patch=({patch_h},{patch_w}), "
+                  f"stride=({stride_h},{stride_w}), border=({border_h},{border_w})")
+            self.solver.solvers[key].setup_mask(patch_h, patch_w, border_h, border_w)
+
+    # ── Override base_step for consistency training ─────────────────────
 
     def base_step(self, batch, res, phase=""):
         """
@@ -315,10 +350,35 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             student_unet = self.solver.solvers[solver_key].get_unet()
             teacher_unet = self.teacher_solvers[solver_key]
 
+            # ── Build boundary conditioning from GT ring (add_bounds) ──────────
+            kwargs = {}
+            if self.add_bounds:
+                solver  = self.solver.solvers[solver_key]
+                # mask_boundary may be None during training (no test dataloaders yet).
+                # Fall back to computing it from the train patch dims.
+                if solver.mask_boundary is None:
+                    ph = x.shape[2]; pw = x.shape[3]
+                    bh = getattr(solver, 'border_h', 0) or (ph - ph * 4 // 5) // 2  # rough default
+                    bw = getattr(solver, 'border_w', 0) or (pw - pw * 4 // 5) // 2
+                    solver.setup_mask(ph, pw, bh, bw)
+                mask_hw = solver.mask_boundary.to(x.device)               # (H, W)
+                bound   = torch.nan_to_num(x) * mask_hw.unsqueeze(0).unsqueeze(0)  # (B, C, H, W)
+                # Availability mask: ring pixels that are not NaN in the target
+                mbound  = (mask_hw.unsqueeze(0).unsqueeze(0) *
+                           x.isfinite().float())                           # (B, C, H, W)
+                if self.training:
+                    bound, mbound = random_boundary_dropout(
+                        bound, mbound,
+                        solver.border_h, solver.border_w,
+                        p_drop_side=0.5,
+                    )
+                kwargs  = dict(boundaries=bound, mask_bound=mbound)
+
             output = self.consistency_training(
                 student_unet, teacher_unet,
                 x.nan_to_num(), y,  # consistency training expects no NaNs in input
                 self.global_step, self.total_training_steps,
+                **kwargs,
             )
             self.num_timesteps = output["num_timesteps"]
 
@@ -341,6 +401,7 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
                 print(f"\n[Step {self.global_step:05d}] TRAIN | res=x{res} | "
                       f"num_timesteps={self.num_timesteps} | "
                       f"loss={loss.item():.6f}")
+
         else:
             # ── Validation / Test: consistency sampling with EMA student ──
             out_tensor = self.solver.solvers[solver_key](sbatch)
@@ -417,18 +478,28 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
     # ── Override test_step to use EMA student for inference ───────────
 
     def test_step(self, batch, batch_idx, dataloader_idx=None):
-        """Same logic as parent test_step but uses the EMA student UNet
-        inside the ConsistencyUNetSolver for inference.
-        
-        We temporarily swap the solver's UNet to the EMA student before
-        calling the parent's test_step, then swap back.
+        """Same logic as parent test_step but uses the EMA student UNet.
+
+        Also resets ``_bound_inputs`` per resolution when ``add_bounds=True``,
+        so that ``_finalize_res`` can run sequential inference after gathering.
         """
+        _dl_idx = 0 if dataloader_idx is None else dataloader_idx
+        res     = self.multires[_dl_idx]
+        res_key = f"patch_x{res}"
+
+        # Reset input buffer at the start of each resolution's dataloader
+        if self.add_bounds and batch_idx == 0:
+            if not hasattr(self, '_bound_inputs'):
+                self._bound_inputs = {}
+            if _dl_idx == 0:
+                self._bound_inputs = {}   # full reset at first dataloader
+            self._bound_inputs[res_key] = []
+
         # Swap UNets to EMA student for inference
         original_unets = {}
-        for res in self.multires:
-            key = f"solver_x{res}"
-            original_unets[key] = self.solver.solvers[key].unet
-            self.solver.solvers[key].unet = self.ema_student_solvers[key]
+        for res_key_inner in [f"solver_x{r}" for r in self.multires]:
+            original_unets[res_key_inner] = self.solver.solvers[res_key_inner].unet
+            self.solver.solvers[res_key_inner].unet = self.ema_student_solvers[res_key_inner]
 
         try:
             result = super().test_step(batch, batch_idx, dataloader_idx)
@@ -438,6 +509,131 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
                 self.solver.solvers[key].unet = unet
 
         return result
+
+    # ── Sequential boundary-aware inference helpers ───────────────────
+
+    @torch.no_grad()
+    def _apply_sequential_inference(self, res, inputs, coords, stacked):
+        """Run sequential boundary-conditioned inference; update prediction channels.
+
+        Args:
+            res     : resolution integer (e.g. 10)
+            inputs  : list of ``(C_in, H, W)`` cpu tensors — raw observations per patch
+            coords  : list of ``(yc_1d, xc_1d)`` tuples per patch
+            stacked : list of ``(V, T, H, W)`` cpu tensors (pred channels first, then tgt)
+
+        Returns:
+            new_stacked : list with prediction channels replaced by boundary-conditioned output
+        """
+        solver_key = f"solver_x{res}"
+        solver = self.solver.solvers[solver_key]
+
+        if solver.mask_boundary is None:
+            raise RuntimeError(
+                f"setup_mask() not called for {solver_key}. "
+                "Ensure on_test_start ran with add_bounds=True."
+            )
+
+        mask_cpu  = solver.mask_boundary.cpu()
+        border_h  = solver.border_h
+        border_w  = solver.border_w
+        device    = next(solver.unet.parameters()).device
+        n_tgt     = len(self._get_target_vars_for_resolution(res))
+        c_out     = solver.n_output_channels   # = n_tgt * T
+
+        order = raster_order_from_coords(coords)
+        cache: dict = {}
+        new_stacked = list(stacked)   # shallow copy; items replaced below
+
+        for b_idx, iy, ix in order:
+            y_single = inputs[b_idx].unsqueeze(0).to(device)   # (1, C_in, H, W)
+
+            bound, mbound = build_boundary_conditioning(
+                cache, iy, ix, mask_cpu, border_h, border_w,
+                c_out=c_out,
+            )
+            bound  = bound.unsqueeze(0).to(device)   # (1, C_out, H, W)
+            mbound = mbound.unsqueeze(0).to(device)
+
+            pred = solver.sample_one(y_single, boundaries=bound, mask_bound=mbound)
+            # pred: (1, C_out, H, W)
+
+            # Store raw (C_out, H, W) in cache for neighbouring patches
+            cache[(iy, ix)] = pred[0].cpu()
+
+            # Replace prediction slice in stacked: first n_tgt entries along dim 0
+            s = new_stacked[b_idx]          # (V, T, H, W)
+            T = s.shape[1]
+            H, W = s.shape[2], s.shape[3]
+            pred_cpu = pred[0].cpu().view(n_tgt, T, H, W)   # (n_tgt, T, H, W)
+            s_new = s.clone()
+            s_new[:n_tgt] = pred_cpu
+            new_stacked[b_idx] = s_new
+
+        return new_stacked
+
+    # ── Override _finalize_res: sequential inference when add_bounds ──
+
+    def _finalize_res(self, dataloader_idx, idx_rec, write_netcdf=True):
+        """Use sequential boundary-aware inference when ``add_bounds=True``,
+        otherwise fall through to the parent's standard implementation.
+        """
+        if not self.add_bounds:
+            return super()._finalize_res(dataloader_idx, idx_rec, write_netcdf)
+
+        import torch.distributed as dist
+
+        res     = self.multires[dataloader_idx]
+        res_key = f"patch_x{res}"
+
+        # ── Flatten locally accumulated lists ────────────────────────────────
+        inputs  = list(itertools.chain(*self._bound_inputs.get(res_key, [])))
+        # (each element of _bound_inputs is (B, C_in, H, W); chain iterates dim-0)
+        times   = list(itertools.chain(*self.test_times[res_key]))
+        coords  = list(itertools.chain(*self.test_coords[res_key]))
+        stacked = list(itertools.chain(*self.test_data[res_key]))
+        # Each stacked item is now (V, T, H, W) after chain over the batch dim
+
+        # ── Multi-GPU gathering ───────────────────────────────────────────────
+        if self.trainer.world_size > 1:
+            gathered = [None] * self.trainer.world_size
+            dist.all_gather_object(
+                gathered,
+                {
+                    'inputs':  [x.cpu() for x in inputs],
+                    'times':   [t.cpu() for t in times],
+                    'coords':  coords,
+                    'stacked': [s.cpu() for s in stacked],
+                }
+            )
+            inputs  = [x for g in gathered for x in g['inputs']]
+            times   = [t for g in gathered for t in g['times']]
+            coords  = [c for g in gathered for c in g['coords']]
+            stacked = [s for g in gathered for s in g['stacked']]
+
+        # ── Sequential inference on rank 0, broadcast to all ─────────────────
+        if self.trainer.world_size > 1:
+            if self.trainer.is_global_zero:
+                new_stacked = self._apply_sequential_inference(res, inputs, coords, stacked)
+                result = self.aggregate_batches(
+                    idx_rec, new_stacked, times, dataloader_idx,
+                    metrics=False, write_netcdf=write_netcdf,
+                    patch_coords=coords,
+                )
+                print(result)
+            else:
+                result = None
+            container = [result]
+            dist.broadcast_object_list(container, src=0)
+            self.aggregate_results[res_key] = container[0]
+        else:
+            new_stacked = self._apply_sequential_inference(res, inputs, coords, stacked)
+            self.aggregate_results[res_key] = self.aggregate_batches(
+                idx_rec, new_stacked, times, dataloader_idx,
+                metrics=False, write_netcdf=write_netcdf,
+                patch_coords=coords,
+            )
+            print(self.aggregate_results[res_key])
 
     # ── Utility: save/load EMA models ─────────────────────────────────
     def save_ema_models(self, base_path: str):

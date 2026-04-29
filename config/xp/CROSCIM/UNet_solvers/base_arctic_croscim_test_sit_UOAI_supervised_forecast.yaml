@@ -185,7 +185,8 @@ model:
         _target_: contrib.CROSCIM.UNet_OAI.UNetModel3
         in_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         out_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
-        model_channels: 64
+        #out_channels: 3
+        model_channels: 32
         num_res_blocks: 1
         channel_mult: [1,2]
         attention_resolutions: []
@@ -198,7 +199,8 @@ model:
         _target_: contrib.CROSCIM.UNet_OAI.UNetModel3
         in_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         out_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
-        model_channels: 64
+        #out_channels: 3
+        model_channels: 32
         num_res_blocks: 1
         channel_mult: [1,2]
         attention_resolutions: []

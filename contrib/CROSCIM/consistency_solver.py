@@ -28,6 +28,161 @@ from einops.layers.torch import Rearrange
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Boundary conditioning utilities (add_bounds feature)
+# ──────────────────────────────────────────────────────────────────────
+
+def make_boundary_mask(patch_h: int, patch_w: int,
+                       border_h: int, border_w: int) -> torch.Tensor:
+    """Binary (H, W) mask: 1 in the overlap ring, 0 in the centre.
+
+    The ring width is ``(patch_size - stride) // 2``, i.e. the spatial
+    overlap between two adjacent test patches.
+    """
+    mask = torch.ones(patch_h, patch_w, dtype=torch.float32)
+    mask[border_h: patch_h - border_h, border_w: patch_w - border_w] = 0.0
+    return mask
+
+
+def build_boundary_conditioning(
+    neighbor_cache: dict,
+    iy: int, ix: int,
+    mask: torch.Tensor,
+    border_h: int, border_w: int,
+    c_out: int = 1,
+    patch_h: int = None,
+    patch_w: int = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Assemble the boundary tensor for patch (iy, ix) from already-computed neighbours.
+
+    Filled neighbours (raster order guarantees availability):
+        left     : (iy, ix-1) — its right ``border_w`` cols  → our left  cols
+        top      : (iy-1, ix) — its bottom ``border_h`` rows → our top   rows
+        top-left : (iy-1, ix-1) — bottom-right corner         → our top-left corner
+
+    Args:
+        neighbor_cache : dict (iy, ix) → cpu tensor (C, H, W)
+        iy, ix         : current patch grid indices
+        mask           : (H, W) boundary mask (1 = ring), on CPU
+        border_h, border_w : ring width in pixels
+        c_out          : number of output channels (used only when cache is empty)
+        patch_h, patch_w : patch spatial size (used only when cache is empty)
+
+    Returns:
+        boundary   : (C, H, W) — ring values, 0 elsewhere  (CPU)
+        mask_bound : (C, H, W) — 1 where boundary is available  (CPU)
+    """
+    if neighbor_cache:
+        ref = next(iter(neighbor_cache.values()))
+        C, H, W = ref.shape
+    else:
+        C = c_out
+        H = patch_h if patch_h is not None else mask.shape[0]
+        W = patch_w if patch_w is not None else mask.shape[1]
+
+    boundary   = torch.zeros(C, H, W)
+    mask_bound = torch.zeros(C, H, W)
+
+    # ── Left neighbour ────────────────────────────────────────────────
+    if (iy, ix - 1) in neighbor_cache:
+        left = neighbor_cache[(iy, ix - 1)]
+        src  = left[:, :, W - border_w:]
+        boundary[:, :, :border_w]   = torch.nan_to_num(src)
+        mask_bound[:, :, :border_w] = (~torch.isnan(src)).float()
+
+    # ── Top neighbour ─────────────────────────────────────────────────
+    if (iy - 1, ix) in neighbor_cache:
+        top = neighbor_cache[(iy - 1, ix)]
+        src = top[:, H - border_h:, :]
+        boundary[:, :border_h, :]   = torch.nan_to_num(src)
+        mask_bound[:, :border_h, :] = (~torch.isnan(src)).float()
+
+    # ── Top-left corner ───────────────────────────────────────────────
+    if (iy - 1, ix - 1) in neighbor_cache:
+        tl  = neighbor_cache[(iy - 1, ix - 1)]
+        src = tl[:, H - border_h:, W - border_w:]
+        boundary[:, :border_h, :border_w]   = torch.nan_to_num(src)
+        mask_bound[:, :border_h, :border_w] = (~torch.isnan(src)).float()
+
+    # Restrict to geometric ring mask (no leakage into centre)
+    m = mask.unsqueeze(0)
+    boundary   = boundary   * m
+    mask_bound = mask_bound * m
+    return boundary, mask_bound
+
+
+def random_boundary_dropout(
+    boundary: torch.Tensor,
+    mask_bound: torch.Tensor,
+    border_h: int,
+    border_w: int,
+    p_drop_side: float = 0.5,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Randomly zero out whole sides of the boundary ring, independently per sample.
+
+    At inference (raster order) only left and top sides are ever available.
+    This augmentation teaches the model to handle any subset of 0–4 sides, so
+    it generalises to the partial conditioning seen at test time.
+
+    For each sample in the batch, each of the 4 sides (top, bottom, left, right)
+    is independently dropped with probability ``p_drop_side``.
+
+    Args:
+        boundary   : (B, C, H, W) — ring values (from GT or neighbour cache)
+        mask_bound : (B, C, H, W) — ring availability mask
+        border_h   : ring height in pixels (top/bottom strip)
+        border_w   : ring width  in pixels (left/right strip)
+        p_drop_side: probability of dropping each individual side per sample
+
+    Returns:
+        boundary   : (B, C, H, W) — with dropped sides zeroed
+        mask_bound : (B, C, H, W) — with dropped sides zeroed
+    """
+    B, C, H, W = boundary.shape
+    boundary   = boundary.clone()
+    mask_bound = mask_bound.clone()
+
+    for b in range(B):
+        # Sample a keep/drop decision for each of the 4 sides
+        drop = torch.rand(4) < p_drop_side   # [top, bottom, left, right]
+
+        if drop[0] and border_h > 0:   # top strip
+            boundary  [b, :, :border_h, :]  = 0.0
+            mask_bound[b, :, :border_h, :]  = 0.0
+        if drop[1] and border_h > 0:   # bottom strip
+            boundary  [b, :, -border_h:, :] = 0.0
+            mask_bound[b, :, -border_h:, :] = 0.0
+        if drop[2] and border_w > 0:   # left strip
+            boundary  [b, :, :, :border_w]  = 0.0
+            mask_bound[b, :, :, :border_w]  = 0.0
+        if drop[3] and border_w > 0:   # right strip
+            boundary  [b, :, :, -border_w:] = 0.0
+            mask_bound[b, :, :, -border_w:] = 0.0
+
+    return boundary, mask_bound
+
+
+def raster_order_from_coords(coords: list) -> list:
+    """Sort patch indices in raster order (top→bottom, left→right).
+
+    Args:
+        coords : list of ``(yc_1d, xc_1d)`` numpy arrays, one per patch.
+
+    Returns:
+        List of ``(batch_idx, iy, ix)`` tuples sorted by ``(iy, ix)``.
+    """
+    import numpy as _np
+    y0 = _np.array([c[0][0] for c in coords])   # top-left y coord per patch
+    x0 = _np.array([c[1][0] for c in coords])   # top-left x coord per patch
+    unique_y = _np.sort(_np.unique(y0))[::-1]   # descending (north first)
+    unique_x = _np.sort(_np.unique(x0))
+    y_to_iy  = {float(y): i for i, y in enumerate(unique_y)}
+    x_to_ix  = {float(x): i for i, x in enumerate(unique_x)}
+    items = [(b, y_to_iy[float(y0[b])], x_to_ix[float(x0[b])]) for b in range(len(coords))]
+    items.sort(key=lambda t: (t[1], t[2]))
+    return items
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Building blocks (same as notebook UNet)
 # ──────────────────────────────────────────────────────────────────────
 
@@ -179,6 +334,7 @@ class ConsistencyUNetConfig:
     mid_blocks_n_blocks_per_resolution: Tuple[int, ...] = (4, 4)
     mid_blocks_has_resampling: Tuple[bool, ...] = (True, False)
     mid_blocks_dropout: Tuple[float, ...] = (0.0, 0.0)
+    add_bounds: bool = False   # concatenate boundary ring as extra input channels
 
 
 class ConsistencyUNet(nn.Module):
@@ -200,8 +356,9 @@ class ConsistencyUNet(nn.Module):
         self.config = config
         n_input = config.n_input_channels if config.n_input_channels is not None else config.channels
 
-        # Input: [x(channels), y(n_input), mask(n_input)]
-        total_input_channels = config.channels + 2 * n_input
+        # Input: [x(channels), y(n_input), mask(n_input)] + optional [boundary(channels), mask_bound(channels)]
+        extra_bound = 2 * config.channels if config.add_bounds else 0
+        total_input_channels = config.channels + 2 * n_input + extra_bound
 
         self.input_projection = nn.Conv2d(
             total_input_channels, config.top_blocks_channels[0],
@@ -256,19 +413,29 @@ class ConsistencyUNet(nn.Module):
         H, W = t.shape[-2], t.shape[-1]
         return t[..., : H - pad_h if pad_h else H, : W - pad_w if pad_w else W]
 
-    def forward(self, x: Tensor, y: Tensor, time: Tensor, time_prime: Tensor) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor, time: Tensor, time_prime: Tensor,
+                boundaries: Tensor = None, mask_bound: Tensor = None) -> Tensor:
         """
         Args:
             x: noisy target (B, channels, H, W)
             y: observations (B, n_input_channels, H, W) — may contain NaN
             time: current noise level (B,)
             time_prime: target noise level (B,)
+            boundaries: (B, channels, H, W) ring values, required when add_bounds=True
+            mask_bound: (B, channels, H, W) ring availability mask, required when add_bounds=True
         Returns:
             Raw network output (B, channels, H, W) — before skip/output scaling
         """
         mask_obs = ~torch.isnan(y)
         y_clean = torch.nan_to_num(y)
-        inp = torch.cat((x, y_clean, mask_obs.float()), dim=1)
+        parts = [x, y_clean, mask_obs.float()]
+        if self.config.add_bounds:
+            assert boundaries is not None and mask_bound is not None, (
+                "boundaries and mask_bound must be provided when add_bounds=True"
+            )
+            parts.append(boundaries)
+            parts.append(mask_bound)
+        inp = torch.cat(parts, dim=1)
 
         # Pad to multiple of 8 so all Downsample layers (ph=2,pw=2) can divide evenly
         n_downsamples = sum(
@@ -452,6 +619,7 @@ class ConsistencyUNetSolver(nn.Module):
         sigma_data: float = 1.0,
         sampling_steps: int = 15,
         stochastic: bool = False,
+        add_bounds: bool = False,
     ):
         super().__init__()
 
@@ -477,65 +645,87 @@ class ConsistencyUNetSolver(nn.Module):
         self.sampling_steps = sampling_steps
         self.stochastic = stochastic
 
+        # Boundary conditioning (add_bounds=True enables sequential inference)
+        self.add_bounds = add_bounds
+        self.border_h = 0
+        self.border_w = 0
+        self.mask_boundary = None  # populated by setup_mask() in LightningModule.on_test_start
+
+    # ── Boundary mask setup (called from LightningModule.on_test_start) ──
+
+    def setup_mask(self, patch_h: int, patch_w: int, border_h: int, border_w: int):
+        """Create and store the boundary mask.  Called once before testing.
+
+        Args:
+            patch_h, patch_w : test patch spatial size
+            border_h, border_w : ring width = (patch - stride) // 2
+        """
+        self.border_h = border_h
+        self.border_w = border_w
+        self.mask_boundary = make_boundary_mask(patch_h, patch_w, border_h, border_w)
+
     # ── Raw UNet access (for training) ────────────────────────────────
 
     def get_unet(self) -> ConsistencyUNet:
         return self.unet
+
+    # ── Core sampling loop (used by both forward and sequential inference) ──
+
+    @torch.no_grad()
+    def sample_one(self, y: Tensor,
+                   boundaries: Tensor = None,
+                   mask_bound: Tensor = None) -> Tensor:
+        """Consistency sampling for a single batch with optional boundary conditioning.
+
+        Args:
+            y          : (B, C_in, H, W) observation tensor (may contain NaN)
+            boundaries : (B, C_out, H, W) boundary ring values, or None
+            mask_bound : (B, C_out, H, W) boundary availability mask, or None
+
+        Returns:
+            pred : (B, C_out, H, W) denoised prediction
+        """
+        B, _, H, W = y.shape
+        device = y.device
+        dtype  = y.dtype
+
+        nsteps = self.sampling_steps
+        steps  = torch.arange(nsteps, device=device, dtype=dtype) / max(nsteps - 1, 1)
+        times  = torch.flip(steps, dims=[0])
+
+        sigma_init = compute_sigma(times[0], self.sigma_min, self.sigma_max)
+        x = torch.randn(B, self.n_output_channels, H, W, device=device, dtype=dtype) * sigma_init
+
+        kwargs = {}
+        if self.add_bounds and boundaries is not None:
+            kwargs = {'boundaries': boundaries, 'mask_bound': mask_bound}
+
+        for i in range(nsteps - 1):
+            t_curr = torch.full((B,), times[i].item(),     device=device, dtype=dtype)
+            t_next = torch.full((B,), times[i + 1].item(), device=device, dtype=dtype)
+            x = consistency_forward_wrapper(
+                self.unet, x, y, t_curr, t_next,
+                self.sigma_data, self.sigma_min, self.sigma_max,
+                **kwargs,
+            )
+            if self.stochastic and i < nsteps - 2:
+                sigma_next = compute_sigma(times[i + 1], self.sigma_min, self.sigma_max)
+                x = x + sigma_next * torch.randn_like(x)
+
+        return x
 
     # ── Inference: consistency sampling from sBatch ───────────────────
 
     @torch.no_grad()
     def forward(self, batch):
         """Consistency sampling from an sBatch(input, tgt).
-        
-        batch.input has shape (B, C_in, H, W) where C_in = n_input_vars * n_time.
-        The solver produces output of shape (B, C_out, H, W).
-        
-        During inference we:
-        1. Extract observations y = batch.input (the full obs tensor).
-        2. Start from pure noise scaled to sigma(T).
-        3. Iteratively denoise using the consistency model.
 
-        When ``self.stochastic=True``, reverse-SDE sampling is used: after each
-        denoising step the prediction is re-noised to the sigma level of the next
-        step, increasing sample diversity (Song et al. 2023, Algorithm 2).
-        When ``self.stochastic=False`` (default), deterministic probability-flow
-        ODE sampling is used.
+        Delegates to ``sample_one(batch.input)``.
+        Sequential boundary-aware inference (``add_bounds=True``) is driven
+        externally by the LightningModule's ``_finalize_res`` hook after all
+        patches have been gathered across GPUs.
         """
-        y = batch.input
-        B, _, H, W = y.shape
-        device = y.device
-        dtype = y.dtype
-
-        # Karras schedule (descending in time: T → 0)
-        nsteps = self.sampling_steps
-        steps = torch.arange(nsteps, device=device, dtype=dtype) / max(nsteps - 1, 1)
-        # steps goes 0 → 1; we flip for sampling (1 → 0)
-        times = torch.flip(steps, dims=[0])
-
-        # Initial noise at t = times[0] ≈ 1
-        sigma_init = compute_sigma(times[0], self.sigma_min, self.sigma_max)
-        x = torch.randn(B, self.n_output_channels, H, W, device=device, dtype=dtype) * sigma_init
-
-        for i in range(nsteps - 1):
-            t_curr = torch.full((B,), times[i].item(), device=device, dtype=dtype)
-            t_next = torch.full((B,), times[i + 1].item(), device=device, dtype=dtype)
-
-            # ── Denoising step (ODE or SDE) ──────────────────────────────────
-            x = consistency_forward_wrapper(
-                self.unet, x, y, t_curr, t_next,
-                self.sigma_data, self.sigma_min, self.sigma_max,
-            )
-
-            # ── SDE: re-noise to sigma level of the *next* step ──────────────
-            # x̂ = f_θ(x_noisy) is our denoised estimate.  We then add noise
-            # scaled to σ(t_{i+2}) before the following denoising call,
-            # following the stochastic consistency sampling of Song et al. 2023.
-            if self.stochastic and i < nsteps - 2:
-                sigma_next = compute_sigma(times[i + 1], self.sigma_min, self.sigma_max)
-                x = x + sigma_next * torch.randn_like(x)
-
-        return x
+        return self.sample_one(batch.input)
 
 
 class ConsistencyGradSolvers(nn.Module):
