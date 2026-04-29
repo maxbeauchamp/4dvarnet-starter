@@ -26,23 +26,15 @@ class GradSolver(nn.Module):
                  fill_missing_inp,
                  fill_mod: Optional[nn.Module] = None,
                  lr_grad=0.2, 
+                 include_masks=False,
                  **kwargs):
-        """
-        GradSolver that handles different input/output variables with explicit mapping.
-        
-        Args:
-            input_vars: List of input variable names (e.g., ['asip_sic', 'cimr_sic', 'cimr_SIT', ...])
-            target_vars: List of target variable names (e.g., ['tgt_sic', 'tgt_SIT'])
-            var_mapping: Dict mapping target vars to input vars 
-                        (e.g., {'tgt_sic': 'asip_sic', 'tgt_SIT': 'cimr_SIT'})
-            n_time: Number of time steps per variable
-        """
         super().__init__()
         self.prior_cost = prior_cost
         self.obs_cost = obs_cost
         self.grad_mod = grad_mod
         self.n_step = n_step
         self.lr_grad = lr_grad
+        self.include_masks = include_masks
         
         #Fill model for CIMR_SIC
         self.fill_missing_inp = fill_missing_inp
@@ -51,7 +43,7 @@ class GradSolver(nn.Module):
         # Store variable configuration
         self.input_vars = input_vars
         self.target_vars = target_vars
-        self.var_mapping = var_mapping  # Explicit mapping: target -> input
+        self.var_mapping = var_mapping
         self.n_time = n_time
         self.input_grad_update = input_grad_update
         
@@ -65,29 +57,51 @@ class GradSolver(nn.Module):
         # Compute channel dimensions
         self.n_input_vars = len(input_vars)
         self.n_target_vars = len(target_vars)
-        self.dim_input = self.n_input_vars * n_time
-        self.dim_target = self.n_target_vars * n_time
         
-        # Identify auxiliary variables (input vars not mapped to any target)
+        # Channel dimensions
+        if include_masks:
+            # INPUT: Each variable has data + mask intercalés
+            self.channels_per_var_input = n_time * 2  # [t0_data, t0_mask, t1_data, t1_mask, ...]
+            self.dim_input = self.n_input_vars * n_time * 2
+            
+            # OUTPUT: Only data channels (no masks)
+            self.channels_per_var_output = n_time  # [t0_data, t1_data, t2_data, ...]
+            self.dim_target = self.n_target_vars * n_time
+        else:
+            self.channels_per_var_input = n_time
+            self.dim_input = self.n_input_vars * n_time
+            self.channels_per_var_output = n_time
+            self.dim_target = self.n_target_vars * n_time
+        
+        # Identify auxiliary variables
         self.auxiliary_vars = [v for v in input_vars if v not in var_mapping.values()]
         
-        # Compute target indices for prior_cost
-        # These are the channel indices in the input_state that correspond to target variables
-        target_indices = []
+        # Compute target DATA indices (only DATA channels, not masks)
+        self.target_data_indices = []
         for tgt_var in target_vars:
             inp_var = var_mapping[tgt_var]
             var_idx = input_vars.index(inp_var)
-            # Each variable occupies n_time channels
-            start_idx = var_idx * n_time
-            end_idx = start_idx + n_time
-            target_indices.extend(range(start_idx, end_idx))
+            
+            if include_masks:
+                # Extract only DATA channels (even indices)
+                start_idx = var_idx * n_time * 2
+                for t in range(n_time):
+                    self.target_data_indices.append(start_idx + t * 2)  # Even indices
+            else:
+                start_idx = var_idx * n_time
+                self.target_data_indices.extend(range(start_idx, start_idx + n_time))
         
-        self.target_indices = target_indices
-        
-        # Set target_indices in prior_cost if it supports it
-        if hasattr(self.prior_cost, 'target_indices'):
-            self.prior_cost.target_indices = target_indices
-            print(f"Set target_indices in prior_cost: {target_indices}")
+        # Compute target WITH MASK indices (for grad_mod context)
+        self.target_with_mask_indices = []
+        if include_masks:
+            for tgt_var in target_vars:
+                inp_var = var_mapping[tgt_var]
+                var_idx = input_vars.index(inp_var)
+                start_idx = var_idx * n_time * 2
+                end_idx = start_idx + n_time * 2
+                self.target_with_mask_indices.extend(range(start_idx, end_idx))
+        else:
+            self.target_with_mask_indices = self.target_data_indices
         
         self._grad_norm = None
         
@@ -95,58 +109,70 @@ class GradSolver(nn.Module):
         print(f"  Input vars: {input_vars}")
         print(f"  Target vars: {target_vars}")
         print(f"  Mapping: {var_mapping}")
-        print(f"  Auxiliary vars: {self.auxiliary_vars}")
+        print(f"  Include masks: {include_masks}")
+        print(f"  Input channels per var: {self.channels_per_var_input}")
+        print(f"  Output channels per var: {self.channels_per_var_output}")
         print(f"  Dimensions: input={self.dim_input}, target={self.dim_target}")
-        print(f"  Target channel indices in input_state: {target_indices}")
+        print(f"  Target DATA indices: {self.target_data_indices}")
+        if include_masks:
+            print(f"  Target WITH MASK indices: {self.target_with_mask_indices}")
     
-    def split_by_variables(self, tensor, var_names):
+    def split_by_variables(self, tensor, var_names, is_input=True):
         """
         Split a tensor (B, C, H, W) into dict by variable names.
         
         Args:
-            tensor: (B, N_vars * N_time, H, W)
+            tensor: (B, C, H, W)
             var_names: List of variable names
+            is_input: If True, expects input format (with masks if include_masks=True)
+                     If False, expects output format (data only, no masks)
             
         Returns:
-            dict {var_name: (B, N_time, H, W)}
+            dict {var_name: (B, N_channels, H, W)}
         """
         B, C, H, W = tensor.shape
         n_vars = len(var_names)
         
-        assert C == n_vars * self.n_time, \
-            f"Expected C={n_vars * self.n_time} ({n_vars} vars × {self.n_time} time), got {C}"
+        if is_input:
+            channels_per_var = self.channels_per_var_input
+        else:
+            channels_per_var = self.channels_per_var_output
         
-        # Reshape: (B, N_vars * N_time, H, W) -> (B, N_vars, N_time, H, W)
-        tensor_reshaped = tensor.view(B, n_vars, self.n_time, H, W)
+        expected_channels = n_vars * channels_per_var
+        
+        assert C == expected_channels, \
+            f"Expected C={expected_channels} ({n_vars} vars × {channels_per_var} ch/var), got {C}"
+        
+        # Reshape: (B, N_vars * N_ch, H, W) -> (B, N_vars, N_ch, H, W)
+        tensor_reshaped = tensor.view(B, n_vars, channels_per_var, H, W)
         
         # Split by variable
         var_dict = {}
         for i, var_name in enumerate(var_names):
-            var_dict[var_name] = tensor_reshaped[:, i]  # (B, N_time, H, W)
+            var_dict[var_name] = tensor_reshaped[:, i]  # (B, N_ch, H, W)
         
         return var_dict
     
-    def merge_variables(self, var_dict, var_names, requires_grad=True):
+    def merge_variables(self, var_dict, var_names, is_input=True, requires_grad=True):
         """
         Merge dict of variables into single tensor.
         
         Args:
-            var_dict: dict {var_name: (B, N_time, H, W)}
+            var_dict: dict {var_name: (B, N_channels, H, W)}
             var_names: List of variable names in desired order
+            is_input: If True, expects input format (with masks)
+                     If False, expects output format (data only)
+            requires_grad: Whether to keep gradients
             
         Returns:
-            tensor: (B, N_vars * N_time, H, W)
+            tensor: (B, N_vars * N_channels, H, W)
         """
-        # Stack variables: list of (B, N_time, H, W) -> (B, N_vars, N_time, H, W)
         var_tensors = [var_dict[var_name] for var_name in var_names]
-        stacked = torch.stack(var_tensors, dim=1)
+        stacked = torch.stack(var_tensors, dim=1)  # (B, N_vars, N_channels, H, W)
         
-        # Reshape: (B, N_vars, N_time, H, W) -> (B, N_vars * N_time, H, W)
-        B, N_vars, N_time, H, W = stacked.shape
-        merged = stacked.view(B, N_vars * N_time, H, W)
+        B, N_vars, N_channels, H, W = stacked.shape
+        merged = stacked.view(B, N_vars * N_channels, H, W)
         
-        # Only detach if requires_grad=False
-        # Don't use .requires_grad_(True) as it creates a new leaf
         if not requires_grad:
             merged = merged.detach()
         
@@ -155,44 +181,57 @@ class GradSolver(nn.Module):
     def init_state(self, batch, x_init=None, random=False):
         """
         Initialize state as dict of variables.
-        Target variables are initialized from their corresponding input variables.
+        Input variables have shape (B, channels_per_var_input, H, W) - WITH masks
+        Target variables have shape (B, channels_per_var_output, H, W) - WITHOUT masks
         """
         if x_init is not None:
             return x_init
 
-        # Split input into variables
+        # Split input (WITH masks if include_masks=True)
         input_dict = self.split_by_variables(
             batch.input.nan_to_num(), 
-            self.input_vars
+            self.input_vars,
+            is_input=True
         )
 
         state_dict = {}
         
-        # Initialize ALL input variables from batch.input
-        # The ones mapped to targets will be optimized, others are auxiliary
+        # Initialize input variables (WITH masks)
         for inp_var in self.input_vars:
-            # Check if this input variable is mapped to a target
             is_target_source = inp_var in self.var_mapping.values()
+            
             if is_target_source:
-                # This variable will be optimized (e.g., 'asip_sic', 'cimr_SIT')
                 if random:
                     B, C, H, W = input_dict[inp_var].shape
                     device = batch.input.device
-                    random_input = torch.randn(B, C, H, W, device=device)
-                    state_dict[inp_var] = random_input.requires_grad_(True)
+                    
+                    if self.include_masks:
+                        # Generate random data, keep original masks
+                        random_data = torch.randn(B, C, H, W, device=device)
+                        random_input = input_dict[inp_var].clone()
+                        random_input[:, ::2] = random_data[:, ::2]  # Replace data channels only
+                        state_dict[inp_var] = random_input.requires_grad_(True)
+                    else:
+                        random_input = torch.randn(B, C, H, W, device=device)
+                        state_dict[inp_var] = random_input.requires_grad_(True)
                 else:
                     state_dict[inp_var] = input_dict[inp_var].clone().detach().requires_grad_(True)
             else:
-                # This is an auxiliary variable (e.g., 'cimr_SIC', 'msl', 't2m')
+                # Auxiliary variable (covariates)
                 state_dict[inp_var] = input_dict[inp_var].clone().detach().requires_grad_(True)
 
-        # Keep target variables (ground truth, read-only, used for obs_cost)
+        # Target variables: Extract DATA only (no masks)
         for tgt_var in self.target_vars:
-            state_dict[tgt_var] = input_dict[self.var_mapping[tgt_var]].clone().detach()
-        
-        #print(f"\nInitialized state:")
-        #print(f"  Variables with grad: {[k for k, v in state_dict.items() if v.requires_grad]}")
-        #print(f"  Variables without grad: {[k for k, v in state_dict.items() if not v.requires_grad]}")
+            inp_var = self.var_mapping[tgt_var]
+            inp_data_with_mask = input_dict[inp_var]  # (B, 2*n_time, H, W) if masks
+            
+            if self.include_masks:
+                # Extract only data channels (even indices: 0, 2, 4, ...)
+                data_only = inp_data_with_mask[:, ::2]  # (B, n_time, H, W)
+            else:
+                data_only = inp_data_with_mask
+            
+            state_dict[tgt_var] = data_only.clone().detach()  # (B, n_time, H, W)
         
         return state_dict
 
@@ -200,8 +239,13 @@ class GradSolver(nn.Module):
         """
         Solver step that updates only target-mapped input variables.
         
-        Args:
-            state_dict: dict {var_name: (B, N_time, H, W)}
+        Flow:
+        1. Merge all input vars (WITH masks) -> full state
+        2. Extract target state DATA only -> for optimization
+        3. Extract target state WITH masks -> for grad_mod context
+        4. Compute costs and gradients on DATA only
+        5. Update DATA only
+        6. Reconstruct [data, mask] format
         """
 
         # Fill missing values for CIMR SIC if specified
@@ -252,20 +296,24 @@ class GradSolver(nn.Module):
         # e.g., 'asip_sic', 'cimr_SIT'
         target_source_vars = [self.var_mapping[tgt] for tgt in self.target_vars]
         
-        # Merge ALL input variables for prior cost context
+        # 1. Merge ALL input variables (WITH masks if include_masks=True)
         input_state = self.merge_variables(
             {k: state_dict[k] for k in self.input_vars},
-            self.input_vars
-        )  # (B, N_input_vars * N_time, H, W)
+            self.input_vars,
+            is_input=True
+        )  # (B, dim_input, H, W)
         
-        target_state = input_state[:, self.target_indices, :, :]
+        # 2. Extract target state DATA only (for optimization)
+        target_state_data = input_state[:, self.target_data_indices, :, :]
+        # (B, dim_target, H, W) - data only
 
-        # Get observation variables (ground truth) for obs cost
+        # 3. Get observation variables (DATA only)
         obs = self.merge_variables(
             {k: state_dict[k] for k in self.target_vars},
             self.target_vars,
+            is_input=False,
             requires_grad=False
-        )  # (B, N_target_vars * N_time, H, W)
+        )  # (B, dim_target, H, W)
 
 
         if( isinstance(step, float) ):
@@ -315,12 +363,11 @@ class GradSolver(nn.Module):
 
 
         
-        # Check gradient
-        nan_count = (~grad.isfinite()).sum().item()
-        total_count = target_state.numel()
-        nan_pct = 100 * nan_count / total_count
-        zero_count = (grad == 0).sum().item()
-        zero_pct = 100 * zero_count / total_count
+        # 6. Extract target WITH masks for grad_mod context
+        if self.include_masks:
+            target_context = input_state[:, self.target_with_mask_indices, :, :]
+        else:
+            target_context = target_state_data
         
         #print(f"  FINAL grad: NaN%={nan_pct:.2f}%, Zero%={zero_pct:.2f}%")
 
@@ -335,49 +382,64 @@ class GradSolver(nn.Module):
             state_update += self.lr_grad * (step + 1) / self.n_step * grad[:,:target_state.shape[1],:,:]
 
         
-        # Update target-mapped variables
-        new_target_state = target_state - state_update
+        new_target_state_data = target_state_data - state_update
         
-        # Split back into variables
-        updated_dict = self.split_by_variables(new_target_state, target_source_vars)
+        # 9. Split back into variables (DATA only)
+        updated_dict = self.split_by_variables(
+            new_target_state_data, 
+            target_source_vars,
+            is_input=False
+        )
         
-        # Build new state dict
+        # 10. Build new state dict
         new_state_dict = {}
         
-        # 1. Update target-mapped input variables (e.g., 'asip_sic', 'cimr_SIT')
+        # Update target-mapped input variables: reconstruct [data, mask] format
         for inp_var in target_source_vars:
-            new_state_dict[inp_var] = updated_dict[inp_var]
-            # Re-enable gradients for next iteration
-            #if self.training:
-            new_state_dict[inp_var].requires_grad_(True)
+            updated_data = updated_dict[inp_var]  # (B, n_time, H, W)
+            
+            if self.include_masks:
+                # Reconstruct [data, mask] intercalé
+                old_var_with_mask = state_dict[inp_var]  # (B, 2*n_time, H, W)
+                new_var_with_mask = old_var_with_mask.clone()
+                new_var_with_mask[:, ::2] = updated_data  # Update data channels only
+                # Masks (odd indices) remain unchanged
+                new_state_dict[inp_var] = new_var_with_mask.requires_grad_(True)
+            else:
+                new_state_dict[inp_var] = updated_data.requires_grad_(True)
 
-        # 2. Keep other input variables unchanged (auxiliary variables)
+        # Keep other input variables unchanged (covariates, etc.)
         for inp_var in self.input_vars:
             if inp_var not in new_state_dict:
                 new_state_dict[inp_var] = state_dict[inp_var]
         
-        # 3. Keep target ground truth unchanged
+        # Keep target ground truth unchanged
         for tgt_var in self.target_vars:
             new_state_dict[tgt_var] = state_dict[tgt_var]
         
         return new_state_dict
-
+    
     def forward(self, batch):
-        """
-        Forward pass through the solver.
-        Returns only target variables as tensor.
-        """
+        """Forward pass through the solver."""
         with torch.set_grad_enabled(True):
             state_dict = self.init_state(batch)
             
-            # Get target-mapped input variables for initialization
             target_source_vars = [self.var_mapping[tgt] for tgt in self.target_vars]
             
-            # Initialize grad_mod with target dimensions
-            target_init = self.merge_variables(
-                {k: v for k, v in state_dict.items() if k in target_source_vars},
-                target_source_vars
-            )
+            # Initialize grad_mod with target context (WITH masks if available)
+            if self.include_masks:
+                target_init_list = []
+                for var in target_source_vars:
+                    var_with_mask = state_dict[var]  # (B, 2*n_time, H, W)
+                    target_init_list.append(var_with_mask)
+                target_init = torch.cat(target_init_list, dim=1)
+            else:
+                target_init_list = []
+                for var in target_source_vars:
+                    var_data = state_dict[var]  # (B, n_time, H, W)
+                    target_init_list.append(var_data)
+                target_init = torch.cat(target_init_list, dim=1)
+            
             self.grad_mod.reset_state(target_init)
             
             os.makedirs('/Odyssey/private/p25denai/CROSCIM/input_before', exist_ok=True)
@@ -393,34 +455,59 @@ class GradSolver(nn.Module):
                 alpha_step = 1. / self.n_step
                 state_dict = self.solver_step(state_dict, batch, step= step / self.n_step, alpha_step=alpha_step)
                 if not self.training:
-                    # Detach and re-enable gradients for target-mapped variables
                     for inp_var in target_source_vars:
                         state_dict[inp_var] = state_dict[inp_var].detach().requires_grad_(True)
         
-        # Return target-mapped input variables (the optimized predictions)
-        # These correspond to the target variables
-        output = self.merge_variables(
-            {k: state_dict[k] for k in target_source_vars},
-            target_source_vars
-        )
-    
+        # Return optimized predictions (DATA only, no masks)
+        if self.include_masks:
+            output_list = []
+            for var in target_source_vars:
+                var_with_mask = state_dict[var]  # (B, 2*n_time, H, W)
+                data_only = var_with_mask[:, ::2]  # (B, n_time, H, W)
+                output_list.append(data_only)
+            output = torch.cat(output_list, dim=1)
+        else:
+            output = self.merge_variables(
+                {k: state_dict[k] for k in target_source_vars},
+                target_source_vars,
+                is_input=False
+            )
+        
         return output
-        #return target_init
+
 
 class ConvLstmGradModel(nn.Module):
-    def __init__(self, dim_in, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None):
+    def __init__(self, dim_in, dim_out, dim_hidden, kernel_size=3, dropout=0.1, downsamp=None):
+        """
+        Args:
+            dim_in: Input dimension WITH masks if solver uses masks
+                   (N_target_vars * 2 * n_time if include_masks=True, else N_target_vars * n_time)
+            dim_out: Output dimension WITHOUT masks (N_target_vars * n_time)
+            dim_hidden: Hidden dimension
+        """
         super().__init__()
         self.dim_hidden = dim_hidden
-
+        self.dim_in = dim_in
+        self.dim_out = dim_out
+        
+        # Process gradient (data only)
         self.gates = torch.nn.Conv2d(
-            dim_in + dim_hidden,
+            dim_out + dim_hidden,  # grad_data_only + hidden
             4 * dim_hidden,
+            kernel_size=kernel_size,
+            padding=kernel_size // 2,
+        )
+        
+        # Context projection (for masks if available)
+        self.context_proj = torch.nn.Conv2d(
+            dim_in,  # Can include masks
+            dim_hidden,
             kernel_size=kernel_size,
             padding=kernel_size // 2,
         )
 
         self.conv_out = torch.nn.Conv2d(
-            dim_hidden, dim_in, kernel_size=kernel_size, padding=kernel_size // 2
+            dim_hidden, dim_out, kernel_size=kernel_size, padding=kernel_size // 2
         )
 
         self.dropout = torch.nn.Dropout(dropout)
@@ -433,6 +520,10 @@ class ConvLstmGradModel(nn.Module):
         )
 
     def reset_state(self, inp):
+        """
+        Args:
+            inp: Initial state, can be with or without masks
+        """
         size = [inp.shape[0], self.dim_hidden, *inp.shape[-2:]]
         self._grad_norm = None
         self._state = [
@@ -444,9 +535,15 @@ class ConvLstmGradModel(nn.Module):
         if self._grad_norm is None:
             self._grad_norm = (x**2).mean().sqrt()
         x = x / self._grad_norm
+        
         hidden, cell = self._state
         x = self.dropout(x)
         x = self.down(x)
+        
+        # Process context (with masks if available)
+        context = self.context_proj(self.down(target_with_masks))
+        
+        # Combine gradient with hidden state
         gates = self.gates(torch.cat((x, hidden), 1))
 
         in_gate, remember_gate, out_gate, cell_gate = gates.chunk(4, 1)
@@ -456,12 +553,16 @@ class ConvLstmGradModel(nn.Module):
         )
         cell_gate = torch.tanh(cell_gate)
 
-        cell = (remember_gate * cell) + (in_gate * cell_gate)
+        # Update cell with context
+        cell = (remember_gate * cell) + (in_gate * cell_gate) + context
         hidden = out_gate * torch.tanh(cell)
 
         self._state = hidden, cell
+        
+        # Output: data only (no masks)
         out = self.conv_out(hidden)
         out = self.up(out)
+        
         return out
 
 
@@ -496,6 +597,7 @@ class BaseObsCost(nn.Module):
     def __init__(self, w=1, use_target=True) -> None:
         """
         Args:
+            w: Weight for the observation cost
             use_target: If True, compare state with batch.tgt (target variables)
                        If False, compare with batch.input (input variables)
         """
@@ -505,33 +607,41 @@ class BaseObsCost(nn.Module):
 
     def forward(self, state, obs):
         """
-        state: (B, N_target_vars * N_time, H, W) - predicted target variables
-        obs: (B, N_target_vars * N_time, H, W) - ground truth observations  
+        Both state and obs are DATA only (no masks)
+        
+        Args:
+            state: (B, N_target_vars * N_time, H, W) - predicted target variables
+            obs: (B, N_target_vars * N_time, H, W) - ground truth observations  
+        
+        Returns:
+            Observation cost (scalar)
         """
         msk = obs.isfinite()
         return self.w * F.mse_loss(state[msk], obs[msk])
 
+
 class BilinAEPriorCost(nn.Module):
-    def __init__(self, dim_in, dim_hidden, dim_out, kernel_size=3, downsamp=None, 
-                 bilin_quad=True, target_indices=None):
+    def __init__(self, dim_in, dim_out, dim_hidden, kernel_size=3, downsamp=None, 
+                 bilin_quad=True):
         """
         Args:
-            dim_in: Input dimension (N_input_vars * N_time)
+            dim_in: Full input dimension (all vars, WITH masks if solver uses masks)
+            dim_out: Target output dimension (target vars, WITHOUT masks)
             dim_hidden: Hidden dimension
-            dim_out: Output dimension (N_target_vars * N_time)
-            target_indices: Indices of target variables in the input state
-                           e.g., if input_vars = ['asip_sic', 'cimr_SIC', 'cimr_SIT', 'msl']
-                           and target_vars = ['tgt_sic', 'tgt_SIT'] (mapped to 'asip_sic', 'cimr_SIT')
-                           then target_indices would select channels corresponding to 
-                           'asip_sic' (0:n_time) and 'cimr_SIT' (2*n_time:3*n_time)
+            kernel_size: Convolutional kernel size
+            downsamp: Downsampling factor (None for no downsampling)
+            bilin_quad: Use quadratic (True) or bilinear (False) nonlinearity
         """
         super().__init__()
         self.bilin_quad = bilin_quad
-        self.target_indices = target_indices  # will be set by GradSolver
+        self.dim_in = dim_in
+        self.dim_out = dim_out
         
+        # Input: full state (all vars with masks if available)
         self.conv_in = nn.Conv2d(
             dim_in, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
+        
         self.conv_hidden = nn.Conv2d(
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
@@ -551,6 +661,7 @@ class BilinAEPriorCost(nn.Module):
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
 
+        # Output: target data only (no masks)
         self.conv_out = nn.Conv2d(
             2 * dim_hidden, dim_out, kernel_size=kernel_size, padding=kernel_size // 2
         )
@@ -594,16 +705,17 @@ class BilinAEPriorCost(nn.Module):
         x = self.up(x)
         return x
 
-    def forward(self, state, target_state):
+    def forward(self, state_full, target_state_data):
         """
         Args:
-            state: (B, N_input_vars * N_time, H, W) - full input state
+            state_full: (B, dim_in, H, W) - all vars with masks if available
+            target_state_data: (B, dim_out, H, W) - target data only (no masks)
             
         Returns:
-            Prior cost comparing reconstructed targets with actual targets from state
+            Prior cost (scalar)
         """
-        # Reconstruct target variables from full state
-        reconstructed = self.forward_ae(state)  # (B, N_target_vars * N_time, H, W)
+        # Reconstruct target data from full state
+        reconstructed = self.forward_ae(state_full)  # (B, dim_out, H, W)
         
         return F.mse_loss(target_state, reconstructed)
     

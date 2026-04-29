@@ -1,0 +1,94 @@
+norm_stats:
+  asip:
+    sic:
+      min: 0.0
+      max: 100.0
+      type: minmax
+    standard_deviation_sic:
+      mean: 1.8761531586097209
+      std: 4.922335431544444
+      type: zscore
+    status_flag:
+      min: 0.0
+      max: 1536.0
+      type: minmax
+  cimr:
+    SIC:
+      min: 0.0
+      max: 1.0
+      type: minmax
+    SIT:
+      mean: 0.02392856443828687
+      std: 0.08694672390807144
+      type: zscore
+    Tsurf:
+      mean: -6.3703807274976665
+      std: 9.394544766238061
+      type: zscore
+  cristal:
+    HS:
+      mean: 0.15517908473300512
+      std: 0.13962813089282153
+      type: zscore
+    SIT:
+      mean: 1.3583107984977745
+      std: 0.7628621685375375
+      type: zscore
+    SSH:
+      mean: 0.1912636630889516
+      std: 0.41697635927509086
+      type: zscore
+norm_stats_covs:
+  msl:
+    mean: 101261.65922657882
+    std: 1112.7187312302365
+    type: zscore
+  t2m:
+    mean: -2.5985455071070955
+    std: 13.613745769755358
+    type: zscore
+  u10:
+    mean: 0.6010106010949151
+    std: 4.545559141871505
+    type: zscore
+  v10:
+    mean: -0.2104646166032582
+    std: 4.707062023219409
+    type: zscore
+  tcc:
+    min: 1.0896958883677144e-05
+    max: 0.024753304198384285
+    type: minmax
+  d2m:
+    mean: 2.4095910147380064e-08
+    std: 4.900962447374831e-08
+    type: zscore
+  ssrd:
+    mean: 95.72918023746189
+    std: 93.44316534428312
+    type: zscore
+  strd:
+    mean: 265.25246499467744
+    std: 63.12553499850183
+    type: zscore
+  tp:
+    mean: 2.4095910147380064e-08
+    std: 4.900962447374831e-08
+    type: zscore
+norm_stats_models:
+  SIC:
+    min: 0.0
+    max: 1.0
+    type: minmax
+  SIT:
+    mean: 0.5695980677516013
+    std: 0.8216149733058172
+    type: zscore
+  HS:
+    mean: 0.06844576249551623
+    std: 0.1137041260225963
+    type: zscore
+  SSH:
+    mean: 0.21988234269231605
+    std: 0.2757902493660287
+    type: zscore

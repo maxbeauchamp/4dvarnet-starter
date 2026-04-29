@@ -216,6 +216,7 @@ class XrDataset(torch.utils.data.Dataset):
         # Use first available ASIP file as reference (ASIP should always be present)
         if 'asip' not in self.active_sources:
             raise ValueError("ASIP is required as reference grid")
+
         asip_base = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {}))
         
         if self.resize != 1:
@@ -699,7 +700,6 @@ class XrDatasetSupervised(XrDataset):
         print(f"  Models paths: {len(self.models_paths)} files")
         print(f"  Active sources: {self.active_sources}")
     
-
     def __getitem__(self, idx):
         """Override to add model data loading and interpolation."""
         

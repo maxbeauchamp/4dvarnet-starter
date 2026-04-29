@@ -1,0 +1,1723 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian) (preloaded format=pdflatex 2024.3.16)  11 MAR 2026 13:33
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**figures/spatiotemporal_pipeline.tex
+(./figures/spatiotemporal_pipeline.tex
+LaTeX2e <2021-11-15> patch level 1
+L3 programming layer <2022-01-21>
+(/usr/share/texlive/texmf-dist/tex/latex/standalone/standalone.cls
+Document Class: standalone 2018/03/26 v1.3a Class to compile TeX sub-files stan
+dalone
+(/usr/share/texlive/texmf-dist/tex/latex/tools/shellesc.sty
+Package: shellesc 2019/11/08 v1.0c unified shell escape interface for LaTeX
+Package shellesc Info: Restricted shell escape enabled on input line 77.
+)
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/ifluatex.sty
+Package: ifluatex 2019/10/25 v1.5 ifluatex legacy package. Use iftex instead.
+
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2020/03/06 v1.0d TeX engine tests
+))
+(/usr/share/texlive/texmf-dist/tex/latex/xkeyval/xkeyval.sty
+Package: xkeyval 2020/11/20 v2.8 package option processing (HA)
+
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkeyval.tex
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkvutils.tex
+\XKV@toks=\toks16
+\XKV@tempa@toks=\toks17
+
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/keyval.tex))
+\XKV@depth=\count185
+File: xkeyval.tex 2014/12/03 v2.7a key=value parser (HA)
+))
+\sa@internal=\count186
+\c@sapage=\count187
+
+(/usr/share/texlive/texmf-dist/tex/latex/standalone/standalone.cfg
+File: standalone.cfg 2018/03/26 v1.3a Default configuration file for 'standalon
+e' class
+)
+(/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2021/10/04 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count188
+\c@section=\count189
+\c@subsection=\count190
+\c@subsubsection=\count191
+\c@paragraph=\count192
+\c@subparagraph=\count193
+\c@figure=\count194
+\c@table=\count195
+\abovecaptionskip=\skip47
+\belowcaptionskip=\skip48
+\bibindent=\dimen138
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/frontendlayer/tikz.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.tex
+\pgfutil@everybye=\toks18
+\pgfutil@tempdima=\dimen139
+\pgfutil@tempdimb=\dimen140
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-common-lists.t
+ex)) (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def
+\pgfutil@abb=\box50
+) (/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/pgf.revision.tex)
+Package: pgfrcs 2021/05/15 v3.1.9a (3.1.9a)
+))
+Package: pgf 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgfcore.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
+)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 107.
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2020/10/05 v1.2a Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen141
+\Gin@req@width=\dimen142
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/systemlayer/pgfsys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys.code.tex
+Package: pgfsys 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
+\pgfkeys@pathtoks=\toks19
+\pgfkeys@temptoks=\toks20
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeysfiltered.code.t
+ex
+\pgfkeys@tmptoks=\toks21
+))
+\pgf@x=\dimen143
+\pgf@y=\dimen144
+\pgf@xa=\dimen145
+\pgf@ya=\dimen146
+\pgf@xb=\dimen147
+\pgf@yb=\dimen148
+\pgf@xc=\dimen149
+\pgf@yc=\dimen150
+\pgf@xd=\dimen151
+\pgf@yd=\dimen152
+\w@pgf@writea=\write3
+\r@pgf@reada=\read2
+\c@pgf@counta=\count196
+\c@pgf@countb=\count197
+\c@pgf@countc=\count198
+\c@pgf@countd=\count199
+\t@pgf@toka=\toks22
+\t@pgf@tokb=\toks23
+\t@pgf@tokc=\toks24
+\pgf@sys@id@count=\count266
+ (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg
+File: pgf.cfg 2021/05/15 v3.1.9a (3.1.9a)
+)
+Driver file for pgf: pgfsys-pdftex.def
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-pdftex.def
+File: pgfsys-pdftex.def 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-common-pdf.de
+f
+File: pgfsys-common-pdf.def 2021/05/15 v3.1.9a (3.1.9a)
+)))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.
+tex
+File: pgfsyssoftpath.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfsyssoftpath@smallbuffer@items=\count267
+\pgfsyssoftpath@bigbuffer@items=\count268
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.code.
+tex
+File: pgfsysprotocol.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)) (/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty
+Package: xcolor 2021/10/31 v2.13 LaTeX color extensions (UK)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package xcolor Info: Driver file: pdftex.def on input line 227.
+Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1352.
+Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1356.
+Package xcolor Info: Model `RGB' extended on input line 1368.
+Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1370.
+Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1371.
+Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1372.
+Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1373.
+Package xcolor Info: Model `Gray' substituted by `gray' on input line 1374.
+Package xcolor Info: Model `wave' substituted by `hsb' on input line 1375.
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcore.code.tex
+Package: pgfcore 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex
+\pgfmath@dimen=\dimen153
+\pgfmath@count=\count269
+\pgfmath@box=\box51
+\pgfmath@toks=\toks25
+\pgfmath@stack@operand=\toks26
+\pgfmath@stack@operation=\toks27
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.basic.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.trigonomet
+ric.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.random.cod
+e.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.comparison
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.base.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.round.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.misc.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.integerari
+thmetics.code.tex)))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex
+\c@pgfmathroundto@lastzeros=\count270
+))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfint.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.code.te
+x
+File: pgfcorepoints.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@picminx=\dimen154
+\pgf@picmaxx=\dimen155
+\pgf@picminy=\dimen156
+\pgf@picmaxy=\dimen157
+\pgf@pathminx=\dimen158
+\pgf@pathmaxx=\dimen159
+\pgf@pathminy=\dimen160
+\pgf@pathmaxy=\dimen161
+\pgf@xx=\dimen162
+\pgf@xy=\dimen163
+\pgf@yx=\dimen164
+\pgf@yy=\dimen165
+\pgf@zx=\dimen166
+\pgf@zy=\dimen167
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconstruct.
+code.tex
+File: pgfcorepathconstruct.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@path@lastx=\dimen168
+\pgf@path@lasty=\dimen169
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage.code
+.tex
+File: pgfcorepathusage.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@shorten@end@additional=\dimen170
+\pgf@shorten@start@additional=\dimen171
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.code.te
+x
+File: pgfcorescopes.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfpic=\box52
+\pgf@hbox=\box53
+\pgf@layerbox@main=\box54
+\pgf@picture@serial@count=\count271
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicstate.c
+ode.tex
+File: pgfcoregraphicstate.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgflinewidth=\dimen172
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransformation
+s.code.tex
+File: pgfcoretransformations.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@pt@x=\dimen173
+\pgf@pt@y=\dimen174
+\pgf@pt@temp=\dimen175
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
+File: pgfcorequick.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreobjects.code.t
+ex
+File: pgfcoreobjects.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathprocessing
+.code.tex
+File: pgfcorepathprocessing.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.code.te
+x
+File: pgfcorearrows.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfarrowsep=\dimen176
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
+File: pgfcoreshade.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@max=\dimen177
+\pgf@sys@shading@range@num=\count272
+\pgf@shadingcount=\count273
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
+File: pgfcoreimage.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.code.
+tex
+File: pgfcoreexternal.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfexternal@startupbox=\box55
+))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.code.te
+x
+File: pgfcorelayers.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransparency.c
+ode.tex
+File: pgfcoretransparency.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepatterns.code.
+tex
+File: pgfcorepatterns.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorerdf.code.tex
+File: pgfcorerdf.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
+File: pgfmoduleshapes.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfnodeparttextbox=\box56
+) (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.tex
+File: pgfmoduleplot.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-0-65
+.sty
+Package: pgfcomp-version-0-65 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@nodesepstart=\dimen178
+\pgf@nodesepend=\dimen179
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-1-18
+.sty
+Package: pgfcomp-version-1-18 2021/05/15 v3.1.9a (3.1.9a)
+)) (/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgffor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfkeys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/math/pgfmath.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex
+Package: pgffor 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex)
+\pgffor@iter=\dimen180
+\pgffor@skip=\dimen181
+\pgffor@stack=\toks28
+\pgffor@toks=\toks29
+))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
+Package: tikz 2021/05/15 v3.1.9a (3.1.9a)
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothandlers
+.code.tex
+File: pgflibraryplothandlers.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgf@plot@mark@count=\count274
+\pgfplotmarksize=\dimen182
+)
+\tikz@lastx=\dimen183
+\tikz@lasty=\dimen184
+\tikz@lastxsaved=\dimen185
+\tikz@lastysaved=\dimen186
+\tikz@lastmovetox=\dimen187
+\tikz@lastmovetoy=\dimen188
+\tikzleveldistance=\dimen189
+\tikzsiblingdistance=\dimen190
+\tikz@figbox=\box57
+\tikz@figbox@bg=\box58
+\tikz@tempbox=\box59
+\tikz@tempbox@bg=\box60
+\tikztreelevel=\count275
+\tikznumberofchildren=\count276
+\tikznumberofcurrentchild=\count277
+\tikz@fig@count=\count278
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.code.tex
+File: pgfmodulematrix.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+\pgfmatrixcurrentrow=\count279
+\pgfmatrixcurrentcolumn=\count280
+\pgf@matrix@numberofcolumns=\count281
+)
+\tikz@expandcount=\count282
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarytopaths.code.tex
+File: tikzlibrarytopaths.code.tex 2021/05/15 v3.1.9a (3.1.9a)
+)))
+\sa@box=\box61
+)
+(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2022-01-12 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count283
+\l__pdf_internal_box=\box62
+)
+No file spatiotemporal_pipeline.aux.
+\openout1 = `spatiotemporal_pipeline.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 4.
+LaTeX Font Info:    ... okay on input line 4.
+(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count284
+\scratchdimen=\dimen191
+\scratchbox=\box63
+\nofMPsegments=\count285
+\nofMParguments=\count286
+\everyMPshowfont=\toks30
+\MPscratchCnt=\count287
+\MPscratchDim=\dimen192
+\MPnumerator=\count288
+\makeMPintoPDFobject=\count289
+\everyMPtoPDFconversion=\toks31
+) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+<slices//asip_sic_t0.png, id=4, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t0.png Graphic file (type png)
+<use slices//asip_sic_t0.png>
+Package pdftex.def Info: slices//asip_sic_t0.png  used on input line 14.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t0.png, id=6, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t0.png Graphic file (type png)
+<use slices//cimr_SIC_t0.png>
+Package pdftex.def Info: slices//cimr_SIC_t0.png  used on input line 18.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t0.png, id=7, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t0.png Graphic file (type png)
+<use slices//cimr_SIT_t0.png>
+Package pdftex.def Info: slices//cimr_SIT_t0.png  used on input line 22.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t0.png, id=8, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t0.png Graphic file (type png)
+<use slices//cristal_SIT_t0.png>
+Package pdftex.def Info: slices//cristal_SIT_t0.png  used on input line 26.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t0.png, id=9, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t0.png Graphic file (type png)
+<use slices//cristal_SSH_t0.png>
+Package pdftex.def Info: slices//cristal_SSH_t0.png  used on input line 30.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t1.png, id=10, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t1.png Graphic file (type png)
+<use slices//asip_sic_t1.png>
+Package pdftex.def Info: slices//asip_sic_t1.png  used on input line 34.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t1.png, id=11, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t1.png Graphic file (type png)
+<use slices//cimr_SIC_t1.png>
+Package pdftex.def Info: slices//cimr_SIC_t1.png  used on input line 38.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t1.png, id=12, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t1.png Graphic file (type png)
+<use slices//cimr_SIT_t1.png>
+Package pdftex.def Info: slices//cimr_SIT_t1.png  used on input line 42.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t1.png, id=13, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t1.png Graphic file (type png)
+<use slices//cristal_SIT_t1.png>
+Package pdftex.def Info: slices//cristal_SIT_t1.png  used on input line 46.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t1.png, id=14, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t1.png Graphic file (type png)
+<use slices//cristal_SSH_t1.png>
+Package pdftex.def Info: slices//cristal_SSH_t1.png  used on input line 50.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t2.png, id=15, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t2.png Graphic file (type png)
+<use slices//asip_sic_t2.png>
+Package pdftex.def Info: slices//asip_sic_t2.png  used on input line 54.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t2.png, id=16, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t2.png Graphic file (type png)
+<use slices//cimr_SIC_t2.png>
+Package pdftex.def Info: slices//cimr_SIC_t2.png  used on input line 58.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t2.png, id=17, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t2.png Graphic file (type png)
+<use slices//cimr_SIT_t2.png>
+Package pdftex.def Info: slices//cimr_SIT_t2.png  used on input line 62.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t2.png, id=18, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t2.png Graphic file (type png)
+<use slices//cristal_SIT_t2.png>
+Package pdftex.def Info: slices//cristal_SIT_t2.png  used on input line 66.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t2.png, id=19, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t2.png Graphic file (type png)
+<use slices//cristal_SSH_t2.png>
+Package pdftex.def Info: slices//cristal_SSH_t2.png  used on input line 70.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t3.png, id=20, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t3.png Graphic file (type png)
+<use slices//asip_sic_t3.png>
+Package pdftex.def Info: slices//asip_sic_t3.png  used on input line 74.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t3.png, id=21, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t3.png Graphic file (type png)
+<use slices//cimr_SIC_t3.png>
+Package pdftex.def Info: slices//cimr_SIC_t3.png  used on input line 78.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t3.png, id=22, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t3.png Graphic file (type png)
+<use slices//cimr_SIT_t3.png>
+Package pdftex.def Info: slices//cimr_SIT_t3.png  used on input line 82.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t3.png, id=23, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t3.png Graphic file (type png)
+<use slices//cristal_SIT_t3.png>
+Package pdftex.def Info: slices//cristal_SIT_t3.png  used on input line 86.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t3.png, id=24, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t3.png Graphic file (type png)
+<use slices//cristal_SSH_t3.png>
+Package pdftex.def Info: slices//cristal_SSH_t3.png  used on input line 90.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t4.png, id=25, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t4.png Graphic file (type png)
+<use slices//asip_sic_t4.png>
+Package pdftex.def Info: slices//asip_sic_t4.png  used on input line 94.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t4.png, id=26, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t4.png Graphic file (type png)
+<use slices//cimr_SIC_t4.png>
+Package pdftex.def Info: slices//cimr_SIC_t4.png  used on input line 98.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t4.png, id=27, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t4.png Graphic file (type png)
+<use slices//cimr_SIT_t4.png>
+Package pdftex.def Info: slices//cimr_SIT_t4.png  used on input line 102.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t4.png, id=28, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t4.png Graphic file (type png)
+<use slices//cristal_SIT_t4.png>
+Package pdftex.def Info: slices//cristal_SIT_t4.png  used on input line 106.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t4.png, id=29, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t4.png Graphic file (type png)
+<use slices//cristal_SSH_t4.png>
+Package pdftex.def Info: slices//cristal_SSH_t4.png  used on input line 110.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t5.png, id=30, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t5.png Graphic file (type png)
+<use slices//asip_sic_t5.png>
+Package pdftex.def Info: slices//asip_sic_t5.png  used on input line 114.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t5.png, id=31, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t5.png Graphic file (type png)
+<use slices//cimr_SIC_t5.png>
+Package pdftex.def Info: slices//cimr_SIC_t5.png  used on input line 118.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t5.png, id=32, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t5.png Graphic file (type png)
+<use slices//cimr_SIT_t5.png>
+Package pdftex.def Info: slices//cimr_SIT_t5.png  used on input line 122.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t5.png, id=33, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t5.png Graphic file (type png)
+<use slices//cristal_SIT_t5.png>
+Package pdftex.def Info: slices//cristal_SIT_t5.png  used on input line 126.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t5.png, id=34, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t5.png Graphic file (type png)
+<use slices//cristal_SSH_t5.png>
+Package pdftex.def Info: slices//cristal_SSH_t5.png  used on input line 130.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t6.png, id=35, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t6.png Graphic file (type png)
+<use slices//asip_sic_t6.png>
+Package pdftex.def Info: slices//asip_sic_t6.png  used on input line 134.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t6.png, id=36, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t6.png Graphic file (type png)
+<use slices//cimr_SIC_t6.png>
+Package pdftex.def Info: slices//cimr_SIC_t6.png  used on input line 138.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t6.png, id=37, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t6.png Graphic file (type png)
+<use slices//cimr_SIT_t6.png>
+Package pdftex.def Info: slices//cimr_SIT_t6.png  used on input line 142.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t6.png, id=38, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t6.png Graphic file (type png)
+<use slices//cristal_SIT_t6.png>
+Package pdftex.def Info: slices//cristal_SIT_t6.png  used on input line 146.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t6.png, id=39, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t6.png Graphic file (type png)
+<use slices//cristal_SSH_t6.png>
+Package pdftex.def Info: slices//cristal_SSH_t6.png  used on input line 150.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t7.png, id=40, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t7.png Graphic file (type png)
+<use slices//asip_sic_t7.png>
+Package pdftex.def Info: slices//asip_sic_t7.png  used on input line 154.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t7.png, id=41, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t7.png Graphic file (type png)
+<use slices//cimr_SIC_t7.png>
+Package pdftex.def Info: slices//cimr_SIC_t7.png  used on input line 158.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t7.png, id=42, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t7.png Graphic file (type png)
+<use slices//cimr_SIT_t7.png>
+Package pdftex.def Info: slices//cimr_SIT_t7.png  used on input line 162.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t7.png, id=43, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t7.png Graphic file (type png)
+<use slices//cristal_SIT_t7.png>
+Package pdftex.def Info: slices//cristal_SIT_t7.png  used on input line 166.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t7.png, id=44, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t7.png Graphic file (type png)
+<use slices//cristal_SSH_t7.png>
+Package pdftex.def Info: slices//cristal_SSH_t7.png  used on input line 170.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t8.png, id=45, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t8.png Graphic file (type png)
+<use slices//asip_sic_t8.png>
+Package pdftex.def Info: slices//asip_sic_t8.png  used on input line 174.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t8.png, id=46, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t8.png Graphic file (type png)
+<use slices//cimr_SIC_t8.png>
+Package pdftex.def Info: slices//cimr_SIC_t8.png  used on input line 178.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t8.png, id=47, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t8.png Graphic file (type png)
+<use slices//cimr_SIT_t8.png>
+Package pdftex.def Info: slices//cimr_SIT_t8.png  used on input line 182.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t8.png, id=48, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t8.png Graphic file (type png)
+<use slices//cristal_SIT_t8.png>
+Package pdftex.def Info: slices//cristal_SIT_t8.png  used on input line 186.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t8.png, id=49, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t8.png Graphic file (type png)
+<use slices//cristal_SSH_t8.png>
+Package pdftex.def Info: slices//cristal_SSH_t8.png  used on input line 190.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t9.png, id=50, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t9.png Graphic file (type png)
+<use slices//asip_sic_t9.png>
+Package pdftex.def Info: slices//asip_sic_t9.png  used on input line 194.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t9.png, id=51, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t9.png Graphic file (type png)
+<use slices//cimr_SIC_t9.png>
+Package pdftex.def Info: slices//cimr_SIC_t9.png  used on input line 198.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t9.png, id=52, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t9.png Graphic file (type png)
+<use slices//cimr_SIT_t9.png>
+Package pdftex.def Info: slices//cimr_SIT_t9.png  used on input line 202.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t9.png, id=53, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t9.png Graphic file (type png)
+<use slices//cristal_SIT_t9.png>
+Package pdftex.def Info: slices//cristal_SIT_t9.png  used on input line 206.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t9.png, id=54, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t9.png Graphic file (type png)
+<use slices//cristal_SSH_t9.png>
+Package pdftex.def Info: slices//cristal_SSH_t9.png  used on input line 210.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t10.png, id=55, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t10.png Graphic file (type png)
+<use slices//asip_sic_t10.png>
+Package pdftex.def Info: slices//asip_sic_t10.png  used on input line 214.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t10.png, id=56, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t10.png Graphic file (type png)
+<use slices//cimr_SIC_t10.png>
+Package pdftex.def Info: slices//cimr_SIC_t10.png  used on input line 218.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t10.png, id=57, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t10.png Graphic file (type png)
+<use slices//cimr_SIT_t10.png>
+Package pdftex.def Info: slices//cimr_SIT_t10.png  used on input line 222.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t10.png, id=58, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t10.png Graphic file (type png)
+<use slices//cristal_SIT_t10.png>
+Package pdftex.def Info: slices//cristal_SIT_t10.png  used on input line 226.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t10.png, id=59, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t10.png Graphic file (type png)
+<use slices//cristal_SSH_t10.png>
+Package pdftex.def Info: slices//cristal_SSH_t10.png  used on input line 230.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//asip_sic_t11.png, id=60, 111.2958pt x 111.2958pt>
+File: slices//asip_sic_t11.png Graphic file (type png)
+<use slices//asip_sic_t11.png>
+Package pdftex.def Info: slices//asip_sic_t11.png  used on input line 234.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIC_t11.png, id=61, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIC_t11.png Graphic file (type png)
+<use slices//cimr_SIC_t11.png>
+Package pdftex.def Info: slices//cimr_SIC_t11.png  used on input line 238.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cimr_SIT_t11.png, id=62, 111.2958pt x 111.2958pt>
+File: slices//cimr_SIT_t11.png Graphic file (type png)
+<use slices//cimr_SIT_t11.png>
+Package pdftex.def Info: slices//cimr_SIT_t11.png  used on input line 242.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SIT_t11.png, id=63, 111.2958pt x 111.2958pt>
+File: slices//cristal_SIT_t11.png Graphic file (type png)
+<use slices//cristal_SIT_t11.png>
+Package pdftex.def Info: slices//cristal_SIT_t11.png  used on input line 246.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+<slices//cristal_SSH_t11.png, id=64, 111.2958pt x 111.2958pt>
+File: slices//cristal_SSH_t11.png Graphic file (type png)
+<use slices//cristal_SSH_t11.png>
+Package pdftex.def Info: slices//cristal_SSH_t11.png  used on input line 250.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t0.png Graphic file (type png)
+<use slices//asip_sic_t0.png>
+Package pdftex.def Info: slices//asip_sic_t0.png  used on input line 258.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t0.png Graphic file (type png)
+<use slices//cimr_SIC_t0.png>
+Package pdftex.def Info: slices//cimr_SIC_t0.png  used on input line 262.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t0.png Graphic file (type png)
+<use slices//cimr_SIT_t0.png>
+Package pdftex.def Info: slices//cimr_SIT_t0.png  used on input line 266.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t0.png Graphic file (type png)
+<use slices//cristal_SIT_t0.png>
+Package pdftex.def Info: slices//cristal_SIT_t0.png  used on input line 270.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t0.png Graphic file (type png)
+<use slices//cristal_SSH_t0.png>
+Package pdftex.def Info: slices//cristal_SSH_t0.png  used on input line 274.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t1.png Graphic file (type png)
+<use slices//asip_sic_t1.png>
+Package pdftex.def Info: slices//asip_sic_t1.png  used on input line 278.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t1.png Graphic file (type png)
+<use slices//cimr_SIC_t1.png>
+Package pdftex.def Info: slices//cimr_SIC_t1.png  used on input line 282.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t1.png Graphic file (type png)
+<use slices//cimr_SIT_t1.png>
+Package pdftex.def Info: slices//cimr_SIT_t1.png  used on input line 286.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t1.png Graphic file (type png)
+<use slices//cristal_SIT_t1.png>
+Package pdftex.def Info: slices//cristal_SIT_t1.png  used on input line 290.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t1.png Graphic file (type png)
+<use slices//cristal_SSH_t1.png>
+Package pdftex.def Info: slices//cristal_SSH_t1.png  used on input line 294.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t2.png Graphic file (type png)
+<use slices//asip_sic_t2.png>
+Package pdftex.def Info: slices//asip_sic_t2.png  used on input line 298.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t2.png Graphic file (type png)
+<use slices//cimr_SIC_t2.png>
+Package pdftex.def Info: slices//cimr_SIC_t2.png  used on input line 302.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t2.png Graphic file (type png)
+<use slices//cimr_SIT_t2.png>
+Package pdftex.def Info: slices//cimr_SIT_t2.png  used on input line 306.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t2.png Graphic file (type png)
+<use slices//cristal_SIT_t2.png>
+Package pdftex.def Info: slices//cristal_SIT_t2.png  used on input line 310.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t2.png Graphic file (type png)
+<use slices//cristal_SSH_t2.png>
+Package pdftex.def Info: slices//cristal_SSH_t2.png  used on input line 314.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t3.png Graphic file (type png)
+<use slices//asip_sic_t3.png>
+Package pdftex.def Info: slices//asip_sic_t3.png  used on input line 318.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t3.png Graphic file (type png)
+<use slices//cimr_SIC_t3.png>
+Package pdftex.def Info: slices//cimr_SIC_t3.png  used on input line 322.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t3.png Graphic file (type png)
+<use slices//cimr_SIT_t3.png>
+Package pdftex.def Info: slices//cimr_SIT_t3.png  used on input line 326.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t3.png Graphic file (type png)
+<use slices//cristal_SIT_t3.png>
+Package pdftex.def Info: slices//cristal_SIT_t3.png  used on input line 330.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t3.png Graphic file (type png)
+<use slices//cristal_SSH_t3.png>
+Package pdftex.def Info: slices//cristal_SSH_t3.png  used on input line 334.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t4.png Graphic file (type png)
+<use slices//asip_sic_t4.png>
+Package pdftex.def Info: slices//asip_sic_t4.png  used on input line 338.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t4.png Graphic file (type png)
+<use slices//cimr_SIC_t4.png>
+Package pdftex.def Info: slices//cimr_SIC_t4.png  used on input line 342.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t4.png Graphic file (type png)
+<use slices//cimr_SIT_t4.png>
+Package pdftex.def Info: slices//cimr_SIT_t4.png  used on input line 346.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t4.png Graphic file (type png)
+<use slices//cristal_SIT_t4.png>
+Package pdftex.def Info: slices//cristal_SIT_t4.png  used on input line 350.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t4.png Graphic file (type png)
+<use slices//cristal_SSH_t4.png>
+Package pdftex.def Info: slices//cristal_SSH_t4.png  used on input line 354.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t5.png Graphic file (type png)
+<use slices//asip_sic_t5.png>
+Package pdftex.def Info: slices//asip_sic_t5.png  used on input line 358.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t5.png Graphic file (type png)
+<use slices//cimr_SIC_t5.png>
+Package pdftex.def Info: slices//cimr_SIC_t5.png  used on input line 362.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t5.png Graphic file (type png)
+<use slices//cimr_SIT_t5.png>
+Package pdftex.def Info: slices//cimr_SIT_t5.png  used on input line 366.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t5.png Graphic file (type png)
+<use slices//cristal_SIT_t5.png>
+Package pdftex.def Info: slices//cristal_SIT_t5.png  used on input line 370.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t5.png Graphic file (type png)
+<use slices//cristal_SSH_t5.png>
+Package pdftex.def Info: slices//cristal_SSH_t5.png  used on input line 374.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t6.png Graphic file (type png)
+<use slices//asip_sic_t6.png>
+Package pdftex.def Info: slices//asip_sic_t6.png  used on input line 378.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t6.png Graphic file (type png)
+<use slices//cimr_SIC_t6.png>
+Package pdftex.def Info: slices//cimr_SIC_t6.png  used on input line 382.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t6.png Graphic file (type png)
+<use slices//cimr_SIT_t6.png>
+Package pdftex.def Info: slices//cimr_SIT_t6.png  used on input line 386.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t6.png Graphic file (type png)
+<use slices//cristal_SIT_t6.png>
+Package pdftex.def Info: slices//cristal_SIT_t6.png  used on input line 390.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t6.png Graphic file (type png)
+<use slices//cristal_SSH_t6.png>
+Package pdftex.def Info: slices//cristal_SSH_t6.png  used on input line 394.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t7.png Graphic file (type png)
+<use slices//asip_sic_t7.png>
+Package pdftex.def Info: slices//asip_sic_t7.png  used on input line 398.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t7.png Graphic file (type png)
+<use slices//cimr_SIC_t7.png>
+Package pdftex.def Info: slices//cimr_SIC_t7.png  used on input line 402.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t7.png Graphic file (type png)
+<use slices//cimr_SIT_t7.png>
+Package pdftex.def Info: slices//cimr_SIT_t7.png  used on input line 406.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t7.png Graphic file (type png)
+<use slices//cristal_SIT_t7.png>
+Package pdftex.def Info: slices//cristal_SIT_t7.png  used on input line 410.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t7.png Graphic file (type png)
+<use slices//cristal_SSH_t7.png>
+Package pdftex.def Info: slices//cristal_SSH_t7.png  used on input line 414.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t8.png Graphic file (type png)
+<use slices//asip_sic_t8.png>
+Package pdftex.def Info: slices//asip_sic_t8.png  used on input line 418.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t8.png Graphic file (type png)
+<use slices//cimr_SIC_t8.png>
+Package pdftex.def Info: slices//cimr_SIC_t8.png  used on input line 422.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t8.png Graphic file (type png)
+<use slices//cimr_SIT_t8.png>
+Package pdftex.def Info: slices//cimr_SIT_t8.png  used on input line 426.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t8.png Graphic file (type png)
+<use slices//cristal_SIT_t8.png>
+Package pdftex.def Info: slices//cristal_SIT_t8.png  used on input line 430.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t8.png Graphic file (type png)
+<use slices//cristal_SSH_t8.png>
+Package pdftex.def Info: slices//cristal_SSH_t8.png  used on input line 434.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t9.png Graphic file (type png)
+<use slices//asip_sic_t9.png>
+Package pdftex.def Info: slices//asip_sic_t9.png  used on input line 438.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t9.png Graphic file (type png)
+<use slices//cimr_SIC_t9.png>
+Package pdftex.def Info: slices//cimr_SIC_t9.png  used on input line 442.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t9.png Graphic file (type png)
+<use slices//cimr_SIT_t9.png>
+Package pdftex.def Info: slices//cimr_SIT_t9.png  used on input line 446.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t9.png Graphic file (type png)
+<use slices//cristal_SIT_t9.png>
+Package pdftex.def Info: slices//cristal_SIT_t9.png  used on input line 450.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t9.png Graphic file (type png)
+<use slices//cristal_SSH_t9.png>
+Package pdftex.def Info: slices//cristal_SSH_t9.png  used on input line 454.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t10.png Graphic file (type png)
+<use slices//asip_sic_t10.png>
+Package pdftex.def Info: slices//asip_sic_t10.png  used on input line 458.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t10.png Graphic file (type png)
+<use slices//cimr_SIC_t10.png>
+Package pdftex.def Info: slices//cimr_SIC_t10.png  used on input line 462.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t10.png Graphic file (type png)
+<use slices//cimr_SIT_t10.png>
+Package pdftex.def Info: slices//cimr_SIT_t10.png  used on input line 466.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t10.png Graphic file (type png)
+<use slices//cristal_SIT_t10.png>
+Package pdftex.def Info: slices//cristal_SIT_t10.png  used on input line 470.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t10.png Graphic file (type png)
+<use slices//cristal_SSH_t10.png>
+Package pdftex.def Info: slices//cristal_SSH_t10.png  used on input line 474.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t11.png Graphic file (type png)
+<use slices//asip_sic_t11.png>
+Package pdftex.def Info: slices//asip_sic_t11.png  used on input line 478.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t11.png Graphic file (type png)
+<use slices//cimr_SIC_t11.png>
+Package pdftex.def Info: slices//cimr_SIC_t11.png  used on input line 482.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t11.png Graphic file (type png)
+<use slices//cimr_SIT_t11.png>
+Package pdftex.def Info: slices//cimr_SIT_t11.png  used on input line 486.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t11.png Graphic file (type png)
+<use slices//cristal_SIT_t11.png>
+Package pdftex.def Info: slices//cristal_SIT_t11.png  used on input line 490.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t11.png Graphic file (type png)
+<use slices//cristal_SSH_t11.png>
+Package pdftex.def Info: slices//cristal_SSH_t11.png  used on input line 494.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t0.png Graphic file (type png)
+<use slices//asip_sic_t0.png>
+Package pdftex.def Info: slices//asip_sic_t0.png  used on input line 502.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t0.png Graphic file (type png)
+<use slices//cimr_SIC_t0.png>
+Package pdftex.def Info: slices//cimr_SIC_t0.png  used on input line 506.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t0.png Graphic file (type png)
+<use slices//cimr_SIT_t0.png>
+Package pdftex.def Info: slices//cimr_SIT_t0.png  used on input line 510.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t0.png Graphic file (type png)
+<use slices//cristal_SIT_t0.png>
+Package pdftex.def Info: slices//cristal_SIT_t0.png  used on input line 514.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t0.png Graphic file (type png)
+<use slices//cristal_SSH_t0.png>
+Package pdftex.def Info: slices//cristal_SSH_t0.png  used on input line 518.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t1.png Graphic file (type png)
+<use slices//asip_sic_t1.png>
+Package pdftex.def Info: slices//asip_sic_t1.png  used on input line 522.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t1.png Graphic file (type png)
+<use slices//cimr_SIC_t1.png>
+Package pdftex.def Info: slices//cimr_SIC_t1.png  used on input line 526.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t1.png Graphic file (type png)
+<use slices//cimr_SIT_t1.png>
+Package pdftex.def Info: slices//cimr_SIT_t1.png  used on input line 530.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t1.png Graphic file (type png)
+<use slices//cristal_SIT_t1.png>
+Package pdftex.def Info: slices//cristal_SIT_t1.png  used on input line 534.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t1.png Graphic file (type png)
+<use slices//cristal_SSH_t1.png>
+Package pdftex.def Info: slices//cristal_SSH_t1.png  used on input line 538.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t2.png Graphic file (type png)
+<use slices//asip_sic_t2.png>
+Package pdftex.def Info: slices//asip_sic_t2.png  used on input line 542.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t2.png Graphic file (type png)
+<use slices//cimr_SIC_t2.png>
+Package pdftex.def Info: slices//cimr_SIC_t2.png  used on input line 546.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t2.png Graphic file (type png)
+<use slices//cimr_SIT_t2.png>
+Package pdftex.def Info: slices//cimr_SIT_t2.png  used on input line 550.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t2.png Graphic file (type png)
+<use slices//cristal_SIT_t2.png>
+Package pdftex.def Info: slices//cristal_SIT_t2.png  used on input line 554.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t2.png Graphic file (type png)
+<use slices//cristal_SSH_t2.png>
+Package pdftex.def Info: slices//cristal_SSH_t2.png  used on input line 558.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t3.png Graphic file (type png)
+<use slices//asip_sic_t3.png>
+Package pdftex.def Info: slices//asip_sic_t3.png  used on input line 562.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t3.png Graphic file (type png)
+<use slices//cimr_SIC_t3.png>
+Package pdftex.def Info: slices//cimr_SIC_t3.png  used on input line 566.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t3.png Graphic file (type png)
+<use slices//cimr_SIT_t3.png>
+Package pdftex.def Info: slices//cimr_SIT_t3.png  used on input line 570.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t3.png Graphic file (type png)
+<use slices//cristal_SIT_t3.png>
+Package pdftex.def Info: slices//cristal_SIT_t3.png  used on input line 574.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t3.png Graphic file (type png)
+<use slices//cristal_SSH_t3.png>
+Package pdftex.def Info: slices//cristal_SSH_t3.png  used on input line 578.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t4.png Graphic file (type png)
+<use slices//asip_sic_t4.png>
+Package pdftex.def Info: slices//asip_sic_t4.png  used on input line 582.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t4.png Graphic file (type png)
+<use slices//cimr_SIC_t4.png>
+Package pdftex.def Info: slices//cimr_SIC_t4.png  used on input line 586.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t4.png Graphic file (type png)
+<use slices//cimr_SIT_t4.png>
+Package pdftex.def Info: slices//cimr_SIT_t4.png  used on input line 590.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t4.png Graphic file (type png)
+<use slices//cristal_SIT_t4.png>
+Package pdftex.def Info: slices//cristal_SIT_t4.png  used on input line 594.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t4.png Graphic file (type png)
+<use slices//cristal_SSH_t4.png>
+Package pdftex.def Info: slices//cristal_SSH_t4.png  used on input line 598.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t5.png Graphic file (type png)
+<use slices//asip_sic_t5.png>
+Package pdftex.def Info: slices//asip_sic_t5.png  used on input line 602.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t5.png Graphic file (type png)
+<use slices//cimr_SIC_t5.png>
+Package pdftex.def Info: slices//cimr_SIC_t5.png  used on input line 606.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t5.png Graphic file (type png)
+<use slices//cimr_SIT_t5.png>
+Package pdftex.def Info: slices//cimr_SIT_t5.png  used on input line 610.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t5.png Graphic file (type png)
+<use slices//cristal_SIT_t5.png>
+Package pdftex.def Info: slices//cristal_SIT_t5.png  used on input line 614.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t5.png Graphic file (type png)
+<use slices//cristal_SSH_t5.png>
+Package pdftex.def Info: slices//cristal_SSH_t5.png  used on input line 618.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t6.png Graphic file (type png)
+<use slices//asip_sic_t6.png>
+Package pdftex.def Info: slices//asip_sic_t6.png  used on input line 622.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t6.png Graphic file (type png)
+<use slices//cimr_SIC_t6.png>
+Package pdftex.def Info: slices//cimr_SIC_t6.png  used on input line 626.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t6.png Graphic file (type png)
+<use slices//cimr_SIT_t6.png>
+Package pdftex.def Info: slices//cimr_SIT_t6.png  used on input line 630.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t6.png Graphic file (type png)
+<use slices//cristal_SIT_t6.png>
+Package pdftex.def Info: slices//cristal_SIT_t6.png  used on input line 634.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t6.png Graphic file (type png)
+<use slices//cristal_SSH_t6.png>
+Package pdftex.def Info: slices//cristal_SSH_t6.png  used on input line 638.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t7.png Graphic file (type png)
+<use slices//asip_sic_t7.png>
+Package pdftex.def Info: slices//asip_sic_t7.png  used on input line 642.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t7.png Graphic file (type png)
+<use slices//cimr_SIC_t7.png>
+Package pdftex.def Info: slices//cimr_SIC_t7.png  used on input line 646.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t7.png Graphic file (type png)
+<use slices//cimr_SIT_t7.png>
+Package pdftex.def Info: slices//cimr_SIT_t7.png  used on input line 650.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t7.png Graphic file (type png)
+<use slices//cristal_SIT_t7.png>
+Package pdftex.def Info: slices//cristal_SIT_t7.png  used on input line 654.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t7.png Graphic file (type png)
+<use slices//cristal_SSH_t7.png>
+Package pdftex.def Info: slices//cristal_SSH_t7.png  used on input line 658.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t8.png Graphic file (type png)
+<use slices//asip_sic_t8.png>
+Package pdftex.def Info: slices//asip_sic_t8.png  used on input line 662.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t8.png Graphic file (type png)
+<use slices//cimr_SIC_t8.png>
+Package pdftex.def Info: slices//cimr_SIC_t8.png  used on input line 666.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t8.png Graphic file (type png)
+<use slices//cimr_SIT_t8.png>
+Package pdftex.def Info: slices//cimr_SIT_t8.png  used on input line 670.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t8.png Graphic file (type png)
+<use slices//cristal_SIT_t8.png>
+Package pdftex.def Info: slices//cristal_SIT_t8.png  used on input line 674.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t8.png Graphic file (type png)
+<use slices//cristal_SSH_t8.png>
+Package pdftex.def Info: slices//cristal_SSH_t8.png  used on input line 678.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t9.png Graphic file (type png)
+<use slices//asip_sic_t9.png>
+Package pdftex.def Info: slices//asip_sic_t9.png  used on input line 682.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t9.png Graphic file (type png)
+<use slices//cimr_SIC_t9.png>
+Package pdftex.def Info: slices//cimr_SIC_t9.png  used on input line 686.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t9.png Graphic file (type png)
+<use slices//cimr_SIT_t9.png>
+Package pdftex.def Info: slices//cimr_SIT_t9.png  used on input line 690.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t9.png Graphic file (type png)
+<use slices//cristal_SIT_t9.png>
+Package pdftex.def Info: slices//cristal_SIT_t9.png  used on input line 694.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t9.png Graphic file (type png)
+<use slices//cristal_SSH_t9.png>
+Package pdftex.def Info: slices//cristal_SSH_t9.png  used on input line 698.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t10.png Graphic file (type png)
+<use slices//asip_sic_t10.png>
+Package pdftex.def Info: slices//asip_sic_t10.png  used on input line 702.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t10.png Graphic file (type png)
+<use slices//cimr_SIC_t10.png>
+Package pdftex.def Info: slices//cimr_SIC_t10.png  used on input line 706.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t10.png Graphic file (type png)
+<use slices//cimr_SIT_t10.png>
+Package pdftex.def Info: slices//cimr_SIT_t10.png  used on input line 710.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t10.png Graphic file (type png)
+<use slices//cristal_SIT_t10.png>
+Package pdftex.def Info: slices//cristal_SIT_t10.png  used on input line 714.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t10.png Graphic file (type png)
+<use slices//cristal_SSH_t10.png>
+Package pdftex.def Info: slices//cristal_SSH_t10.png  used on input line 718.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t11.png Graphic file (type png)
+<use slices//asip_sic_t11.png>
+Package pdftex.def Info: slices//asip_sic_t11.png  used on input line 722.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t11.png Graphic file (type png)
+<use slices//cimr_SIC_t11.png>
+Package pdftex.def Info: slices//cimr_SIC_t11.png  used on input line 726.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t11.png Graphic file (type png)
+<use slices//cimr_SIT_t11.png>
+Package pdftex.def Info: slices//cimr_SIT_t11.png  used on input line 730.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t11.png Graphic file (type png)
+<use slices//cristal_SIT_t11.png>
+Package pdftex.def Info: slices//cristal_SIT_t11.png  used on input line 734.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t11.png Graphic file (type png)
+<use slices//cristal_SSH_t11.png>
+Package pdftex.def Info: slices//cristal_SSH_t11.png  used on input line 738.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t0.png Graphic file (type png)
+<use slices//asip_sic_t0.png>
+Package pdftex.def Info: slices//asip_sic_t0.png  used on input line 746.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t0.png Graphic file (type png)
+<use slices//cimr_SIC_t0.png>
+Package pdftex.def Info: slices//cimr_SIC_t0.png  used on input line 750.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t0.png Graphic file (type png)
+<use slices//cimr_SIT_t0.png>
+Package pdftex.def Info: slices//cimr_SIT_t0.png  used on input line 754.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t0.png Graphic file (type png)
+<use slices//cristal_SIT_t0.png>
+Package pdftex.def Info: slices//cristal_SIT_t0.png  used on input line 758.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t0.png Graphic file (type png)
+<use slices//cristal_SSH_t0.png>
+Package pdftex.def Info: slices//cristal_SSH_t0.png  used on input line 762.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t1.png Graphic file (type png)
+<use slices//asip_sic_t1.png>
+Package pdftex.def Info: slices//asip_sic_t1.png  used on input line 766.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t1.png Graphic file (type png)
+<use slices//cimr_SIC_t1.png>
+Package pdftex.def Info: slices//cimr_SIC_t1.png  used on input line 770.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t1.png Graphic file (type png)
+<use slices//cimr_SIT_t1.png>
+Package pdftex.def Info: slices//cimr_SIT_t1.png  used on input line 774.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t1.png Graphic file (type png)
+<use slices//cristal_SIT_t1.png>
+Package pdftex.def Info: slices//cristal_SIT_t1.png  used on input line 778.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t1.png Graphic file (type png)
+<use slices//cristal_SSH_t1.png>
+Package pdftex.def Info: slices//cristal_SSH_t1.png  used on input line 782.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t2.png Graphic file (type png)
+<use slices//asip_sic_t2.png>
+Package pdftex.def Info: slices//asip_sic_t2.png  used on input line 786.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t2.png Graphic file (type png)
+<use slices//cimr_SIC_t2.png>
+Package pdftex.def Info: slices//cimr_SIC_t2.png  used on input line 790.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t2.png Graphic file (type png)
+<use slices//cimr_SIT_t2.png>
+Package pdftex.def Info: slices//cimr_SIT_t2.png  used on input line 794.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t2.png Graphic file (type png)
+<use slices//cristal_SIT_t2.png>
+Package pdftex.def Info: slices//cristal_SIT_t2.png  used on input line 798.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t2.png Graphic file (type png)
+<use slices//cristal_SSH_t2.png>
+Package pdftex.def Info: slices//cristal_SSH_t2.png  used on input line 802.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t3.png Graphic file (type png)
+<use slices//asip_sic_t3.png>
+Package pdftex.def Info: slices//asip_sic_t3.png  used on input line 806.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t3.png Graphic file (type png)
+<use slices//cimr_SIC_t3.png>
+Package pdftex.def Info: slices//cimr_SIC_t3.png  used on input line 810.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t3.png Graphic file (type png)
+<use slices//cimr_SIT_t3.png>
+Package pdftex.def Info: slices//cimr_SIT_t3.png  used on input line 814.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t3.png Graphic file (type png)
+<use slices//cristal_SIT_t3.png>
+Package pdftex.def Info: slices//cristal_SIT_t3.png  used on input line 818.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t3.png Graphic file (type png)
+<use slices//cristal_SSH_t3.png>
+Package pdftex.def Info: slices//cristal_SSH_t3.png  used on input line 822.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t4.png Graphic file (type png)
+<use slices//asip_sic_t4.png>
+Package pdftex.def Info: slices//asip_sic_t4.png  used on input line 826.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t4.png Graphic file (type png)
+<use slices//cimr_SIC_t4.png>
+Package pdftex.def Info: slices//cimr_SIC_t4.png  used on input line 830.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t4.png Graphic file (type png)
+<use slices//cimr_SIT_t4.png>
+Package pdftex.def Info: slices//cimr_SIT_t4.png  used on input line 834.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t4.png Graphic file (type png)
+<use slices//cristal_SIT_t4.png>
+Package pdftex.def Info: slices//cristal_SIT_t4.png  used on input line 838.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t4.png Graphic file (type png)
+<use slices//cristal_SSH_t4.png>
+Package pdftex.def Info: slices//cristal_SSH_t4.png  used on input line 842.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t5.png Graphic file (type png)
+<use slices//asip_sic_t5.png>
+Package pdftex.def Info: slices//asip_sic_t5.png  used on input line 846.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t5.png Graphic file (type png)
+<use slices//cimr_SIC_t5.png>
+Package pdftex.def Info: slices//cimr_SIC_t5.png  used on input line 850.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t5.png Graphic file (type png)
+<use slices//cimr_SIT_t5.png>
+Package pdftex.def Info: slices//cimr_SIT_t5.png  used on input line 854.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t5.png Graphic file (type png)
+<use slices//cristal_SIT_t5.png>
+Package pdftex.def Info: slices//cristal_SIT_t5.png  used on input line 858.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t5.png Graphic file (type png)
+<use slices//cristal_SSH_t5.png>
+Package pdftex.def Info: slices//cristal_SSH_t5.png  used on input line 862.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t6.png Graphic file (type png)
+<use slices//asip_sic_t6.png>
+Package pdftex.def Info: slices//asip_sic_t6.png  used on input line 866.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t6.png Graphic file (type png)
+<use slices//cimr_SIC_t6.png>
+Package pdftex.def Info: slices//cimr_SIC_t6.png  used on input line 870.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t6.png Graphic file (type png)
+<use slices//cimr_SIT_t6.png>
+Package pdftex.def Info: slices//cimr_SIT_t6.png  used on input line 874.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t6.png Graphic file (type png)
+<use slices//cristal_SIT_t6.png>
+Package pdftex.def Info: slices//cristal_SIT_t6.png  used on input line 878.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t6.png Graphic file (type png)
+<use slices//cristal_SSH_t6.png>
+Package pdftex.def Info: slices//cristal_SSH_t6.png  used on input line 882.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t7.png Graphic file (type png)
+<use slices//asip_sic_t7.png>
+Package pdftex.def Info: slices//asip_sic_t7.png  used on input line 886.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t7.png Graphic file (type png)
+<use slices//cimr_SIC_t7.png>
+Package pdftex.def Info: slices//cimr_SIC_t7.png  used on input line 890.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t7.png Graphic file (type png)
+<use slices//cimr_SIT_t7.png>
+Package pdftex.def Info: slices//cimr_SIT_t7.png  used on input line 894.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t7.png Graphic file (type png)
+<use slices//cristal_SIT_t7.png>
+Package pdftex.def Info: slices//cristal_SIT_t7.png  used on input line 898.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t7.png Graphic file (type png)
+<use slices//cristal_SSH_t7.png>
+Package pdftex.def Info: slices//cristal_SSH_t7.png  used on input line 902.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t8.png Graphic file (type png)
+<use slices//asip_sic_t8.png>
+Package pdftex.def Info: slices//asip_sic_t8.png  used on input line 906.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t8.png Graphic file (type png)
+<use slices//cimr_SIC_t8.png>
+Package pdftex.def Info: slices//cimr_SIC_t8.png  used on input line 910.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t8.png Graphic file (type png)
+<use slices//cimr_SIT_t8.png>
+Package pdftex.def Info: slices//cimr_SIT_t8.png  used on input line 914.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t8.png Graphic file (type png)
+<use slices//cristal_SIT_t8.png>
+Package pdftex.def Info: slices//cristal_SIT_t8.png  used on input line 918.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t8.png Graphic file (type png)
+<use slices//cristal_SSH_t8.png>
+Package pdftex.def Info: slices//cristal_SSH_t8.png  used on input line 922.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t9.png Graphic file (type png)
+<use slices//asip_sic_t9.png>
+Package pdftex.def Info: slices//asip_sic_t9.png  used on input line 926.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t9.png Graphic file (type png)
+<use slices//cimr_SIC_t9.png>
+Package pdftex.def Info: slices//cimr_SIC_t9.png  used on input line 930.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t9.png Graphic file (type png)
+<use slices//cimr_SIT_t9.png>
+Package pdftex.def Info: slices//cimr_SIT_t9.png  used on input line 934.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t9.png Graphic file (type png)
+<use slices//cristal_SIT_t9.png>
+Package pdftex.def Info: slices//cristal_SIT_t9.png  used on input line 938.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t9.png Graphic file (type png)
+<use slices//cristal_SSH_t9.png>
+Package pdftex.def Info: slices//cristal_SSH_t9.png  used on input line 942.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t10.png Graphic file (type png)
+<use slices//asip_sic_t10.png>
+Package pdftex.def Info: slices//asip_sic_t10.png  used on input line 946.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t10.png Graphic file (type png)
+<use slices//cimr_SIC_t10.png>
+Package pdftex.def Info: slices//cimr_SIC_t10.png  used on input line 950.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t10.png Graphic file (type png)
+<use slices//cimr_SIT_t10.png>
+Package pdftex.def Info: slices//cimr_SIT_t10.png  used on input line 954.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t10.png Graphic file (type png)
+<use slices//cristal_SIT_t10.png>
+Package pdftex.def Info: slices//cristal_SIT_t10.png  used on input line 958.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t10.png Graphic file (type png)
+<use slices//cristal_SSH_t10.png>
+Package pdftex.def Info: slices//cristal_SSH_t10.png  used on input line 962.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t11.png Graphic file (type png)
+<use slices//asip_sic_t11.png>
+Package pdftex.def Info: slices//asip_sic_t11.png  used on input line 966.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t11.png Graphic file (type png)
+<use slices//cimr_SIC_t11.png>
+Package pdftex.def Info: slices//cimr_SIC_t11.png  used on input line 970.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t11.png Graphic file (type png)
+<use slices//cimr_SIT_t11.png>
+Package pdftex.def Info: slices//cimr_SIT_t11.png  used on input line 974.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t11.png Graphic file (type png)
+<use slices//cristal_SIT_t11.png>
+Package pdftex.def Info: slices//cristal_SIT_t11.png  used on input line 978.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t11.png Graphic file (type png)
+<use slices//cristal_SSH_t11.png>
+Package pdftex.def Info: slices//cristal_SSH_t11.png  used on input line 982.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t0.png Graphic file (type png)
+<use slices//asip_sic_t0.png>
+Package pdftex.def Info: slices//asip_sic_t0.png  used on input line 990.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t0.png Graphic file (type png)
+<use slices//cimr_SIC_t0.png>
+Package pdftex.def Info: slices//cimr_SIC_t0.png  used on input line 994.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t0.png Graphic file (type png)
+<use slices//cimr_SIT_t0.png>
+Package pdftex.def Info: slices//cimr_SIT_t0.png  used on input line 998.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t0.png Graphic file (type png)
+<use slices//cristal_SIT_t0.png>
+Package pdftex.def Info: slices//cristal_SIT_t0.png  used on input line 1002.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t0.png Graphic file (type png)
+<use slices//cristal_SSH_t0.png>
+Package pdftex.def Info: slices//cristal_SSH_t0.png  used on input line 1006.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t1.png Graphic file (type png)
+<use slices//asip_sic_t1.png>
+Package pdftex.def Info: slices//asip_sic_t1.png  used on input line 1010.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t1.png Graphic file (type png)
+<use slices//cimr_SIC_t1.png>
+Package pdftex.def Info: slices//cimr_SIC_t1.png  used on input line 1014.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t1.png Graphic file (type png)
+<use slices//cimr_SIT_t1.png>
+Package pdftex.def Info: slices//cimr_SIT_t1.png  used on input line 1018.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t1.png Graphic file (type png)
+<use slices//cristal_SIT_t1.png>
+Package pdftex.def Info: slices//cristal_SIT_t1.png  used on input line 1022.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t1.png Graphic file (type png)
+<use slices//cristal_SSH_t1.png>
+Package pdftex.def Info: slices//cristal_SSH_t1.png  used on input line 1026.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t2.png Graphic file (type png)
+<use slices//asip_sic_t2.png>
+Package pdftex.def Info: slices//asip_sic_t2.png  used on input line 1030.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t2.png Graphic file (type png)
+<use slices//cimr_SIC_t2.png>
+Package pdftex.def Info: slices//cimr_SIC_t2.png  used on input line 1034.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t2.png Graphic file (type png)
+<use slices//cimr_SIT_t2.png>
+Package pdftex.def Info: slices//cimr_SIT_t2.png  used on input line 1038.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t2.png Graphic file (type png)
+<use slices//cristal_SIT_t2.png>
+Package pdftex.def Info: slices//cristal_SIT_t2.png  used on input line 1042.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t2.png Graphic file (type png)
+<use slices//cristal_SSH_t2.png>
+Package pdftex.def Info: slices//cristal_SSH_t2.png  used on input line 1046.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t3.png Graphic file (type png)
+<use slices//asip_sic_t3.png>
+Package pdftex.def Info: slices//asip_sic_t3.png  used on input line 1050.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t3.png Graphic file (type png)
+<use slices//cimr_SIC_t3.png>
+Package pdftex.def Info: slices//cimr_SIC_t3.png  used on input line 1054.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t3.png Graphic file (type png)
+<use slices//cimr_SIT_t3.png>
+Package pdftex.def Info: slices//cimr_SIT_t3.png  used on input line 1058.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t3.png Graphic file (type png)
+<use slices//cristal_SIT_t3.png>
+Package pdftex.def Info: slices//cristal_SIT_t3.png  used on input line 1062.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t3.png Graphic file (type png)
+<use slices//cristal_SSH_t3.png>
+Package pdftex.def Info: slices//cristal_SSH_t3.png  used on input line 1066.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t4.png Graphic file (type png)
+<use slices//asip_sic_t4.png>
+Package pdftex.def Info: slices//asip_sic_t4.png  used on input line 1070.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t4.png Graphic file (type png)
+<use slices//cimr_SIC_t4.png>
+Package pdftex.def Info: slices//cimr_SIC_t4.png  used on input line 1074.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t4.png Graphic file (type png)
+<use slices//cimr_SIT_t4.png>
+Package pdftex.def Info: slices//cimr_SIT_t4.png  used on input line 1078.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t4.png Graphic file (type png)
+<use slices//cristal_SIT_t4.png>
+Package pdftex.def Info: slices//cristal_SIT_t4.png  used on input line 1082.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t4.png Graphic file (type png)
+<use slices//cristal_SSH_t4.png>
+Package pdftex.def Info: slices//cristal_SSH_t4.png  used on input line 1086.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t5.png Graphic file (type png)
+<use slices//asip_sic_t5.png>
+Package pdftex.def Info: slices//asip_sic_t5.png  used on input line 1090.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t5.png Graphic file (type png)
+<use slices//cimr_SIC_t5.png>
+Package pdftex.def Info: slices//cimr_SIC_t5.png  used on input line 1094.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t5.png Graphic file (type png)
+<use slices//cimr_SIT_t5.png>
+Package pdftex.def Info: slices//cimr_SIT_t5.png  used on input line 1098.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t5.png Graphic file (type png)
+<use slices//cristal_SIT_t5.png>
+Package pdftex.def Info: slices//cristal_SIT_t5.png  used on input line 1102.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t5.png Graphic file (type png)
+<use slices//cristal_SSH_t5.png>
+Package pdftex.def Info: slices//cristal_SSH_t5.png  used on input line 1106.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t6.png Graphic file (type png)
+<use slices//asip_sic_t6.png>
+Package pdftex.def Info: slices//asip_sic_t6.png  used on input line 1110.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t6.png Graphic file (type png)
+<use slices//cimr_SIC_t6.png>
+Package pdftex.def Info: slices//cimr_SIC_t6.png  used on input line 1114.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t6.png Graphic file (type png)
+<use slices//cimr_SIT_t6.png>
+Package pdftex.def Info: slices//cimr_SIT_t6.png  used on input line 1118.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t6.png Graphic file (type png)
+<use slices//cristal_SIT_t6.png>
+Package pdftex.def Info: slices//cristal_SIT_t6.png  used on input line 1122.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t6.png Graphic file (type png)
+<use slices//cristal_SSH_t6.png>
+Package pdftex.def Info: slices//cristal_SSH_t6.png  used on input line 1126.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t7.png Graphic file (type png)
+<use slices//asip_sic_t7.png>
+Package pdftex.def Info: slices//asip_sic_t7.png  used on input line 1130.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t7.png Graphic file (type png)
+<use slices//cimr_SIC_t7.png>
+Package pdftex.def Info: slices//cimr_SIC_t7.png  used on input line 1134.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t7.png Graphic file (type png)
+<use slices//cimr_SIT_t7.png>
+Package pdftex.def Info: slices//cimr_SIT_t7.png  used on input line 1138.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t7.png Graphic file (type png)
+<use slices//cristal_SIT_t7.png>
+Package pdftex.def Info: slices//cristal_SIT_t7.png  used on input line 1142.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t7.png Graphic file (type png)
+<use slices//cristal_SSH_t7.png>
+Package pdftex.def Info: slices//cristal_SSH_t7.png  used on input line 1146.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t8.png Graphic file (type png)
+<use slices//asip_sic_t8.png>
+Package pdftex.def Info: slices//asip_sic_t8.png  used on input line 1150.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t8.png Graphic file (type png)
+<use slices//cimr_SIC_t8.png>
+Package pdftex.def Info: slices//cimr_SIC_t8.png  used on input line 1154.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t8.png Graphic file (type png)
+<use slices//cimr_SIT_t8.png>
+Package pdftex.def Info: slices//cimr_SIT_t8.png  used on input line 1158.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t8.png Graphic file (type png)
+<use slices//cristal_SIT_t8.png>
+Package pdftex.def Info: slices//cristal_SIT_t8.png  used on input line 1162.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t8.png Graphic file (type png)
+<use slices//cristal_SSH_t8.png>
+Package pdftex.def Info: slices//cristal_SSH_t8.png  used on input line 1166.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t9.png Graphic file (type png)
+<use slices//asip_sic_t9.png>
+Package pdftex.def Info: slices//asip_sic_t9.png  used on input line 1170.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t9.png Graphic file (type png)
+<use slices//cimr_SIC_t9.png>
+Package pdftex.def Info: slices//cimr_SIC_t9.png  used on input line 1174.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t9.png Graphic file (type png)
+<use slices//cimr_SIT_t9.png>
+Package pdftex.def Info: slices//cimr_SIT_t9.png  used on input line 1178.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t9.png Graphic file (type png)
+<use slices//cristal_SIT_t9.png>
+Package pdftex.def Info: slices//cristal_SIT_t9.png  used on input line 1182.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t9.png Graphic file (type png)
+<use slices//cristal_SSH_t9.png>
+Package pdftex.def Info: slices//cristal_SSH_t9.png  used on input line 1186.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t10.png Graphic file (type png)
+<use slices//asip_sic_t10.png>
+Package pdftex.def Info: slices//asip_sic_t10.png  used on input line 1190.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t10.png Graphic file (type png)
+<use slices//cimr_SIC_t10.png>
+Package pdftex.def Info: slices//cimr_SIC_t10.png  used on input line 1194.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t10.png Graphic file (type png)
+<use slices//cimr_SIT_t10.png>
+Package pdftex.def Info: slices//cimr_SIT_t10.png  used on input line 1198.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t10.png Graphic file (type png)
+<use slices//cristal_SIT_t10.png>
+Package pdftex.def Info: slices//cristal_SIT_t10.png  used on input line 1202.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t10.png Graphic file (type png)
+<use slices//cristal_SSH_t10.png>
+Package pdftex.def Info: slices//cristal_SSH_t10.png  used on input line 1206.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//asip_sic_t11.png Graphic file (type png)
+<use slices//asip_sic_t11.png>
+Package pdftex.def Info: slices//asip_sic_t11.png  used on input line 1210.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIC_t11.png Graphic file (type png)
+<use slices//cimr_SIC_t11.png>
+Package pdftex.def Info: slices//cimr_SIC_t11.png  used on input line 1214.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cimr_SIT_t11.png Graphic file (type png)
+<use slices//cimr_SIT_t11.png>
+Package pdftex.def Info: slices//cimr_SIT_t11.png  used on input line 1218.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SIT_t11.png Graphic file (type png)
+<use slices//cristal_SIT_t11.png>
+Package pdftex.def Info: slices//cristal_SIT_t11.png  used on input line 1222.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+File: slices//cristal_SSH_t11.png Graphic file (type png)
+<use slices//cristal_SSH_t11.png>
+Package pdftex.def Info: slices//cristal_SSH_t11.png  used on input line 1226.
+(pdftex.def)             Requested size: 56.9055pt x 56.90614pt.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7> on input line 1231.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 1231.
+
+[1
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map} <figures/slices//asip_sic_t
+0.png> <figures/slices//cimr_SIC_t0.png> <figures/slices//cimr_SIT_t0.png> <fig
+ures/slices//cristal_SIT_t0.png> <figures/slices//cristal_SSH_t0.png> <figures/
+slices//asip_sic_t1.png> <figures/slices//cimr_SIC_t1.png> <figures/slices//cim
+r_SIT_t1.png> <figures/slices//cristal_SIT_t1.png> <figures/slices//cristal_SSH
+_t1.png> <figures/slices//asip_sic_t2.png> <figures/slices//cimr_SIC_t2.png> <f
+igures/slices//cimr_SIT_t2.png> <figures/slices//cristal_SIT_t2.png> <figures/s
+lices//cristal_SSH_t2.png> <figures/slices//asip_sic_t3.png> <figures/slices//c
+imr_SIC_t3.png> <figures/slices//cimr_SIT_t3.png> <figures/slices//cristal_SIT_
+t3.png> <figures/slices//cristal_SSH_t3.png> <figures/slices//asip_sic_t4.png> 
+<figures/slices//cimr_SIC_t4.png> <figures/slices//cimr_SIT_t4.png> <figures/sl
+ices//cristal_SIT_t4.png> <figures/slices//cristal_SSH_t4.png> <figures/slices/
+/asip_sic_t5.png> <figures/slices//cimr_SIC_t5.png> <figures/slices//cimr_SIT_t
+5.png> <figures/slices//cristal_SIT_t5.png> <figures/slices//cristal_SSH_t5.png
+> <figures/slices//asip_sic_t6.png> <figures/slices//cimr_SIC_t6.png> <figures/
+slices//cimr_SIT_t6.png> <figures/slices//cristal_SIT_t6.png> <figures/slices//
+cristal_SSH_t6.png> <figures/slices//asip_sic_t7.png> <figures/slices//cimr_SIC
+_t7.png> <figures/slices//cimr_SIT_t7.png> <figures/slices//cristal_SIT_t7.png>
+ <figures/slices//cristal_SSH_t7.png> <figures/slices//asip_sic_t8.png> <figure
+s/slices//cimr_SIC_t8.png> <figures/slices//cimr_SIT_t8.png> <figures/slices//c
+ristal_SIT_t8.png> <figures/slices//cristal_SSH_t8.png> <figures/slices//asip_s
+ic_t9.png> <figures/slices//cimr_SIC_t9.png> <figures/slices//cimr_SIT_t9.png> 
+<figures/slices//cristal_SIT_t9.png> <figures/slices//cristal_SSH_t9.png> <figu
+res/slices//asip_sic_t10.png> <figures/slices//cimr_SIC_t10.png> <figures/slice
+s//cimr_SIT_t10.png> <figures/slices//cristal_SIT_t10.png> <figures/slices//cri
+stal_SSH_t10.png> <figures/slices//asip_sic_t11.png> <figures/slices//cimr_SIC_
+t11.png> <figures/slices//cimr_SIT_t11.png> <figures/slices//cristal_SIT_t11.pn
+g> <figures/slices//cristal_SSH_t11.png>]
+(figures/spatiotemporal_pipeline.aux) ) 
+Here is how much of TeX's memory you used:
+ 12848 strings out of 480247
+ 271998 string characters out of 5896151
+ 745029 words of memory out of 5000000
+ 30538 multiletter control sequences out of 15000+600000
+ 469259 words of font info for 28 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 115i,7n,118p,437b,626s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/share/texlive/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/ams
+fonts/cm/cmr7.pfb>
+Output written on figures/spatiotemporal_pipeline.pdf (1 page, 421034 bytes).
+PDF statistics:
+ 147 PDF objects out of 1000 (max. 8388607)
+ 17 compressed objects within 1 object stream
+ 0 named destinations out of 1000 (max. 500000)
+ 313 words of extra memory for PDF output out of 10000 (max. 10000000)
+
