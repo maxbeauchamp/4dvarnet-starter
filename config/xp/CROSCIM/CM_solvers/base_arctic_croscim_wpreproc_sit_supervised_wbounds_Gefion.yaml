@@ -5,8 +5,8 @@
 # but uses ConsistencyUNetSolver with pairwise consistency training.
 
 paths:
-  src: /dmidata/users/maxb
-  preproc: /dmidata/users/maxb/PREPROC
+  src: /dcai/users/beamax
+  preproc: /dcai/projects/cu_0026/croscim_train
 
 domain: ???
 
