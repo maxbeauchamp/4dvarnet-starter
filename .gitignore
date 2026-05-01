@@ -90,3 +90,13 @@ consistency/Notebooks/Notebooks_GP/logs_CT_dynamical_systems_spde/v1/checkpoints
 consistency/Notebooks/Notebooks_GP/logs_CT_dynamical_systems_spde/v1/checkpoints/epoch=020-step=1092-train_loss=0.0000.ckpt
 consistency/Notebooks/Notebooks_GP/logs_CT_dynamical_systems_spde/v1/checkpoints/epoch=065-step=3432-train_loss=0.0000.ckpt
 consistency/Notebooks/Notebooks_GP/logs_CT_dynamical_systems_spde/v1/checkpoints/last.ckpt
+consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde/v1/best_model/model.pt
+consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde/v1/checkpoints/epoch=034-step=1820-train_loss=0.5725.ckpt
+consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde/v1/checkpoints/epoch=038-step=2028-train_loss=0.5744.ckpt
+consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde/v1/checkpoints/epoch=037-step=1976-train_loss=0.5662.ckpt
+consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde/v1/checkpoints/last.ckpt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v1/best_model/model.pt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v1/checkpoints/epoch=024-step=1300-train_loss=-0.0015.ckpt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v1/checkpoints/epoch=022-step=1196-train_loss=0.0967.ckpt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v1/checkpoints/epoch=023-step=1248-train_loss=-0.0076.ckpt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v1/checkpoints/last.ckpt

@@ -103,7 +103,7 @@ Time discretisation:
   recomputed at every training step from timesteps_schedule.
 """
 
-from ..utils import *
+from .utils import *
 from torch.nn import functional as F
 import math
 
@@ -328,386 +328,326 @@ def model_variational_forward_wrapper(
 
 
 # ---------------------------------------------------------------------------
-# Output dataclass
+# Stabilised VarCM training (three-term loss, all targets at t''=0)
 # ---------------------------------------------------------------------------
+
+def _g_fwd(
+    model, obs_cost, prior_cost, lambda_reg,
+    x, y, t, t_prime, sigma_noise, conditioning_mode,
+):
+    """Single g_φ step — returns transported state (B,C,H,W)."""
+    x_out, _ = model_variational_forward_wrapper(
+        model, obs_cost, prior_cost, lambda_reg,
+        x, y, t, t_prime,
+        sigma_noise=sigma_noise,
+        conditioning_mode=conditioning_mode,
+    )
+    return x_out
+
 
 @dataclass
-class VariationalConsistencyTrainingOutput:
-    # Term 1: pairwise consistency via shared x_T  (anti-identity guarantee)
-    pairwise_grad:     Tensor   # out_t   -- student, gradient flows here
-    pairwise_stopgrad: Tensor   # out_t'  -- teacher stop-grad target
-
-    # Term 2: x0 anchoring via double composition to t=0 (no assumption on g)
-    #   gradient flows only through the outer call (inner is detached)
-    anchor_at_t:   Tensor   # g(sg[g(x_T,T,t)],  t,  0) -- should recover x0
-    anchor_at_tp:  Tensor   # g(sg[g(x_T,T,t')], t', 0) -- should recover x0
-    x0:            Tensor   # ground truth x0
-
-    # Term 4 (bootstrap): direct g(x_T, T, 0) ~ x0 -- single call, known target
-    direct_x0:     Tensor
-
-    # Term 3: prior regularisation  ||x_0 - Phi(x_0)||^2
-    prior_reg: Tensor
-
-    # Warmup support: raw states needed to compute linear-interpolant targets
-    x_T:    Tensor   # noisy initial state  x_0 + sigma_noise * z
-    x_at_t: Tensor   # g_student(x_T, T, t)  -- 1st hop at t
-    x_at_tp: Tensor  # g_student(x_T, T, t') -- 1st hop at t'
-
-    num_timesteps:   int
-    times:           Tensor   # (N,) solver times in [0,1]
-    t_sampled:       Tensor   # (B,) t
-    t_prime_sampled: Tensor   # (B,) t'
-    t_pp_sampled:    Tensor   # (B,) t''
+class VarCMOutput:
+    """Output of VarCMTraining.forward()."""
+    loss:          Tensor
+    l_pair:        Tensor   # Term 1: pairwise consistency (at t''=0)
+    l_long:        Tensor   # Term 2: long-chain anchor  x_T -> t -> 0
+    l_short:       Tensor   # Term 3: short-chain anchor x_t -> t' -> 0
+    num_timesteps: int
+    times:         Tensor   # full time grid (for logging)
+    t_sampled:     Tensor   # t  (B,)
+    t_p_sampled:   Tensor   # t' (B,)
 
 
-# ---------------------------------------------------------------------------
-# Training class
-# ---------------------------------------------------------------------------
-
-class VariationalConsistencyTraining:
+class VarCMTraining(nn.Module):
     """
-    Composition-based pairwise consistency training for variational dynamics.
+    Deterministic pairwise VarCM training — stabilised three-term loss.
 
-    Teacher/student strategy:
-      - student_model : the model being optimised (gradients flow through it)
-      - teacher_model : EMA of student (fast decay ~0.99); provides stable
-                        stop-grad targets for Term 1.  Without the teacher,
-                        the stop-grad target is computed from current student
-                        weights and oscillates as much as the student itself
-                        -- a classic "moving target" instability.
+    All three terms produce x_0-scale predictions (t''=0), preventing the
+    scale contradiction that causes explosion when t''≠0.
 
-    Parameters
-    ----------
-    initial_timesteps : int
-        Number of Karras discretisation steps at the start of training.
-    final_timesteps : int
-        Number of Karras discretisation steps at the end of training.
-    sigma_noise : float
-        Std of the initial Gaussian noise x_T = x_0 + sigma_noise * z.
-    lambda_pair : float
-        Weight of T1 (pairwise consistency).
-    lambda_interp : float
-        Weight of T2 (composed-path interpolant supervision).
-    lambda_prior : float
-        Weight of T3 (prior regularisation ||x - Phi(x)||^2).
-    rho : float
-        Karras schedule exponent (default 7.0).
-    schedule_power : float
-        Exponent of the power-law time grid.  p=1 gives uniform spacing.
-        p>1 concentrates steps near t=0 (refinement) and spreads them at
-        high t (fast initial denoising), producing a non-linear std collapse.
-        Typical values: 1.5 (mild), 2.0 (moderate), 3.0 (aggressive).
-    schedule : class
-        LinearSchedule (default) or TrigSchedule.
+        L = λ_pair  * || g_s(g_t(x_T,T,t), t, 0) - sg[g_t(g_t(x_T,T,t'),t',0)] ||²
+          + λ_long  * || g_s(g_t(x_T,T,t), t, 0) - x_0 ||²
+          + λ_short * (see below)
+
+    L_pair and L_long share the same student forward pass.
+
+    Two modes for L_short, controlled by ``pure_short``:
+
+    pure_short=False (default — interpolant mode):
+        x_t = alpha(t)*x_T + beta(t)*x_0   (requires knowing x_0)
+        L_short = || g_s(sg[g_s(x_t, t, t')], t', 0) - x_0 ||²
+
+    pure_short=True (pure self-consistency, *no interpolant hypothesis*):
+        Starting point: h_t = sg[g_t(x_T, T, t)]  (teacher rollout, no x_0 needed)
+        L_short = || g_s(sg[g_s(h_t, t, t')], t', 0) - sg[g_t(h_t', t', 0)] ||²
+        where h_t' = sg[g_t(x_T, T, t')]  (already computed for L_pair).
+        This is a pure two-hop semigroup constraint: the student two-step
+        x_T->t->t'->0 must match the teacher direct step x_T->t'->0,
+        with no reference to x_0 or the interpolant.
     """
 
     def __init__(
         self,
-        initial_timesteps: int = 2,
-        final_timesteps: int = 150,
-        sigma_noise: float = 1.0,
-        lambda_pair: float = 1.0,
-        lambda_interp: float = 1.0,
-        lambda_prior: float = 0.1,
-        lambda_direct: float = 1.0,   # bootstrap: g(x_T, T, 0) ~ x0 (single call)
-        rho: float = 7.0,
-        schedule_power: float = 1.0,
-        schedule=None,
-        warmup_epochs: int = 50,
-        conditioning_mode: str = "grad",  # "grad": use nabla_x J(x), "obs": use cat([y, mask])
+        initial_timesteps:  int   = 5,
+        final_timesteps:    int   = 17,
+        sigma_noise:        float = 80.0,
+        lambda_pair:        float = 1.0,
+        lambda_long:        float = 1.0,
+        lambda_short:       float = 1.0,
+        schedule_power:     float = 1.0,
+        conditioning_mode:  str   = "obs",
+        pure_short:         bool  = True,
     ) -> None:
+        super().__init__()
         self.initial_timesteps = initial_timesteps
-        self.final_timesteps = final_timesteps
-        self.sigma_noise = sigma_noise
-        self.lambda_pair = lambda_pair
-        self.lambda_interp = lambda_interp
-        self.lambda_prior = lambda_prior
-        self.lambda_direct = lambda_direct
-        self.rho = rho
-        self.schedule_power = schedule_power
-        self.schedule = schedule if schedule is not None else DEFAULT_SCHEDULE
-        self.warmup_epochs = warmup_epochs  # epochs during which we blend toward the linear interpolant
+        self.final_timesteps   = final_timesteps
+        self.sigma_noise       = sigma_noise
+        self.lambda_pair       = lambda_pair
+        self.lambda_long       = lambda_long
+        self.lambda_short      = lambda_short
+        self.schedule_power    = schedule_power
         self.conditioning_mode = conditioning_mode
+        self.pure_short        = pure_short
 
-    def _times(self, num_timesteps: int, device) -> Tensor:
-        """Returns `num_timesteps` solver times in (0, 1], ascending.
+    def _fwd(self, model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime):
+        return _g_fwd(model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime,
+                      self.sigma_noise, self.conditioning_mode)
 
-        The grid is shifted so that  times[0] = 1/(N-1)  instead of 0.
-        This avoids the  t = 0  singularity where
-            c_skip(t, t') = alpha(t') / alpha(t)  ->  infinity
-        and the UNet output is completely masked by the skip connection,
-        killing the gradient signal through L_pair.
-
-        schedule_power > 1: power-law grid, dense near t=0 and sparse at
-        high t. This forces the model to learn large initial denoising jumps
-        and fine refinement steps near t=0, producing a non-linear std collapse
-        during sampling (fast denoising at start, slow refinement at the end).
-
-        num_timesteps is recomputed at every training step via timesteps_schedule.
-        """
-        N = max(num_timesteps, 5)
-        # Uniform base grid on (0, 1]: avoids the t=0 singularity.
-        raw = torch.linspace(1.0 / (N - 1), 1.0, N, device=device)
-        # Apply power law: p>1 squeezes points toward t=0.
-        times = raw ** self.schedule_power
-        return times
-
-    def __call__(
+    def forward(
         self,
-        student_model: nn.Module,
-        teacher_model: nn.Module,
-        obs_cost: nn.Module,
-        prior_cost: nn.Module,
-        lambda_reg: nn.Parameter,
-        x: Tensor,
-        y: Tensor,
-        current_training_step: int,
-        total_training_steps: int,
-        **kwargs: Any,
-    ) -> VariationalConsistencyTrainingOutput:
-        """
-        One training step.  Three terms:
+        student:     nn.Module,
+        teacher:     nn.Module,
+        obs_cost:    nn.Module,
+        prior_cost:  nn.Module,
+        lambda_reg:  nn.Parameter,
+        x0:          Tensor,
+        y:           Tensor,
+        global_step: int,
+        total_steps: int,
+    ) -> "VarCMOutput":
+        device = x0.device
+        B = x0.shape[0]
 
-        Term 1 - Pairwise consistency (teacher/student, via shared x_T)
-          Sample t < t' < t'' on the schedule.
-          h_t  = g_teacher(x_T, T, t)   [no grad, teacher EMA]
-          h_t' = g_teacher(x_T, T, t')  [no grad, teacher EMA]
-          out_t  = g_student(h_t,  t,  t'')  [GRAD]
-          out_t' = g_teacher(h_t', t', t'') [stop-grad, teacher EMA]
-          L1 = ||out_t - sg(out_t')||^2
+        # ── Time grid ─────────────────────────────────────────────────────────
+        # karras_schedule returns ascending values (sigma_min → sigma_max).
+        # We flip to get a descending grid [1.0, ..., ~0] so that:
+        #   times[0]  = T = 1.0   (starting noise level)
+        #   times[-1] ≈ 0         (target x_0 scale)
+        # and sampling j_idx < i_idx correctly gives t_s > t_p.
+        N = timesteps_schedule(global_step, total_steps,
+                               self.initial_timesteps, self.final_timesteps)
+        times = karras_schedule(N, sigma_min=0.002 / self.sigma_noise,
+                                sigma_max=1.0, rho=7.0, device=device)
+        times = times.flip(0).pow(self.schedule_power).clamp(0.0, 1.0)
+        # Ensure exactly t=0 at the end (in case sigma_min rounds above zero)
+        if times[-1].item() > 1e-3:
+            times = torch.cat([times, torch.zeros(1, device=device)])
 
-          The teacher (EMA of student, fast decay) provides a stable target:
-          its weights change slowly, so the stop-grad target is nearly
-          constant between steps -- avoids the moving-target instability that
-          would occur if the same student computed both branches.
+        T_val  = times[0].item()   # = 1.0
+        eps    = 1e-4
+        n      = len(times)
 
-        Term 2 - Composed-path interpolant supervision
-          L2 = ||g_student(x_T, T, t)  - x_{interp,t} ||^2
-             + ||g_student(x_T, T, t') - x_{interp,t'}||^2
-          where x_{interp,s} = alpha(s)*x_T + beta(s)*x_0.
+        # ── Sample t > t' from interior of the grid ───────────────────────────
+        interior = max(n - 2, 2)
+        pair_idx = torch.randperm(interior, device=device)[:2].sort().values
+        j_idx, i_idx = int(pair_idx[0]), int(pair_idx[1])
+        # times is descending: larger index → smaller value → t_s > t_p
+        t_s    = times[j_idx + 1].expand(B)
+        t_p    = times[i_idx + 1].expand(B)
+        T_vec  = torch.full((B,), T_val, device=device, dtype=x0.dtype)
+        t0_vec = torch.full((B,), eps,   device=device, dtype=x0.dtype)
 
-          Forces the output variance to match the schedule:
-          large t -> output stays close to x_T,  small t -> approaches x_0.
+        schedule = DEFAULT_SCHEDULE
 
-        Term 3 - Prior regularisation
-          L3 = ||x_0 - Phi(x_0)||^2
-        """
-        B, C, H, W = x.shape
-        device = x.device
-        dtype  = x.dtype
-        sched  = self.schedule
+        # ── Noisy x_T (always needed) ─────────────────────────────────────────
+        x_T = torch.randn_like(x0) * self.sigma_noise
 
-        num_timesteps = timesteps_schedule(
-            current_training_step,
-            total_training_steps,
-            self.initial_timesteps,
-            self.final_timesteps,
-        )
+        # Interpolant x_t: only needed when pure_short=False
+        if not self.pure_short:
+            alpha_t    = schedule.alpha(t_s).view(B, 1, 1, 1)
+            beta_t     = schedule.beta(t_s).view(B, 1, 1, 1)
+            x_t_interp = alpha_t * x_T + beta_t * x0
 
-        times = self._times(num_timesteps, device)  # (N,) ascending in [0,1]
-        N = len(times)
-
-        # x_T = x_0 + sigma_noise * z
-        noise = torch.randn_like(x)
-        x_T   = x + self.sigma_noise * noise
-
-        T_val = times[-1]   # 1.0
-        T_vec = torch.full((B,), T_val, dtype=dtype, device=device)
-
-        # Sample three ordered indices i < j < k => t < t' < t''
-        # Start from i=0 (safe now that times[0] > 0 after _times shift).
-        i_idx = torch.randint(0, max(N - 2, 1), (B,), device=device).clamp(max=N - 3)
-        j_idx = (i_idx + 1 + (torch.rand(B, device=device) *
-                 (N - 1 - i_idx - 1).float().clamp(min=1)).long()).clamp(max=N - 2)
-        k_idx = (j_idx + 1).clamp(max=N - 1)
-
-        # Safety: ensure t_vals > 0 to avoid c_skip singularity
-        t_vals   = times[i_idx].clamp(min=1e-3)    # (B,)  t
-        tp_vals  = times[j_idx]                     # (B,)  t'
-        tpp_vals = times[k_idx]                     # (B,)  t''
-
-        # --- T1: pairwise consistency (teacher EMA -> stable stop-grad) ---
-        _cm = self.conditioning_mode
-        _sn = self.sigma_noise
+        # ── Teacher intermediates (all stop-grad) ─────────────────────────────
         with torch.no_grad():
-            h_t,  _ = model_variational_forward_wrapper(
-                teacher_model, obs_cost, prior_cost, lambda_reg,
-                x_T, y, T_vec, t_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-            )
-            h_tp, _ = model_variational_forward_wrapper(
-                teacher_model, obs_cost, prior_cost, lambda_reg,
-                x_T, y, T_vec, tp_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-            )
+            h_t  = self._fwd(teacher, obs_cost, prior_cost, lambda_reg,
+                             x_T, y, T_vec, t_s)
+            h_tp = self._fwd(teacher, obs_cost, prior_cost, lambda_reg,
+                             x_T, y, T_vec, t_p)
+            target_pair = self._fwd(teacher, obs_cost, prior_cost, lambda_reg,
+                                    h_tp, y, t_p, t0_vec)
 
-        # out_t  = g_student(h_t, t, t'')  [GRAD]
-        out_t, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            h_t.detach(), y, t_vals, tpp_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-        # out_t' = g_teacher(h_t', t', t'')  [stop-grad]
-        with torch.no_grad():
-            out_tp, _ = model_variational_forward_wrapper(
-                teacher_model, obs_cost, prior_cost, lambda_reg,
-                h_tp.detach(), y, tp_vals, tpp_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-            )
+        # ── Terms 1 & 2: shared student forward g_s(h_t, t, 0) ───────────────
+        pred_long = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+                              h_t, y, t_s, t0_vec)
+        l_long = F.mse_loss(pred_long, x0)
+        l_pair = F.mse_loss(pred_long, target_pair)
 
-        # --- T2: x0 anchoring -- g(g(x_T, T, t), t, 0) should recover x0 ---
-        # Full backprop through both calls: the T2 gradient flows back to the
-        # first hop, forcing g(x_T,T,t) to produce an informative x_at_t
-        # on which grad_J(x_at_t) points toward the observations.
-        # Without this gradient, x_at_t stays noisy and T2 cannot converge.
-        # (bf16 handles the dynamic range -- no stop-grad needed here)
-        t_zero = torch.zeros(B, dtype=dtype, device=device)
-        x_at_t, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            x_T, y, T_vec, t_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-        x_at_tp, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            x_T, y, T_vec, tp_vals, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-        anchor_t, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            x_at_t, y, t_vals, t_zero, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-        anchor_tp, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            x_at_tp, y, tp_vals, t_zero, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-
-        # --- T4 (bootstrap): direct supervision g(x_T, T, 0) ~ x0 ---
-        # Single call, known target x0. Bootstraps denoising capacity
-        # from the start, speeds up T2 convergence.
-        direct_x0, _ = model_variational_forward_wrapper(
-            student_model, obs_cost, prior_cost, lambda_reg,
-            x_T, y, T_vec, t_zero, schedule=sched, sigma_noise=_sn, conditioning_mode=_cm, **kwargs
-        )
-
-        # --- T3: prior regularisation ---
-        prior_reg = F.mse_loss(x, prior_cost.forward_ae(x))
-
-        return VariationalConsistencyTrainingOutput(
-            pairwise_grad=out_t,
-            pairwise_stopgrad=out_tp.detach(),
-            anchor_at_t=anchor_t,
-            anchor_at_tp=anchor_tp,
-            x0=x.detach(),
-            direct_x0=direct_x0,
-            prior_reg=prior_reg,
-            num_timesteps=num_timesteps,
-            times=times,
-            t_sampled=t_vals,
-            t_prime_sampled=tp_vals,
-            t_pp_sampled=tpp_vals,
-            x_T=x_T.detach(),
-            x_at_t=x_at_t.detach(),
-            x_at_tp=x_at_tp.detach(),
-        )
-
-    @staticmethod
-    def _normalized_mse(
-        pred: Tensor,
-        target: Tensor,
-        eps: float = 1e-4,
-        ref_var: Optional[Tensor] = None,
-    ) -> Tensor:
-        """
-        Scale-invariant MSE: normalise by ref_var (defaults to var(target)) before
-        computing the mean squared error.
-
-            L = mean( (pred - target)^2 ) / (ref_var + eps)
-
-        ref_var defaults to var(target), but for L_pair the target variance is
-        dominated by the shared c_skip*x_T term (~sigma_noise^2 ~ 6400) which
-        cancels in the difference pred-target.  Passing ref_var=var(x0) (~1)
-        gives a properly scaled loss in that case.
-        eps is set relative to the expected signal variance (~1 after T2 kicks
-        in) so it only activates when both pred and target are near-zero.
-        """
-        if ref_var is None:
-            ref_var = target.detach().var()
-        scale = ref_var + eps
-        return F.mse_loss(pred, target) / scale
-
-    def compute_loss(
-        self,
-        output: VariationalConsistencyTrainingOutput,
-        current_epoch: int = 0,
-    ) -> Tensor:
-        """
-        Four-term loss with linear-interpolant warmup.
-
-        During the first `warmup_epochs` epochs, a blending factor
-            beta_w = max(0, 1 - epoch / warmup_epochs)
-        gradually shifts targets toward the linear interpolant
-            x_interp(t) = alpha(t)*x_T + beta(t)*x0
-        giving the network a well-defined regression target from the start.
-        beta_w = 1 at epoch 0, beta_w = 0 at epoch >= warmup_epochs.
-
-        T1 - L_pair   : nMSE(student_out, blended_target)
-          target = (1-beta_w)*sg(teacher_out) + beta_w*x_interp(t'')
-        T2 - L_interp : blended anchor supervision
-          std  term: 0.5*(nMSE(anchor_t, x0) + nMSE(anchor_tp, x0))
-          warm term: 0.5*(nMSE(x_at_t, x_interp_t) + nMSE(x_at_tp, x_interp_tp))
-          loss = (1-beta_w)*std + beta_w*warm
-        T3 - L_prior  : ||x0 - Phi(x0)||^2
-        T4 - L_direct : nMSE(g(x_T, T, 0), x0)  (bootstrap)
-
-        Returns (total, loss_pair, loss_interp, loss_prior, loss_direct, beta_w).
-        """
-        sched  = self.schedule
-        beta_w = max(0.0, 1.0 - current_epoch / max(1, self.warmup_epochs))
-
-        def _expand(t: Tensor) -> Tensor:
-            return t.view(-1, 1, 1, 1).to(dtype=output.x0.dtype)
-
-        t   = _expand(output.t_sampled)
-        tp  = _expand(output.t_prime_sampled)
-        tpp = _expand(output.t_pp_sampled)
-        x0  = output.x0
-        x_T = output.x_T
-
-        x_interp_t   = sched.alpha(t)   * x_T + sched.beta(t)   * x0
-        x_interp_tp  = sched.alpha(tp)  * x_T + sched.beta(tp)  * x0
-        x_interp_tpp = sched.alpha(tpp) * x_T + sched.beta(tpp) * x0
-
-        # T1: blend pairwise target toward linear interpolant during warmup
-        if beta_w > 0.0:
-            target_pair = (
-                (1.0 - beta_w) * output.pairwise_stopgrad
-                + beta_w * x_interp_tpp.detach()
-            )
+        # ── Term 3: L_short ───────────────────────────────────────────────────
+        if self.pure_short:
+            # Pure self-consistency: no interpolant, no x_0.
+            # Short path: x_T --(teacher,sg)--> h_t --(student,sg)--> x_mid
+            #                                        --(student)-----> t'->0
+            # Target: sg[g_t(h_tp, t', 0)] = target_pair  (already computed)
+            with torch.no_grad():
+                x_mid = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+                                  h_t, y, t_s, t_p)
+            pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+                                   x_mid, y, t_p, t0_vec)
+            l_short = F.mse_loss(pred_short, target_pair)
         else:
-            target_pair = output.pairwise_stopgrad
-        x0_var = output.x0.detach().var()
-        loss_pair = self._normalized_mse(output.pairwise_grad, target_pair, ref_var=x0_var)
+            # Interpolant mode: x_t built from x_0, target is x_0.
+            with torch.no_grad():
+                x_mid = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+                                  x_t_interp, y, t_s, t_p)
+            pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+                                   x_mid, y, t_p, t0_vec)
+            l_short = F.mse_loss(pred_short, x0)
 
-        # T2: blend anchor supervision toward direct interpolant regression
-        loss_interp_std = 0.5 * (
-            self._normalized_mse(output.anchor_at_t,  x0) +
-            self._normalized_mse(output.anchor_at_tp, x0)
-        )
-        # x_interp_t/tp are dominated by alpha(t)*x_T whose variance is
-        # O(t^2 * sigma_noise^2) >> var(x0).  Normalise by var(x0) so the
-        # warmup term lives on the same scale as loss_interp_std.
-        loss_interp_warm = 0.5 * (
-            self._normalized_mse(output.x_at_t,  x_interp_t.detach(),  ref_var=x0_var) +
-            self._normalized_mse(output.x_at_tp, x_interp_tp.detach(), ref_var=x0_var)
-        )
-        loss_interp = (1.0 - beta_w) * loss_interp_std + beta_w * loss_interp_warm
+        loss = (self.lambda_pair  * l_pair
+              + self.lambda_long  * l_long
+              + self.lambda_short * l_short)
 
-        loss_prior  = output.prior_reg
-        # T4 bootstrap: direct supervision g(x_T, T, 0) ~ x0
-        loss_direct = self._normalized_mse(output.direct_x0, x0)
-
-        total = (
-            self.lambda_pair   * loss_pair
-            + self.lambda_interp * loss_interp
-            + self.lambda_prior  * loss_prior
-            + self.lambda_direct * loss_direct
+        return VarCMOutput(
+            loss=loss, l_pair=l_pair, l_long=l_long, l_short=l_short,
+            num_timesteps=N, times=times,
+            t_sampled=t_s, t_p_sampled=t_p,
         )
-        return total, loss_pair, loss_interp, loss_prior, loss_direct, beta_w
+
+
+@dataclass
+class LitVarCMConfig:
+    initial_ema_decay_rate:       float = 0.95
+    student_model_ema_decay_rate: float = 0.99993
+    lr:                           float = 1e-4
+    betas:              Tuple[float, float] = (0.9, 0.995)
+    lr_scheduler_start_factor:    float = 1e-5
+    lr_scheduler_iters:           int   = 10_000
+    lambda_reg_init:              float = 1.0
+    total_training_steps:         int   = 5_000
+
+
+# LitVarCM is defined here but imports pytorch_lightning lazily to avoid a hard
+# dependency when importing the module without a Lightning environment.
+try:
+    from pytorch_lightning import LightningModule
+    from pytorch_lightning.utilities import rank_zero_info
+
+    class LitVarCM(LightningModule):
+        """
+        Lightning module for deterministic VarCM.
+
+            L = λ_pair  * L_pair   (pairwise consistency — both at t''=0)
+              + λ_long  * L_long   (long-chain anchor  x_T -> t -> 0 -> x_0)
+              + λ_short * L_short  (short-chain anchor x_t -> t'-> 0 -> x_0)
+        """
+
+        def __init__(
+            self,
+            var_cm_training:   VarCMTraining,
+            student_model:     nn.Module,
+            teacher_model:     nn.Module,
+            ema_student_model: nn.Module,
+            obs_cost:          nn.Module,
+            prior_cost:        nn.Module,
+            config:            LitVarCMConfig,
+        ) -> None:
+            super().__init__()
+            self.var_cm_training   = var_cm_training
+            self.teacher_model     = teacher_model
+            self.student_model     = student_model
+            self.ema_student_model = ema_student_model
+            self.obs_cost          = obs_cost
+            self.prior_cost        = prior_cost
+            self.config            = config
+            self.num_timesteps     = var_cm_training.initial_timesteps
+
+            self.lambda_reg = nn.Parameter(
+                torch.tensor(config.lambda_reg_init, dtype=torch.float32)
+            )
+            for p in self.teacher_model.parameters():
+                p.requires_grad = False
+            for p in self.ema_student_model.parameters():
+                p.requires_grad = False
+            self.teacher_model.eval()
+            self.ema_student_model.eval()
+
+        def on_train_epoch_start(self) -> None:
+            print(f"[Epoch {self.current_epoch}] N={self.num_timesteps}  "
+                  f"λ_reg={self.lambda_reg.item():.4f}")
+
+        def training_step(self, batch, batch_idx: int):
+            if isinstance(batch, list):
+                batch = batch[0]
+            self.lambda_reg.data.clamp_(min=0.0)
+
+            out = self.var_cm_training(
+                self.student_model,
+                self.teacher_model,
+                self.obs_cost,
+                self.prior_cost,
+                self.lambda_reg,
+                batch.tgt,
+                batch.input,
+                self.global_step,
+                self.config.total_training_steps,
+            )
+            self.num_timesteps = out.num_timesteps
+
+            if batch_idx % 10 == 0:
+                times_str = "  ".join(f"{v:.3f}" for v in out.times.tolist())
+                print(
+                    f"[Ep {self.current_epoch} | step {self.global_step}]  "
+                    f"N={out.num_timesteps}\n"
+                    f"  grid    : [{times_str}]\n"
+                    f"  sampled : t={out.t_sampled[0].item():.3f}  "
+                    f"t'={out.t_p_sampled[0].item():.3f}\n"
+                    f"  L={out.loss.item():.4f}  "
+                    f"L_pair={out.l_pair.item():.4f}  "
+                    f"L_long={out.l_long.item():.4f}  "
+                    f"L_short={out.l_short.item():.4f}"
+                )
+
+            self.log_dict({
+                "train_loss":    out.loss,
+                "L_pair":        out.l_pair,
+                "L_long":        out.l_long,
+                "L_short":       out.l_short,
+                "lambda_reg":    self.lambda_reg.detach(),
+                "num_timesteps": float(out.num_timesteps),
+            }, prog_bar=False)
+            return out.loss
+
+        def on_train_batch_end(self, outputs, batch, batch_idx: int) -> None:
+            ema_decay = ema_decay_rate_schedule(
+                self.num_timesteps,
+                self.config.initial_ema_decay_rate,
+                self.var_cm_training.initial_timesteps,
+            )
+            update_ema_model_(self.teacher_model,     self.student_model, ema_decay)
+            update_ema_model_(self.ema_student_model, self.student_model,
+                              self.config.student_model_ema_decay_rate)
+            self.log("ema_decay_rate", ema_decay)
+
+        def configure_optimizers(self):
+            params = (
+                list(self.student_model.parameters())
+                + list(self.obs_cost.parameters())
+                + list(self.prior_cost.parameters())
+                + [self.lambda_reg]
+            )
+            opt = torch.optim.Adam(params,
+                                   lr=self.config.lr,
+                                   betas=self.config.betas)
+            sched = torch.optim.lr_scheduler.LinearLR(
+                opt,
+                start_factor=self.config.lr_scheduler_start_factor,
+                total_iters=self.config.lr_scheduler_iters,
+            )
+            return [opt], [{"scheduler": sched, "interval": "step", "frequency": 1}]
+
+except ImportError:
+    pass   # pytorch_lightning not available — VarCMTraining / VarCMOutput still usable
 
 
 # ---------------------------------------------------------------------------
