@@ -1,12 +1,12 @@
 # @package _global_
 #
-# Consistency Model solver for CROSCIM multi-resolution framework.
-# Based on UNet_solvers/base_arctic_croscim_wpreproc_sit_supervised.yaml
-# but uses ConsistencyUNetSolver with pairwise consistency training.
+# Flow Matching solver for CROSCIM multi-resolution framework.
+# Based on CM_solvers/base_arctic_croscim_wpreproc_sit_supervised.yaml
+# but uses FMSolver (gensim Transformer + FlowMatchingSampler).
 
 paths:
-  src: /dcai/users/beamax
-  preproc: /dcai/projects/cu_0026/croscim_train
+  src: /dmidata/users/maxb
+  preproc: /dmidata/users/maxb/PREPROC
 
 domain: ???
 
@@ -42,35 +42,25 @@ computed:
   input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
   input_vars_all: ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
 
-# ===== CONSISTENCY MODEL CONFIGURATION =====
-consistency_config:
-  sigma_min: 0.002
-  sigma_max: 80.0
-  rho: 7.0
-  sigma_data: 1.0
-  initial_timesteps: 2
-  final_timesteps: 17
-  total_training_steps: 10000
-  initial_ema_decay_rate: 0.95
-  student_model_ema_decay_rate: 0.99993
+# ===== FLOW MATCHING CONFIGURATION =====
+fm_config:
   lr: 1e-4
   betas: [0.9, 0.995]
   lr_scheduler_start_factor: 1e-5
   lr_scheduler_iters: 20000
+  ema_decay: 0.999
+  lower_bound: -0.693  # ~0 in normalised SIT space (μ=0.57,σ=0.82 → (0-0.57)/0.82≈-0.69)
+  upper_bound: null
 
 trainer:
   _target_: pytorch_lightning.Trainer
   inference_mode: False
   gradient_clip_val: 0.5
   accelerator: gpu
-  devices: ${oc.decode:${oc.env:SLURM_GPUS_ON_NODE,8}}
-  num_nodes: ${oc.decode:${oc.env:SLURM_NNODES,1}}
+  devices: [0]
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
-  plugins:
-    - _target_: pytorch_lightning.plugins.environments.SLURMEnvironment
-      auto_requeue: false
   accumulate_grad_batches: 2
   limit_train_batches: 1000.
   limit_val_batches: 500.
@@ -92,7 +82,6 @@ trainer:
 
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_simple_multires_supervised.BaseDataModuleMultiResSupervised_simplify
-  
   satellite_vars: ${var_config.satellite_vars}
   models_vars: ${var_config.models_vars}
   covariates: ${var_config.covariates}
@@ -137,12 +126,11 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
 
 model:
-  _target_: contrib.CROSCIM.models_consistency.Lit4dVarNet_CROSCIM_Consistency
+  _target_: contrib.CROSCIM.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
   persist_rw: False
   multires: [50,10]
   opt_fn: null
 
-  # Variable configuration (same as UNet solver)
   tgt_vars: ${var_config.target_vars}
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}
@@ -157,33 +145,37 @@ model:
   frcst_lead: 0
   add_bounds: True
 
-  # Consistency model configuration
-  consistency_config: ${consistency_config}
+  fm_config: ${fm_config}
 
-  # Solver: ConsistencyGradSolvers wrapping per-resolution ConsistencyUNetSolver
   solver:
-    _target_: contrib.CROSCIM.consistency_solver.ConsistencyGradSolvers
+    _target_: contrib.CROSCIM.flowmatching_solver.FMGradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
-        n_hidden: 128
-        sigma_min: ${consistency_config.sigma_min}
-        sigma_max: ${consistency_config.sigma_max}
-        rho: ${consistency_config.rho}
-        sigma_data: ${consistency_config.sigma_data}
-        sampling_steps: 15
+        resolution_km: 50.
+        n_features: 256
+        n_blocks: 8
+        n_embedding: 128
+        patch_size: 4
+        n_heads: 8
+        n_steps: 20
+        second_order: True
+        add_bounds: True
       solver_x10:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
-        n_hidden: 128
-        sigma_min: ${consistency_config.sigma_min}
-        sigma_max: ${consistency_config.sigma_max}
-        rho: ${consistency_config.rho}
-        sigma_data: ${consistency_config.sigma_data}
-        sampling_steps: 15
+        resolution_km: 10.
+        n_features: 256
+        n_blocks: 8
+        n_embedding: 128
+        patch_size: 4
+        n_heads: 8
+        n_steps: 20
+        second_order: True
+        add_bounds: True
 
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
@@ -219,7 +211,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
+    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

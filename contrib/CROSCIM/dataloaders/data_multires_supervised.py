@@ -566,10 +566,16 @@ class BaseDataModuleMultiRes(BaseDataModule):
         self.models_vars = models_vars if models_vars is not None else []        
         self._norm_stats_models = norm_stats_models
 
-        # Extract patch_dims_dict from xrds_kw if present (only for test)
+        # Extract patch_dims_dict / dl_kw from xrds_kw if present (only for test)
         xrds_kw = kwargs.get('xrds_kw', {})
         self.patch_dims_dict = xrds_kw.pop('patch_dims_dict', None)
         self.strides_test_dict = xrds_kw.pop('strides_test_dict', None)
+        # dl_kw may be nested inside xrds_kw (test configs) — hoist it up so
+        # BaseDataModule receives it as a top-level arg, not forwarded to XrDataset
+        if 'dl_kw' in xrds_kw and 'dl_kw' not in kwargs:
+            kwargs['dl_kw'] = xrds_kw.pop('dl_kw')
+        else:
+            xrds_kw.pop('dl_kw', None)  # remove duplicate if already present
 
         # Update kwargs with modified xrds_kw
         if 'xrds_kw' in kwargs:

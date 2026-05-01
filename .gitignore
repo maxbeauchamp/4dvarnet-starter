@@ -70,3 +70,4 @@ contrib/CROSCIM/scripts/weights_50.nc
 contrib/CROSCIM/scripts/weights_10.nc
 ckpt/CROSCIM/base_croscim_4DVarNet_sic_supervised_forecast.ckpt
 ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
+ckpt/CROSCIM/base_croscim_CM_sit_supervised_wbounds.ckpt
