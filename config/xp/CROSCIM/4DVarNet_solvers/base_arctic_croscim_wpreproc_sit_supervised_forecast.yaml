@@ -132,7 +132,7 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
 
 model:
-  _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised   
+  _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised   
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -150,10 +150,10 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 2
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
       solver_x10:
-        _target_: contrib.CROSCIM.solver.GradSolver
+        _target_: contrib.CROSCIM.solvers.solver.GradSolver
         n_step: 10
         lr_grad: 0.2
         input_vars: ${computed.input_vars_all}
@@ -161,21 +161,21 @@ model:
         var_mapping: ${var_config.var_mapping.patch_x10}
         n_time: ${var_config.time_steps.patch_x10}
         obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
+          _target_: contrib.CROSCIM.solvers.solver.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          _target_: contrib.CROSCIM.solvers.solver.BilinAEPriorCost
           dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
           dim_hidden: 64
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
         grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          _target_: contrib.CROSCIM.solvers.solver.ConvLstmGradModel
           dim_in: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
           dim_hidden: 64
       solver_x50:
-        _target_: contrib.CROSCIM.solver.GradSolver
+        _target_: contrib.CROSCIM.solvers.solver.GradSolver
         n_step: 10
         lr_grad: 0.2
         input_vars: ${computed.input_vars_all}
@@ -183,16 +183,16 @@ model:
         var_mapping: ${var_config.var_mapping.patch_x50}
         n_time: ${var_config.time_steps.patch_x50}
         obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
+          _target_: contrib.CROSCIM.solvers.solver.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          _target_: contrib.CROSCIM.solvers.solver.BilinAEPriorCost
           dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 64
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          _target_: contrib.CROSCIM.solvers.solver.ConvLstmGradModel
           dim_in: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 64

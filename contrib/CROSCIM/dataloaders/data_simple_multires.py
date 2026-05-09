@@ -1,6 +1,6 @@
 from random import sample
 import contrib
-from contrib.CROSCIM.load_data import *
+from contrib.CROSCIM.dataloaders.load_data import *
 from contrib.CROSCIM.dataloaders.data_simple import *
 import datetime
 import pyresample

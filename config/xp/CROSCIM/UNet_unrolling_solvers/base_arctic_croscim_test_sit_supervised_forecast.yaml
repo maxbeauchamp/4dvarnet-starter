@@ -84,23 +84,23 @@ datamodule:
   
   # Data paths
   asip_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: asip
     paths: ${paths}
   cimr_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cimr
     paths: ${paths}
   cristal_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cristal
     paths: ${paths}
   covariates_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: covariates
     paths: ${paths}
   models_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: models
     paths: ${paths}
   
@@ -161,7 +161,7 @@ datamodule:
   multires: [50, 10]
 
 model:
-  _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
+  _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -179,10 +179,10 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 2
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.solver_expanded.GradSolver
+        _target_: contrib.CROSCIM.solvers.solver_expanded.GradSolver
         n_step: 10
         lr_grad: 0.2
         input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
@@ -191,19 +191,19 @@ model:
         var_mapping: ${var_config.var_mapping.patch_x50}
         n_time: ${var_config.time_steps.patch_x50}
         obs_cost:
-          _target_: contrib.CROSCIM.solver_expanded.BaseObsCost
+          _target_: contrib.CROSCIM.solvers.solver_expanded.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
-          _target_: contrib.CROSCIM.solver_expanded.BilinAEPriorCost
+          _target_: contrib.CROSCIM.solvers.solver_expanded.BilinAEPriorCost
           dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 180
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
-          _target_: contrib.CROSCIM.solver_expanded.GradModelWithCondition
+          _target_: contrib.CROSCIM.solvers.solver_expanded.GradModelWithCondition
           use_grad_norm: true
           grad_model:
-            _target_: contrib.CROSCIM.UNet_OAI.UNetModel2
+            _target_: contrib.CROSCIM.solvers.UNet_OAI.UNetModel2
             in_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
             out_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
             model_channels: 32
@@ -218,7 +218,7 @@ model:
             interp_mode: bilinear
         fill_missing_inp: false
       solver_x10:
-        _target_: contrib.CROSCIM.solver_expanded.GradSolver
+        _target_: contrib.CROSCIM.solvers.solver_expanded.GradSolver
         n_step: 10
         lr_grad: 0.2
         input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
@@ -227,19 +227,19 @@ model:
         var_mapping: ${var_config.var_mapping.patch_x10}
         n_time: ${var_config.time_steps.patch_x10}
         obs_cost:
-          _target_: contrib.CROSCIM.solver_expanded.BaseObsCost
+          _target_: contrib.CROSCIM.solvers.solver_expanded.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
-          _target_: contrib.CROSCIM.solver_expanded.BilinAEPriorCost
+          _target_: contrib.CROSCIM.solvers.solver_expanded.BilinAEPriorCost
           dim_in: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
           dim_hidden: 180
           dim_out: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
         grad_mod:
-          _target_: contrib.CROSCIM.solver_expanded.GradModelWithCondition
+          _target_: contrib.CROSCIM.solvers.solver_expanded.GradModelWithCondition
           use_grad_norm: true
           grad_model:
-            _target_: contrib.CROSCIM.UNet_OAI.UNetModel2
+            _target_: contrib.CROSCIM.solvers.UNet_OAI.UNetModel2
             in_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
             out_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
             model_channels: 32

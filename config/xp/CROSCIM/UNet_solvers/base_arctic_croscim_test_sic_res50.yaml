@@ -74,19 +74,19 @@ datamodule:
   
   # Data paths - using load_data.py's get_paths_for_source
   asip_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: asip
     paths: ${paths}
   cimr_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cimr
     paths: ${paths}
   cristal_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cristal
     paths: ${paths}
   covariates_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: covariates
     paths: ${paths}
   mask_path: ${paths.mask}
@@ -146,7 +146,7 @@ datamodule:
   multires: [50]
 
 model:
-  _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
+  _target_: contrib.CROSCIM.models.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50]
   opt_fn: null
@@ -163,10 +163,10 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 0
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.UNet.UNetSolver
+        _target_: contrib.CROSCIM.solvers.UNet.UNetSolver
         n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_hidden: 180
         n_classes: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}

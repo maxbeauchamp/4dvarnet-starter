@@ -4,7 +4,7 @@ Extract and list all files required by load_mfdata for a specific date range.
 import sys
 sys.path.append('../../..')
 
-from contrib.CROSCIM.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
+from contrib.CROSCIM.dataloaders.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
 from glob import glob
 import datetime
 import numpy as np
@@ -235,7 +235,7 @@ Extract and list all files required by load_mfdata for a specific date range.
 import sys
 sys.path.append('../..')
 
-from contrib.CROSCIM.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
+from contrib.CROSCIM.dataloaders.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
 from glob import glob
 import datetime
 import numpy as np

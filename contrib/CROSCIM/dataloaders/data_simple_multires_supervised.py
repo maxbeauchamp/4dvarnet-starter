@@ -5,7 +5,7 @@ Minimal adaptation of data_simple_multires.py to include models data as input va
 
 from random import sample
 import contrib
-from contrib.CROSCIM.load_data import *
+from contrib.CROSCIM.dataloaders.load_data import *
 from contrib.CROSCIM.dataloaders.data_simple import *
 from contrib.CROSCIM.dataloaders.data_simple_multires import *
 import datetime

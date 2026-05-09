@@ -12,7 +12,7 @@ import multiprocessing
 import gc
 from random import sample
 import contrib
-from contrib.CROSCIM.load_data import *
+from contrib.CROSCIM.dataloaders.load_data import *
 from contrib.CROSCIM.dataloaders.data import *
 import datetime
 import pyresample

@@ -134,7 +134,7 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
 
 model:
-  _target_: contrib.CROSCIM.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
+  _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -152,15 +152,15 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 0
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.UNet.UNetSolver
+        _target_: contrib.CROSCIM.solvers.UNet.UNetSolver
         n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_hidden: 180
         n_classes: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
       solver_x10:
-        _target_: contrib.CROSCIM.UNet.UNetSolver
+        _target_: contrib.CROSCIM.solvers.UNet.UNetSolver
         n_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_hidden: 180
         n_classes: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}

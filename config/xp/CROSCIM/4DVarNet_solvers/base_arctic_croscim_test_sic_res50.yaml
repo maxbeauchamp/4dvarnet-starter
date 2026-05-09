@@ -74,19 +74,19 @@ datamodule:
   
   # Data paths - using load_data.py's get_paths_for_source
   asip_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: asip
     paths: ${paths}
   cimr_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cimr
     paths: ${paths}
   cristal_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cristal
     paths: ${paths}
   covariates_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: covariates
     paths: ${paths}
   mask_path: ${paths.mask}
@@ -141,7 +141,7 @@ datamodule:
   multires: [50]
 
 model:
-  _target_: contrib.CROSCIM.models.Lit4dVarNet_CROSCIM
+  _target_: contrib.CROSCIM.models.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50]
   opt_fn: null
@@ -161,10 +161,10 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 0
   solver:
-    _target_: contrib.CROSCIM.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.solver.GradSolver
+        _target_: contrib.CROSCIM.solvers.solver.GradSolver
         n_step: 10
         lr_grad: 0.2
         input_vars: ${computed.input_vars_all}
@@ -173,16 +173,16 @@ model:
         n_time: ${var_config.time_steps.patch_x50}
         include_masks: ${model.include_masks}
         obs_cost:
-          _target_: contrib.CROSCIM.solver.BaseObsCost
+          _target_: contrib.CROSCIM.solvers.solver.BaseObsCost
           w: 1.0
           use_target: true
         prior_cost:
-          _target_: contrib.CROSCIM.solver.BilinAEPriorCost
+          _target_: contrib.CROSCIM.solvers.solver.BilinAEPriorCost
           dim_in: ${python_eval:"2 * len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50} if ${model.include_masks} else len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 360
           dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
         grad_mod:
-          _target_: contrib.CROSCIM.solver.ConvLstmGradModel
+          _target_: contrib.CROSCIM.solvers.solver.ConvLstmGradModel
           dim_in: ${python_eval:"2 * len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50} if ${model.include_masks} else len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}
           dim_hidden: 360
           dim_out: ${python_eval:"len(${var_config.target_vars}) * ${var_config.time_steps.patch_x50}"}

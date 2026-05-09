@@ -37,7 +37,7 @@ from torch import Tensor
 from .utils_flowmatching import Transformer, FlowMatchingSampler  # noqa: E402
 
 # ── Re-export boundary utilities from consistency_solver ─────────────────────
-from .consistency_solver import (               # noqa: F401  (re-export)
+from contrib.CROSCIM.solvers.consistency_solver import (               # noqa: F401  (re-export)
     make_boundary_mask,
     build_boundary_conditioning,
     random_boundary_dropout,
@@ -421,14 +421,14 @@ class FMGradSolvers(nn.Module):
     Hydra instantiation example::
 
         solver:
-          _target_: contrib.CROSCIM.flowmatching_solver.FMGradSolvers
+          _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMGradSolvers
           solvers:
             solver_x50:
-              _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
+              _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
               n_input_channels: ...
               n_output_channels: ...
             solver_x10:
-              _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
+              _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
               ...
     """
 

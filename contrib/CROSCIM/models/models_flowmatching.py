@@ -40,7 +40,7 @@ from torch import Tensor
 from torch.optim.swa_utils import AveragedModel
 
 from .models_supervised import Lit4dVarNet_CROSCIM_Supervised
-from .flowmatching_solver import (
+from contrib.CROSCIM.solvers.flowmatching_solver import (
     FMSolver,
     FMGradSolvers,
     make_boundary_mask,
@@ -50,7 +50,7 @@ from .flowmatching_solver import (
 )
 
 # ── local self-contained utilities (no external gensim dependency) ──────────
-from .utils_flowmatching import (         # noqa: E402
+from contrib.CROSCIM.solvers.utils_flowmatching import (         # noqa: E402
     neglogpdf,
     neglogcdf,
     sample_uniform_time,

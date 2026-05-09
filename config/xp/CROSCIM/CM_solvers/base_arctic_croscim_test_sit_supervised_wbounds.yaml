@@ -100,23 +100,23 @@ datamodule:
   
   # Data paths
   asip_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: asip
     paths: ${paths}
   cimr_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cimr
     paths: ${paths}
   cristal_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: cristal
     paths: ${paths}
   covariates_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: covariates
     paths: ${paths}
   models_paths:
-    _target_: contrib.CROSCIM.load_data.get_paths_for_source
+    _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: models
     paths: ${paths}
   
@@ -181,7 +181,7 @@ datamodule:
   multires: [50, 10]
 
 model:
-  _target_: contrib.CROSCIM.models_consistency.Lit4dVarNet_CROSCIM_Consistency
+  _target_: contrib.CROSCIM.models.models_consistency.Lit4dVarNet_CROSCIM_Consistency
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -206,10 +206,10 @@ model:
 
   # Solver: ConsistencyGradSolvers wrapping per-resolution ConsistencyUNetSolver
   solver:
-    _target_: contrib.CROSCIM.consistency_solver.ConsistencyGradSolvers
+    _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyGradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
         n_hidden: 128
@@ -219,9 +219,9 @@ model:
         sigma_data: ${consistency_config.sigma_data}
         sampling_steps: 15
         add_bounds: ${model.add_bounds}
-        stochastic: True
+        stochastic: False
       solver_x10:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
         n_hidden: 128
@@ -231,7 +231,7 @@ model:
         sigma_data: ${consistency_config.sigma_data}
         sampling_steps: 15
         add_bounds: ${model.add_bounds}
-        stochastic: True
+        stochastic: False
 
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}

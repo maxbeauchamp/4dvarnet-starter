@@ -25,7 +25,7 @@ import pytorch_lightning as pl
 from torch import Tensor
 
 from .models_supervised import Lit4dVarNet_CROSCIM_Supervised
-from .consistency_solver import (
+from contrib.CROSCIM.solvers.consistency_solver import (
     ConsistencyUNet,
     ConsistencyUNetConfig,
     ConsistencyUNetSolver,
@@ -491,9 +491,39 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         if self.add_bounds and batch_idx == 0:
             if not hasattr(self, '_bound_inputs'):
                 self._bound_inputs = {}
+            if not hasattr(self, '_bound_domain_masks'):
+                self._bound_domain_masks = {}
             if _dl_idx == 0:
-                self._bound_inputs = {}   # full reset at first dataloader
+                self._bound_inputs = {}         # full reset at first dataloader
+                self._bound_domain_masks = {}
             self._bound_inputs[res_key] = []
+            self._bound_domain_masks[res_key] = []
+
+        # Compute domain_invalid mask from the batch (same logic as parent test_step):
+        # prefer models_XXX NaN pattern; fall back to land_mask.
+        if self.add_bounds:
+            _batch_dict = batch._asdict() if hasattr(batch, '_asdict') else vars(batch)
+            _models_var = next(
+                (k for k in _batch_dict
+                 if k.startswith("models_")
+                 and isinstance(_batch_dict[k], torch.Tensor)
+                 and _batch_dict[k].numel() > 0),
+                None
+            )
+            if _models_var is not None:
+                _domain_invalid = ~_batch_dict[_models_var].isfinite().any(
+                    dim=1, keepdim=True
+                ).cpu()   # (B, 1, H, W)
+            elif hasattr(batch, 'land_mask'):
+                _domain_invalid = (batch.land_mask == 1.).cpu()   # (B, 1, H, W)
+            else:
+                _domain_invalid = None
+
+            if _domain_invalid is not None:
+                if res_key not in self._bound_domain_masks:
+                    self._bound_domain_masks[res_key] = []
+                for _b in range(_domain_invalid.shape[0]):
+                    self._bound_domain_masks[res_key].append(_domain_invalid[_b])
 
         # Swap UNets to EMA student for inference
         original_unets = {}
@@ -513,14 +543,19 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
     # ── Sequential boundary-aware inference helpers ───────────────────
 
     @torch.no_grad()
-    def _apply_sequential_inference(self, res, inputs, coords, stacked):
+    def _apply_sequential_inference(self, res, inputs, coords, stacked, domain_masks=None):
         """Run sequential boundary-conditioned inference; update prediction channels.
 
         Args:
-            res     : resolution integer (e.g. 10)
-            inputs  : list of ``(C_in, H, W)`` cpu tensors — raw observations per patch
-            coords  : list of ``(yc_1d, xc_1d)`` tuples per patch
-            stacked : list of ``(V, T, H, W)`` cpu tensors (pred channels first, then tgt)
+            res          : resolution integer (e.g. 10)
+            inputs       : list of ``(C_in, H, W)`` cpu tensors — raw observations per patch
+            coords       : list of ``(yc_1d, xc_1d)`` tuples per patch
+            stacked      : list of ``(V, T, H, W)`` cpu tensors (pred channels first, then tgt)
+            domain_masks : optional list of ``(1, H, W)`` bool tensors — True where pixel is
+                           invalid (land / outside model domain).  When provided, applied to
+                           freshly-computed predictions to restore the domain mask that the
+                           parent test_step normally applies.  Derived from the models_XXX NaN
+                           pattern (or land_mask) at collection time.
 
         Returns:
             new_stacked : list with prediction channels replaced by boundary-conditioned output
@@ -566,6 +601,21 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             T = s.shape[1]
             H, W = s.shape[2], s.shape[3]
             pred_cpu = pred[0].cpu().view(n_tgt, T, H, W)   # (n_tgt, T, H, W)
+
+            # ── Re-apply domain mask (land / model coverage) ──────────────
+            # Use the pre-computed domain_invalid mask stored at collection time
+            # (derived from models_XXX NaN pattern or land_mask — same logic as
+            # parent test_step).  Fall back to tgt-channel NaN pattern only when
+            # no mask was stored (e.g. legacy checkpoints).
+            if domain_masks is not None and b_idx < len(domain_masks):
+                # domain_masks[b_idx]: (1, H, W), True = invalid pixel
+                _dinv = domain_masks[b_idx].expand(n_tgt, T, H, W)
+            else:
+                # Fallback: derive from tgt channels (less reliable but safe)
+                tgt_channels = s[n_tgt:]   # (n_tgt, T, H, W)
+                _dinv = ~tgt_channels.isfinite().any(dim=1, keepdim=True).expand_as(pred_cpu)
+            pred_cpu = pred_cpu.masked_fill(_dinv, float('nan'))
+
             s_new = s.clone()
             s_new[:n_tgt] = pred_cpu
             new_stacked[b_idx] = s_new
@@ -587,11 +637,12 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         res_key = f"patch_x{res}"
 
         # ── Flatten locally accumulated lists ────────────────────────────────
-        inputs  = list(itertools.chain(*self._bound_inputs.get(res_key, [])))
+        inputs       = list(itertools.chain(*self._bound_inputs.get(res_key, [])))
         # (each element of _bound_inputs is (B, C_in, H, W); chain iterates dim-0)
-        times   = list(itertools.chain(*self.test_times[res_key]))
-        coords  = list(itertools.chain(*self.test_coords[res_key]))
-        stacked = list(itertools.chain(*self.test_data[res_key]))
+        times        = list(itertools.chain(*self.test_times[res_key]))
+        coords       = list(itertools.chain(*self.test_coords[res_key]))
+        stacked      = list(itertools.chain(*self.test_data[res_key]))
+        domain_masks = list(getattr(self, '_bound_domain_masks', {}).get(res_key, []))
         # Each stacked item is now (V, T, H, W) after chain over the batch dim
 
         # ── Multi-GPU gathering ───────────────────────────────────────────────
@@ -600,21 +651,26 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             dist.all_gather_object(
                 gathered,
                 {
-                    'inputs':  [x.cpu() for x in inputs],
-                    'times':   [t.cpu() for t in times],
-                    'coords':  coords,
-                    'stacked': [s.cpu() for s in stacked],
+                    'inputs':       [x.cpu() for x in inputs],
+                    'times':        [t.cpu() for t in times],
+                    'coords':       coords,
+                    'stacked':      [s.cpu() for s in stacked],
+                    'domain_masks': [m.cpu() for m in domain_masks],
                 }
             )
-            inputs  = [x for g in gathered for x in g['inputs']]
-            times   = [t for g in gathered for t in g['times']]
-            coords  = [c for g in gathered for c in g['coords']]
-            stacked = [s for g in gathered for s in g['stacked']]
+            inputs       = [x for g in gathered for x in g['inputs']]
+            times        = [t for g in gathered for t in g['times']]
+            coords       = [c for g in gathered for c in g['coords']]
+            stacked      = [s for g in gathered for s in g['stacked']]
+            domain_masks = [m for g in gathered for m in g['domain_masks']]
 
         # ── Sequential inference on rank 0, broadcast to all ─────────────────
         if self.trainer.world_size > 1:
             if self.trainer.is_global_zero:
-                new_stacked = self._apply_sequential_inference(res, inputs, coords, stacked)
+                new_stacked = self._apply_sequential_inference(
+                    res, inputs, coords, stacked,
+                    domain_masks=domain_masks or None,
+                )
                 result = self.aggregate_batches(
                     idx_rec, new_stacked, times, dataloader_idx,
                     metrics=False, write_netcdf=write_netcdf,
@@ -627,7 +683,10 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             dist.broadcast_object_list(container, src=0)
             self.aggregate_results[res_key] = container[0]
         else:
-            new_stacked = self._apply_sequential_inference(res, inputs, coords, stacked)
+            new_stacked = self._apply_sequential_inference(
+                res, inputs, coords, stacked,
+                domain_masks=domain_masks or None,
+            )
             self.aggregate_results[res_key] = self.aggregate_batches(
                 idx_rec, new_stacked, times, dataloader_idx,
                 metrics=False, write_netcdf=write_netcdf,

@@ -123,7 +123,7 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
 
 model:
-  _target_: contrib.CROSCIM.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
+  _target_: contrib.CROSCIM.models.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -145,10 +145,10 @@ model:
   fm_config: ${fm_config}
 
   solver:
-    _target_: contrib.CROSCIM.flowmatching_solver.FMGradSolvers
+    _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMGradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
+        _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
         resolution_km: 50.
@@ -161,7 +161,7 @@ model:
         second_order: True
         add_bounds: False
       solver_x10:
-        _target_: contrib.CROSCIM.flowmatching_solver.FMSolver
+        _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
         resolution_km: 10.

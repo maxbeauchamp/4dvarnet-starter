@@ -137,7 +137,7 @@ datamodule:
     tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
 
 model:
-  _target_: contrib.CROSCIM.models_consistency.Lit4dVarNet_CROSCIM_Consistency
+  _target_: contrib.CROSCIM.models.models_consistency.Lit4dVarNet_CROSCIM_Consistency
   persist_rw: False
   multires: [50,10]
   opt_fn: null
@@ -162,10 +162,10 @@ model:
 
   # Solver: ConsistencyGradSolvers wrapping per-resolution ConsistencyUNetSolver
   solver:
-    _target_: contrib.CROSCIM.consistency_solver.ConsistencyGradSolvers
+    _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyGradSolvers
     solvers:
       solver_x50:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
         n_hidden: 128
@@ -175,7 +175,7 @@ model:
         sigma_data: ${consistency_config.sigma_data}
         sampling_steps: 15
       solver_x10:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+        _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
         n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
         n_hidden: 128

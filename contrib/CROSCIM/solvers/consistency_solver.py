@@ -733,13 +733,13 @@ class ConsistencyGradSolvers(nn.Module):
     ConsistencyUNetSolver instances.
     
     Instantiation via Hydra:
-        _target_: contrib.CROSCIM.consistency_solver.ConsistencyGradSolvers
+        _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyGradSolvers
         solvers:
           solver_x50:
-            _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+            _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
             ...
           solver_x10:
-            _target_: contrib.CROSCIM.consistency_solver.ConsistencyUNetSolver
+            _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
             ...
     """
 
