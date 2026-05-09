@@ -49,6 +49,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             norm_stats_covs=None,
             training_strategy='progressive',  # NEW PARAMETER
             include_masks=False,
+            normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
             *args, **kwargs):
 
         # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
@@ -57,6 +58,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         # Store training strategy
         self.training_strategy = training_strategy
+        self.normalize_anomaly = normalize_anomaly
 
         # Store variable configuration
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
@@ -820,6 +822,93 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return type(batch)(**batch_dict)
 
 
+    def normalize_anomaly_batch(self, batch, eps: float = 1e-3):
+        """
+        Instance-normalise the anomaly fields in *batch* so that each target
+        variable has std ≈ 1 across the valid (non-NaN) pixels of the batch.
+
+        This is called right after ``update_batch_as_anomaly`` when training /
+        running inference on a fine resolution.  The returned ``scale_dict``
+        must be passed to ``denormalize_anomaly_predictions`` so that the
+        solver output can be rescaled before adding the coarse prediction back.
+
+        Parameters
+        ----------
+        batch : namedtuple
+            Batch after anomaly subtraction.
+        eps : float
+            Floor for the scale factor to avoid division by zero in nearly
+            flat (e.g. ice-free summer) patches.
+
+        Returns
+        -------
+        batch_norm : same type as *batch*, with target variables rescaled.
+        scale_dict : dict  {batch_var_name: scale_tensor (scalar)}.
+        """
+        batch_dict = batch._asdict()
+        scale_dict = {}
+
+        # Only rescale target variables (tgt_*, models_*) — leave obs and coords unchanged
+        target_prefixes = tuple(
+            [f"{src}_" for src in self.satellite_vars]
+            + ["tgt_", "models_"]
+        )
+
+        for var_name, tensor in batch_dict.items():
+            if not isinstance(tensor, torch.Tensor) or tensor.numel() == 0:
+                continue
+            if not any(var_name.startswith(p) or var_name.lower().startswith("tgt_") for p in target_prefixes):
+                # Also normalise variables whose name matches an alias in equivalence_map
+                canon_match = any(
+                    var_name.lower().endswith(alias.lower())
+                    for aliases in self.equivalence_map.values()
+                    for alias in aliases
+                )
+                if not canon_match:
+                    continue
+            if tensor.ndim < 2:
+                continue
+            # Compute std over all valid (finite) pixels in the batch
+            valid = tensor[tensor.isfinite()]
+            if valid.numel() < 2:
+                scale = tensor.new_tensor(1.0)
+            else:
+                scale = valid.std().clamp(min=eps)
+            scale_dict[var_name] = scale
+            batch_dict[var_name] = tensor / scale
+
+        return type(batch)(**batch_dict), scale_dict
+
+    def denormalize_anomaly_predictions(self, out: dict, scale_dict: dict) -> dict:
+        """
+        Reverse the instance-normalisation applied by ``normalize_anomaly_batch``.
+
+        Maps scale_dict keys (batch variable names such as ``tgt_SIT``) to
+        prediction keys (``pred_SIT``) via the same suffix logic used elsewhere,
+        then multiplies each prediction tensor by the corresponding scale.
+
+        Parameters
+        ----------
+        out : dict  {pred_var: (B, T, H, W)}
+        scale_dict : dict  {batch_var_name: scale_tensor}
+
+        Returns
+        -------
+        out : dict (modified in-place, also returned for convenience)
+        """
+        for batch_var, scale in scale_dict.items():
+            # batch_var e.g. "tgt_SIT", "models_SIT", "asip_sic"
+            # derive canonical suffix
+            if '_' in batch_var:
+                suffix = batch_var.split('_', 1)[1]   # "SIT"
+            else:
+                suffix = batch_var
+            pred_key = f"pred_{suffix}"
+            if pred_key in out:
+                out[pred_key] = out[pred_key] * scale.to(out[pred_key].device)
+        return out
+
+
     def interpolate_torch(self, coarse_data, xc_coarse, yc_coarse, xc_target, yc_target, 
                         mode='bilinear', align_corners=True):
         """
@@ -1299,7 +1388,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     batch_res, 
                     out[f"patch_x{coarser_res}_on_x{res}"]
                 )
-                
+
+                # Instance-normalise the anomaly so the solver always sees std≈1
+                if self.normalize_anomaly:
+                    batch_res, anom_scale = self.normalize_anomaly_batch(batch_res)
+                else:
+                    anom_scale = {}
+
                 # Train or inference
                 if should_train:
                     loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
@@ -1307,7 +1402,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 else:
                     with torch.no_grad():
                         _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=log_phase)
-                
+
+                # Denormalise predictions before adding back the coarse resolution
+                if anom_scale:
+                    out[f"patch_x{res}"] = self.denormalize_anomaly_predictions(
+                        out[f"patch_x{res}"], anom_scale
+                    )
+
                 # Add coarse resolution back
                 # Get resolution-specific target vars
                 tgt_vars = self._get_target_vars_for_resolution(res)
@@ -2423,16 +2524,31 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                                                  xc_target, yc_target)
             #itrp_coarse = self.crop_daw(itrp_coarse,res)
             # modify batch to work on anomaly compared to coarser resolution
-            batch = self.update_batch_as_anomaly(batch, 
-                                                 {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')
-                                                }
+            batch = self.update_batch_as_anomaly(batch,
+                                                 {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')}
                             )
+            # Save original (pre-normalisation) anomaly targets so that tgt_norm
+            # can reconstruct the true full-field ground truth later.
+            tgt_vars_for_res = self._get_target_vars_for_resolution(res)
+            orig_tgt = {var: getattr(batch, var).clone() for var in tgt_vars_for_res}
+            # Instance-normalise the anomaly so the solver always sees std≈1
+            if self.normalize_anomaly:
+                batch, anom_scale = self.normalize_anomaly_batch(batch)
+            else:
+                anom_scale = {}
+        else:
+            anom_scale = {}
+            orig_tgt = None
 
         sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
 
         out = self(batch=sbatch, res=res)
         out = self.split_tensor_to_dict(out, res=res)
-        
+
+        # Denormalise predictions before adding back the coarse resolution
+        if anom_scale:
+            out = self.denormalize_anomaly_predictions(out, anom_scale)
+
         # Get resolution-specific target vars
         tgt_vars = self._get_target_vars_for_resolution(res)
         
@@ -2471,9 +2587,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 pred_var_name = f'pred_{var}'
             pred = out[pred_var_name]
             out_norm[pred_var_name] = pred
-            tgt_norm[var] = getattr(batch, var)
+            # Use the pre-normalisation anomaly so that adding back the coarse
+            # field yields the correct full-field ground truth.
+            if orig_tgt is not None:
+                tgt_norm[var] = orig_tgt[var]
+            else:
+                tgt_norm[var] = getattr(batch, var)
             if dataloader_idx > 0:
-                tgt_norm[var] += itrp_coarse[pred_var_name]
+                tgt_norm[var] = tgt_norm[var] + itrp_coarse[pred_var_name]
         
         # apply constraints
         out_norm = self._apply_constraints(out_norm, res)
