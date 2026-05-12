@@ -46,6 +46,8 @@ computed:
 consistency_config:
   sigma_min: 0.002
   sigma_max: 80.0
+  auto_sigma_max: True
+  snr_target: 0.01
   rho: 7.0
   sigma_data: 1.0
   initial_timesteps: 2

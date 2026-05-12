@@ -2,7 +2,7 @@
 
 #SBATCH --account=cu_0026
 #SBATCH --job-name=train_croscim
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=8
 #SBATCH --gpus-per-node=8
 #SBATCH --cpus-per-task=6

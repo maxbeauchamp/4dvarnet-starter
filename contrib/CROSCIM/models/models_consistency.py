@@ -236,15 +236,43 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         self._cm_lr_scheduler_start_factor = cfg.get("lr_scheduler_start_factor", 1e-5)
         self._cm_lr_scheduler_iters = cfg.get("lr_scheduler_iters", 10_000)
 
-        # Consistency training callable
-        self.consistency_training = PairwiseConsistencyTraining(
-            sigma_min=self.sigma_min,
-            sigma_max=self.sigma_max,
-            rho=self.rho,
-            sigma_data=self.sigma_data,
-            initial_timesteps=self.initial_timesteps,
-            final_timesteps=self.final_timesteps,
-        )
+        # ── sigma_max strategy ────────────────────────────────────────────────
+        # Three modes, in priority order:
+        #
+        # 1. auto_sigma_max=True  →  calibrated from the first training batch
+        #    by targeting a desired SNR = Var(x) / sigma_max² ≤ snr_target.
+        #    Formula:  sigma_max = std(x) / sqrt(snr_target)
+        #    Default snr_target=1e-2  →  sigma_max ≈ 10 * std(x).
+        #
+        # 2. sigma_max_per_res: {50: 80.0, 10: 10.0}  →  static override per res.
+        #    Keys missing fall back to the global sigma_max.
+        #
+        # 3. sigma_max (global scalar, default 80.0)  →  applied to all resolutions.
+        #
+        # In auto mode, per-res overrides are still respected (auto only fills
+        # resolutions NOT listed in sigma_max_per_res).
+        self.auto_sigma_max = bool(cfg.get("auto_sigma_max", False))
+        self.snr_target = float(cfg.get("snr_target", 1e-2))
+        _per_res_raw = cfg.get("sigma_max_per_res", {})
+        self.sigma_max_per_res: dict = {int(k): float(v) for k, v in _per_res_raw.items()}
+        # Tracks which resolutions have already been auto-calibrated
+        self._sigma_max_calibrated: set = set()
+
+        # One PairwiseConsistencyTraining instance per resolution.
+        # NOTE: PairwiseConsistencyTraining is NOT an nn.Module → plain dict.
+        self.consistency_trainings: dict = {
+            f"ct_x{res}": PairwiseConsistencyTraining(
+                sigma_min=self.sigma_min,
+                sigma_max=self.sigma_max_per_res.get(res, self.sigma_max),
+                rho=self.rho,
+                sigma_data=self.sigma_data,
+                initial_timesteps=self.initial_timesteps,
+                final_timesteps=self.final_timesteps,
+            )
+            for res in self.multires
+        }
+        # Back-compat alias (coarsest res)
+        self.consistency_training = self.consistency_trainings[f"ct_x{self.multires[0]}"]
 
         # Build per-resolution teacher + ema_student from the student
         # The student UNets live inside self.solver.solvers["solver_xN"].unet
@@ -275,7 +303,11 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         print(f"\n{'='*60}")
         print(f"Lit4dVarNet_CROSCIM_Consistency initialized:")
         print(f"  Resolutions: {self.multires}")
-        print(f"  Consistency config: sigma_min={self.sigma_min}, sigma_max={self.sigma_max}")
+        _smax_info = ", ".join(
+            f"x{r}={'auto(snr≤" + str(self.snr_target) + ")' if (self.auto_sigma_max and r not in self.sigma_max_per_res) else self.sigma_max_per_res.get(r, self.sigma_max)}"
+            for r in self.multires
+        )
+        print(f"  Consistency config: sigma_min={self.sigma_min}, sigma_max: {_smax_info}")
         print(f"  final_timesteps={self.final_timesteps}, total_steps={self.total_training_steps}")
         for res in self.multires:
             key = f"solver_x{res}"
@@ -346,6 +378,34 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         x = sbatch.tgt    # (B, C_out, H, W) — clean targets
 
         if self.training and phase == "train":
+            # ── Auto-calibrate sigma_max from first batch (if enabled) ────────
+            # Target SNR = Var(x) / sigma_max²  →  sigma_max = std(x) / sqrt(snr_target)
+            # Only runs once per resolution; skipped if that res has a static override.
+            if self.auto_sigma_max and res not in self._sigma_max_calibrated \
+                    and res not in self.sigma_max_per_res:
+                with torch.no_grad():
+                    x_finite = x[x.isfinite()]
+                    if x_finite.numel() > 1:
+                        data_std = x_finite.std().item()
+                        new_smax = data_std / math.sqrt(self.snr_target)
+                        ct_key = f"ct_x{res}"
+                        self.consistency_trainings[ct_key] = PairwiseConsistencyTraining(
+                            sigma_min=self.sigma_min,
+                            sigma_max=new_smax,
+                            rho=self.rho,
+                            sigma_data=self.sigma_data,
+                            initial_timesteps=self.initial_timesteps,
+                            final_timesteps=self.final_timesteps,
+                        )
+                        self._sigma_max_calibrated.add(res)
+                        if self.trainer.is_global_zero:
+                            print(
+                                f"\n[sigma_max auto-calibration] res=x{res}: "
+                                f"std(x)={data_std:.4f}, snr_target={self.snr_target} "
+                                f"→ sigma_max={new_smax:.4f}"
+                            )
+                        self.log(f"sigma_max_x{res}", new_smax, on_step=True, on_epoch=False)
+
             # ── Consistency training (matches notebook training_step) ──
             student_unet = self.solver.solvers[solver_key].get_unet()
             teacher_unet = self.teacher_solvers[solver_key]
@@ -374,7 +434,8 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
                     )
                 kwargs  = dict(boundaries=bound, mask_bound=mbound)
 
-            output = self.consistency_training(
+            ct = self.consistency_trainings[f"ct_x{res}"]
+            output = ct(
                 student_unet, teacher_unet,
                 x.nan_to_num(), y,  # consistency training expects no NaNs in input
                 self.global_step, self.total_training_steps,
