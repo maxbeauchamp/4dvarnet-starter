@@ -32,7 +32,7 @@ var_config:
   
   # Time steps per resolution 
   time_steps:
-    patch_x10: 8
+    patch_x10: 15
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
 computed:
@@ -50,7 +50,7 @@ trainer:
   inference_mode: False
   gradient_clip_val: 0.5
   accelerator: gpu
-  devices: [0,1,2,3]
+  devices: [3]
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
@@ -160,7 +160,7 @@ model:
 optim_weight:
   patch_x10:
     _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 8, yc: 256, xc: 256}
+    patch_dims: {time: 15, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]

@@ -13,7 +13,6 @@ RESULTS_DIR=${SRC_DIR}/results
 CKPT_DIR=${SRC_DIR}/4dvarnet-starter/ckpt/CROSCIM
 WORK_DIR=${SRC_DIR}/4dvarnet-starter
 ACCOUNT=cu_0026
-PARTITION=gpu
 NODES=1
 NTASKS_PER_NODE=8
 GPUS_PER_NODE=8
@@ -61,7 +60,6 @@ for (( i=0; i<NUM_XPS; i++ )); do
     JID=$(sbatch --parsable \
         --job-name="${JOB_NAME}" \
         --account="${ACCOUNT}" \
-        --partition="${PARTITION}" \
         --nodes="${NODES}" \
         --ntasks-per-node="${NTASKS_PER_NODE}" \
         --gpus-per-node="${GPUS_PER_NODE}" \
@@ -114,7 +112,6 @@ done
 COPY_JID=$(sbatch --parsable \
     --job-name="croscim_copy_ckpts" \
     --account="${ACCOUNT}" \
-    --partition="${PARTITION}" \
     --nodes=1 --ntasks=1 --cpus-per-task=2 \
     --time=00:10:00 \
     --dependency="${DEP}" \

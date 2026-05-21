@@ -60,7 +60,7 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   #devices: 1
-  devices: [0,1,2,3]
+  devices: [3]
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
