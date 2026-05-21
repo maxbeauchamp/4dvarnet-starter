@@ -50,7 +50,7 @@ trainer:
   accumulate_grad_batches: 2
   limit_train_batches: 1000.
   limit_val_batches: 50.
-  max_epochs: 150
+  max_epochs: 500
   logger:
     _target_: pytorch_lightning.loggers.CSVLogger
     save_dir: ${hydra:runtime.output_dir}

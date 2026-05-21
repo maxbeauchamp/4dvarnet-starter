@@ -304,7 +304,11 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         print(f"Lit4dVarNet_CROSCIM_Consistency initialized:")
         print(f"  Resolutions: {self.multires}")
         _smax_info = ", ".join(
-            f"x{r}={'auto(snr≤" + str(self.snr_target) + ")' if (self.auto_sigma_max and r not in self.sigma_max_per_res) else self.sigma_max_per_res.get(r, self.sigma_max)}"
+            (
+                f"x{r}=auto(snr≤{self.snr_target})"
+                if (self.auto_sigma_max and r not in self.sigma_max_per_res)
+                else f"x{r}={self.sigma_max_per_res.get(r, self.sigma_max)}"
+            )
             for r in self.multires
         )
         print(f"  Consistency config: sigma_min={self.sigma_min}, sigma_max: {_smax_info}")
