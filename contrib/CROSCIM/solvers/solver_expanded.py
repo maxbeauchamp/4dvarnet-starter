@@ -491,20 +491,16 @@ class BilinAEPriorCost(nn.Module):
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
 
-        self.gn = torch.nn.GroupNorm(
-            num_groups=1, 
-            num_channels=dim_hidden  
-        )
-
         self.bilin_1 = nn.Conv2d(
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
         self.bilin_21 = nn.Conv2d(
             dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
         )
-        self.bilin_22 = nn.Conv2d(
-            dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
-        )
+        if not bilin_quad:
+            self.bilin_22 = nn.Conv2d(
+                dim_hidden, dim_hidden, kernel_size=kernel_size, padding=kernel_size // 2
+            )
 
         self.conv_out = nn.Conv2d(
             2 * dim_hidden, dim_out, kernel_size=kernel_size, padding=kernel_size // 2
@@ -518,7 +514,8 @@ class BilinAEPriorCost(nn.Module):
         )
 
         self.bilin_21 = nn.utils.spectral_norm(self.bilin_21)
-        self.bilin_22 = nn.utils.spectral_norm(self.bilin_22)
+        if not bilin_quad:
+            self.bilin_22 = nn.utils.spectral_norm(self.bilin_22)
 
     '''
     def forward_ae(self, x):
