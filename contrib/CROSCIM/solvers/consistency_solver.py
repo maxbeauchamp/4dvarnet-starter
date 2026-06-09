@@ -630,6 +630,7 @@ class ConsistencyUNetSolver(nn.Module):
                 n_input_channels=n_input_channels,
                 top_blocks_channels=(n_hidden, n_hidden),
                 mid_blocks_channels=(n_hidden * 2, n_hidden * 4),
+                add_bounds=add_bounds,  # propagate so UNet input projection allocates the right channels
             )
         self.unet_config = unet_config
         self.unet = ConsistencyUNet(unet_config)

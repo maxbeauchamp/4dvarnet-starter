@@ -45,12 +45,14 @@ computed:
 # ===== CONSISTENCY MODEL CONFIGURATION =====
 consistency_config:
   sigma_min: 0.002
-  sigma_max: 80.0
+  sigma_max: 10.0
+  auto_sigma_max: True
+  snr_target: 0.01
   rho: 7.0
   sigma_data: 1.0
   initial_timesteps: 2
-  final_timesteps: 17
-  total_training_steps: 10000
+  final_timesteps: 50
+  total_training_steps: 10000  # overridden dynamically in configure_optimizers
   initial_ema_decay_rate: 0.95
   student_model_ema_decay_rate: 0.99993
   lr: 1e-4

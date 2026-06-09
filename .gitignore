@@ -72,3 +72,6 @@ ckpt/CROSCIM/base_croscim_4DVarNet_sic_supervised_forecast.ckpt
 ckpt/CROSCIM/base_croscim_CM_sit_supervised.ckpt
 ckpt/CROSCIM/base_croscim_CM_sit_supervised_wbounds.ckpt
 vs.code-workspace
+ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt
+ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_res10.ckpt
+ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast.ckpt

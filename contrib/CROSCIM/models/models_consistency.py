@@ -447,11 +447,12 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             )
             self.num_timesteps = output["num_timesteps"]
 
-            # Pure consistency loss: MSE(student prediction, teacher target)
+            # Pure consistency loss: MSE(student prediction, teacher target), ice pixels only
             mask = torch.isfinite(x)
-            loss = F.mse_loss(torch.where(mask, output["predicted"], torch.zeros_like(output["predicted"])),
-                              torch.where(mask, output["target"], torch.zeros_like(output["target"]))
-                             )
+            if mask.any():
+                loss = F.mse_loss(output["predicted"][mask], output["target"][mask])
+            else:
+                loss = (output["predicted"] * 0).sum()  # zero loss, keeps grad graph
 
             # Use student prediction as the output for downstream (multistep)
             out_tensor = self.solver.solvers[solver_key](sbatch)
@@ -459,7 +460,7 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             # Logging (same structure as notebook)
             if phase:
                 self.log(f"{phase}_loss", loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
-                self.log("num_timesteps", float(self.num_timesteps), on_step=False, on_epoch=True)
+                self.log(f"num_timesteps_x{res}", float(self.num_timesteps), on_step=False, on_epoch=True)
 
             do_print = self.trainer.is_global_zero and (self.global_step % 50 == 0)
             if do_print:
@@ -519,6 +520,11 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
 
     def configure_optimizers(self):
         """Only optimize student UNet parameters."""
+        # Dynamic total_training_steps: avoids num_timesteps saturating too early
+        # (hardcoded 10k << actual steps when max_epochs * batches >> 10k)
+        self.total_training_steps = self.trainer.estimated_stepping_batches
+        print(f"[CM] total_training_steps set dynamically: {self.total_training_steps}")
+
         params = []
         for res in self.multires:
             key = f"solver_x{res}"

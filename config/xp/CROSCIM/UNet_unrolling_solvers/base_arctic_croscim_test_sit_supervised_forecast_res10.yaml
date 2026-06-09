@@ -37,7 +37,7 @@ var_config:
   
   # Time steps per resolution 
   time_steps:
-    patch_x10: 8
+    patch_x10: 15
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
 computed:
@@ -111,11 +111,11 @@ datamodule:
     test:
       time: {_target_: builtins.slice, _args_: ['2021-02-01', '2021-02-15']}
   xrds_kw:
-    patch_dims: { time: 8, yc: 256, xc: 256}
+    patch_dims: { time: 15, yc: 256, xc: 256}
     strides: { time: 1, yc: 28, xc: 28}
     strides_test: {time: 1, yc: 200, xc: 200}
     patch_dims_dict: 
-      10: {time: 8, yc: 256, xc: 256}
+      10: {time: 15, yc: 256, xc: 256}
     strides_test_dict: 
       10: {time: 1, yc: 200, xc: 200}
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
@@ -217,7 +217,7 @@ model:
 optim_weight:
   patch_x10:
     _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 8, yc: 256, xc: 256}
+    patch_dims: {time: 15, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
