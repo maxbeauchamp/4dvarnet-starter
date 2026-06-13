@@ -402,6 +402,8 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
                             final_timesteps=self.final_timesteps,
                         )
                         self._sigma_max_calibrated.add(res)
+                        # Sync to solver so inference uses the same noise scale as training
+                        self.solver.solvers[f"solver_x{res}"].sigma_max = new_smax
                         if self.trainer.is_global_zero:
                             print(
                                 f"\n[sigma_max auto-calibration] res=x{res}: "
@@ -454,8 +456,9 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
             else:
                 loss = (output["predicted"] * 0).sum()  # zero loss, keeps grad graph
 
-            # Use student prediction as the output for downstream (multistep)
-            out_tensor = self.solver.solvers[solver_key](sbatch)
+            # Use student prediction as the output for downstream (multistep).
+            # Avoids running the full 15-step sampling chain at every training step.
+            out_tensor = output["predicted"].detach()
 
             # Logging (same structure as notebook)
             if phase:
