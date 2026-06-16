@@ -582,9 +582,9 @@ class LitFlowMatchingModel(LightningModule):
             censor = (x1 >= ub).float()
             loss_map = loss_map * (1 - censor) + censor * neglogcdf(residual)
 
-        # Mask: keep only pixels that are valid in the observations
-        obs_mask = (~torch.isnan(y)).float()
-        loss = masked_average(loss_map, obs_mask)
+        # FM supervises velocity everywhere; obs conditioning is via the input (y_filled, mask).
+        # Masking the loss to obs pixels only kills gradient at unobserved locations → RMSE ≈ 1.
+        loss = loss_map.mean()
 
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
         return loss

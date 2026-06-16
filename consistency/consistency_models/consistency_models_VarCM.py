@@ -257,9 +257,15 @@ def model_variational_forward_wrapper(
     if schedule is None:
         schedule = DEFAULT_SCHEDULE
 
-    # conditioning_mode: "grad" (default) -> pass grad_J to model
-    #                    "obs"            -> pass cat([y_filled, mask], dim=1) to model
+    # conditioning_mode:
+    #   "grad"     (default) — pass ∇J(x)               to model  (C  channels)
+    #   "obs"                — pass cat([y_filled, mask]) to model  (2C channels)
+    #   "obs+grad"           — pass cat([y, mask, ∇J])   to model  (3C channels)
     conditioning_mode = kwargs.pop("conditioning_mode", "grad")
+    # grad_at: optional state at which to evaluate ∇J (instead of x).
+    # During training, pass the analytic interpolant alpha(t)*x_T + beta(t)*x0
+    # so that ∇Jo never vanishes as the teacher improves (h_t → x0 ⟹ ∇Jo(h_t) → 0).
+    grad_at = kwargs.pop("grad_at", None)
 
     B, C, H, W = x.shape
 
@@ -270,34 +276,50 @@ def model_variational_forward_wrapper(
         cond   = torch.cat([y_fill, mask], dim=1)   # (B, 2C, H, W)
         grad_J = cond  # returned for API compatibility (not a true gradient)
     else:
-        # ---- Compute grad_J = nabla_x J(x)  -----------------------------------
-        # x_leaf is kept in float32 so autograd.grad always returns float32.
-        # The costs may live in any dtype (fp16, bf16 ...), so we cast the inputs
-        # to the cost's dtype before the forward pass.  .to(dtype) is differentiable,
-        # so the gradient still flows back to x_leaf correctly.
-        x_leaf = x.detach().float().requires_grad_(True)
+        # ---- Compute grad_J = nabla_x J(x_grad)  ------------------------------
+        # x_grad = grad_at if provided (training: interpolant), else x (inference).
+        x_grad = grad_at if grad_at is not None else x
         y_c    = y.detach().float()
-        lr_f   = lambda_reg.detach().float().clamp(min=0.0)  # keep lambda >= 0
         try:
             cost_dtype = next(prior_cost.parameters()).dtype
         except StopIteration:
             cost_dtype = torch.float32
-        x_cost = x_leaf.to(dtype=cost_dtype)
         y_cost = y_c.to(dtype=cost_dtype)
+        # Two independent leaf tensors → two independent graphs → no retain_graph needed.
+        # Everything inside enable_grad() so gradient tracking works even inside no_grad().
         with torch.enable_grad():
-            Jo  = obs_cost(x_cost, y_cost)
-            Jb  = prior_cost(x_cost)
-            J   = (Jo + lr_f.to(cost_dtype) * Jb).float()
-            grad_J_c = torch.autograd.grad(
-                J, x_leaf, create_graph=False, allow_unused=True
+            xl_Jo = x_grad.detach().float().requires_grad_(True)
+            xl_Jb = x_grad.detach().float().requires_grad_(True)
+            g_Jo = torch.autograd.grad(
+                obs_cost(xl_Jo.to(dtype=cost_dtype), y_cost).float(),
+                xl_Jo, allow_unused=True,
             )[0]
-        if grad_J_c is None:
-            grad_J_c = torch.zeros_like(x_leaf)
-        # Normalise grad_J to unit std to keep the network input well-conditioned
-        # regardless of the absolute scale of J (which can be O(sigma_noise^2)).
-        g = grad_J_c.detach()
-        g_std = g.std().clamp(min=1e-8)
-        grad_J = cond = (g / g_std).to(dtype=x.dtype)
+            g_Jb = torch.autograd.grad(
+                prior_cost(xl_Jb.to(dtype=cost_dtype)).float(),
+                xl_Jb, allow_unused=True,
+            )[0]
+        if g_Jo is None:
+            g_Jo = torch.zeros_like(xl_Jo)
+        if g_Jb is None:
+            g_Jb = torch.zeros_like(xl_Jb)
+        # Normalise each term independently → balanced weighting, prevents
+        # ∇Jb (learned SPDE prior) from dominating over ∇Jo (observation fit).
+        g_Jo = g_Jo.detach()
+        g_Jb = g_Jb.detach()
+        grad_J_norm = (
+            g_Jo / g_Jo.std().clamp(min=1e-8)
+            + g_Jb / g_Jb.std().clamp(min=1e-8)
+        ).to(dtype=x.dtype)   # (B, C, H, W)
+
+        if conditioning_mode == "obs+grad":
+            # cat([y_filled, mask, ∇J]) → (B, 3C, H, W)
+            mask_og   = (~torch.isnan(y)).to(dtype=x.dtype)
+            y_fill_og = torch.nan_to_num(y, nan=0.0).to(dtype=x.dtype)
+            cond   = torch.cat([y_fill_og, mask_og, grad_J_norm], dim=1)
+            grad_J = cond
+        else:
+            # pure grad mode: (B, C, H, W)
+            grad_J = cond = grad_J_norm
 
     # Work with detached x from here on (no gradient through transport steps)
     x = x.detach()
@@ -334,6 +356,7 @@ def model_variational_forward_wrapper(
 def _g_fwd(
     model, obs_cost, prior_cost, lambda_reg,
     x, y, t, t_prime, sigma_noise, conditioning_mode,
+    grad_at=None,
 ):
     """Single g_φ step — returns transported state (B,C,H,W)."""
     x_out, _ = model_variational_forward_wrapper(
@@ -341,6 +364,7 @@ def _g_fwd(
         x, y, t, t_prime,
         sigma_noise=sigma_noise,
         conditioning_mode=conditioning_mode,
+        grad_at=grad_at,
     )
     return x_out
 
@@ -349,9 +373,12 @@ def _g_fwd(
 class VarCMOutput:
     """Output of VarCMTraining.forward()."""
     loss:          Tensor
-    l_pair:        Tensor   # Term 1: pairwise consistency (at t''=0)
-    l_long:        Tensor   # Term 2: long-chain anchor  x_T -> t -> 0
-    l_short:       Tensor   # Term 3: short-chain anchor x_t -> t' -> 0
+    l_pair:        Tensor   # Term 1: pairwise consistency — learns the jumps (sauts)
+    l_anc:         Tensor   # Term 2: anchoring  = L_long + L_short
+    l_ae:          Tensor   # Term 3: AE reconstruction J_b(x0) — trains prior_cost
+    l_obs:         Tensor   # Term 4: MSE at observed locations only — breaks smoothness
+    l_long:        Tensor   # (logged separately) long-chain anchor  x_T -> t -> 0
+    l_short:       Tensor   # (logged separately) short-chain anchor x_t -> t' -> 0
     num_timesteps: int
     times:         Tensor   # full time grid (for logging)
     t_sampled:     Tensor   # t  (B,)
@@ -360,30 +387,34 @@ class VarCMOutput:
 
 class VarCMTraining(nn.Module):
     """
-    Deterministic pairwise VarCM training — stabilised three-term loss.
+    Deterministic pairwise VarCM training.
 
-    All three terms produce x_0-scale predictions (t''=0), preventing the
-    scale contradiction that causes explosion when t''≠0.
+    Philosophy: L_pair learns the pairwise jumps (sauts); L_anc anchors to x_0.
 
-        L = λ_pair  * || g_s(g_t(x_T,T,t), t, 0) - sg[g_t(g_t(x_T,T,t'),t',0)] ||²
-          + λ_long  * || g_s(g_t(x_T,T,t), t, 0) - x_0 ||²
-          + λ_short * (see below)
+        L = λ_pair * L_pair  +  λ_anc * L_anc  +  λ_ae * L_ae
 
-    L_pair and L_long share the same student forward pass.
+    where:
+        L_pair = || g_s(h_t, t, 0) - sg[g_t(h_t', t', 0)] ||²
+                 pairwise consistency: student jump t→0 matches teacher jump t'→0
+
+        L_anc  = L_long + L_short
+            L_long  = || g_s(h_t, t, 0) - x_0 ||²          (long-chain anchor)
+            L_short = (see pure_short flag below)           (short-chain anchor)
+
+        L_ae   = MSE(Φ(x_0), x_0)   trains the prior cost
+
+    L_pair and L_long share the same student forward pass (one UNet call).
 
     Two modes for L_short, controlled by ``pure_short``:
 
-    pure_short=False (default — interpolant mode):
+    pure_short=False (interpolant mode):
         x_t = alpha(t)*x_T + beta(t)*x_0   (requires knowing x_0)
         L_short = || g_s(sg[g_s(x_t, t, t')], t', 0) - x_0 ||²
 
     pure_short=True (pure self-consistency, *no interpolant hypothesis*):
         Starting point: h_t = sg[g_t(x_T, T, t)]  (teacher rollout, no x_0 needed)
         L_short = || g_s(sg[g_s(h_t, t, t')], t', 0) - sg[g_t(h_t', t', 0)] ||²
-        where h_t' = sg[g_t(x_T, T, t')]  (already computed for L_pair).
-        This is a pure two-hop semigroup constraint: the student two-step
-        x_T->t->t'->0 must match the teacher direct step x_T->t'->0,
-        with no reference to x_0 or the interpolant.
+        Pure two-hop semigroup: x_T->t->t'->0 matches x_T->t'->0, no x_0 needed.
     """
 
     def __init__(
@@ -392,8 +423,9 @@ class VarCMTraining(nn.Module):
         final_timesteps:    int   = 17,
         sigma_noise:        float = 80.0,
         lambda_pair:        float = 1.0,
-        lambda_long:        float = 1.0,
-        lambda_short:       float = 1.0,
+        lambda_anc:         float = 1.0,   # weights L_long + L_short together
+        lambda_ae:          float = 1.0,
+        lambda_obs:         float = 0.0,   # MSE at observed locations — breaks smoothness
         schedule_power:     float = 1.0,
         conditioning_mode:  str   = "obs",
         pure_short:         bool  = True,
@@ -403,8 +435,9 @@ class VarCMTraining(nn.Module):
         self.final_timesteps   = final_timesteps
         self.sigma_noise       = sigma_noise
         self.lambda_pair       = lambda_pair
-        self.lambda_long       = lambda_long
-        self.lambda_short      = lambda_short
+        self.lambda_anc        = lambda_anc
+        self.lambda_ae         = lambda_ae
+        self.lambda_obs        = lambda_obs
         self.schedule_power    = schedule_power
         self.conditioning_mode = conditioning_mode
         self.pure_short        = pure_short
@@ -477,11 +510,13 @@ class VarCMTraining(nn.Module):
             target_pair = self._fwd(teacher, obs_cost, prior_cost, lambda_reg,
                                     h_tp, y, t_p, t0_vec)
 
-        # ── Terms 1 & 2: shared student forward g_s(h_t, t, 0) ───────────────
+        # ── Term 1 (L_pair) + L_long: shared student forward g_s(h_t, t, 0) ──
+        # L_pair  learns the pairwise jump: student(t→0) ≈ teacher(t'→0)
+        # L_long  is part of L_anc: long-chain anchor student(t→0) ≈ x_0
         pred_long = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                               h_t, y, t_s, t0_vec)
         l_long = F.mse_loss(pred_long, x0)
-        l_pair = F.mse_loss(pred_long, target_pair)
+        l_pair = F.mse_loss(pred_long, target_pair.detach())
 
         # ── Term 3: L_short ───────────────────────────────────────────────────
         if self.pure_short:
@@ -504,12 +539,37 @@ class VarCMTraining(nn.Module):
                                    x_mid, y, t_p, t0_vec)
             l_short = F.mse_loss(pred_short, x0)
 
-        loss = (self.lambda_pair  * l_pair
-              + self.lambda_long  * l_long
-              + self.lambda_short * l_short)
+        # ── Term 4: AE reconstruction — trains prior_cost directly ────────────
+        # prior_cost parameters receive zero gradient from the consistency terms
+        # because grad_J is computed with x.detach() + create_graph=False (grad
+        # mode) or prior_cost is never called (obs mode).  This explicit term
+        # gives prior_cost a direct supervised signal in BOTH modes.
+        # L_ae = MSE(prior_cost.forward_ae(x_gt), x_gt)  where x_gt = x0 = batch.tgt
+        x_gt = x0.to(dtype=next(prior_cost.parameters()).dtype, non_blocking=True)
+        l_ae = F.mse_loss(prior_cost.forward_ae(x_gt), x_gt).float()
+
+        # ── Term 5: L_obs — MSE at observed locations only ────────────────────
+        # Applied to BOTH pred_long and pred_short (each predicts x0 from a
+        # different starting point). Averaging halves the effective weight per
+        # path while doubling the gradient signal on observation fidelity.
+        # x0 is always the ground-truth target, regardless of pure_short mode.
+        mask_obs = (~torch.isnan(y)).to(dtype=pred_long.dtype)
+        n_obs = mask_obs.sum().clamp(min=1.0)
+        l_obs_long  = ((pred_long  - x0) * mask_obs).pow(2).sum() / n_obs
+        l_obs_short = ((pred_short - x0) * mask_obs).pow(2).sum() / n_obs
+        l_obs = (l_obs_long + l_obs_short) / 2.0
+
+        # L_anc = L_long + L_short  (anchoring terms combined)
+        l_anc = l_long + l_short
+
+        loss = (self.lambda_pair * l_pair
+              + self.lambda_anc  * l_anc
+              + self.lambda_ae   * l_ae
+              + self.lambda_obs  * l_obs)
 
         return VarCMOutput(
-            loss=loss, l_pair=l_pair, l_long=l_long, l_short=l_short,
+            loss=loss, l_pair=l_pair, l_anc=l_anc, l_ae=l_ae, l_obs=l_obs,
+            l_long=l_long, l_short=l_short,
             num_timesteps=N, times=times,
             t_sampled=t_s, t_p_sampled=t_p,
         )
@@ -524,7 +584,7 @@ class LitVarCMConfig:
     lr_scheduler_start_factor:    float = 1e-5
     lr_scheduler_iters:           int   = 10_000
     lambda_reg_init:              float = 1.0
-    total_training_steps:         int   = 5_000
+    total_training_steps:         int   = 5_000   # fallback only — overridden dynamically in configure_optimizers
 
 
 # LitVarCM is defined here but imports pytorch_lightning lazily to avoid a hard
@@ -565,6 +625,12 @@ try:
             self.lambda_reg = nn.Parameter(
                 torch.tensor(config.lambda_reg_init, dtype=torch.float32)
             )
+            # Will be overridden in configure_optimizers with the actual number of
+            # optimizer steps (accounts for accumulate_grad_batches, max_epochs,
+            # dataset size).  Without this, N saturates at final_timesteps after
+            # only ~5000 steps regardless of how long training runs.
+            self._total_training_steps = config.total_training_steps
+
             for p in self.teacher_model.parameters():
                 p.requires_grad = False
             for p in self.ema_student_model.parameters():
@@ -590,7 +656,7 @@ try:
                 batch.tgt,
                 batch.input,
                 self.global_step,
-                self.config.total_training_steps,
+                self._total_training_steps,
             )
             self.num_timesteps = out.num_timesteps
 
@@ -604,15 +670,21 @@ try:
                     f"t'={out.t_p_sampled[0].item():.3f}\n"
                     f"  L={out.loss.item():.4f}  "
                     f"L_pair={out.l_pair.item():.4f}  "
-                    f"L_long={out.l_long.item():.4f}  "
-                    f"L_short={out.l_short.item():.4f}"
+                    f"L_anc={out.l_anc.item():.4f}  "
+                    f"(L_long={out.l_long.item():.4f}  "
+                    f"L_short={out.l_short.item():.4f})  "
+                    f"L_ae={out.l_ae.item():.4f}  "
+                    f"L_obs={out.l_obs.item():.4f}"
                 )
 
             self.log_dict({
                 "train_loss":    out.loss,
                 "L_pair":        out.l_pair,
+                "L_anc":         out.l_anc,
                 "L_long":        out.l_long,
                 "L_short":       out.l_short,
+                "L_ae":          out.l_ae,
+                "L_obs":         out.l_obs,
                 "lambda_reg":    self.lambda_reg.detach(),
                 "num_timesteps": float(out.num_timesteps),
             }, prog_bar=False)
@@ -630,6 +702,25 @@ try:
             self.log("ema_decay_rate", ema_decay)
 
         def configure_optimizers(self):
+            # ── Dynamic total_training_steps ──────────────────────────────────
+            # Use the actual number of optimizer steps for the full run so that
+            # N grows from initial_timesteps to final_timesteps gradually across
+            # all epochs — not just the first ~5000 steps.
+            try:
+                actual_steps = self.trainer.estimated_stepping_batches
+                if actual_steps and int(actual_steps) > 0:
+                    self._total_training_steps = int(actual_steps)
+                    print(
+                        f"[LitVarCM] Dynamic total_training_steps = "
+                        f"{self._total_training_steps}  "
+                        f"(config fallback was {self.config.total_training_steps})"
+                    )
+            except Exception as e:
+                print(
+                    f"[LitVarCM] Could not get estimated_stepping_batches ({e}), "
+                    f"using config value {self.config.total_training_steps}"
+                )
+
             params = (
                 list(self.student_model.parameters())
                 + list(self.obs_cost.parameters())
