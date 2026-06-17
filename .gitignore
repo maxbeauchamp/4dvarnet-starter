@@ -217,3 +217,9 @@ consistency/Notebooks/Notebooks_GP/logs_FM_spde/v2/checkpoints/epoch=269-step=14
 consistency/Notebooks/Notebooks_GP/logs_FM_spde/v2/checkpoints/epoch=256-step=13364-train_loss=1.1976.ckpt
 consistency/Notebooks/Notebooks_GP/logs_FM_spde/v2/checkpoints/epoch=255-step=13312-train_loss=1.2028.ckpt
 consistency/Notebooks/Notebooks_GP/logs_FM_spde/v2/checkpoints/last.ckpt
+consistency/Notebooks/Notebooks_GP/logs_CT_DynCM_spde/v8/checkpoints/epoch=1633-step=84968-train_loss=0.0091.ckpt
+consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP/v1/checkpoints/epoch=010-step=572-val_rmse=0.8926.ckpt
+consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP/v1/checkpoints/epoch=012-step=676-val_rmse=0.8915.ckpt
+consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP/v1/checkpoints/epoch=009-step=520-val_rmse=0.8907.ckpt
+consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP/v1/checkpoints/last.ckpt
+consistency/Notebooks/Notebooks_GP/logs_FM_spde/v2/checkpoints/epoch=261-step=13624-train_loss=1.2012.ckpt
