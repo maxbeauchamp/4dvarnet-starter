@@ -5,8 +5,8 @@
 # but uses FMSolver (gensim Transformer + FlowMatchingSampler).
 
 paths:
-  src: /dmidata/users/maxb
-  preproc: /dmidata/users/maxb/PREPROC
+  src: /dcai/users/beamax
+  preproc: /dcai/projects/cu_0026/croscim_train
 
 domain: ???
 
@@ -57,10 +57,14 @@ trainer:
   inference_mode: False
   gradient_clip_val: 0.5
   accelerator: gpu
-  devices: [0,1]
+  devices: ${oc.decode:${oc.env:SLURM_GPUS_ON_NODE,8}}
+  num_nodes: ${oc.decode:${oc.env:SLURM_NNODES,1}}
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
+  plugins:
+    - _target_: pytorch_lightning.plugins.environments.SLURMEnvironment
+      auto_requeue: false
   accumulate_grad_batches: 2
   limit_train_batches: 1000.
   limit_val_batches: 500.
@@ -211,7 +215,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
+    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
     save_dir: ${paths.src}/results
 
 defaults:
