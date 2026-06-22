@@ -230,6 +230,7 @@ def _unpad(x: Tensor, padding: Tuple[int, int, int, int]) -> Tensor:
 @dataclass
 class UNetFMConfig:
     channels: int = 5                                # = window_size C
+    cond_channels: Optional[int] = None              # conditioning channels (default = channels)
     time_channels: int = 128
     time_scale: float = 16.0
     n_heads: int = 8
@@ -258,8 +259,9 @@ class UNetFM(nn.Module):
         self.config = config
         tc = config.time_channels
 
+        cc = config.cond_channels if config.cond_channels is not None else config.channels
         self.input_proj = nn.Conv2d(
-            config.channels * 3, config.top_blocks_channels[0],
+            config.channels + 2 * cc, config.top_blocks_channels[0],
             kernel_size=3, padding="same",
         )
         self.time_emb = TimeEmbedding(tc, config.time_scale)

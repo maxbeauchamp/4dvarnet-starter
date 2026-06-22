@@ -2,62 +2,105 @@ from .utils import *
 
 # Modified consistency model for few-step dynamical-system sampling.
 #
-# DESIGN (v6 — spin-up FIRST, physical SECOND):
+# DESIGN (v8 — fixed student/teacher pairwise assignment):
 #   Solver progress s = si/(nsteps-1)  ∈ [0, 1]  (0 = pure noise, 1 = clean)
 #   Diffusion time  t = 1 - s                     (1 = pure noise, 0 = clean)
 #
 #   s ∈ [0, SPINUP_FRAC]  (t ∈ [spinup_boundary, 1]):  SPIN-UP
-#       pure noise → IC (frame 0)
+#       IC + σ_sp(t)·ε → IC (frame 0)
+#       Pairwise SDE-based: c_skip = σ_sp(t')/σ_sp(t), c_out = 1 - c_skip
+#       σ_sp remaps [sb, 1] → [σ_min, σ_max] via Karras ρ-space
+#       Same mechanism as standard CM pairwise.
 #
 #   s ∈ [SPINUP_FRAC, 1]  (t ∈ [0, spinup_boundary]):  PHYSICAL
 #       IC → frame 1 → … → frame C-1  (forward physical time)
+#       Pairwise interpolant: c_skip = t'/t, c_out = 1 - t'/t
+#       Matches the interpolant structure of the physical input.
 #
-#   With spinup_boundary=0.7 and NSTEPS=4C+1:
-#       SPINUP_FRAC = 1 - 0.7 = 0.3 → IC at step ~C+1 (s ≈ 0.3) ✓
+#   v8 fix: Student takes the BIGGER step (current → next), teacher takes
+#   the SMALLER step (intermediate → next). This matches CM pairwise where
+#   the teacher provides a reliable target (small step) and the student
+#   learns the harder mapping (big step). v7 had these roles inverted,
+#   causing spinup variance explosion as N grew.
 
 
-def compute_sigma(t, t_initial_cond, sigma_min, sigma_max, rho=7.0):
+def compute_sigma_spinup(t, sigma_min, sigma_max, spinup_boundary, rho=7.0):
+    """Map spinup times t ∈ [sb, 1] → σ ∈ [σ_min, σ_max] via Karras ρ-space.
+
+    At t=sb: σ = σ_min ≈ 0  (clean IC)
+    At t=1:  σ = σ_max       (pure noise)
+    """
+    # Compute in float32 for precision, cast back to input dtype
+    t_f = t.float() if t.is_floating_point() else t
+    tau = ((t_f - spinup_boundary) / (1.0 - spinup_boundary)).clamp(0, 1)
     rho_inv = 1.0 / rho
-    sigma = sigma_min**rho_inv + torch.min(torch.tensor(1.), t / t_initial_cond) * (
-        sigma_max**rho_inv - sigma_min**rho_inv)
-    return sigma**rho
-
-
-def skip_spinup(t, physical_lag=0.7, steepness=100):
-    """Gate: 1 (Karras residual) in spin-up (t > physical_lag), 0 (raw model) in physical (t < physical_lag)."""
-    return 1. / (1 + torch.exp(-steepness * (t - physical_lag)))
+    sigma = sigma_min**rho_inv + tau * (sigma_max**rho_inv - sigma_min**rho_inv)
+    result = sigma**rho
+    return result.to(t.dtype) if t.is_floating_point() else result
 
 
 def model_dynamical_systems_forward_wrapper(
     model, x, y, t1, t2,
-    sigma_data=1, sigma_min=0.002, sigma_max=80.0,
+    sigma_min=0.002, sigma_max=10.0,
     spinup_boundary=0.7,
+    _diag=None,
     **kwargs,
 ):
-    physical_lag  = spinup_boundary
-    sigma1        = compute_sigma(t1, physical_lag, sigma_min, sigma_max)
-    c_skip        = pad_dims_like(skip_scaling(sigma1, sigma_data, sigma_min), x)
-    c_out         = pad_dims_like(output_scaling(sigma1, sigma_data, sigma_min), x)
-    model_out     = model(x, y, t1, t2, **kwargs)
-    # Karras parametrization applied uniformly: at small t (late physical steps),
-    # c_skip → 1 anchors output to input, preventing error accumulation across steps.
-    return c_skip * x + c_out * model_out
+    """Regime-adaptive pairwise preconditioning.
+
+    Spinup  (t1 > sb): SDE-based       c_skip = σ_sp(t2)/σ_sp(t1)
+    Physical (t1 ≤ sb): interpolant     c_skip = t2/t1
+    """
+    is_spinup = (t1 > spinup_boundary)
+    is_sp = pad_dims_like(is_spinup.to(x.dtype), x)
+
+    # Spinup: σ-based pairwise (same as CM)
+    sigma1 = compute_sigma_spinup(t1, sigma_min, sigma_max, spinup_boundary)
+    sigma2 = compute_sigma_spinup(t2, sigma_min, sigma_max, spinup_boundary)
+    c_skip_sp = pad_dims_like((sigma2 / sigma1.clamp(min=1e-8)).to(x.dtype), x)
+    c_out_sp  = 1.0 - c_skip_sp
+
+    # Physical: t-based pairwise (interpolant)
+    c_skip_ph = pad_dims_like((t2 / t1.clamp(min=1e-8)).to(x.dtype), x)
+    c_out_ph  = 1.0 - c_skip_ph
+
+    c_skip = is_sp * c_skip_sp + (1 - is_sp) * c_skip_ph
+    c_out  = is_sp * c_out_sp  + (1 - is_sp) * c_out_ph
+
+    mdtype    = next(model.parameters()).dtype
+    model_out = model(x.to(mdtype), y.to(mdtype), t1, t2, **kwargs)
+    result    = (c_skip * x + c_out * model_out).to(x.dtype)
+
+    if _diag is not None:
+        cs_flat = c_skip.flatten(1).mean(1)
+        co_flat = c_out.flatten(1).mean(1)
+        _diag.update({
+            "c_skip_min": cs_flat.min().item(),
+            "c_skip_max": cs_flat.max().item(),
+            "c_out_min":  co_flat.min().item(),
+            "c_out_max":  co_flat.max().item(),
+            "model_out_std": model_out.std().item(),
+            "x_std":         x.std().item(),
+            "result_std":    result.std().item(),
+            "has_nan":       bool(torch.isnan(result).any()),
+        })
+
+    return result
 
 
 def _make_regime_input(x, times, physical_steps, phys_step_size, physical_lag,
                        sigma_min, sigma_max, noise, anchor_mode=False):
     """Build model input for a batch, routing spin-up vs physical regime.
 
-    physical_steps = linspace(0, physical_lag, C)  INCREASING
-      physical_steps[k]  ↔  frame C-1-k
-        k=0:   t=0             → frame C-1 (last, cleanest)
-        k=C-1: t=physical_lag  → frame 0   (IC)
+    Spin-up:  IC + σ_sp(t)·ε   (standard SDE noising of IC)
+    Physical: interpolation between adjacent GT frame anchors
     """
     B, C, H, W = x.shape
 
-    # Spin-up (t > physical_lag): IC + sigma * noise
-    sigma        = compute_sigma(times, physical_lag, sigma_min, sigma_max)
-    spinup_noisy = x[:, [0], :, :] + sigma.view(B, 1, 1, 1) * noise
+    # Spin-up (t > physical_lag): IC + σ_spinup(t) · ε
+    IC = x[:, 0:1, :, :]
+    sigma_sp = compute_sigma_spinup(times, sigma_min, sigma_max, physical_lag).to(x.dtype)
+    spinup_noisy = IC + sigma_sp.view(B, 1, 1, 1) * noise
 
     # Physical (t ≤ physical_lag): interpolation between adjacent frame anchors
     idx = torch.searchsorted(
@@ -73,21 +116,19 @@ def _make_regime_input(x, times, physical_steps, phys_step_size, physical_lag,
     a = ((physical_steps[idx] - times) / phys_step_size).clamp(0., 1.).view(B, 1, 1, 1)
     phys_interp = a * x_prev + (1. - a) * x_curr
 
-    # anchor_mode: return x_prev (next clean frame in fwd time) — prevents identity collapse
     phys_out     = x_prev if anchor_mode else phys_interp
     spinup_mask  = (times > physical_lag).view(B, 1, 1, 1)
     return torch.where(spinup_mask, spinup_noisy, phys_out)
 
 
 class ConsistencyTrainingDynamicalSystems:
-    """Consistency training for dynamical systems."""
+    """Consistency training with regime-adaptive pairwise preconditioning."""
 
-    def __init__(self, sigma_min=0.002, sigma_max=80.0, rho=7.0, sigma_data=1,
+    def __init__(self, sigma_min=0.002, sigma_max=10.0, rho=7.0,
                  initial_timesteps=2, final_timesteps=150, spinup_boundary=0.7):
         self.sigma_min         = sigma_min
         self.sigma_max         = sigma_max
         self.rho               = rho
-        self.sigma_data        = sigma_data
         self.initial_timesteps = initial_timesteps
         self.final_timesteps   = final_timesteps
         self.spinup_boundary   = spinup_boundary
@@ -122,70 +163,82 @@ class ConsistencyTrainingDynamicalSystems:
         intermediate_times = steps[timesteps + 1]
         next_times         = steps[timesteps + 2]
 
-        # Student
-        intermediate_noisy_x = _make_regime_input(
-            x, intermediate_times, physical_steps, phys_step_size,
-            physical_lag, self.sigma_min, self.sigma_max, noise)
-        next_from_intermediate_x = model_dynamical_systems_forward_wrapper(
-            student_model, intermediate_noisy_x, y,
-            intermediate_times, next_times,
-            self.sigma_data, self.sigma_min, self.sigma_max,
-            spinup_boundary=physical_lag, **kwargs)
+        # Diagnostics
+        diag_student = {}
+        diag_teacher = {}
+        is_spinup = (current_times > physical_lag)
+        n_spinup  = int(is_spinup.sum().item())
+        n_phys    = x.shape[0] - n_spinup
 
-        # Target
+        # Student — bigger step (current → next), matching CM pairwise design.
+        # The student takes the harder step (noisiest input, biggest σ gap).
+        current_noisy_x = _make_regime_input(
+            x, current_times, physical_steps, phys_step_size,
+            physical_lag, self.sigma_min, self.sigma_max, noise)
+        student_pred = model_dynamical_systems_forward_wrapper(
+            student_model, current_noisy_x, y,
+            current_times, next_times,
+            self.sigma_min, self.sigma_max,
+            spinup_boundary=physical_lag,
+            _diag=diag_student, **kwargs)
+
+        # Teacher — smaller step (intermediate → next), reliable target.
         with torch.no_grad():
             gt_next = _make_regime_input(
                 x, next_times, physical_steps, phys_step_size,
                 physical_lag, self.sigma_min, self.sigma_max, noise,
-                anchor_mode=True)   # next clean frame in fwd time → no identity collapse
+                anchor_mode=True)
 
-            current_noisy_x = _make_regime_input(
-                x, current_times, physical_steps, phys_step_size,
+            intermediate_noisy_x = _make_regime_input(
+                x, intermediate_times, physical_steps, phys_step_size,
                 physical_lag, self.sigma_min, self.sigma_max, noise)
-            teacher_next = model_dynamical_systems_forward_wrapper(
-                teacher_model, current_noisy_x, y,
-                current_times, next_times,
-                self.sigma_data, self.sigma_min, self.sigma_max,
-                spinup_boundary=physical_lag, **kwargs)
+
+            with torch.amp.autocast('cuda', enabled=False):
+                teacher_pred = model_dynamical_systems_forward_wrapper(
+                    teacher_model.float(), intermediate_noisy_x.float(), y.float(),
+                    intermediate_times.float(), next_times.float(),
+                    self.sigma_min, self.sigma_max,
+                    spinup_boundary=physical_lag,
+                    _diag=diag_teacher, **kwargs)
 
             B = x.shape[0]
             is_physical = (current_times <= physical_lag).view(B, 1, 1, 1)
-            target = torch.where(is_physical, gt_next, teacher_next)
+            target = torch.where(is_physical, gt_next, teacher_pred)
+
+        diag = {
+            "n_spinup": n_spinup, "n_phys": n_phys,
+            "t_curr_range": (current_times.min().item(), current_times.max().item()),
+            "t_int_range":  (intermediate_times.min().item(), intermediate_times.max().item()),
+            "t_next_range": (next_times.min().item(), next_times.max().item()),
+            "student": diag_student, "teacher": diag_teacher,
+            "input_std":  current_noisy_x.std().item(),
+            "target_std": target.std().item(),
+            "gt_next_std": gt_next.std().item(),
+        }
 
         return ConsistencyTrainingOutputFewSteps(
-            next_from_intermediate_x, target, num_timesteps, steps)
+            student_pred, target, num_timesteps, steps, diag=diag)
 
 
 class ConsistencySamplingAndEditingDynamicalSystems:
-    """Consistency sampling for dynamical systems."""
+    """Consistency sampling with regime-adaptive pairwise preconditioning."""
 
-    def __init__(self, sigma_min=0.002, sigma_max=80., sigma_data=1, spinup_boundary=0.7,
+    def __init__(self, sigma_min=0.002, sigma_max=10.0, spinup_boundary=0.7,
                  stochastic=False):
         self.sigma_min       = sigma_min
         self.sigma_max       = sigma_max
-        self.sigma_data      = sigma_data
         self.spinup_boundary = spinup_boundary
-        self.stochastic      = stochastic   # False = deterministic (pure consistency)
-                                            # True  = réinjecte Δσ·ε à chaque step spin-up
+        self.stochastic      = stochastic
 
     def __call__(self, model, noise, y, nsteps, karras=False,
                  clip_denoised=False, verbose=False, **kwargs):
         """
         Returns (final_x, all_xs, phys_frame_indices).
-          all_xs[si]          = state after step si  (shape: nsteps × B × 1 × H × W)
-          phys_frame_indices  = IC-first list of si indices per physical frame
-            IC   at si ≈ round((1-spinup_boundary)*(nsteps-1))  [~30% through for sb=0.7]
-            last at si = nsteps-1
 
-        stochastic=True: avant chaque step spin-up (i>0), réinjecte
-          x ← x + sqrt(σ(t_curr)² − σ(t_next)²) · ε
-        Ceci maintient x proche de la distribution d'entraînement IC+σ(t)·ε
-        → trajectoire spin-up progressive (comme DDPM).
-        Uniquement applicable au spin-up (SDE connue) ; pas en régime physique.
+        stochastic=True: re-injects noise during spinup steps (SDE sampling).
         """
         physical_lag = self.spinup_boundary
 
-        # physical_steps_sample[k] = physical_lag * k/(C-1)  ↔  frame C-1-k
         physical_steps_sample = torch.linspace(0.0, physical_lag, y.shape[1])
 
         if not karras:
@@ -193,31 +246,32 @@ class ConsistencySamplingAndEditingDynamicalSystems:
         else:
             times = torch.flip(karras_schedule(nsteps, as_time=True), dims=[0])
 
-        noise  = noise * compute_sigma(times[0], physical_lag, self.sigma_min, self.sigma_max)
-        x      = noise
-        all_xs = [noise]
+        # Start from pure noise at σ_max (same as CM inference)
+        x = (noise * self.sigma_max).to(noise.dtype)
+        all_xs = [x]
+        B = noise.shape[0]
 
         for i in range(nsteps - 1):
-            tc = torch.full((noise.shape[0],), times[i],     dtype=noise.dtype, device=noise.device)
-            tn = torch.full((noise.shape[0],), times[i + 1], dtype=noise.dtype, device=noise.device)
+            tc = torch.full((B,), times[i],     dtype=x.dtype, device=x.device)
+            tn = torch.full((B,), times[i + 1], dtype=x.dtype, device=x.device)
 
-            # Stochastic re-injection in spin-up only (t > spinup_boundary)
+            # Stochastic re-injection in spin-up only
             if self.stochastic and times[i] > physical_lag and i > 0:
-                sigma_curr = compute_sigma(times[i],     physical_lag, self.sigma_min, self.sigma_max)
-                sigma_next = compute_sigma(times[i + 1], physical_lag, self.sigma_min, self.sigma_max)
+                sigma_curr = compute_sigma_spinup(
+                    torch.tensor(times[i]), self.sigma_min, self.sigma_max, physical_lag).to(x.dtype)
+                sigma_next = compute_sigma_spinup(
+                    torch.tensor(times[i + 1]), self.sigma_min, self.sigma_max, physical_lag).to(x.dtype)
                 delta_sigma = (sigma_curr ** 2 - sigma_next ** 2).clamp(min=0.0).sqrt()
                 x = x + delta_sigma * torch.randn_like(x)
 
-            x  = model_dynamical_systems_forward_wrapper(
+            x = model_dynamical_systems_forward_wrapper(
                 model, x, y, tc, tn,
-                self.sigma_data, self.sigma_min, self.sigma_max,
+                self.sigma_min, self.sigma_max,
                 spinup_boundary=physical_lag, **kwargs)
             if clip_denoised:
                 x = x.clamp(-1.0, 1.0)
             all_xs.append(x)
 
-        # physical_steps_sample: [0, ..., physical_lag] → frame C-1 first, IC last
-        # After reversal → IC-first
         times_cpu = times.cpu()
         phys_frame_indices = [
             max(1, torch.argmin(torch.abs(times_cpu - t_k)).item())

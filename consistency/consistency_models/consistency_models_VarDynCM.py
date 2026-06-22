@@ -1,13 +1,6 @@
 from typing import NamedTuple, Optional, Tuple
 import torch.nn.functional as F
 from .utils import *
-from .consistency_models_DynCM import (
-    compute_sigma,
-    model_dynamical_systems_forward_wrapper,
-    ConsistencySamplingAndEditingDynamicalSystems,
-    skip_scaling,
-    output_scaling,
-)
 
 # VarDynCM — Variational Dynamical Consistency Model
 #
@@ -40,8 +33,12 @@ from .consistency_models_DynCM import (
 #   prior_cost parameters receive zero gradient from the other terms (autograd
 #   is taken w.r.t. a detached x_leaf only), so this explicit term is required.
 #
-# Karras preconditioner (σ_max=3 → c_skip=0.10 in spin-up):
-#   output = c_skip(σ(t)) · x  +  c_out(σ(t)) · F_θ(x, y, t, t'; grad_cond)
+# Pairwise preconditioner (interpolant-based, same as VarCM — no σ):
+#   c_skip = t'/t,  c_out = 1 - t'/t
+#   output = c_skip · x  +  c_out · F_θ(x, y, t, t'; grad_cond)
+#
+# v8 fix: Student takes the BIGGER step (current → next), teacher takes
+# the SMALLER step (intermediate → next). Matches CM pairwise design.
 
 
 # ── Types ─────────────────────────────────────────────────────────────────────
@@ -251,9 +248,6 @@ def _fwd(
     y:                Tensor,
     t:                Tensor,
     t_prime:          Tensor,
-    sigma_data:       float,
-    sigma_min:        float,
-    sigma_max:        float,
     spinup_boundary:  float,
     # variational conditioning (optional)
     obs_cost:         Optional[nn.Module]    = None,
@@ -263,10 +257,11 @@ def _fwd(
     **kw,
 ) -> Tensor:
     """
-    VarDynCM single-step forward pass.
+    VarDynCM single-step forward pass with interpolant-based pairwise
+    preconditioning (no σ, same as VarCM):
 
-    Extends `model_dynamical_systems_forward_wrapper` with physical-time–gated
-    gradient conditioning (always zeroed in spin-up):
+        c_skip = t'/t,  c_out = 1 - t'/t
+        output = c_skip · x  +  c_out · F_θ(x, y, t, t'; grad_cond)
 
       conditioning_mode:
         "none"     — no extra conditioning                            (grad_j_channels=0)
@@ -298,13 +293,11 @@ def _fwd(
                 grad_cond[b_p, ch:ch + 1] = g_J
         # spin-up elements keep grad_cond = 0
 
-    return model_dynamical_systems_forward_wrapper(
-        model, x, y, t, t_prime,
-        sigma_data, sigma_min, sigma_max,
-        spinup_boundary=spinup_boundary,
-        grad_cond=grad_cond,
-        **kw,
-    )
+    # Interpolant-based pairwise preconditioning (like VarCM, no σ)
+    c_skip = pad_dims_like(t_prime / t.clamp(min=1e-8), x)
+    c_out  = 1.0 - c_skip
+    model_out = model(x, y, t, t_prime, grad_cond=grad_cond, **kw)
+    return c_skip * x + c_out * model_out
 
 
 # ── Training ──────────────────────────────────────────────────────────────────
@@ -327,21 +320,17 @@ class VarDynCMTraining:
     def __init__(
         self,
         spinup_boundary:    float = 0.7,
-        sigma_min:          float = 0.002,
         sigma_max:          float = 3.0,
-        sigma_data:         float = 1.0,
         initial_timesteps:  int   = 5,
         final_timesteps:    int   = 50,
         lambda_IC:          float = 1.0,
         lambda_phys:        float = 1.0,
-        lambda_obs:         float = 0.0,   # MSE at obs pixels on physical steps (0 = off)
-        lambda_ae:          float = 1.0,   # AE reconstruction loss — trains prior_cost
-        conditioning_mode:  str   = "none",   # "none" | "grad" | "obs" | "obs+grad"
+        lambda_obs:         float = 0.0,
+        lambda_ae:          float = 1.0,
+        conditioning_mode:  str   = "none",
     ):
         self.spinup_boundary   = spinup_boundary
-        self.sigma_min         = sigma_min
         self.sigma_max         = sigma_max
-        self.sigma_data        = sigma_data
         self.initial_timesteps = initial_timesteps
         self.final_timesteps   = final_timesteps
         self.lambda_IC         = lambda_IC
@@ -393,29 +382,27 @@ class VarDynCMTraining:
 
         def fwd(m, inp, tc, tn):
             return _fwd(
-                m, inp, y, tc, tn,
-                self.sigma_data, self.sigma_min, self.sigma_max, sb,
+                m, inp, y, tc, tn, sb,
                 obs_cost=obs_cost, prior_cost=prior_cost, lambda_reg=lambda_reg,
                 conditioning_mode=self.conditioning_mode,
                 **kwargs,
             )
 
-        # ── L_comp: DynCM-style ───────────────────────────────────────────────
-        # Student input is a GT-based intermediate (not teacher output), matching
-        # DynCM's _make_regime_input approach — avoids circular bootstrap.
+        # ── L_comp: pairwise consistency (v8 fix: student=big step, teacher=small step)
+        # Student takes the BIGGER step (current → next): harder task, gets gradient.
+        # Teacher takes the SMALLER step (intermediate → next): reliable target.
         # Physical target = GT anchor frame at t_next (same as DynCM's gt_next).
-        # Spin-up  target = teacher(x_start, t_curr → t_next) — only reached for
-        # larger N once spin-up indices become valid (same as DynCM).
-        x_int_gt    = _get_start(x, noise, t_int,  sb, self.sigma_max)
-        x_next_pred = fwd(student, x_int_gt, t_int, t_next)
+        # Spin-up  target = teacher(x_int_gt, t_int → t_next).
+        student_pred = fwd(student, x_start, t_curr, t_next)
 
         with torch.no_grad():
+            x_int_gt     = _get_start(x, noise, t_int,  sb, self.sigma_max)
             x_next_gt    = _get_start(x, noise, t_next, sb, self.sigma_max)
-            teacher_pred = fwd(teacher, x_start, t_curr, t_next)
+            teacher_pred = fwd(teacher, x_int_gt, t_int, t_next)
             is_phys      = (t_curr <= sb).view(B, 1, 1, 1)
-            target_comp  = torch.where(is_phys, x_next_gt.to(x_next_pred.dtype), teacher_pred)
+            target_comp  = torch.where(is_phys, x_next_gt.to(student_pred.dtype), teacher_pred)
 
-        loss_comp = F.mse_loss(x_next_pred, target_comp.detach())
+        loss_comp = F.mse_loss(student_pred, target_comp.detach())
 
         # ── L_IC: spin-up anchoring  g(noise, t_spin, t_IC) = IC ─────────────
         if k_IC >= 1:
@@ -426,9 +413,8 @@ class VarDynCMTraining:
             noise_sp  = torch.randn(B, 1, H, W, device=dev, dtype=x.dtype) * self.sigma_max
             # IC anchoring: grad_cond = 0 in spinup regardless of mode
             pred_IC   = _fwd(
-                student, noise_sp, y, t_sp, t_IC_vec,
-                self.sigma_data, self.sigma_min, self.sigma_max, sb,
-                conditioning_mode="none",   # no gradient for pure-noise input
+                student, noise_sp, y, t_sp, t_IC_vec, sb,
+                conditioning_mode="none",
                 **kwargs,
             )
             loss_IC   = F.mse_loss(pred_IC, IC)
@@ -501,15 +487,11 @@ class VarDynCMSamplingAndEditing:
 
     def __init__(
         self,
-        sigma_min:         float = 0.002,
         sigma_max:         float = 3.0,
-        sigma_data:        float = 1.0,
         spinup_boundary:   float = 0.7,
         conditioning_mode: str   = "none",
     ):
-        self.sigma_min         = sigma_min
         self.sigma_max         = sigma_max
-        self.sigma_data        = sigma_data
         self.spinup_boundary   = spinup_boundary
         self.conditioning_mode = conditioning_mode
 
@@ -530,16 +512,14 @@ class VarDynCMSamplingAndEditing:
         dtype = noise.dtype
         times = torch.linspace(1.0, 1e-8, nsteps, device=dev, dtype=dtype)
 
-        sigma0 = compute_sigma(times[0], sb, self.sigma_min, self.sigma_max)
-        x      = noise * sigma0
+        x      = noise * self.sigma_max
         all_xs = [x]
 
         for i in range(nsteps - 1):
             tc = torch.full((noise.shape[0],), times[i].item(),     device=dev, dtype=dtype)
             tn = torch.full((noise.shape[0],), times[i + 1].item(), device=dev, dtype=dtype)
             x = _fwd(
-                model, x, y, tc, tn,
-                self.sigma_data, self.sigma_min, self.sigma_max, sb,
+                model, x, y, tc, tn, sb,
                 obs_cost=obs_cost, prior_cost=prior_cost, lambda_reg=lambda_reg,
                 conditioning_mode=self.conditioning_mode,
                 **kwargs,

@@ -108,7 +108,7 @@ def ema_decay_rate_schedule(
 def karras_schedule(
     num_timesteps: int,
     sigma_min: float = 0.002,
-    sigma_max: float = 80.0,
+    sigma_max: float = 10.0,
     rho: float = 7.0,
     device: torch.device = None,
     as_time: bool = False
@@ -122,7 +122,7 @@ def karras_schedule(
         Number of timesteps at the current point in training.
     sigma_min : float, default=0.002
         Minimum standard deviation.
-    sigma_max : float, default=80.0
+    sigma_max : float, default=10.0
         Maximum standard deviation
     rho : float, default=7.0
         Schedule hyper-parameter.
@@ -373,6 +373,7 @@ class ConsistencyTrainingOutputFewSteps:
     num_timesteps: int
     sigmas: Tensor
     loss_weights: Optional[Tensor] = None
+    diag: Optional[dict] = None
 
 @dataclass
 class ConsistencyTrainingOutput4DVarNet:
