@@ -2,7 +2,9 @@
 Extract and list all files required by load_mfdata for a specific date range.
 """
 import sys
-sys.path.append('../..')
+from pathlib import Path
+# Repo root (4dvarnet-starter) is 3 levels up: scripts -> CROSCIM -> contrib -> root
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from contrib.CROSCIM.dataloaders.load_data import get_paths_for_source, DEFAULT_VAR_GROUPS, DEFAULT_COVARIATES
 from glob import glob
@@ -10,6 +12,32 @@ import datetime
 import numpy as np
 import shutil
 from pathlib import Path
+
+
+# ── Source configuration (shared by extraction and completeness checks) ───────
+SOURCE_GLOBS = {
+    "asip":       '/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc',
+    "cimr":       '/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
+    "cristal":    '/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
+    "models":     '/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*nc',
+    "covariates": '/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc',
+}
+SOURCE_DATE_FORMATS = {
+    "asip": "%Y%m%d",
+    "cimr": "%Y-%m-%d",
+    "cristal": "%Y-%m-%d",
+    "models": "%Y-%m-%d",
+    "covariates": "%Y-%m-%d",
+}
+
+
+def required_sources():
+    """Sources that must each provide one file per day (defines the 'full' count)."""
+    sources = [s for s, vars_list in DEFAULT_VAR_GROUPS.items() if vars_list]
+    if DEFAULT_COVARIATES:
+        sources.append("covariates")
+    sources.append("models")
+    return sources
 
 
 def select_paths_from_dates(files, times, fmt="%Y%m%d"):
@@ -60,22 +88,10 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
     satellite_vars = DEFAULT_VAR_GROUPS
     covariates = DEFAULT_COVARIATES
     
-    # Path loaders for each source (same as in load_mfdata)
-    path_loaders = {
-        "asip": lambda: glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc'),
-        "cimr": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc'),
-        "cristal": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc'),
-        "models": lambda: glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*nc'),
-    }
-    
-    # Date format for each source (same as in load_mfdata)
-    date_formats = {
-        "asip": "%Y%m%d",
-        "cimr": "%Y-%m-%d",
-        "cristal": "%Y-%m-%d",
-        "models": "%Y-%m-%d",
-    }
-    
+    # Path loaders / date formats for each source (module-level config)
+    path_loaders = {s: (lambda s=s: glob(SOURCE_GLOBS[s])) for s in SOURCE_GLOBS}
+    date_formats = SOURCE_DATE_FORMATS
+
     required_files = {}
     
     # ✅ Extract satellite file paths (same logic as load_mfdata)
@@ -106,7 +122,7 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
     if covariates:
         print(f"\nCOVARIATES: Variables = {covariates}")
         
-        covariates_paths = glob('/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc')
+        covariates_paths = glob(SOURCE_GLOBS["covariates"])
         print(f"  Total files available: {len(covariates_paths)}")
         
         selected_cov_paths = select_paths_from_dates(covariates_paths, times, fmt="%Y-%m-%d")
@@ -122,7 +138,7 @@ def extract_files_for_dates(start_date, end_date, output_dir=None, copy_files=Fa
     
     # ✅ Extract model output file paths
     print(f"\nMODELS: Output files from out_MOD")
-    models_paths = glob('/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*.nc')
+    models_paths = glob(SOURCE_GLOBS["models"])
     print(f"  Total files available: {len(models_paths)}")
     selected_mod_paths = select_paths_from_dates(models_paths, times, fmt="%Y-%m-%d")
     required_files['models'] = list(selected_mod_paths)
@@ -213,98 +229,198 @@ def save_file_list(required_files, output_file="required_files.txt"):
     print(f"\n✅ File list saved to {output_file} ({total_files} total files)")
 
 
-if __name__ == "__main__":
-    # ✅ Configure your date range here
-    START_DATE = "2022-02-01"
-    END_DATE = "2022-02-16"
-    
-    # Extract required files (no DataModule instantiation needed!)
-    required_files = extract_files_for_dates(
-        start_date=START_DATE,
-        end_date=END_DATE,
-        output_dir=None,  # Set to a path to copy files
-        copy_files=False   # Set to True to actually copy files
-    )
-    
-    # Save list to file
-    save_file_list(required_files, f"required_files_{START_DATE}_{END_DATE}.txt")
-    
-    # Create extraction directory and copy files
-    output_dir = f"/dmidata/users/maxb/extract_inference_{START_DATE}_{END_DATE}"
-    output_path = Path(output_dir)
-    
-    print(f"\n{'='*70}")
-    print(f"CREATING EXTRACTION DIRECTORY")
-    print("="*70)
-    print(f"Target directory: {output_dir}")
-    
-    # Create main directory
-    output_path.mkdir(parents=True, exist_ok=True)
-    print(f"✓ Created main directory")
-    
-    # Create subdirectories for each source
-    subdirs = {}
-    for source in required_files.keys():
-        source_dir = output_path / source
-        source_dir.mkdir(exist_ok=True)
-        subdirs[source] = source_dir
-        print(f" Created subdirectory: {source}/")
-    
-    # Copy files
-    print(f"\n{'='*70}")
-    print(f"COPYING FILES")
-    print("="*70)
-    
-    total_copied = 0
-    total_skipped = 0
-    total_failed = 0
-    
-    for source, files in required_files.items():
-        if not files:
-            print(f"\n{source.upper()}: No files to copy")
+def count_window_files(start_date, seq_length_days, sources, files_cache):
+    """
+    Count how many files each source provides for a window starting at start_date.
+
+    Uses the same date-matching logic as the extraction (select_paths_from_dates),
+    so a "full" window has seq_length_days files per source.
+    """
+    end_date = (datetime.datetime.strptime(start_date, "%Y-%m-%d")
+                + datetime.timedelta(days=seq_length_days)).strftime("%Y-%m-%d")
+    times = slice(start_date, end_date)
+    return {
+        s: len(select_paths_from_dates(files_cache[s], times, fmt=SOURCE_DATE_FORMATS[s]))
+        for s in sources
+    }
+
+
+def find_complete_window(start_date, seq_length_days, sources, files_cache,
+                         taken, max_shift_days=180):
+    """
+    From start_date, walk forward day by day to the first window that is both
+    complete (every source has its full seq_length_days files) and not already
+    assigned to another sequence (its start is not in `taken`).
+
+    Returns (new_start, new_end, shift_days, counts) or None if none found within
+    max_shift_days.
+    """
+    start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    for shift in range(max_shift_days + 1):
+        cand = (start + datetime.timedelta(days=shift)).strftime("%Y-%m-%d")
+        if cand in taken:
             continue
-        
-        print(f"\n{source.upper()}: Processing {len(files)} files...")
-        
-        for i, src_file in enumerate(files, 1):
-            src_path = Path(src_file)
-            dst_file = subdirs[source] / src_path.name
-            
-            if not dst_file.exists():
-                try:
-                    shutil.copy2(src_file, dst_file)
-                    if i <= 3 or i == len(files):  # Show first 3 and last
-                        print(f"  ✓ [{i:3d}/{len(files)}] Copied: {src_path.name}")
-                    elif i == 4:
-                        print(f"  ... copying remaining files ...")
-                    total_copied += 1
-                except Exception as e:
-                    print(f"  ✗ [{i:3d}/{len(files)}] Failed: {src_path.name}")
-                    print(f"      Error: {e}")
-                    total_failed += 1
-            else:
-                if i <= 3:  # Show first 3 skipped
-                    print(f"  - [{i:3d}/{len(files)}] Skipped: {src_path.name} (exists)")
-                total_skipped += 1
-    
-    # Final summary
+        counts = count_window_files(cand, seq_length_days, sources, files_cache)
+        if all(counts[s] >= seq_length_days for s in sources):
+            end = (datetime.datetime.strptime(cand, "%Y-%m-%d")
+                   + datetime.timedelta(days=seq_length_days)).strftime("%Y-%m-%d")
+            return cand, end, shift, counts
+    return None
+
+
+def validate_and_adjust_sequences(sequences, seq_length_days, max_shift_days=180):
+    """
+    For each sequence, check the window is complete (seq_length_days files per source).
+    If not, shift its start forward to the nearest complete window that is not
+    already used by another sequence, so the 25 windows stay distinct.
+
+    Returns the adjusted list of (start_date, end_date) tuples.
+    """
+    sources = required_sources()
+    files_cache = {s: glob(SOURCE_GLOBS[s]) for s in sources}
+    expected_total = len(sources) * seq_length_days
+
     print(f"\n{'='*70}")
-    print(f"EXTRACTION COMPLETE")
+    print(f"VALIDATING SEQUENCES (expect {len(sources)} sources × "
+          f"{seq_length_days} days = {expected_total} files each)")
+    print(f"Sources: {sources}")
     print("="*70)
-    print(f"Output directory: {output_dir}")
-    print(f"\nStatistics:")
-    print(f"  ✓ Copied:  {total_copied} files")
-    print(f"  - Skipped: {total_skipped} files (already existed)")
-    print(f"  ✗ Failed:  {total_failed} files")
-    print(f"  → Total:   {total_copied + total_skipped + total_failed} files")
-    
-    # Show directory structure
-    print(f"\nDirectory structure:")
-    for source, files in required_files.items():
-        print(f"  {output_dir}/{source}/")
-        print(f"    └─ {len(files)} files")
-    
+
+    adjusted = []
+    taken = set()
+    for idx, (start_date, end_date) in enumerate(sequences, 1):
+        counts = count_window_files(start_date, seq_length_days, sources, files_cache)
+        total = sum(counts.values())
+        missing = {s: seq_length_days - n for s, n in counts.items() if n < seq_length_days}
+
+        # Find nearest forward window that is complete AND not already taken
+        # (shift=0 keeps the original window when it is already complete & free).
+        res = find_complete_window(start_date, seq_length_days, sources,
+                                   files_cache, taken, max_shift_days)
+        if res is None:
+            print(f"  {idx:2d}. {start_date} → {end_date}  ⚠️ incomplete ({total}), "
+                  f"missing {missing} — NO free complete window within "
+                  f"{max_shift_days} days, KEEPING original")
+            adjusted.append((start_date, end_date))
+            taken.add(start_date)
+            continue
+
+        ns, ne, shift, _ = res
+        taken.add(ns)
+        adjusted.append((ns, ne))
+        if shift == 0:
+            print(f"  {idx:2d}. {start_date} → {end_date}  ✓ complete ({total})")
+        else:
+            reason = f"incomplete ({total}), missing {missing}" if missing \
+                     else f"complete but window already taken"
+            print(f"  {idx:2d}. {start_date} → {end_date}  ⚠️ {reason}")
+            print(f"      → shifted +{shift}d to {ns} → {ne} (complete, distinct)")
+
+    return adjusted
+
+
+def generate_sequences(year, n_sequences, seq_length_days):
+    """
+    Build n_sequences (start_date, end_date) pairs spread homogeneously over `year`.
+
+    Each sequence spans `seq_length_days` days, with `end_date` exclusive — the same
+    convention as select_paths_from_dates (which iterates over range((end-start).days)).
+    The start dates are evenly spaced so the last window still ends within the year.
+
+    Returns:
+        list of (start_date, end_date) string tuples, e.g. [("2023-01-01", "2023-01-16"), ...]
+    """
+    year_start = datetime.date(year, 1, 1)
+    year_end = datetime.date(year, 12, 31)
+
+    # Latest start so the full window stays within the year (end is exclusive).
+    last_start = year_end - datetime.timedelta(days=seq_length_days - 1)
+    span_days = (last_start - year_start).days
+    if span_days < 0:
+        raise ValueError(
+            f"seq_length_days={seq_length_days} is too long to fit in year {year}"
+        )
+
+    # Evenly spaced start offsets over the available window (homogeneous coverage).
+    offsets = np.linspace(0, span_days, n_sequences).round().astype(int)
+
+    sequences = []
+    for off in offsets:
+        start = year_start + datetime.timedelta(days=int(off))
+        end = start + datetime.timedelta(days=seq_length_days)
+        sequences.append((start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")))
+    return sequences
+
+
+def process_sequences(sequences, base_output_dir, copy_files=True):
+    """
+    Extract (and optionally copy) the required files for all sequences, pooled by
+    source.
+
+    All sequences write into the SAME per-source subdirectories under
+    base_output_dir (asip/ cimr/ covariates/ cristal/ models/). Files shared by
+    overlapping sequences are copied once (existing files are skipped), so each
+    source directory ends up with the de-duplicated union of every sequence's files.
+    """
+    base_path = Path(base_output_dir)
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    merged = {}   # source -> set of file paths (de-duplicated across sequences)
+    for idx, (start_date, end_date) in enumerate(sequences, 1):
+        print(f"\n{'#'*70}")
+        print(f"# SEQUENCE {idx}/{len(sequences)}: {start_date} → {end_date}")
+        print(f"# Output (pooled): {base_path}")
+        print("#"*70)
+
+        required_files = extract_files_for_dates(
+            start_date=start_date,
+            end_date=end_date,
+            output_dir=str(base_path),     # pool everything into <base>/<source>/
+            copy_files=copy_files,
+        )
+        for source, files in required_files.items():
+            merged.setdefault(source, set()).update(files)
+
+    # Single de-duplicated file list at the base directory.
+    merged_lists = {source: sorted(files) for source, files in merged.items()}
+    save_file_list(merged_lists, base_path / "required_files.txt")
+
+    # ── Pooled summary ────────────────────────────────────────────────────────
     print(f"\n{'='*70}")
-    print(f" All done! Files extracted to:")
-    print(f"   {output_dir}")
+    print(f"ALL {len(sequences)} SEQUENCES PROCESSED — pooled by source")
     print("="*70)
+    grand_total = 0
+    for source, files in merged_lists.items():
+        print(f"  {source}: {len(files)} unique files")
+        grand_total += len(files)
+    print(f"\n{'='*70}")
+    print(f"TOTAL unique files: {grand_total}")
+    print(f"Base directory: {base_output_dir}")
+    print("="*70)
+
+    return merged_lists
+
+
+if __name__ == "__main__":
+    # ✅ Configure the multi-sequence extraction here
+    YEAR = 2022
+    N_SEQUENCES = 25
+    SEQUENCE_LENGTH_DAYS = 15   # matches the original 2022-02-01 → 2022-02-16 window
+
+    BASE_OUTPUT_DIR = f"/dmidata/users/maxb/extract_inference_{YEAR}_{N_SEQUENCES}seq"
+
+    # Build 25 date windows spread homogeneously over the year.
+    sequences = generate_sequences(YEAR, N_SEQUENCES, SEQUENCE_LENGTH_DAYS)
+
+    print(f"\n{'='*70}")
+    print(f"PLANNED SEQUENCES ({N_SEQUENCES} × {SEQUENCE_LENGTH_DAYS} days over {YEAR})")
+    print("="*70)
+    for idx, (start_date, end_date) in enumerate(sequences, 1):
+        print(f"  {idx:2d}. {start_date} → {end_date}")
+
+    # Validate completeness and shift incomplete windows forward to the nearest
+    # window where every source has its full set of files.
+    sequences = validate_and_adjust_sequences(sequences, SEQUENCE_LENGTH_DAYS)
+
+    # Extract and copy files for every sequence.
+    process_sequences(sequences, BASE_OUTPUT_DIR, copy_files=True)

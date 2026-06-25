@@ -112,7 +112,7 @@ datamodule = BaseDataModuleMultiRes(
     
     # Time domains
     domains={
-        'train': {'time': slice('2021-01-01', '2021-08-28')},
+        'train': {'time': slice('2021-01-01', '2021-12-31')},   # full year 2021 (all seasons, incl. winter)
         'val': {'time': slice('2021-01-01', '2021-01-15')},
         'test': {'time': slice('2021-01-01', '2021-01-15')}
         #'train': {'time': slice('2022-05-01', '2022-12-31')},

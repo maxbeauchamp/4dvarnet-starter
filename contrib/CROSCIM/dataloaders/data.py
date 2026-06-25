@@ -389,9 +389,31 @@ class XrDataset(torch.utils.data.Dataset):
             key = f"{prefix}_{var}" if prefix is not None else var
     
             if use_regular_grid:
-                # Regular grid interpolation
+                # Regular grid — NaN-AWARE, resolution-adaptive.
+                # Infer the integer downsampling factor from the target/source spacing
+                # ratio (×5 -> 5, ×2 -> 2, …). Plain .interp propagates NaN and only
+                # sees the 4 bracketing cells, which collapses the coverage of sparse
+                # fields (e.g. altimetry) when downsampling.
                 xc_target, yc_target = target_grid
-                interpolated = ds[var].interp(xc=("xc", xc_target), yc=("yc", yc_target))
+                da = ds[var]
+                fx = int(round(abs(np.median(np.diff(xc_target))) /
+                               abs(np.median(np.diff(da["xc"].values)))))
+                fy = int(round(abs(np.median(np.diff(yc_target))) /
+                               abs(np.median(np.diff(da["yc"].values)))))
+                if fx >= 2 and fy >= 2:
+                    # Downsampling -> NaN-aware area-average over the fy×fx footprint
+                    # (a coarse cell is valid as soon as >=1 source cell is finite),
+                    # then align to the exact target grid. Vectorised → fast.
+                    coarse = da.coarsen(xc=fx, yc=fy, boundary="trim").mean(skipna=True)
+                    interpolated = coarse.interp(xc=("xc", xc_target), yc=("yc", yc_target),
+                                                 method="nearest")
+                else:
+                    # Same/finer grid -> NaN-aware normalized bilinear (no NaN propagation):
+                    # interpolate value*validity and validity, then divide.
+                    valid = da.notnull()
+                    num = da.fillna(0.0).interp(xc=("xc", xc_target), yc=("yc", yc_target))
+                    den = valid.astype("float32").interp(xc=("xc", xc_target), yc=("yc", yc_target))
+                    interpolated = num / den.where(den > 0)
                 data_out[key] = interpolated.values
             else:
                 # Irregular grid using pyresample

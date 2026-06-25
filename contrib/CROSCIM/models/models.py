@@ -896,8 +896,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         -------
         out : dict (modified in-place, also returned for convenience)
         """
+        # Only the TARGET variable's scale must be reapplied. Several inputs share
+        # the same suffix (e.g. models_SIT, cristal_SIT, cimr_SIT all → "SIT"); using
+        # all of them multiplied pred_SIT by the *product* of their scales. Restrict
+        # to target variables so each prediction is rescaled by a single factor.
+        if isinstance(self.tgt_vars, dict):
+            target_names = {v for lst in self.tgt_vars.values() for v in lst}
+        else:
+            target_names = set(self.tgt_vars)
         for batch_var, scale in scale_dict.items():
-            # batch_var e.g. "tgt_SIT", "models_SIT", "asip_sic"
+            if batch_var not in target_names:
+                continue
             # derive canonical suffix
             if '_' in batch_var:
                 suffix = batch_var.split('_', 1)[1]   # "SIT"

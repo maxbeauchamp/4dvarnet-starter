@@ -137,7 +137,13 @@ class XrDatasetMultiResTrain(XrDataset):
         Input: (T, Y, X)
         """
         patch = torch.as_tensor(patch).float().unsqueeze(0)  # Add batch dim
-        coarsened = F.adaptive_avg_pool2d(patch, target_shape)
+        # NaN-aware average pooling: pool(value*valid)/pool(valid) so NaN cells are
+        # ignored (output valid as soon as >=1 finite cell in the window). Vectorised.
+        valid = torch.isfinite(patch).float()
+        num = F.adaptive_avg_pool2d(torch.nan_to_num(patch, nan=0.0), target_shape)
+        den = F.adaptive_avg_pool2d(valid, target_shape)
+        coarsened = num / den
+        coarsened[den == 0] = float('nan')
         return coarsened.squeeze(0).numpy()
 
     def extract_enlarged_patch_from_datasets(self, sl, factor):
