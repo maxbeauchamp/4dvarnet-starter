@@ -258,7 +258,9 @@ class ConsistencyTrainingFewSteps_TimeEmbedding:
         return ConsistencyTrainingOutputFewSteps(next_from_intermediate_x,
                                                  next_from_current_x,
                                                  num_timesteps, steps,
-                                                 diag=diag)
+                                                 diag=diag,
+                                                 noise=noise.detach(),
+                                                 sigma_tgt=sigma_tgt.detach())
 
 class ConsistencySamplingAndEditingFewSteps_TimeEmbedding:
     """Implements the Consistency Sampling and Few-Shot Editing algorithms.

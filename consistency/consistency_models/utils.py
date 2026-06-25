@@ -374,6 +374,8 @@ class ConsistencyTrainingOutputFewSteps:
     sigmas: Tensor
     loss_weights: Optional[Tensor] = None
     diag: Optional[dict] = None
+    noise: Optional[Tensor] = None
+    sigma_tgt: Optional[Tensor] = None
 
 @dataclass
 class ConsistencyTrainingOutput4DVarNet:

@@ -12,7 +12,9 @@ from .utils import *
 #   Solver progress s = 1 - t:  s=0 (noise) → s=1 (clean)
 #
 # KEY DIFFERENCES from DynCM:
-#   Spin-up  : x_start = σ_max · ε         (pure noise, NO IC + σ·ε SDE forward)
+#   Spin-up  : x_start = τ·σ_max·ε + (1-τ)·IC   where τ(t)=(t-sb)/(1-sb)
+#              Derived from the boundary-relative c_skip (self-consistent,
+#              NOT an SDE assumption).  At t=1: pure noise.  At t=sb: clean IC.
 #   Physical : x_start = x_k               (GT frame directly, NO interpolation)
 #
 # VARIATIONAL GRADIENT CONDITIONING:
@@ -33,8 +35,10 @@ from .utils import *
 #   prior_cost parameters receive zero gradient from the other terms (autograd
 #   is taken w.r.t. a detached x_leaf only), so this explicit term is required.
 #
-# Pairwise preconditioner (interpolant-based, same as VarCM — no σ):
-#   c_skip = t'/t,  c_out = 1 - t'/t
+# Pairwise preconditioner (regime-dependent, NO SDE / NO interpolant assumption):
+#   Spin-up  (t > sb): c_skip = (t'-sb)/(t-sb), c_out = (t-t')/(t-sb)
+#     Telescopes: ∏(t'_k - sb)/(t_k - sb) = 0  → noise fully eliminated at t=sb
+#   Physical (t ≤ sb): c_skip = t'/t,  c_out = 1 - t'/t
 #   output = c_skip · x  +  c_out · F_θ(x, y, t, t'; grad_cond)
 #
 # v8 fix: Student takes the BIGGER step (current → next), teacher takes
@@ -257,11 +261,15 @@ def _fwd(
     **kw,
 ) -> Tensor:
     """
-    VarDynCM single-step forward pass with interpolant-based pairwise
-    preconditioning (no σ, same as VarCM):
+    VarDynCM single-step forward pass with regime-dependent pairwise
+    preconditioning (no SDE / no interpolant assumption):
 
-        c_skip = t'/t,  c_out = 1 - t'/t
-        output = c_skip · x  +  c_out · F_θ(x, y, t, t'; grad_cond)
+      Spin-up  (t > sb): c_skip = (t'-sb)/(t-sb)      (boundary-relative)
+      Physical (t ≤ sb): c_skip = t'/t                 (self-consistent)
+
+    The spin-up formula telescopes: ∏(t'_k-sb)/(t_k-sb) → 0 at t=sb,
+    guaranteeing full noise elimination at the boundary regardless of
+    the number of sampling steps.
 
       conditioning_mode:
         "none"     — no extra conditioning                            (grad_j_channels=0)
@@ -291,11 +299,24 @@ def _fwd(
                 )
                 ch = 2 if conditioning_mode == "obs+grad" else 0
                 grad_cond[b_p, ch:ch + 1] = g_J
-        # spin-up elements keep grad_cond = 0
 
-    # Interpolant-based pairwise preconditioning (like VarCM, no σ)
-    c_skip = pad_dims_like(t_prime / t.clamp(min=1e-8), x)
-    c_out  = 1.0 - c_skip
+    sb = spinup_boundary
+    is_spinup = (t > sb)
+    is_sp = pad_dims_like(is_spinup.to(x.dtype), x)
+
+    # Spin-up: boundary-relative (no SDE assumption, telescopes to 0 at t=sb)
+    c_skip_sp = pad_dims_like(
+        (t_prime - sb).clamp(min=0) / (t - sb).clamp(min=1e-8), x
+    )
+    c_out_sp  = 1.0 - c_skip_sp
+
+    # Physical: self-consistent (t'/t)
+    c_skip_ph = pad_dims_like(t_prime / t.clamp(min=1e-8), x)
+    c_out_ph  = 1.0 - c_skip_ph
+
+    c_skip = is_sp * c_skip_sp + (1 - is_sp) * c_skip_ph
+    c_out  = is_sp * c_out_sp  + (1 - is_sp) * c_out_ph
+
     model_out = model(x, y, t, t_prime, grad_cond=grad_cond, **kw)
     return c_skip * x + c_out * model_out
 
@@ -389,10 +410,6 @@ class VarDynCMTraining:
             )
 
         # ── L_comp: pairwise consistency (v8 fix: student=big step, teacher=small step)
-        # Student takes the BIGGER step (current → next): harder task, gets gradient.
-        # Teacher takes the SMALLER step (intermediate → next): reliable target.
-        # Physical target = GT anchor frame at t_next (same as DynCM's gt_next).
-        # Spin-up  target = teacher(x_int_gt, t_int → t_next).
         student_pred = fwd(student, x_start, t_curr, t_next)
 
         with torch.no_grad():
@@ -404,16 +421,16 @@ class VarDynCMTraining:
 
         loss_comp = F.mse_loss(student_pred, target_comp.detach())
 
-        # ── L_IC: spin-up anchoring  g(noise, t_spin, t_IC) = IC ─────────────
+        # ── L_IC: spin-up anchoring  g(noise, t_spin, t_IC=sb) = IC ─────────
         if k_IC >= 1:
             t_sp_pool = times[:k_IC + 1]
             sp_idx    = torch.randint(0, k_IC + 1, (B,), device=dev)
             t_sp      = t_sp_pool[sp_idx]
             t_IC_vec  = torch.full((B,), sb, device=dev, dtype=x.dtype)
-            noise_sp  = torch.randn(B, 1, H, W, device=dev, dtype=x.dtype) * self.sigma_max
-            # IC anchoring: grad_cond = 0 in spinup regardless of mode
+            noise_sp  = torch.randn(B, 1, H, W, device=dev, dtype=x.dtype)
+            x_sp      = _get_start(x, noise_sp, t_sp, sb, self.sigma_max)
             pred_IC   = _fwd(
-                student, noise_sp, y, t_sp, t_IC_vec, sb,
+                student, x_sp, y, t_sp, t_IC_vec, sb,
                 conditioning_mode="none",
                 **kwargs,
             )
@@ -544,8 +561,13 @@ class VarDynCMSamplingAndEditing:
 
 def _get_start(x: Tensor, noise: Tensor, t_curr: Tensor, sb: float, sigma_max: float) -> Tensor:
     """
-    Spin-up (t > sb)  : scaled noise  σ_max·ε
+    Spin-up (t > sb)  : τ · σ_max · noise  +  (1-τ) · IC     where τ = (t-sb)/(1-sb)
     Physical (t ≤ sb) : nearest GT frame at physical anchor t_k = sb·(C-1-k)/(C-1)
+
+    τ(t) is the cumulative c_skip product from t=1 to t under the boundary-
+    relative preconditioning c_skip=(t'-sb)/(t-sb).  The interpolation between
+    noise and IC matches what the sampling trajectory produces when the model
+    is correct, ensuring training and inference see the same distribution.
     """
     B, C, H, W = x.shape
     device, dtype = x.device, t_curr.dtype
@@ -555,7 +577,9 @@ def _get_start(x: Tensor, noise: Tensor, t_curr: Tensor, sb: float, sigma_max: f
         device=device, dtype=dtype,
     )  # [sb, ..., 0]
 
-    x_start = noise * sigma_max
+    IC  = x[:, [0], :, :]
+    tau = ((t_curr - sb) / (1.0 - sb)).clamp(min=0).view(B, 1, 1, 1)
+    x_start = tau * noise * sigma_max + (1.0 - tau) * IC
 
     is_phys = t_curr <= sb
     if is_phys.any():
