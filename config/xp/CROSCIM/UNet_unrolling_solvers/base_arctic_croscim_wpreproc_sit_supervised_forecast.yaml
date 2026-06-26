@@ -60,7 +60,7 @@ trainer:
   gradient_clip_val: 0.5
   accelerator: gpu
   #devices: 1
-  devices: [1,2]
+  devices: [0,1]
   strategy:
     _target_: pytorch_lightning.strategies.DDPStrategy
     find_unused_parameters: True
@@ -97,9 +97,9 @@ datamodule:
   # Multi-resolution configuration
   multires: [50,10]
   # Data splits
-  split_train: {_target_: builtins.slice, _args_: [0, 2000]}
-  split_val: {_target_: builtins.slice, _args_: [2000, 2050]}
-  split_test: {_target_: builtins.slice, _args_: [2000,2050]}
+  split_train: {_target_: builtins.slice, _args_: [0, 1895]}
+  split_val: {_target_: builtins.slice, _args_: [1895, 1945]}
+  split_test: {_target_: builtins.slice, _args_: [1895, 1945]}
   norm_stats:
     asip:
       sic: {min: 0.0, max: 100.0, type: minmax}

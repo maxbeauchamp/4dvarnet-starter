@@ -5,6 +5,9 @@ OUTPUT_DIR="/dmidata/users/maxb/PREPROC"
 PREFIX="preproc_batch"
 OUTPUT_PREFIX="preproc_CROSCIM"
 
+# Désactive le locking HDF5 (échoue sur NFS -> NC_EHDFERR pendant l'écriture)
+export HDF5_USE_FILE_LOCKING=FALSE
+
 cd "$INPUT_DIR" || exit 1
 
 # ── Step 1: collect all resolutions and all batch IDs ─────────────────────
@@ -86,28 +89,18 @@ for res in $res_list; do
         continue
     fi
 
-    tmpfile="${OUTPUT_DIR}/tmp_x${res}.nc"
     outfile="${OUTPUT_DIR}/${OUTPUT_PREFIX}_x${res}.nc"
 
-    # Concatenate
-    ncecat -O "${valid_files[@]}" "$tmpfile" \
+    # Concaténation + compression à la volée : écrit directement le fichier
+    # compressé, sans matérialiser l'intermédiaire non compressé géant (~180 Go)
+    ncecat -O -L 1 --cnk_dmn time,1 "${valid_files[@]}" "$outfile" \
         || { echo "  ❌ ncecat failed for x${res}, skipping"; continue; }
 
     # Rename record→sample if needed
-    if ! ncdump -h "$tmpfile" | grep -q "sample ="; then
+    if ! ncdump -h "$outfile" | grep -q "sample ="; then
         echo "  🔄 Renaming 'record' to 'sample'"
-        ncrename -O -d record,sample "$tmpfile"
+        ncrename -O -d record,sample "$outfile"
     fi
-
-    cp -f "$tmpfile" "$outfile"
-    rm -f "$tmpfile"
-
-    # Compress
-    ncks -O --cnk_dmn time,1 \
-            --cnk_dmn sample,1 \
-            --deflate 9 \
-            "$outfile" "${outfile%.nc}_compressed.nc"
-    mv "${outfile%.nc}_compressed.nc" "$outfile"
 
     echo "  ✅ Saved: $outfile  (${#valid_files[@]} batches)"
 done

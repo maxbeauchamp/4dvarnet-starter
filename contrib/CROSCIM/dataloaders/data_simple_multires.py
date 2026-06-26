@@ -23,7 +23,7 @@ class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
         self.db = {}
 
         for res in self.multires:
-            self.db[f"patch_x{res}"] = xr.open_dataset(paths[f"patch_x{res}"]).isel(record=split)
+            self.db[f"patch_x{res}"] = xr.open_dataset(paths[f"patch_x{res}"]).isel(sample=split)
         
         self.build_batch = build_batch
 
@@ -41,7 +41,7 @@ class XrDatasetMultiRes_simplify(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         out = {}
         for res in self.multires:
-            item = self.db[f"patch_x{res}"].isel(record=idx, sample=0)
+            item = self.db[f"patch_x{res}"].isel(sample=idx)
             
             # Only select variables that exist in TrainingItem
             available_fields = [f for f in TrainingItem._fields if f in item.data_vars or f in item.coords]

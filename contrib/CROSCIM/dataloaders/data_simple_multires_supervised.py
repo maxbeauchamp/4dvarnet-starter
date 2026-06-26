@@ -95,7 +95,7 @@ class XrDatasetMultiResSupervised_simplify(XrDatasetMultiRes_simplify):
         out = {}
         for res in self.multires:
             res_key = f"patch_x{res}"
-            item = self.db[res_key].isel(record=idx, sample=0)
+            item = self.db[res_key].isel(sample=idx)
             
             # Only select variables that exist in TrainingItem
             available_fields = [f for f in TrainingItem._fields if f in item.data_vars or f in item.coords]

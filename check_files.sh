@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Taille limite en octets (30 Mo)
-LIMIT=$((30 * 1024 * 1024))
+LIMIT=$((70 * 1024 * 1024))
 
 echo "📂 Scan du répertoire : $(pwd)"
 echo "🔍 Vérification des fichiers > 30 Mo..."
@@ -17,7 +17,7 @@ find . -type f -not -path "./.git/*" -print0 | while IFS= read -r -d '' file; do
     if [ "$size" -ge "$LIMIT" ]; then
         FOUND_LARGE_FILES=1
         size_mb=$(echo "scale=2; $size/1024/1024" | bc)
-        echo "⚠️  Fichier volumineux (>30 Mo): $file ($size_mb Mo)"
+        echo "⚠️  Fichier volumineux (>70 Mo): $file ($size_mb Mo)"
         
         # Nettoyer le chemin (enlever ./)
         clean_path="${file#./}"
