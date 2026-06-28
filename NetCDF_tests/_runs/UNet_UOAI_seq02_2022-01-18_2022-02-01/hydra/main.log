@@ -1,7 +1,0 @@
-[2026-06-27 09:00:55,201][pytorch_lightning.utilities.rank_zero][INFO] - GPU available: True (cuda), used: True
-[2026-06-27 09:00:55,202][pytorch_lightning.utilities.rank_zero][INFO] - TPU available: False, using: 0 TPU cores
-[2026-06-27 09:00:55,202][pytorch_lightning.utilities.rank_zero][INFO] - IPU available: False, using: 0 IPUs
-[2026-06-27 09:00:55,202][pytorch_lightning.utilities.rank_zero][INFO] - HPU available: False, using: 0 HPUs
-[2026-06-27 09:04:31,863][pytorch_lightning.utilities.rank_zero][INFO] - Restoring states from the checkpoint path at /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast.ckpt
-[2026-06-27 09:04:32,023][pytorch_lightning.accelerators.cuda][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [3]
-[2026-06-27 09:04:32,033][pytorch_lightning.utilities.rank_zero][INFO] - Loaded model weights from the checkpoint at /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast.ckpt

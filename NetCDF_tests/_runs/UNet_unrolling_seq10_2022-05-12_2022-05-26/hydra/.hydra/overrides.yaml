@@ -1,4 +1,0 @@
-- xp=CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast
-- ++datamodule.domains.test.time._args_=['2022-05-12', '2022-05-26']
-- ++datamodule.dl_kw.persistent_workers=False
-- ++entrypoints.0.save_dir=/dmidata/users/maxb/4dvarnet-starter/NetCDF_tests/_runs/UNet_unrolling_seq10_2022-05-12_2022-05-26

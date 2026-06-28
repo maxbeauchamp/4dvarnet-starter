@@ -1,4 +1,0 @@
-- xp=CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast
-- ++datamodule.domains.test.time._args_=['2022-06-25', '2022-07-09']
-- ++datamodule.dl_kw.persistent_workers=False
-- ++entrypoints.0.save_dir=/dmidata/users/maxb/4dvarnet-starter/NetCDF_tests/_runs/UNet_UOAI_seq13_2022-06-25_2022-07-09
