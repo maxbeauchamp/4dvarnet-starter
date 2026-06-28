@@ -15,14 +15,22 @@ Usage (from anywhere):
   python run_benchmark_sequences.py --dry-run       # print the commands, run nothing
   python run_benchmark_sequences.py --experiments UNet_UOAI --seqs 1
                                                     # single combination (test one run)
+  python run_benchmark_sequences.py --gpus 2 3      # run in parallel on GPUs 2 and 3
+                                                    # (default: all GPUs seen by nvidia-smi)
+python contrib/CROSCIM/scripts/run_benchmark_sequences.py \
+    --experiments UNet_UOAI \
+    --gpus 2 3
+    --refresh-stale
 """
 import argparse
 import datetime
 import os
+import queue
 import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
 from glob import glob
 from pathlib import Path
@@ -48,12 +56,12 @@ STALL_TIMEOUT_S = 300                               # no log growth for 5 min �
 POLL_S = 5
 MAX_ATTEMPTS = 3
 
-# experiment name -> (hydra xp path, list of resolutions produced)
+# experiment name -> (hydra xp path, resolutions produced, checkpoint path rel. to ROOT)
 EXPERIMENTS = {
-    "UNet_UOAI":           ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast",            [50, 10]),
-    "UNet_UOAI_res10":     ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_res10",      [10]),
-    "UNet_unrolling":      ("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast",       [50, 10]),
-    "UNet_unrolling_res10":("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10", [10]),
+    "UNet_UOAI":           ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast",            [50, 10], "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast.ckpt"),
+    "UNet_UOAI_res10":     ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_res10",      [10],     "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast_res10.ckpt"),
+    "UNet_unrolling":      ("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast",       [50, 10], "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt"),
+    "UNet_unrolling_res10":("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10", [10],     "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_res10.ckpt"),
 }
 
 
@@ -76,6 +84,17 @@ def final_paths(exp, idx, start, end_incl, resolutions):
             for res in resolutions}
 
 
+def detect_gpus():
+    """Return GPU indices visible via nvidia-smi, or [] if none / no driver."""
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=index", "--format=csv,noheader"],
+            text=True)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return []
+    return [int(x) for x in out.split()]
+
+
 def _kill_tree(proc):
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
@@ -84,7 +103,7 @@ def _kill_tree(proc):
     proc.wait()
 
 
-def _run_with_watchdog(cmd, log_file):
+def _run_with_watchdog(cmd, log_file, env=None):
     """
     Run cmd, watching its log for liveness. If the log stops growing for
     STALL_TIMEOUT_S the run is considered hung: its process group is killed and the
@@ -96,7 +115,8 @@ def _run_with_watchdog(cmd, log_file):
             lf.write(f"# attempt {attempt}/{MAX_ATTEMPTS}\n")
             lf.flush()
             proc = subprocess.Popen(cmd, cwd=str(ROOT), stdout=lf,
-                                    stderr=subprocess.STDOUT, start_new_session=True)
+                                    stderr=subprocess.STDOUT, start_new_session=True,
+                                    env=env)
 
         last_size, last_change = -1, time.time()
         stalled = False
@@ -121,12 +141,23 @@ def _run_with_watchdog(cmd, log_file):
     return "hung"
 
 
-def run_one(exp, xp, resolutions, idx, start, end_incl, dry_run=False):
+def run_one(exp, xp, resolutions, ckpt, idx, start, end_incl, dry_run=False,
+            gpu_id=None, refresh_stale=False):
     targets = final_paths(exp, idx, start, end_incl, resolutions)
+    tag = f"gpu{gpu_id} " if gpu_id is not None else ""
 
     if all(p.exists() for p in targets.values()):
-        print(f"  ✓ [{exp} seq{idx:02d}] already done — skipping")
-        return "skipped"
+        # Optionally rebuild if the checkpoint is newer than the produced outputs.
+        ckpt_path = ROOT / ckpt
+        stale = (refresh_stale and ckpt_path.exists()
+                 and ckpt_path.stat().st_mtime
+                     > min(p.stat().st_mtime for p in targets.values()))
+        if not stale:
+            print(f"  ✓ [{tag}{exp} seq{idx:02d}] already done — skipping")
+            return "skipped"
+        print(f"  ↻ [{tag}{exp} seq{idx:02d}] checkpoint newer than outputs — rebuilding")
+        for p in targets.values():
+            p.unlink(missing_ok=True)
 
     run_dir = RUNS_DIR / f"{exp}_seq{idx:02d}_{start}_{end_incl}"
     cmd = [
@@ -141,14 +172,22 @@ def run_one(exp, xp, resolutions, idx, start, end_incl, dry_run=False):
         f"hydra.run.dir={run_dir}/hydra",
     ]
 
-    print(f"\n  ▶ [{exp} seq{idx:02d}] {start} → {end_incl}")
+    print(f"\n  ▶ [{tag}{exp} seq{idx:02d}] {start} → {end_incl}")
     print("    " + " ".join(cmd))
     if dry_run:
         return "dry"
 
+    env = None
+    if gpu_id is not None:
+        env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu_id)}
+
+    # Start each run from a clean working dir, otherwise stale version_* dirs from
+    # previous runs accumulate and the glob below can copy an old NetCDF.
+    if run_dir.exists():
+        shutil.rmtree(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     log_file = run_dir / "run.log"
-    rc = _run_with_watchdog(cmd, log_file)
+    rc = _run_with_watchdog(cmd, log_file, env=env)
     if rc == "hung":
         print(f"    ✗ all {MAX_ATTEMPTS} attempts hung — see {log_file}")
         return "failed"
@@ -179,6 +218,11 @@ def main():
                     help="subset of sequence indices (1-based); default = all")
     ap.add_argument("--dry-run", action="store_true",
                     help="print commands without running")
+    ap.add_argument("--gpus", nargs="+", type=int, default=None,
+                    help="GPU ids to run on in parallel (one run per GPU); "
+                         "default = all GPUs seen by nvidia-smi")
+    ap.add_argument("--refresh-stale", action="store_true",
+                    help="rebuild an existing output when its checkpoint is newer")
     args = ap.parse_args()
 
     NETCDF_TESTS.mkdir(parents=True, exist_ok=True)
@@ -186,18 +230,51 @@ def main():
     if args.seqs:
         sequences = [s for s in sequences if s[0] in args.seqs]
 
+    # One worker per GPU; each run is pinned to its GPU via CUDA_VISIBLE_DEVICES.
+    gpus = args.gpus if args.gpus is not None else detect_gpus()
+    if not gpus:
+        gpus = [None]                       # no GPU pinning / single worker
+
+    # (exp, xp, resolutions, ckpt, idx, start, end_incl)
+    jobs = [(exp, *EXPERIMENTS[exp], idx, start, end_incl)
+            for exp in args.experiments
+            for idx, start, end_incl in sequences]
+
     print(f"\n{'='*70}")
     print(f"BENCHMARK RUNS: {len(args.experiments)} experiments × {len(sequences)} sequences "
-          f"= {len(args.experiments)*len(sequences)} runs")
+          f"= {len(jobs)} runs")
+    print(f"Parallelism: {len(gpus)} worker(s) on GPU(s) "
+          f"{[g for g in gpus if g is not None] or 'n/a'}")
     print(f"Output: {NETCDF_TESTS}")
     print("="*70)
 
+    job_q = queue.Queue()
+    for job in jobs:
+        job_q.put(job)
+
     stats = {}
-    for exp in args.experiments:
-        xp, resolutions = EXPERIMENTS[exp]
-        for idx, start, end_incl in sequences:
-            status = run_one(exp, xp, resolutions, idx, start, end_incl, args.dry_run)
-            stats[status] = stats.get(status, 0) + 1
+    stats_lock = threading.Lock()
+
+    def worker(gpu_id):
+        while True:
+            try:
+                exp, xp, resolutions, ckpt, idx, start, end_incl = job_q.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                status = run_one(exp, xp, resolutions, ckpt, idx, start, end_incl,
+                                 args.dry_run, gpu_id, args.refresh_stale)
+            except Exception as e:                       # keep the pool alive
+                print(f"    ✗ [{exp} seq{idx:02d}] crashed: {e}")
+                status = "failed"
+            with stats_lock:
+                stats[status] = stats.get(status, 0) + 1
+
+    threads = [threading.Thread(target=worker, args=(g,)) for g in gpus]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
     print(f"\n{'='*70}")
     print("SUMMARY: " + ", ".join(f"{k}={v}" for k, v in sorted(stats.items())))

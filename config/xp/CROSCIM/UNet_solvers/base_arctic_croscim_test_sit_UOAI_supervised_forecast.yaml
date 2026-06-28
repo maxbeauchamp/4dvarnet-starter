@@ -108,7 +108,7 @@ datamodule:
   domain_name: arctic_croscim
   domains:
     train:
-      time: {_target_: builtins.slice, _args_: ['2022-05-01', '2022-12-31']}
+      time: {_target_: builtins.slice, _args_: ['2022-01-01', '2022-12-31']}
     val:
       time:
         - {_target_: builtins.slice, _args_: ['2022-05-01', '2022-06-30']}

@@ -5,7 +5,7 @@ Remplace ncecat (NCO 5.0.6 segfaulte au-delà de quelques centaines de fichiers)
 xarray+dask écrit le fichier en streaming chunk par chunk, sans jamais
 matérialiser une variable entière en mémoire.
 
-Usage : python aggregate_xarray.py <res>     # ex. 2, 10, 50
+Usage : python aggregate_xarray.py <res> [suffixe]   # ex. 2 _NEW
 """
 import glob
 import re
@@ -18,7 +18,7 @@ PREFIX = "preproc_batch"
 OUTPUT_PREFIX = "preproc_CROSCIM"
 
 
-def main(res: str) -> None:
+def main(res: str, suffix: str = "") -> None:
     pattern = f"{INPUT_DIR}/{PREFIX}_*_x{res}.nc"
     files = glob.glob(pattern)
     files.sort(key=lambda f: int(re.search(rf"{PREFIX}_(\d+)_x{res}\.nc$", f).group(1)))
@@ -48,13 +48,13 @@ def main(res: str) -> None:
         else:
             enc[v] = dict(zlib=True, complevel=1)
 
-    out = f"{INPUT_DIR}/{OUTPUT_PREFIX}_x{res}.nc"
+    out = f"{INPUT_DIR}/{OUTPUT_PREFIX}_x{res}{suffix}.nc"
     print(f"Écriture -> {out}", flush=True)
     ds.to_netcdf(out, encoding=enc, engine="netcdf4")
     print(f"✅ Terminé : {out}", flush=True)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Usage : python aggregate_xarray.py <res>")
-    main(sys.argv[1])
+    if len(sys.argv) not in (2, 3):
+        sys.exit("Usage : python aggregate_xarray.py <res> [suffixe]")
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else "")
