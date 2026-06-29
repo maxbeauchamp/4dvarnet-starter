@@ -202,3 +202,5 @@ NetCDF_tests/UNet_UOAI_seq08_2022-04-13_2022-04-27_x10.nc
 NetCDF_tests/UNet_UOAI_res10_seq03_2022-01-30_2022-02-13_x10.nc
 NetCDF_tests/UNet_UOAI_seq17_2022-10-01_2022-10-15_x10.nc
 NetCDF_tests/UNet_unrolling_res10_seq19_2022-10-03_2022-10-17_x10.nc
+NetCDF_tests/UNet_unrolling_seq01_2022-01-01_2022-01-15_x10.nc
+NetCDF_tests/_runs/UNet_unrolling_seq01_2022-01-01_2022-01-15/lightning_logs/version_24116/test_data_20220108_20220115_patch_x10.nc
