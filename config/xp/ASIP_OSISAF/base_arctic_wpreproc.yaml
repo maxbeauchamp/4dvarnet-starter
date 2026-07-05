@@ -1,7 +1,7 @@
 # @package _global_
 
 paths:
-    src: /dmidata/users/maxb
+    src: /Odyssey/private/m19beauc
 
 domain: ???
 
@@ -31,7 +31,7 @@ trainer:
 
 datamodule:
   _target_: contrib.DMI.ASIP_OSISAF.data_simple.BaseDataModule
-  asip_paths: /dmidata/users/maxb/ASIP_OSISAF_dataset/PREPROC/asip_database_daw15_sparse.nc
+  asip_paths: /Odyssey/private/m19beauc/CROSCIM_dataset/PREPROC/asip_database_daw15_sparse.nc
   split_train: {_target_: builtins.slice, _args_: [0, 200]}
   split_val: {_target_: builtins.slice, _args_: [0, 250]}
   split_test: {_target_: builtins.slice, _args_: [0, 300]}
@@ -123,7 +123,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    save_dir: /dmidata/users/maxb/results
+    save_dir: /Odyssey/private/m19beauc/results
     test: false
 
 defaults:

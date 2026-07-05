@@ -1,7 +1,7 @@
 #!/bin/bash
 
-INPUT_DIR="/dmidata/users/maxb/PREPROC"
-OUTPUT_DIR="/dmidata/users/maxb/PREPROC"
+INPUT_DIR="/Odyssey/private/m19beauc/PREPROC"
+OUTPUT_DIR="/Odyssey/private/m19beauc/PREPROC"
 PREFIX="preproc_batch"
 OUTPUT_PREFIX="preproc_CROSCIM"
 

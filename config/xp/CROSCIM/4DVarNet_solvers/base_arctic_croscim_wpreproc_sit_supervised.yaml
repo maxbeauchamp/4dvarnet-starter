@@ -1,8 +1,8 @@
 # @package _global_
 
 paths:
-  src: /dmidata/users/maxb
-  preproc: /dmidata/users/maxb/PREPROC
+  src: /Odyssey/private/m19beauc
+  preproc: /Odyssey/private/m19beauc/PREPROC
 
 domain: ???
 
@@ -230,7 +230,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt: /dmidata/users/maxb/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised.ckpt
+    ckpt: /Odyssey/private/m19beauc/4dvarnet-starter/ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

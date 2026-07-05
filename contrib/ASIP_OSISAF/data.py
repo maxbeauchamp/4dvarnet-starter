@@ -691,7 +691,7 @@ class BaseDataModule(pl.LightningDataModule):
                  xrds_kw, dl_kw, 
                  norm_stats, norm_stats_covs,
                  aug_kw=None, res=0.05, pads=[False,False,False], 
-                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF",
+                 subsel_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/DMI/ASIP_OSISAF",
                  **kwargs):
         
         super().__init__()

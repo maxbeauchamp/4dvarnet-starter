@@ -684,7 +684,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
             return self.target_vars
         
     def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, 
-                                      save_dir="/dmidata/users/maxb/PREPROC/"):
+                                      save_dir="/Odyssey/private/m19beauc/PREPROC/"):
         """
         Save a multiresolution batch dictionary as separate NetCDF files.
         batch_dict: dict of {f"patch_x{res}": TrainingItem}

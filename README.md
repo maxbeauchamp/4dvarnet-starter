@@ -28,9 +28,9 @@ contrib/CROSCIM/scripts/aggregate_preproc.sh
 
 After preprocessing, you should obtain files like:
 ```
-/dmidata/users/maxb/PREPROC/preproc_CROSCIM_x2.nc
-/dmidata/users/maxb/PREPROC/preproc_CROSCIM_x10.nc
-/dmidata/users/maxb/PREPROC/preproc_CROSCIM_x50.nc
+/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x2.nc
+/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x10.nc
+/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x50.nc
 ```
 
 These files are used directly by the datamodule (with preprocessing of the batches).

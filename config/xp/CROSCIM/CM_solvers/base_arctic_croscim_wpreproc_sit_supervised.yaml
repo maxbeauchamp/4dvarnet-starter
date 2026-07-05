@@ -5,8 +5,8 @@
 # but uses ConsistencyUNetSolver with pairwise consistency training.
 
 paths:
-  src: /dmidata/users/maxb
-  preproc: /dmidata/users/maxb/PREPROC
+  src: /Odyssey/private/m19beauc
+  preproc: /Odyssey/private/m19beauc/PREPROC
 
 domain: ???
 

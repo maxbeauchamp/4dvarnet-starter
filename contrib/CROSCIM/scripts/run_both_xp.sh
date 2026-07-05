@@ -8,11 +8,11 @@
 # (pas de `set -u` : les scripts d'activation conda référencent des variables
 #  non définies et planteraient.)
 
-PROJ=/dmidata/users/maxb/4dvarnet-starter
+PROJ=/Odyssey/private/m19beauc/4dvarnet-starter
 cd "$PROJ" || exit 1
 
 # Active l'environnement conda
-source /dmidata/users/maxb/conda/etc/profile.d/conda.sh
+source /Odyssey/private/m19beauc/conda/etc/profile.d/conda.sh
 conda activate 4dvarnet-starter
 
 export HYDRA_FULL_ERROR=1

@@ -12,9 +12,9 @@ from pathlib import Path
 import datetime
 
 # Paths
-CRISTAL_DIR = "/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL"
-CIMR_DIR = "/dmidata/users/maxb/CROSCIM_dataset/data_noise"
-OUTPUT_DIR = "/dmidata/users/maxb/CROSCIM_dataset/out_MOD"
+CRISTAL_DIR = "/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL"
+CIMR_DIR = "/Odyssey/private/m19beauc/CROSCIM_dataset/data_noise"
+OUTPUT_DIR = "/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD"
 
 # Variables to extract from each source
 CRISTAL_VARS = ["HS_model", "SSH_model", "SIT_model"]

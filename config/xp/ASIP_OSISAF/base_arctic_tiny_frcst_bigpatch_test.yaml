@@ -1,8 +1,8 @@
 # @package _global_
 
 paths:
-    src: /dmidata/users/maxb
-    mask: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/dmi_asip_seaice_mosaic_arc_l3_20240910.nc
+    src: /Odyssey/private/m19beauc
+    mask: /Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/dmi_asip_seaice_mosaic_arc_l3_20240910.nc
 
 domain: ???
 
@@ -48,7 +48,7 @@ datamodule:
     - siconc
     - sst
     - skt
-  mask_path: /dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
+  mask_path: /Odyssey/private/m19beauc/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc
   domain_name: arctic_tiny
   domains:
     train:
@@ -168,8 +168,8 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: /dmidata/users/maxb/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic_frcst_wreducedcov_prioronly.ckpt
-    save_dir: /dmidata/users/maxb/results
+    ckpt_path: /Odyssey/private/m19beauc/4dvarnet-starter/ckpt/DMI/ASIP_OSISAF/sic_arctic_frcst_wreducedcov_prioronly.ckpt
+    save_dir: /Odyssey/private/m19beauc/results
 
 defaults:
   - /domain: arctic_tiny

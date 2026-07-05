@@ -89,7 +89,7 @@ datamodule = BaseDataModule(
     var_mapping=var_mapping,
     
     # Mask and domain
-    mask_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc",
+    mask_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc",
     domain_name="arctic_croscim",
     
     # Time domains

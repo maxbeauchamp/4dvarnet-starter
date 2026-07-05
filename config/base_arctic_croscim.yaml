@@ -1,8 +1,8 @@
 # @package _global_
 
 paths:
-  src: /dmidata/users/maxb
-  mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
+  src: /Odyssey/private/m19beauc
+  mask: /Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
 
 domain: ???
 

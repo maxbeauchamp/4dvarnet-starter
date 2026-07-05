@@ -29,8 +29,8 @@ sorties de tests qui n'existent plus).
 
 ## Datasets externes utilisés par les notebooks
 
-- `/dmidata/users/maxb/ASIP_OSISAF_dataset/` (L3 + `PREPROC/asip_database*.nc`) — notebooks ASIP_OSISAF
-- `/dmidata/users/maxb/CROSCIM_dataset/` — notebooks CROSCIM
+- `/Odyssey/private/m19beauc/CROSCIM_dataset/` (L3 + `PREPROC/asip_database*.nc`) — notebooks ASIP_OSISAF
+- `/Odyssey/private/m19beauc/CROSCIM_dataset/` — notebooks CROSCIM
 
 > Les 3 jeux de données des notebooks **consistency** sont documentés dans le
 > repo `4dvarnet-starter-devs` (voir son `ASSETS.md`), où vivent ces notebooks.

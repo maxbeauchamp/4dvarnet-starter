@@ -5,7 +5,7 @@
       <paths name="maxb@ohm.dmi.dk:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/dmidata/users/maxb/4dvarnet-starter" local="$PROJECT_DIR$" />
+            <mapping deploy="/Odyssey/private/m19beauc/4dvarnet-starter" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

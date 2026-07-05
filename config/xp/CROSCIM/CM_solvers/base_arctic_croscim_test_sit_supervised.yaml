@@ -5,13 +5,13 @@
 # but uses ConsistencyUNetSolver with pairwise consistency training.
 
 paths:
-  src: /dmidata/users/maxb
-  mask: /dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
-  asip: /dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3
-  cimr: /dmidata/users/maxb/CROSCIM_dataset/data_noise
-  cristal: /dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL
-  covariates: /dmidata/users/maxb/CROSCIM_dataset/atm_data
-  models: /dmidata/users/maxb/CROSCIM_dataset/out_MOD
+  src: /Odyssey/private/m19beauc
+  mask: /Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/mask_PanArctic.nc
+  asip: /Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3
+  cimr: /Odyssey/private/m19beauc/CROSCIM_dataset/data_noise
+  cristal: /Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL
+  covariates: /Odyssey/private/m19beauc/CROSCIM_dataset/atm_data
+  models: /Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD
 
 domain: ???
 

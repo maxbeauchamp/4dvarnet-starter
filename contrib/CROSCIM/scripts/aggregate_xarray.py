@@ -13,7 +13,7 @@ import sys
 
 import xarray as xr
 
-INPUT_DIR = "/dmidata/users/maxb/PREPROC"
+INPUT_DIR = "/Odyssey/private/m19beauc/PREPROC"
 PREFIX = "preproc_batch"
 OUTPUT_PREFIX = "preproc_CROSCIM"
 

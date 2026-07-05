@@ -6,11 +6,11 @@ import pyresample
 
 def load_data(type="asip"):
     if type=="asip":
-        path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc')
+        path = glob('/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/*nc')
     elif type=="osisaf":
-        path = glob('/dmidata/users/maxb/ASIP_OSISAF_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
+        path = glob('/Odyssey/private/m19beauc/CROSCIM_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
     else:
-        path = glob('/dmidata/users/maxb/ERA5_DAILY/ERA5_20*.nc')
+        path = glob('/Odyssey/private/m19beauc/ERA5_DAILY/ERA5_20*.nc')
     return path
 
 def concatenate(paths, var, slices=None, type_coords="index"):

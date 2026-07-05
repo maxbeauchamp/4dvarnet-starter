@@ -142,11 +142,11 @@ def build_all_normalization_dicts(asip_dir, cimr_dir, cristal_dir, era5_dir, mod
     return norm_stats, covs_stats, models_stats
 
 
-asip_path = glob("/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc")
-cimr_path = glob("/dmidata/users/maxb/CROSCIM_dataset/data_noise/CIMR5km_*nc")
-cristal_path = glob("/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc")
-era5_path = glob("/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc")
-models_path = glob("/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*.nc")
+asip_path = glob("/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/*nc")
+cimr_path = glob("/Odyssey/private/m19beauc/CROSCIM_dataset/data_noise/CIMR5km_*nc")
+cristal_path = glob("/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc")
+era5_path = glob("/Odyssey/private/m19beauc/CROSCIM_dataset/atm_data/atm5km_*.nc")
+models_path = glob("/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD/MOD5km_*.nc")
 
 norm_stats, norm_stats_covs, norm_stats_models = build_all_normalization_dicts(
     asip_path, cimr_path, cristal_path, era5_path, models_path

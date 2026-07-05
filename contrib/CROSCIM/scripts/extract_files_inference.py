@@ -16,11 +16,11 @@ from pathlib import Path
 
 # ── Source configuration (shared by extraction and completeness checks) ───────
 SOURCE_GLOBS = {
-    "asip":       '/dmidata/users/maxb/ASIP_OSISAF_dataset/ASIP_L3/*nc',
-    "cimr":       '/dmidata/users/maxb/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
-    "cristal":    '/dmidata/users/maxb/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
-    "models":     '/dmidata/users/maxb/CROSCIM_dataset/out_MOD/MOD5km_*nc',
-    "covariates": '/dmidata/users/maxb/CROSCIM_dataset/atm_data/atm5km_*.nc',
+    "asip":       '/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/*nc',
+    "cimr":       '/Odyssey/private/m19beauc/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
+    "cristal":    '/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
+    "models":     '/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD/MOD5km_*nc',
+    "covariates": '/Odyssey/private/m19beauc/CROSCIM_dataset/atm_data/atm5km_*.nc',
 }
 SOURCE_DATE_FORMATS = {
     "asip": "%Y%m%d",
@@ -407,7 +407,7 @@ if __name__ == "__main__":
     N_SEQUENCES = 25
     SEQUENCE_LENGTH_DAYS = 15   # matches the original 2022-02-01 → 2022-02-16 window
 
-    BASE_OUTPUT_DIR = f"/dmidata/users/maxb/extract_inference_{YEAR}_{N_SEQUENCES}seq"
+    BASE_OUTPUT_DIR = f"/Odyssey/private/m19beauc/extract_inference_{YEAR}_{N_SEQUENCES}seq"
 
     # Build 25 date windows spread homogeneously over the year.
     sequences = generate_sequences(YEAR, N_SEQUENCES, SEQUENCE_LENGTH_DAYS)

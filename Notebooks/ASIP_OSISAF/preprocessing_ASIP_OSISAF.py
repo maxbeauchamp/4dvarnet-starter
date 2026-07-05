@@ -19,7 +19,7 @@ datamodule = BaseDataModule(asip_paths=load_data(),
                             osisaf_paths=load_data(type="osisaf"),
                             covariates_paths=load_data("era5"),
                             covariates=["t2m", "istl1", "siconc", "sst", "skt"],
-                            mask_path="/dmidata/users/maxb/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc",
+                            mask_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/DMI/ASIP_OSISAF/mask_PanArctic.nc",
                             domain_name="arctic_small",
                             domains={'train': {'time': slice('2021-01-01', '2021-12-31',)},
                                      'val': {'time': [ slice('2021-01-01', '2021-06-30',),
@@ -63,7 +63,7 @@ def save_batch_as_NetCDF(batch, ibatch, keep_obs=False):
                    'xc':np.arange(0, 240, 1)})
     if keep_obs:
         data = data.update({"input":(('sample','time','yc','xc'),batch.input.detach().cpu())})
-    data.to_netcdf("/dmidata/users/maxb/ASIP_OSISAF_dataset/PREPROC/preproc_asip_"+ibatch+"_.nc")
+    data.to_netcdf("/Odyssey/private/m19beauc/CROSCIM_dataset/PREPROC/preproc_asip_"+ibatch+"_.nc")
 
     
 def remove_useless_patches(batch):
