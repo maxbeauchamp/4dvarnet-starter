@@ -40,7 +40,7 @@
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;devs&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/dmidata/users/maxb/4dvarnet-starter/Notebooks/Notebook_DMI/ASIP_OSISAF&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Odyssey/private/m19beauc/4dvarnet-starter/Notebooks/Notebook_DMI/ASIP_OSISAF&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -160,27 +160,27 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <url>notebook:///Odyssey/private/m19beauc/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
           <line>2</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <url>notebook:///Odyssey/private/m19beauc/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
           <line>29</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <url>notebook:///Odyssey/private/m19beauc/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
           <line>601</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <url>notebook:///Odyssey/private/m19beauc/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
           <line>638</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook:///dmidata/users/maxb/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
+          <url>notebook:///Odyssey/private/m19beauc/4dvarnet-starter/Notebook_DMI/Notebook_VAE.ipynb</url>
           <line>704</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
