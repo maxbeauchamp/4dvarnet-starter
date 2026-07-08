@@ -197,9 +197,9 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
 if __name__ == "__main__":
     multires = [50, 10, 2]  # du plus large au plus fin
     ncfiles = {
-        50: "/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x50.nc",
-        10: "/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x10.nc",
-        2:  "/Odyssey/private/m19beauc/PREPROC/preproc_CROSCIM_x2.nc",
+        50: "/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x50.nc",
+        10: "/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x10.nc",
+        2:  "/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x2.nc",
     }
     vars_to_plot = ["tgt_sic", "tgt_SIT", "cristal_SSH", "u10"]
 

@@ -142,6 +142,7 @@ model:
   _target_: contrib.CROSCIM.models.models_consistency.Lit4dVarNet_CROSCIM_Consistency
   persist_rw: False
   multires: [50,10]
+  normalize_anomaly: false
   opt_fn: null
 
   # Variable configuration (same as UNet solver)

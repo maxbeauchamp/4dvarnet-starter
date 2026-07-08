@@ -136,6 +136,7 @@ model:
   _target_: contrib.CROSCIM.models.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50, 10, 2]
+  normalize_anomaly: false
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}

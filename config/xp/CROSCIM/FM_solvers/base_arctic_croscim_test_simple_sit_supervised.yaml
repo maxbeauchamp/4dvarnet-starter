@@ -6,7 +6,7 @@
 
 paths:
   src: /Odyssey/private/m19beauc
-  preproc: /Odyssey/private/m19beauc/PREPROC
+  preproc: /Odyssey/private/m19beauc/CROSCIM_dataset
 
 domain: ???
 
@@ -126,6 +126,7 @@ model:
   _target_: contrib.CROSCIM.models.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
   persist_rw: False
   multires: [50,10]
+  normalize_anomaly: false
   opt_fn: null
 
   tgt_vars: ${var_config.target_vars}

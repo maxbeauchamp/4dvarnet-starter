@@ -6,7 +6,7 @@
 
 paths:
   src: /Odyssey/private/m19beauc
-  preproc: /Odyssey/private/m19beauc/PREPROC
+  preproc: /Odyssey/private/m19beauc/CROSCIM_dataset
 
 domain: ???
 
@@ -138,6 +138,7 @@ model:
   _target_: contrib.CROSCIM.models.models_consistency.Lit4dVarNet_CROSCIM_Consistency
   persist_rw: False
   multires: [50,10]
+  normalize_anomaly: false
   opt_fn: null
 
   # Variable configuration (same as UNet solver)
