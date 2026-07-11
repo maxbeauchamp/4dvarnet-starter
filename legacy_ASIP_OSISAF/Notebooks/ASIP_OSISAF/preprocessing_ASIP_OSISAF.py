@@ -63,7 +63,7 @@ def save_batch_as_NetCDF(batch, ibatch, keep_obs=False):
                    'xc':np.arange(0, 240, 1)})
     if keep_obs:
         data = data.update({"input":(('sample','time','yc','xc'),batch.input.detach().cpu())})
-    data.to_netcdf("/Odyssey/private/m19beauc/CROSCIM_dataset/PREPROC/preproc_asip_"+ibatch+"_.nc")
+    data.to_netcdf("/Odyssey/public/CROSCIM_dataset/PREPROC/preproc_asip_"+ibatch+"_.nc")
 
     
 def remove_useless_patches(batch):

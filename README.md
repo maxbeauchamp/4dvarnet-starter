@@ -192,9 +192,9 @@ The multiresolution training relies on **preprocessed NetCDF files** provided at
 
 After preprocessing, you should obtain files like:
 ```
-/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x2.nc
-/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x10.nc
-/Odyssey/private/m19beauc/CROSCIM_dataset/preproc_CROSCIM_x50.nc
+/Odyssey/public/CROSCIM_dataset/preproc_CROSCIM_x2.nc
+/Odyssey/public/CROSCIM_dataset/preproc_CROSCIM_x10.nc
+/Odyssey/public/CROSCIM_dataset/preproc_CROSCIM_x50.nc
 ```
 
 These files are used directly by the datamodule (with preprocessing of the batches).

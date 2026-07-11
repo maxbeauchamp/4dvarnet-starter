@@ -31,7 +31,7 @@ trainer:
 
 datamodule:
   _target_: contrib.DMI.ASIP_OSISAF.data_simple.BaseDataModule
-  asip_paths: /Odyssey/private/m19beauc/CROSCIM_dataset/PREPROC/asip_database_daw15_sparse.nc
+  asip_paths: /Odyssey/public/CROSCIM_dataset/PREPROC/asip_database_daw15_sparse.nc
   split_train: {_target_: builtins.slice, _args_: [0, 200]}
   split_val: {_target_: builtins.slice, _args_: [0, 250]}
   split_test: {_target_: builtins.slice, _args_: [0, 300]}

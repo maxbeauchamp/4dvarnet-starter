@@ -13,7 +13,7 @@ import sys
 
 import xarray as xr
 
-INPUT_DIR = "/Odyssey/private/m19beauc/CROSCIM_dataset"
+INPUT_DIR = "/Odyssey/public/CROSCIM_dataset"
 PREFIX = "preproc_batch"
 OUTPUT_PREFIX = "preproc_CROSCIM"
 

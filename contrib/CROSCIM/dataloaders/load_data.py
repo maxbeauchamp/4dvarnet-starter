@@ -149,11 +149,11 @@ def fast_coarsen_xr_array(da, factor_y=2, factor_x=2, dims=('yc', 'xc'), mode="m
     )
 
 
-def load_data(paths={"asip":"/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3",
-                     "cimr":"/Odyssey/private/m19beauc/CROSCIM_dataset/data_noise",
-                     "cristal":"/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL",
-                     "covariates":"/Odyssey/private/m19beauc/CROSCIM_dataset/atm_data",
-                     "models":"/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD"},
+def load_data(paths={"asip":"/Odyssey/public/CROSCIM_dataset/ASIP_L3",
+                     "cimr":"/Odyssey/public/CROSCIM_dataset/data_noise",
+                     "cristal":"/Odyssey/public/CROSCIM_dataset/out_CRISTAL",
+                     "covariates":"/Odyssey/public/CROSCIM_dataset/atm_data",
+                     "models":"/Odyssey/public/CROSCIM_dataset/out_MOD"},
                      type="asip"):
     
     """Load file paths for a given data type."""
@@ -482,11 +482,11 @@ def load_mfdata(times,
     return datasets
 
 def get_paths_for_source(source,
-                        paths={"asip":"/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3",
-                            "cimr":"/Odyssey/private/m19beauc/CROSCIM_dataset/data_noise",
-                            "cristal":"/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL",
-                            "covariates":"/Odyssey/private/m19beauc/CROSCIM_dataset/atm_data",
-                            "models":"/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD"}):
+                        paths={"asip":"/Odyssey/public/CROSCIM_dataset/ASIP_L3",
+                            "cimr":"/Odyssey/public/CROSCIM_dataset/data_noise",
+                            "cristal":"/Odyssey/public/CROSCIM_dataset/out_CRISTAL",
+                            "covariates":"/Odyssey/public/CROSCIM_dataset/atm_data",
+                            "models":"/Odyssey/public/CROSCIM_dataset/out_MOD"}):
     """Get all paths for a given data source."""
     path_map = {
         "asip": paths["asip"]+'/*nc',

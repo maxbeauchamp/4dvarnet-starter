@@ -539,7 +539,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
         print(f"{'='*60}\n")
 
     def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, 
-                                      save_dir="/Odyssey/private/m19beauc/CROSCIM_dataset/"):
+                                      save_dir="/Odyssey/public/CROSCIM_dataset/"):
         """
         Save a multiresolution batch dictionary as separate NetCDF files.
         batch_dict: dict of {f"patch_x{res}": TrainingItem}

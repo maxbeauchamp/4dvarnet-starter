@@ -6,9 +6,9 @@ import pyresample
 
 def load_data(type="asip"):
     if type=="asip":
-        path = glob('/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/*nc')
+        path = glob('/Odyssey/public/CROSCIM_dataset/ASIP_L3/*nc')
     elif type=="osisaf":
-        path = glob('/Odyssey/private/m19beauc/CROSCIM_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
+        path = glob('/Odyssey/public/CROSCIM_dataset/OSISAF_NRT/*/*/*nh*amsr2_????????1200.nc')
     else:
         path = glob('/Odyssey/private/m19beauc/ERA5_DAILY/ERA5_20*.nc')
     return path

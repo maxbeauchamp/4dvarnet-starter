@@ -31,7 +31,7 @@
 
 paths:
   src: /Odyssey/private/m19beauc
-  preproc: /Odyssey/private/m19beauc/CROSCIM_dataset
+  preproc: /Odyssey/public/CROSCIM_dataset
 
 domain: ???
 

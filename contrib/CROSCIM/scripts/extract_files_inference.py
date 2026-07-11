@@ -16,11 +16,11 @@ from pathlib import Path
 
 # ── Source configuration (shared by extraction and completeness checks) ───────
 SOURCE_GLOBS = {
-    "asip":       '/Odyssey/private/m19beauc/CROSCIM_dataset/ASIP_L3/*nc',
-    "cimr":       '/Odyssey/private/m19beauc/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
-    "cristal":    '/Odyssey/private/m19beauc/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
-    "models":     '/Odyssey/private/m19beauc/CROSCIM_dataset/out_MOD/MOD5km_*nc',
-    "covariates": '/Odyssey/private/m19beauc/CROSCIM_dataset/atm_data/atm5km_*.nc',
+    "asip":       '/Odyssey/public/CROSCIM_dataset/ASIP_L3/*nc',
+    "cimr":       '/Odyssey/public/CROSCIM_dataset/out_CIMR/CIMR5km_*nc',
+    "cristal":    '/Odyssey/public/CROSCIM_dataset/out_CRISTAL/CRISTAL5km_*nc',
+    "models":     '/Odyssey/public/CROSCIM_dataset/out_MOD/MOD5km_*nc',
+    "covariates": '/Odyssey/public/CROSCIM_dataset/atm_data/atm5km_*.nc',
 }
 SOURCE_DATE_FORMATS = {
     "asip": "%Y%m%d",
