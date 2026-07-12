@@ -24,9 +24,19 @@
 #SBATCH --time=96:00:00
 #SBATCH --error=%x_%j.err
 #SBATCH --output=%x_%j.out
+# BASH_ENV vide : évite que bash ne source ~/.bashrc (et son Setup.sh cassé) au
+# démarrage du script batch non-interactif.
+#SBATCH --export=ALL,BASH_ENV=
 
-source /Odyssey/private/m19beauc/miniconda3/etc/profile.d/conda.sh
+export HOME=/Odyssey/private/$USER
+source $HOME/.bashrc
 conda activate /Odyssey/private/m19beauc/conda_envs/4dvarnet-starter
+if [[ -z "${CONDA_PREFIX:-}" ]]; then
+    echo "ERROR: conda activation failed (CONDA_PREFIX is empty)" >&2
+    exit 1
+fi
+echo "[$(date)] conda env: ${CONDA_PREFIX}"
+echo "[$(date)] python: $(which python) ($(python --version 2>&1))"
 
 set -eo pipefail
 

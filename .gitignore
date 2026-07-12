@@ -1,5 +1,6 @@
 **/__pycache__
 train_croscim_*
+croscim_benchmark*
 *logs*
 outputs
 logs
