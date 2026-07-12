@@ -21,6 +21,11 @@ python contrib/CROSCIM/scripts/run_benchmark_sequences.py \
     --experiments UNet_UOAI \
     --gpus 2 3
     --refresh-stale
+
+Any unrecognized argument (e.g. `paths.asip=/scratch/.../ASIP_L3`) is forwarded
+as-is as a Hydra override to every main.py call, e.g. to point the raw dataset
+paths at a SCRATCH copy:
+  python run_benchmark_sequences.py paths.asip=/scratch/ASIP_L3 paths.cimr=/scratch/data_noise
 """
 import argparse
 import datetime
@@ -142,7 +147,7 @@ def _run_with_watchdog(cmd, log_file, env=None):
 
 
 def run_one(exp, xp, resolutions, ckpt, idx, start, end_incl, dry_run=False,
-            gpu_id=None, refresh_stale=False):
+            gpu_id=None, refresh_stale=False, extra_overrides=None):
     targets = final_paths(exp, idx, start, end_incl, resolutions)
     tag = f"gpu{gpu_id} " if gpu_id is not None else ""
 
@@ -170,6 +175,7 @@ def run_one(exp, xp, resolutions, ckpt, idx, start, end_incl, dry_run=False,
         "++datamodule.dl_kw.persistent_workers=False",
         f"++entrypoints.0.save_dir={run_dir}",
         f"hydra.run.dir={run_dir}/hydra",
+        *(extra_overrides or []),
     ]
 
     print(f"\n  ▶ [{tag}{exp} seq{idx:02d}] {start} → {end_incl}")
@@ -223,7 +229,9 @@ def main():
                          "default = all GPUs seen by nvidia-smi")
     ap.add_argument("--refresh-stale", action="store_true",
                     help="rebuild an existing output when its checkpoint is newer")
-    args = ap.parse_args()
+    # Unrecognized args (e.g. `paths.asip=/scratch/...`) are forwarded as-is to
+    # every main.py call, on top of the per-run overrides already set below.
+    args, extra_overrides = ap.parse_known_args()
 
     NETCDF_TESTS.mkdir(parents=True, exist_ok=True)
     sequences = build_sequences()
@@ -263,7 +271,7 @@ def main():
                 return
             try:
                 status = run_one(exp, xp, resolutions, ckpt, idx, start, end_incl,
-                                 args.dry_run, gpu_id, args.refresh_stale)
+                                 args.dry_run, gpu_id, args.refresh_stale, extra_overrides)
             except Exception as e:                       # keep the pool alive
                 print(f"    ✗ [{exp} seq{idx:02d}] crashed: {e}")
                 status = "failed"

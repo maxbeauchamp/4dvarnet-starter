@@ -11,10 +11,13 @@
 #   sbatch submit_benchmark_odyssey.sbatch --experiments UNet_UOAI --seqs 1 2 3
 #   sbatch submit_benchmark_odyssey.sbatch --dry-run
 #
-# Unlike submit_train_odyssey.sbatch, this does not stage data to SCRATCH: the
-# benchmark uses the "test_*" xps, which read many raw dataset directories
-# (ASIP_L3, out_CRISTAL, atm_data, out_MOD/out_CIMR) directly from
-# /Odyssey/public/CROSCIM_dataset.
+# The 4 benchmark xps (see XP_YAMLS below, mirrors EXPERIMENTS in
+# run_benchmark_sequences.py) all read the same 5 raw dataset directories
+# (ASIP_L3, data_noise, out_CRISTAL, atm_data, out_MOD) from
+# /Odyssey/public/CROSCIM_dataset, spanning the full year exercised by the 25
+# sequences. Those directories are staged once to SCRATCH and paths.* is
+# overridden (via run_benchmark_sequences.py's Hydra override passthrough) to
+# read from there.
 # =============================================================================
 
 #SBATCH --job-name=croscim_benchmark
@@ -35,4 +38,49 @@ set -eo pipefail
 
 cd "$SLURM_SUBMIT_DIR"
 
-HYDRA_FULL_ERROR=1 python contrib/CROSCIM/scripts/run_benchmark_sequences.py "$@"
+XP_YAMLS=(
+    "config/xp/CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast.yaml"
+    "config/xp/CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_res10.yaml"
+    "config/xp/CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast.yaml"
+    "config/xp/CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10.yaml"
+)
+
+declare -A RAW_PATHS
+for y in "${XP_YAMLS[@]}"; do
+    while IFS=: read -r key value; do
+        RAW_PATHS["$key"]="$value"
+    done < <(grep -E '^\s+(asip|cimr|cristal|covariates|models):\s*/Odyssey/public' "$y" \
+                | sed -E 's/^\s*([a-zA-Z_]+):\s*(\S+)\s*$/\1:\2/')
+done
+
+if [[ ${#RAW_PATHS[@]} -eq 0 ]]; then
+    echo "no asip/cimr/cristal/covariates/models path found under /Odyssey/public in ${XP_YAMLS[*]}" >&2
+    exit 1
+fi
+
+# create a temporary SCRATCH sub-directory to store the data we need
+scratch_dir=/SCRATCH/$USER/$SLURM_JOB_ID
+mkdir -p "$scratch_dir"
+
+cleanup() {
+    echo "[$(date)] Freeing SCRATCH dir: $scratch_dir"
+    rm -rf "$scratch_dir"
+}
+trap cleanup EXIT
+
+declare -a HYDRA_PATH_OVERRIDES=()
+for key in "${!RAW_PATHS[@]}"; do
+    src="${RAW_PATHS[$key]}"
+    dest="${scratch_dir}/$(basename "$src")"
+    echo "[$(date)] Staging paths.${key}: ${src} -> ${dest}"
+    mkdir -p "$dest"
+    rsync -a --ignore-existing "${src}/" "${dest}/"
+    HYDRA_PATH_OVERRIDES+=("paths.${key}=${dest}")
+done
+
+echo "[$(date)] Starting benchmark"
+HYDRA_FULL_ERROR=1 python contrib/CROSCIM/scripts/run_benchmark_sequences.py \
+    "$@" \
+    "${HYDRA_PATH_OVERRIDES[@]}"
+
+echo "[$(date)] Done."
