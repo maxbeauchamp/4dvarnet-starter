@@ -90,7 +90,7 @@ done
 
 echo "[$(date)] Starting benchmark"
 HYDRA_FULL_ERROR=1 python contrib/CROSCIM/scripts/run_benchmark_sequences.py \
-    "$@" \
-    "${HYDRA_PATH_OVERRIDES[@]}"
+    "${HYDRA_PATH_OVERRIDES[@]}" \
+    "$@"
 
 echo "[$(date)] Done."
