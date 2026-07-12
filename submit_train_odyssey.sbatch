@@ -25,9 +25,10 @@
 #SBATCH --error=%x_%j.err
 #SBATCH --output=%x_%j.out
 
+source /Odyssey/private/m19beauc/miniconda3/etc/profile.d/conda.sh
 conda activate /Odyssey/private/m19beauc/conda_envs/4dvarnet-starter
 
-set -euo pipefail
+set -eo pipefail
 
 XP="${1:?Usage: sbatch submit_train_odyssey.sbatch <xp> [hydra overrides...]}"
 shift
@@ -53,8 +54,6 @@ if [[ ${#PREPROC_FILES[@]} -eq 0 ]]; then
     exit 1
 fi
 
-source "$HOME/croscim/bin/activate"
-
 # create a temporary SCRATCH sub-directory to store the data we need
 scratch_dir=/SCRATCH/$USER/$SLURM_JOB_ID
 mkdir -p "$scratch_dir"
@@ -67,7 +66,7 @@ trap cleanup EXIT
 
 for f in "${PREPROC_FILES[@]}"; do
     echo "[$(date)] Staging ${PREPROC_ROOT}/${f} -> ${scratch_dir}/${f}"
-    cp --update=none "${PREPROC_ROOT}/${f}" "$scratch_dir/"
+    rsync -a --ignore-existing "${PREPROC_ROOT}/${f}" "$scratch_dir/"
 done
 
 echo "[$(date)] Starting training for xp=${XP}"

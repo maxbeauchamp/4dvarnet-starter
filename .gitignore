@@ -252,3 +252,4 @@ NetCDF_tests/UNet_unrolling_seq14_2022-07-10_2022-07-24_x10.nc
 NetCDF_tests/UNet_unrolling_seq18_2022-10-02_2022-10-16_x10.nc
 NetCDF_tests/UNet_unrolling_seq12_2022-06-10_2022-06-24_x10.nc
 NetCDF_tests/UNet_unrolling_seq05_2022-02-28_2022-03-14_x10.nc
+train_croscim_42657.out
