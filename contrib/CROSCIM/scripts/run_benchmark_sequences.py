@@ -67,6 +67,10 @@ EXPERIMENTS = {
     "UNet_UOAI_res10":     ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_res10",      [10],     "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast_res10.ckpt"),
     "UNet_unrolling":      ("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast",       [50, 10], "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt"),
     "UNet_unrolling_res10":("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10", [10],     "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_res10.ckpt"),
+    "4DVarNet":            ("CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast",             [50, 10], "ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast.ckpt"),
+    # NB: no checkpoint has been trained yet for this res10-only variant; the xp
+    # config exists but running this entry will fail until the ckpt is produced.
+    "4DVarNet_res10":      ("CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10",       [10],     "ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast_res10.ckpt"),
 }
 
 
