@@ -30,3 +30,7 @@ dependencies:
     - scikit-image
     - opencv-python
     - geopandas
+    - papermill      # consistency/sbatch_submission : exécution paramétrée des notebooks
+    - nbformat       # consistency/sbatch_submission : génération/patch des notebooks
+    - pandas         # consistency/sbatch_submission/make_latex_table.py
+    - pyyaml         # consistency/sbatch_submission : lecture de methods.yaml
