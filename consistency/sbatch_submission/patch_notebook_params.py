@@ -90,7 +90,7 @@ def build_heartbeat_cell() -> "cl.nbformat.NotebookNode":
         + "    plain log file)."
         + '    """\n'
         + "\n"
-        + "    def __init__(self, every_n_epochs: int = 20):\n"
+        + "    def __init__(self, every_n_epochs: int = 1):\n"
         + "        self.every_n_epochs = every_n_epochs\n"
         + "\n"
         + "    def on_train_epoch_end(self, trainer, pl_module):\n"
@@ -155,7 +155,7 @@ def apply_substitutions(nb) -> None:
 
         def _attach_heartbeat(m: re.Match) -> str:
             indent, trainer_expr = m.group(1), m.group(2)
-            attach_line = f"{indent}{trainer_expr}.callbacks.append(EpochHeartbeat(every_n_epochs=20))\n"
+            attach_line = f"{indent}{trainer_expr}.callbacks.append(EpochHeartbeat(every_n_epochs=1))\n"
             if attach_line in src:
                 return m.group(0)
             return attach_line + m.group(0)
