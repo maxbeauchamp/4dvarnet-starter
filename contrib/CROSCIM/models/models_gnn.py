@@ -60,6 +60,7 @@ class Lit4dVarNet_CROSCIM_GNN(Lit4dVarNet_CROSCIM_Supervised):
         batch,
         include_masks: bool = False,
         res=None,
+        scale_channel=None,
     ) -> GraphSBatch:
         """
         Build a :class:`GraphSBatch` from a TrainingItem batch.
@@ -80,7 +81,7 @@ class Lit4dVarNet_CROSCIM_GNN(Lit4dVarNet_CROSCIM_Supervised):
         """
         # ── 1. Standard sBatch (input, tgt tensors) ──────────────────
         sbatch = super().format_batch_for_solver(
-            batch, include_masks=include_masks, res=res
+            batch, include_masks=include_masks, res=res, scale_channel=scale_channel
         )
         device = sbatch.input.device
 

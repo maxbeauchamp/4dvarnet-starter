@@ -1,0 +1,251 @@
+# @package _global_
+#
+# GNN (Spatial Graph Attention) solver for CROSCIM multi-resolution framework.
+#
+# Architecture summary
+# --------------------
+# Each resolution (x50, x10) is processed by an independent GNNSolver that
+# internally converts the regular (H×W) grid into a graph where valid ocean
+# pixels are nodes and 8-connected valid neighbours are edges.  Message
+# passing uses multi-head spatial attention over the 3×3 neighbourhood with
+# explicit validity masking.  Lat/lon are injected as positional encoding.
+# The output is projected back to the original (H×W) grid.
+#
+# Key differences vs UNet / CM solvers
+# -------------------------------------
+# * Backbone  : MultiResGridGNN  (GNN.py)  instead of UNet / ConsistencyUNet
+# * Solver    : GNNSolver        (gnn_solver.py)
+# * Container : MultiResGNNSolvers
+# * Module    : Lit4dVarNet_CROSCIM_GNN  (models_gnn.py)
+#   → overrides format_batch_for_solver to pass lat/lon/land_mask to the GNN
+# * Dataloader: BaseDataModuleMultiResGNN  (thin alias, same TrainingItem)
+#
+# The training loop (progressive / simultaneous multi-res), loss terms,
+# boundary conditioning (add_bounds), test-step patch stitching, etc. are
+# all inherited unchanged from Lit4dVarNet_CROSCIM_Supervised.
+#
+# Installation note
+# -----------------
+# No extra dependencies beyond the existing environment are required.
+# The GNN is implemented in pure PyTorch (no PyTorch-Geometric).
+
+paths:
+  src: /Odyssey/private/m19beauc
+  preproc: /Odyssey/public/CROSCIM_dataset
+
+domain: ???
+
+# ===== CENTRALIZED VARIABLE CONFIGURATION =====
+var_config:
+  satellite_vars:
+    cristal: ["SIT"]
+    cimr: ["SIT", "SIC"]
+    asip: ["sic"]
+
+  models_vars: null
+
+  covariates: ["t2m", "msl", "u10", "v10"]
+
+  target_vars:
+    patch_x50:
+      - models_SIT
+    patch_x10:
+      - models_SIT
+
+  var_mapping:
+    patch_x50:
+      models_SIT: cristal_SIT
+    patch_x10:
+      models_SIT: cristal_SIT
+
+  time_steps:
+    patch_x50: 15
+    patch_x10: 8
+
+# ===== COMPUTED CHANNEL COUNTS =====
+computed:
+  input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
+  input_vars_all:       ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
+
+# ===== GNN ARCHITECTURE HYPER-PARAMETERS =====
+gnn_config:
+  hidden_dim: 128    # width of all internal GNN layers
+  n_layers:   6      # number of GNNBlock stacked (attention + FFN)
+  n_heads:    4      # multi-head attention heads (hidden_dim must be divisible)
+  pos_dim:    16     # positional-encoding embedding dim  (0 = disabled)
+  dropout:    0.1    # dropout throughout the network
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: 1
+  #devices: [0, 1, 2, 3]
+  #strategy:
+  #  _target_: pytorch_lightning.strategies.DDPStrategy
+  #  find_unused_parameters: True
+  accumulate_grad_batches: 1
+  limit_train_batches: 1000.
+  limit_val_batches: 500.
+  max_epochs: 500
+  precision: bf16-mixed
+  logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${hydra:runtime.choices.xp}
+    version: ''
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_loss
+      save_top_k: 3
+      save_last: true
+      filename: '{val_loss:.5f}-{epoch:03d}'
+
+# ===== DATAMODULE =====
+# Same as CM / UNet: the TrainingItem already contains lat, lon, land_mask.
+datamodule:
+  _target_: contrib.CROSCIM.dataloaders.data_simple_multires_gnn.BaseDataModuleMultiResGNN
+
+  satellite_vars: ${var_config.satellite_vars}
+  models_vars:    ${var_config.models_vars}
+  covariates:     ${var_config.covariates}
+  target_vars:    ${var_config.target_vars}
+  var_mapping:    ${var_config.var_mapping}
+
+  croscim_preproc_paths:
+    patch_x2:  ${paths.preproc}/preproc_CROSCIM_x2.nc
+    patch_x10: ${paths.preproc}/preproc_CROSCIM_x10.nc
+    patch_x50: ${paths.preproc}/preproc_CROSCIM_x50.nc
+
+  multires: [50, 10]
+  split_train: {_target_: builtins.slice, _args_: [0, 2000]}
+  split_val:   {_target_: builtins.slice, _args_: [2000, 2050]}
+  split_test:  {_target_: builtins.slice, _args_: [2000, 2050]}
+  dl_kw: {batch_size: 2, num_workers: 20}
+
+  norm_stats:
+    asip:
+      sic: {min: 0.0, max: 100.0, type: minmax}
+      standard_deviation_sic: {mean: 1.8761531586097209, std: 4.922335431544444, type: zscore}
+      status_flag: {min: 0.0, max: 1536.0, type: minmax}
+    cimr:
+      SIC: {min: 0.0, max: 1.0, type: minmax}
+      SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+      Tsurf: {mean: -6.3703807274976665, std: 9.394544766238061, type: zscore}
+    cristal:
+      HS:  {mean: 0.15517908473300512, std: 0.13962813089282153, type: zscore}
+      SIT: {mean: 0.5695980677516013,  std: 0.8216149733058172,  type: zscore}
+      SSH: {mean: 0.1912636630889516,  std: 0.41697635927509086, type: zscore}
+
+  norm_stats_models:
+    SIC: {min: 0.0, max: 1.0, type: minmax}
+    SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+    HS:  {mean: 0.06844576249551623, std: 0.1137041260225963, type: zscore}
+    SSH: {mean: 0.21988234269231605, std: 0.2757902493660287, type: zscore}
+
+  norm_stats_covs:
+    msl: {mean: 101261.65922657882, std: 1112.7187312302365,    type: zscore}
+    t2m: {mean: -2.5985455071070955, std: 13.613745769755358,   type: zscore}
+    u10: {mean: 0.6010106010949151,  std: 4.545559141871505,    type: zscore}
+    v10: {mean: -0.2104646166032582, std: 4.707062023219409,    type: zscore}
+
+# ===== MODEL =====
+model:
+  _target_: contrib.CROSCIM.models.models_gnn.Lit4dVarNet_CROSCIM_GNN
+  persist_rw: False
+  multires:   [50, 10]
+  normalize_anomaly: false
+  condition_on_scale: true
+  opt_fn:     null
+
+  # Variable configuration (shared with datamodule)
+  tgt_vars:      ${var_config.target_vars}
+  satellite_vars: ${var_config.satellite_vars}
+  covariates:    ${var_config.covariates}
+  models_vars:   ${var_config.models_vars}
+  var_mapping:   ${var_config.var_mapping}
+
+  domain_limits:
+    xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]}
+    yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}
+
+  rec_weight:   ${optim_weight}
+  optim_weight: ${optim_weight}
+  prior_weight: ${optim_weight}
+  frcst_lead:   0
+
+  norm_stats:        ${datamodule.norm_stats}
+  norm_stats_covs:   ${datamodule.norm_stats_covs}
+  norm_stats_models: ${datamodule.norm_stats_models}
+
+  # ── GNN solver (per-resolution) ────────────────────────────────────────────
+  # n_input_channels  = len(input_vars_all) × T  (observations + covariates)
+  # n_output_channels = len(target_vars)     × T
+  #
+  # Adjustment guide:
+  #   - Increase hidden_dim / n_layers for better capacity (at GPU memory cost)
+  #   - Set pos_dim: 0 to disable positional encoding (useful for ablation)
+  #   - Reduce n_heads for smaller datasets
+  solver:
+    _target_: contrib.CROSCIM.solvers.gnn_solver.MultiResGNNSolvers
+    solvers:
+      solver_x50:
+        _target_: contrib.CROSCIM.solvers.gnn_solver.GNNSolver
+        # channels = n_vars × T  (T = time_steps.patch_x50 = 15)
+        n_input_channels:  ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+        hidden_dim: ${gnn_config.hidden_dim}
+        n_layers:   ${gnn_config.n_layers}
+        n_heads:    ${gnn_config.n_heads}
+        pos_dim:    ${gnn_config.pos_dim}
+        dropout:    ${gnn_config.dropout}
+      solver_x10:
+        _target_: contrib.CROSCIM.solvers.gnn_solver.GNNSolver
+        n_input_channels:  ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10} + ${var_config.time_steps.patch_x10}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        hidden_dim: ${gnn_config.hidden_dim}
+        n_layers:   ${gnn_config.n_layers}
+        n_heads:    ${gnn_config.n_heads}
+        pos_dim:    ${gnn_config.pos_dim}
+        dropout:    ${gnn_config.dropout}
+
+# ===== OPTIMISATION WEIGHTS =====
+optim_weight:
+  patch_x50:
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 15, yc: 256, xc: 256}
+    crop:       {time: 0,  yc: 28,  xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x10:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 8, yc: 256, xc: 256}
+    crop:       {time: 0, yc: 28,  xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+
+# ===== METRICS =====
+metrics:
+  nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
+  psd_scores:   {_target_: src.utils.psd_based_scores_from_ds,  _partial_: True}
+  get0: {_target_: operator.itemgetter, _args_: [0]}
+  get1: {_target_: operator.itemgetter, _args_: [1]}
+  test_metrics:
+    mu:  {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get0}']}
+    sig: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get1}']}
+    lx:  {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}',   '${metrics.get0}']}
+    lt:  {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}',   '${metrics.get1}']}
+
+
+entrypoints:
+  - _target_: src.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    save_dir: ${paths.src}/results
+
+defaults:
+  - /domain: arctic_croscim

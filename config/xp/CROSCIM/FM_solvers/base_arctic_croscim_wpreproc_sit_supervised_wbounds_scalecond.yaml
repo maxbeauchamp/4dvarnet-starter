@@ -1,0 +1,220 @@
+# @package _global_
+#
+# Flow Matching solver for CROSCIM multi-resolution framework.
+# Based on CM_solvers/base_arctic_croscim_wpreproc_sit_supervised.yaml
+# but uses FMSolver (gensim Transformer + FlowMatchingSampler).
+
+paths:
+  src: /Odyssey/private/m19beauc
+  preproc: /Odyssey/public/CROSCIM_dataset
+
+domain: ???
+
+# ===== CENTRALIZED VARIABLE CONFIGURATION =====
+var_config:
+  satellite_vars:
+    cristal: ["SIT"]
+    cimr: ["SIT","SIC"]
+    asip: ["sic"]
+  
+  models_vars: null
+  
+  covariates: ["t2m", "msl", "u10", "v10"]
+  
+  target_vars:
+    patch_x50:
+      - models_SIT 
+    patch_x10:
+      - models_SIT
+
+  var_mapping:
+    patch_x50:
+      models_SIT: cristal_SIT 
+    patch_x10:
+      models_SIT: cristal_SIT
+  
+  time_steps:
+    patch_x50: 15
+    patch_x10: 8
+
+# ===== COMPUTED VARIABLES =====
+computed:
+  input_vars_satellite: ${python_eval:"[f'{source}_{var}' for source, vars in ${var_config.satellite_vars}.items() for var in vars]"}
+  input_vars_all: ${python_eval:"${computed.input_vars_satellite} + ${var_config.covariates}"}
+
+# ===== FLOW MATCHING CONFIGURATION =====
+fm_config:
+  lr: 1e-4
+  betas: [0.9, 0.995]
+  lr_scheduler_start_factor: 1e-5
+  lr_scheduler_iters: 20000
+  ema_decay: 0.999
+  lower_bound: -0.693  # ~0 in normalised SIT space (μ=0.57,σ=0.82 → (0-0.57)/0.82≈-0.69)
+  upper_bound: null
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: [0]
+  strategy:
+    _target_: pytorch_lightning.strategies.DDPStrategy
+    find_unused_parameters: True
+  accumulate_grad_batches: 2
+  limit_train_batches: 1000.
+  limit_val_batches: 500.
+  max_epochs: 500
+  precision: bf16-mixed
+  logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${hydra:runtime.choices.xp}
+    version: ''
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_loss
+      save_top_k: 3
+      save_last: true
+      filename: '{val_loss:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: contrib.CROSCIM.dataloaders.data_simple_multires_supervised.BaseDataModuleMultiResSupervised_simplify
+  satellite_vars: ${var_config.satellite_vars}
+  models_vars: ${var_config.models_vars}
+  covariates: ${var_config.covariates}
+  target_vars: ${var_config.target_vars}
+  var_mapping: ${var_config.var_mapping} 
+  croscim_preproc_paths:
+    patch_x2: ${paths.preproc}/preproc_CROSCIM_x2.nc
+    patch_x10: ${paths.preproc}/preproc_CROSCIM_x10.nc
+    patch_x50: ${paths.preproc}/preproc_CROSCIM_x50.nc  
+  multires: [50,10]
+  split_train: {_target_: builtins.slice, _args_: [0, 2000]}
+  split_val: {_target_: builtins.slice, _args_: [2000, 2050]}
+  split_test: {_target_: builtins.slice, _args_: [2000,2050]}
+  dl_kw: {batch_size: 2, num_workers: 20}
+  norm_stats:
+    asip:
+      sic: {min: 0.0, max: 100.0, type: minmax}
+      standard_deviation_sic: {mean: 1.8761531586097209, std: 4.922335431544444, type: zscore}
+      status_flag: {min: 0.0, max: 1536.0, type: minmax}
+    cimr:
+      SIC: {min: 0.0, max: 1.0, type: minmax}
+      SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+      Tsurf: {mean: -6.3703807274976665, std: 9.394544766238061, type: zscore}
+    cristal:
+      HS: {mean: 0.15517908473300512, std: 0.13962813089282153, type: zscore}
+      SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+      SSH: {mean: 0.1912636630889516, std: 0.41697635927509086, type: zscore}
+  norm_stats_models:
+    SIC: {min: 0.0, max: 1.0, type: minmax}
+    SIT: {mean: 0.5695980677516013, std: 0.8216149733058172, type: zscore}
+    HS: {mean: 0.06844576249551623, std: 0.1137041260225963, type: zscore}
+    SSH: {mean: 0.21988234269231605, std: 0.2757902493660287, type: zscore}
+  norm_stats_covs:
+    msl: {mean: 101261.65922657882, std: 1112.7187312302365, type: zscore}
+    t2m: {mean: -2.5985455071070955, std: 13.613745769755358, type: zscore}
+    u10: {mean: 0.6010106010949151, std: 4.545559141871505, type: zscore}
+    v10: {mean: -0.2104646166032582, std: 4.707062023219409, type: zscore}
+    tcc: {min: 1.0896958883677144e-05, max: 0.024753304198384285, type: minmax}
+    d2m: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
+    ssrd: {mean: 95.72918023746189, std: 93.44316534428312, type: zscore}
+    strd: {mean: 265.25246499467744, std: 63.12553499850183, type: zscore}
+    tp: {mean: 2.4095910147380064e-08, std: 4.900962447374831e-08, type: zscore}
+
+model:
+  _target_: contrib.CROSCIM.models.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
+  persist_rw: False
+  multires: [50,10]
+  normalize_anomaly: false
+  condition_on_scale: true
+  opt_fn: null
+
+  tgt_vars: ${var_config.target_vars}
+  satellite_vars: ${var_config.satellite_vars}
+  covariates: ${var_config.covariates}
+  models_vars: ${var_config.models_vars} 
+  var_mapping: ${var_config.var_mapping}
+  
+  domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
+                  yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
+  rec_weight: ${optim_weight}
+  optim_weight: ${optim_weight}
+  prior_weight: ${optim_weight}
+  frcst_lead: 0
+  add_bounds: True
+
+  fm_config: ${fm_config}
+
+  solver:
+    _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMGradSolvers
+    solvers:
+      solver_x50:
+        _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
+        n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x50}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x50}) * ${var_config.time_steps.patch_x50}"}
+        resolution_km: 50.
+        n_features: 256
+        n_blocks: 8
+        n_embedding: 128
+        patch_size: 4
+        n_heads: 8
+        n_steps: 20
+        second_order: True
+        add_bounds: True
+      solver_x10:
+        _target_: contrib.CROSCIM.solvers.flowmatching_solver.FMSolver
+        n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10} + ${var_config.time_steps.patch_x10}"}
+        n_output_channels: ${python_eval:"len(${var_config.target_vars.patch_x10}) * ${var_config.time_steps.patch_x10}"}
+        resolution_km: 10.
+        n_features: 256
+        n_blocks: 8
+        n_embedding: 128
+        patch_size: 4
+        n_heads: 8
+        n_steps: 20
+        second_order: True
+        add_bounds: True
+
+  norm_stats: ${datamodule.norm_stats}
+  norm_stats_covs: ${datamodule.norm_stats_covs}
+  norm_stats_models: ${datamodule.norm_stats_models} 
+
+optim_weight:
+  patch_x50:
+    _target_: src.utils.get_uniform_time_wei
+    patch_dims: {time: 15, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+  patch_x10:
+    _target_: src.utils.get_linear_time_wei
+    patch_dims: {time: 8, yc: 256, xc: 256}
+    crop: {time: 0, yc: 28, xc: 28}
+    offset: 1
+    dim_order: ["time", "yc", "xc"]
+
+metrics:
+  nrmse_scores: {_target_: src.utils.rmse_based_scores_from_ds, _partial_: True}
+  psd_scores: {_target_: src.utils.psd_based_scores_from_ds, _partial_: True}
+  get0: {_target_: operator.itemgetter, _args_: [0]}
+  get1: {_target_: operator.itemgetter, _args_: [1]}
+  test_metrics:
+    mu: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get0}']}
+    sig: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.nrmse_scores}', '${metrics.get1}']}
+    lx: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get0}']}
+    lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
+
+entrypoints:
+  - _target_: src.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
+    save_dir: ${paths.src}/results
+
+defaults:
+  - /domain: arctic_croscim

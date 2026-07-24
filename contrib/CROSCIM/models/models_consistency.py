@@ -355,18 +355,18 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
 
     # ── Override base_step for consistency training ─────────────────────
 
-    def base_step(self, batch, res, phase=""):
+    def base_step(self, batch, res, phase="", scale_channel=None):
         """
         Replaces the parent's base_step with consistency training logic.
-        
+
         The loss follows the original notebook pattern exactly:
           - consistency_training(student, teacher, x, y, step, total_steps)
           - loss = MSE(predicted_from_intermediate, target_from_current)
-        
+
         No weighted-MSE, no interpolation/observation masks — the consistency
         loss operates on the *full* tensor (student prediction vs teacher
         target), which is the correct formulation for consistency models.
-        
+
         Returns:
             (loss, out_dict) matching parent's signature so that
             multistep / step can work unchanged.
@@ -375,7 +375,8 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         solver_key = f"solver_x{res}"
 
         # Format batch → sBatch(input, tgt)
-        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res,
+                                               scale_channel=scale_channel)
         
         # Separate observations (y) and clean target (x)
         y = sbatch.input  # (B, C_in, H, W) — observations (may contain NaN)
@@ -490,12 +491,12 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
 
     # ── Override step: skip auxiliary losses (grad, prior, tv, context) 
 
-    def step(self, batch, res, phase=""):
+    def step(self, batch, res, phase="", scale_channel=None):
         """For consistency training, the loss IS the consistency loss.
         No auxiliary losses (grad, prior, tv, context) — just the pure
         MSE(student_prediction, teacher_target) from base_step.
         """
-        return self.base_step(batch, res=res, phase=phase)
+        return self.base_step(batch, res=res, phase=phase, scale_channel=scale_channel)
 
     # ── EMA updates after each training batch ─────────────────────────
 

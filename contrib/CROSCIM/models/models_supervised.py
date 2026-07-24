@@ -177,11 +177,12 @@ class Lit4dVarNet_CROSCIM_Supervised(Lit4dVarNet_CROSCIM):
 
         return type(batch)(**new_dict), models_mask
 
-    def format_batch_for_solver(self, batch, include_masks=False, res=None):
+    def format_batch_for_solver(self, batch, include_masks=False, res=None, scale_channel=None):
         """
         Étend le parent en appliquant d'abord le masque des variables models_XXX
         à toutes les variables satellites, puis délègue au parent.
         """
         batch, _ = self.apply_models_mask_to_batch(batch)
-        return super().format_batch_for_solver(batch, include_masks=include_masks, res=res)
+        return super().format_batch_for_solver(batch, include_masks=include_masks, res=res,
+                                                scale_channel=scale_channel)
 

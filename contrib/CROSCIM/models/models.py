@@ -50,6 +50,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             training_strategy='progressive',  # NEW PARAMETER
             include_masks=False,
             normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
+            normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
+            condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
             *args, **kwargs):
 
         # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
@@ -59,6 +61,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # Store training strategy
         self.training_strategy = training_strategy
         self.normalize_anomaly = normalize_anomaly
+        self.normalize_anomaly_patch_only = normalize_anomaly_patch_only
+        self.condition_on_scale = condition_on_scale
 
         # Store variable configuration
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
@@ -708,19 +712,22 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return batch
 
 
-    def format_batch_for_solver(self, batch, include_masks=False, res=None):
+    def format_batch_for_solver(self, batch, include_masks=False, res=None, scale_channel=None):
         """
         À partir d'un batch de type TrainingItem, retourne un dictionnaire avec :
         - 'input' : concaténation des input_vars (satellite + covariates)
         - 'tgt'   : concaténation des variables de tgt_vars
-        
+
         Args:
             batch: TrainingItem namedtuple with all variables
             include_masks: bool, if True intercale data et mask pour chaque variable
                         [data_var1, mask_var1, data_var2, mask_var2, ...]
                         if False, juste les données comme avant
             res: resolution key (e.g., 50 for patch_x50) to get resolution-specific target vars
-        
+            scale_channel: optional (B, T, H, W) tensor from ``compute_scale_channel``,
+                        appended as an extra input channel when ``condition_on_scale``
+                        is used (see the multi-res anomaly loop in ``multistep``).
+
         Returns:
             sBatch with input and tgt tensors
         """
@@ -785,6 +792,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             print(f"  Spatial: {input_final.shape[2]} × {input_final.shape[3]}")
             print(f"  Expected UNet n_channels: {n_channels}")
 
+        if scale_channel is not None:
+            input_tensors.append(scale_channel)
+
         return sBatch(
             input=torch.cat(input_tensors, dim=1).float(),
             tgt=torch.cat(tgt_tensors, dim=1).float()
@@ -825,7 +835,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     def normalize_anomaly_batch(self, batch, eps: float = 1e-3):
         """
         Instance-normalise the anomaly fields in *batch* so that each target
-        variable has std ≈ 1 across the valid (non-NaN) pixels of the batch.
+        variable has std ≈ 1 across the valid (non-NaN) pixels.
+
+        Controlled by ``self.normalize_anomaly_patch_only``:
+          - True  (default): std computed per sample (dim 0) — each patch gets
+            its own scale. Avoids mixing patches with very different natural
+            anomaly amplitude (e.g. ice edge vs. central pack) into a single
+            shared factor, which otherwise produces visible seams once
+            patches are stitched back together.
+          - False: std pooled over the whole batch (legacy behaviour, one
+            shared scalar for every sample).
 
         This is called right after ``update_batch_as_anomaly`` when training /
         running inference on a fine resolution.  The returned ``scale_dict``
@@ -843,7 +862,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         Returns
         -------
         batch_norm : same type as *batch*, with target variables rescaled.
-        scale_dict : dict  {batch_var_name: scale_tensor (scalar)}.
+        scale_dict : dict  {batch_var_name: scale_tensor}, shape (B, 1, 1, ...)
+            if ``normalize_anomaly_patch_only`` else a 0-d scalar tensor.
         """
         batch_dict = batch._asdict()
         scale_dict = {}
@@ -868,12 +888,23 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     continue
             if tensor.ndim < 2:
                 continue
-            # Compute std over all valid (finite) pixels in the batch
-            valid = tensor[tensor.isfinite()]
-            if valid.numel() < 2:
-                scale = tensor.new_tensor(1.0)
+
+            if self.normalize_anomaly_patch_only:
+                # Std over the valid (finite) pixels of each sample separately
+                scale = tensor.new_ones(tensor.shape[0])
+                for b in range(tensor.shape[0]):
+                    valid = tensor[b][tensor[b].isfinite()]
+                    if valid.numel() >= 2:
+                        scale[b] = valid.std().clamp(min=eps)
+                scale = scale.view(-1, *([1] * (tensor.ndim - 1)))
             else:
-                scale = valid.std().clamp(min=eps)
+                # Std pooled over all valid (finite) pixels in the batch
+                valid = tensor[tensor.isfinite()]
+                if valid.numel() < 2:
+                    scale = tensor.new_tensor(1.0)
+                else:
+                    scale = valid.std().clamp(min=eps)
+
             scale_dict[var_name] = scale
             batch_dict[var_name] = tensor / scale
 
@@ -890,7 +921,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         Parameters
         ----------
         out : dict  {pred_var: (B, T, H, W)}
-        scale_dict : dict  {batch_var_name: scale_tensor}
+        scale_dict : dict  {batch_var_name: scale_tensor}, either a 0-d scalar
+            or shape (B, 1, 1, ...) — both broadcast correctly against
+            ``out[pred_key]`` below.
 
         Returns
         -------
@@ -917,8 +950,44 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 out[pred_key] = out[pred_key] * scale.to(out[pred_key].device)
         return out
 
+    def compute_scale_channel(self, coarse_field: dict, eps: float = 1e-3):
+        """
+        Per-patch local scale derived from the coarse-resolution prediction
+        (not the true target), meant to be fed to the fine-res solver as an
+        extra input channel (see ``condition_on_scale``) instead of hard
+        dividing/re-multiplying the anomaly (``normalize_anomaly``). Using the
+        coarse field keeps this available at genuine inference time too, when
+        the true anomaly isn't known.
 
-    def interpolate_torch(self, coarse_data, xc_coarse, yc_coarse, xc_target, yc_target, 
+        Parameters
+        ----------
+        coarse_field : dict {pred_var: tensor (B, T, H, W)}
+            The coarser-resolution output, already interpolated + cropped to
+            the current resolution's grid/time window (``interpolate_torch``
+            + ``crop_daw``), so T already matches the current resolution.
+        eps : float
+            Floor for the scale factor.
+
+        Returns
+        -------
+        scale_channel : tensor (B, T, H, W), or None if coarse_field is empty.
+            The per-patch scale, broadcast over time and space, ready to be
+            concatenated as an extra input channel.
+        """
+        tensors = [t for t in coarse_field.values()
+                   if isinstance(t, torch.Tensor) and t.numel() > 0]
+        if not tensors:
+            return None
+        ref = tensors[0]
+        B = ref.shape[0]
+        scale = ref.new_ones(B)
+        for b in range(B):
+            valid = torch.cat([t[b][t[b].isfinite()] for t in tensors])
+            if valid.numel() >= 2:
+                scale[b] = valid.std().clamp(min=eps)
+        return scale.view(B, 1, 1, 1).expand_as(ref)
+
+    def interpolate_torch(self, coarse_data, xc_coarse, yc_coarse, xc_target, yc_target,
                         mode='bilinear', align_corners=True):
         """
         Interpolate coarse data to target grid using PyTorch grid_sample (batched).
@@ -1404,13 +1473,23 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 else:
                     anom_scale = {}
 
+                # Alternative to normalize_anomaly: feed the coarse-field local
+                # scale as an extra input channel instead of hard normalising.
+                scale_channel = None
+                if self.condition_on_scale:
+                    scale_channel = self.compute_scale_channel(
+                        out[f"patch_x{coarser_res}_on_x{res}"]
+                    )
+
                 # Train or inference
                 if should_train:
-                    loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase)
+                    loss, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=phase,
+                                                            scale_channel=scale_channel)
                     total_loss += loss
                 else:
                     with torch.no_grad():
-                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=log_phase)
+                        _, out[f"patch_x{res}"] = self.step(batch_res, res=res, phase=log_phase,
+                                                             scale_channel=scale_channel)
 
                 # Denormalise predictions before adding back the coarse resolution
                 if anom_scale:
@@ -1710,10 +1789,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self._last_balanced_weights = result
         return result
 
-    def step(self, batch, res, phase=""):
-    
+    def step(self, batch, res, phase="", scale_channel=None):
 
-        loss, out = self.base_step(batch, res=res, phase=phase)
+
+        loss, out = self.base_step(batch, res=res, phase=phase, scale_channel=scale_channel)
         res_key = f"patch_x{res}"
         # Get resolution-specific mapping
         if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
@@ -1799,7 +1878,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
     
         # 4. Prior / SRNN loss
         if hasattr(self.solver.solvers[f"solver_x{res}"], "prior_cost"):
-            sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
+            sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res,
+                                                   scale_channel=scale_channel)
             model = self.solver.solvers[f"solver_x{res}"].to(device)
             prior = model.prior_cost.forward_ae(sbatch.input.nan_to_num())
             prior_diff = sbatch.tgt - prior
@@ -1874,12 +1954,13 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         return training_loss, out
 
-    def base_step(self, batch, res, phase=""):
+    def base_step(self, batch, res, phase="", scale_channel=None):
         """
         Compute loss over selected target variables in a multi-variate model.
         Args:
             batch: a NamedTuple with target fields matching tgt_vars.
             phase: string for logging ("train", "val", etc.)
+            scale_channel: optional (B, T, H, W) tensor, see ``compute_scale_channel``.
         Returns:
            loss: total loss
            out: model output tensor
@@ -1892,7 +1973,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             # Fallback to base var_mapping (for backward compatibility)
             mapping = self.var_mapping
 
-        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res,
+                                               scale_channel=scale_channel)
         self.plot_counter += 1  
         # === PLOT DEBUG (every N batches) ===
         if (self.plot_counter % 100 == 0) and (res==50):  # Plot every 10 batches
@@ -2545,11 +2627,19 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 batch, anom_scale = self.normalize_anomaly_batch(batch)
             else:
                 anom_scale = {}
+
+            scale_channel = None
+            if self.condition_on_scale:
+                scale_channel = self.compute_scale_channel(
+                    {k: v for k, v in itrp_coarse.items() if k.startswith('pred_')}
+                )
         else:
             anom_scale = {}
             orig_tgt = None
+            scale_channel = None
 
-        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res)
+        sbatch = self.format_batch_for_solver(batch, include_masks=self.include_masks, res=res,
+                                               scale_channel=scale_channel)
 
         out = self(batch=sbatch, res=res)
         out = self.split_tensor_to_dict(out, res=res)

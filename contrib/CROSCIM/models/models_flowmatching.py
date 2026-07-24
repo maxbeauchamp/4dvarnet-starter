@@ -210,10 +210,10 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
     # base_step — FM training / validation loss
     # ─────────────────────────────────────────────────────────────────────────
 
-    def base_step(self, batch, res: int, phase: str = ""):
+    def base_step(self, batch, res: int, phase: str = "", scale_channel=None):
         solver_key = f"solver_x{res}"
         sbatch     = self.format_batch_for_solver(
-            batch, include_masks=self.include_masks, res=res
+            batch, include_masks=self.include_masks, res=res, scale_channel=scale_channel
         )
 
         y = sbatch.input   # (B, C_in, H, W)  observations
@@ -356,8 +356,8 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
     # Override step: skip auxiliary losses (grad, prior, tv, context)
     # ─────────────────────────────────────────────────────────────────────────
 
-    def step(self, batch, res: int, phase: str = ""):
-        return self.base_step(batch, res=res, phase=phase)
+    def step(self, batch, res: int, phase: str = "", scale_channel=None):
+        return self.base_step(batch, res=res, phase=phase, scale_channel=scale_channel)
 
     # ─────────────────────────────────────────────────────────────────────────
     # EMA update after each training batch
