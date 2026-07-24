@@ -183,7 +183,7 @@ model:
   _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
   persist_rw: False
   multires: [50, 10, 2]
-  normalize_anomaly: false
+  normalize_anomaly: true
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}

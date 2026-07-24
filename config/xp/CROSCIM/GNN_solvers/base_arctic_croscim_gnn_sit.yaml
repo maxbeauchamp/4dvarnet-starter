@@ -157,7 +157,7 @@ model:
   _target_: contrib.CROSCIM.models.models_gnn.Lit4dVarNet_CROSCIM_GNN
   persist_rw: False
   multires:   [50, 10]
-  normalize_anomaly: false
+  normalize_anomaly: true
   opt_fn:     null
 
   # Variable configuration (shared with datamodule)

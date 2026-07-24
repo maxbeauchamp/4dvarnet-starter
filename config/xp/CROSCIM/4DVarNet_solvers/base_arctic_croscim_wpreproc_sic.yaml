@@ -119,7 +119,7 @@ model:
   _target_: contrib.CROSCIM.models.models.Lit4dVarNet_CROSCIM
   persist_rw: False
   multires: [50, 10, 2]
-  normalize_anomaly: false
+  normalize_anomaly: true
   opt_fn: null
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}
