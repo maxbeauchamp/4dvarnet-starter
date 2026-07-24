@@ -23,7 +23,7 @@
 #SBATCH --job-name=croscim_benchmark
 #SBATCH --partition=Odyssey_GPU
 #SBATCH --account=odyssey
-#SBATCH --gres=gpu:h100:1
+#SBATCH --gres=gpu:a100:1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=12
 #SBATCH --time=96:00:00
