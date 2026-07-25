@@ -515,8 +515,8 @@ class VarCMTraining(nn.Module):
         # L_long  is part of L_anc: long-chain anchor student(t→0) ≈ x_0
         pred_long = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                               h_t, y, t_s, t0_vec)
-        l_long = F.mse_loss(pred_long, x0)
-        l_pair = F.mse_loss(pred_long, target_pair.detach())
+        l_long = pseudo_huber_loss(pred_long, x0).mean()
+        l_pair = pseudo_huber_loss(pred_long, target_pair.detach()).mean()
 
         # ── Term 3: L_short ───────────────────────────────────────────────────
         if self.pure_short:
@@ -529,7 +529,7 @@ class VarCMTraining(nn.Module):
                                   h_t, y, t_s, t_p)
             pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                                    x_mid, y, t_p, t0_vec)
-            l_short = F.mse_loss(pred_short, target_pair)
+            l_short = pseudo_huber_loss(pred_short, target_pair).mean()
         else:
             # Interpolant mode: x_t built from x_0, target is x_0.
             with torch.no_grad():
@@ -537,7 +537,7 @@ class VarCMTraining(nn.Module):
                                   x_t_interp, y, t_s, t_p)
             pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                                    x_mid, y, t_p, t0_vec)
-            l_short = F.mse_loss(pred_short, x0)
+            l_short = pseudo_huber_loss(pred_short, x0).mean()
 
         # ── Term 4: AE reconstruction — trains prior_cost directly ────────────
         # prior_cost parameters receive zero gradient from the consistency terms
@@ -555,8 +555,8 @@ class VarCMTraining(nn.Module):
         # x0 is always the ground-truth target, regardless of pure_short mode.
         mask_obs = (~torch.isnan(y)).to(dtype=pred_long.dtype)
         n_obs = mask_obs.sum().clamp(min=1.0)
-        l_obs_long  = ((pred_long  - x0) * mask_obs).pow(2).sum() / n_obs
-        l_obs_short = ((pred_short - x0) * mask_obs).pow(2).sum() / n_obs
+        l_obs_long  = (pseudo_huber_loss(pred_long,  x0) * mask_obs).sum() / n_obs
+        l_obs_short = (pseudo_huber_loss(pred_short, x0) * mask_obs).sum() / n_obs
         l_obs = (l_obs_long + l_obs_short) / 2.0
 
         # L_anc = L_long + L_short  (anchoring terms combined)

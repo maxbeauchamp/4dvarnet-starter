@@ -419,7 +419,7 @@ class VarDynCMTraining:
             is_phys      = (t_curr <= sb).view(B, 1, 1, 1)
             target_comp  = torch.where(is_phys, x_next_gt.to(student_pred.dtype), teacher_pred)
 
-        loss_comp = F.mse_loss(student_pred, target_comp.detach())
+        loss_comp = pseudo_huber_loss(student_pred, target_comp.detach()).mean()
 
         # ── L_IC: spin-up anchoring  g(noise, t_spin, t_IC=sb) = IC ─────────
         if k_IC >= 1:
@@ -434,7 +434,7 @@ class VarDynCMTraining:
                 conditioning_mode="none",
                 **kwargs,
             )
-            loss_IC   = F.mse_loss(pred_IC, IC)
+            loss_IC   = pseudo_huber_loss(pred_IC, IC).mean()
         else:
             loss_IC = x.new_zeros(())
 
@@ -450,11 +450,11 @@ class VarDynCMTraining:
             t_k_v  = torch.full((B,), t_k,  device=dev, dtype=x.dtype)
             t_k1_v = torch.full((B,), t_k1, device=dev, dtype=x.dtype)
             pred   = fwd(student, x_k, t_k_v, t_k1_v)
-            loss_phys = loss_phys + F.mse_loss(pred, x_k1)
+            loss_phys = loss_phys + pseudo_huber_loss(pred, x_k1).mean()
 
             mask_k1 = (~torch.isnan(y[:, [k + 1], :, :])).to(dtype=x.dtype)
             n_obs   = mask_k1.sum().clamp(min=1.0)
-            loss_obs = loss_obs + ((pred - x_k1) * mask_k1).pow(2).sum() / n_obs
+            loss_obs = loss_obs + (pseudo_huber_loss(pred, x_k1) * mask_k1).sum() / n_obs
 
         loss_phys = loss_phys / max(C - 1, 1)
         loss_obs  = loss_obs  / max(C - 1, 1)
