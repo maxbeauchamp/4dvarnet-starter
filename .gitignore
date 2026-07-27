@@ -332,3 +332,9 @@ data/deepchimere_export_256_2019.tar
 consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=049-step=1900-train_loss=0.0055.ckpt
 consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=050-step=1938-train_loss=0.0055.ckpt
 consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=055-step=2128-train_loss=0.0055.ckpt
+consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=102-step=3914-train_loss=0.0113.ckpt
+consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=143-step=5472-train_loss=0.0110.ckpt
+consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/epoch=144-step=5510-train_loss=0.0119.ckpt
+consistency/Notebooks/Notebooks_SSH_GF/logs_4dvarnet_unet/best_model/model_4dvarnet_unet.pt
+consistency/cartopy/shapefiles/natural_earth/physical/10m_physical.zip
+consistency/cartopy/shapefiles/natural_earth/physical/ne_10m_rivers_north_america.dbf

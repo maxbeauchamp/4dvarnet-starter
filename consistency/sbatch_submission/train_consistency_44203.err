@@ -1,3 +1,106 @@
 Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:06<03:08,  6.99s/cell]Executing:  11%|█         | 3/28 [00:50<07:26, 17.87s/cell]Executing:  21%|██▏       | 6/28 [00:50<02:34,  7.00s/cell]Executing:  32%|███▏      | 9/28 [00:51<01:11,  3.77s/cell]Executing:  39%|███▉      | 11/28 [01:17<01:54,  6.72s/cell]Executing:  54%|█████▎    | 15/28 [01:25<00:58,  4.49s/cell]Executing:  71%|███████▏  | 20/28 [01:25<00:19,  2.45s/cell]Executing:  71%|███████▏  | 20/28 [01:40<00:19,  2.45s/cell]Executing:  75%|███████▌  | 21/28 [5:02:39<4:02:57, 2082.46s/cell]Executing:  79%|███████▊  | 22/28 [5:02:39<2:58:50, 1788.41s/cell]Executing:  86%|████████▌ | 24/28 [5:02:41<1:24:58, 1274.53s/cell]Executing:  93%|█████████▎| 26/28 [5:02:47<30:08, 904.46s/cell]   Executing:  96%|█████████▋| 27/28 [5:02:48<12:28, 748.82s/cell]Executing: 100%|██████████| 28/28 [5:02:48<00:00, 601.06s/cell]Executing: 100%|██████████| 28/28 [5:02:51<00:00, 648.99s/cell]
 Passed unknown parameter: SOLVER_TYPE
-Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:04<02:52,  4.93s/cell]Executing:   8%|▊         | 3/36 [00:25<04:55,  8.94s/cell]Executing:  17%|█▋        | 6/36 [00:26<01:46,  3.55s/cell]Executing:  25%|██▌       | 9/36 [00:26<00:52,  1.95s/cell]Executing:  31%|███       | 11/36 [00:48<01:58,  4.75s/cell]Executing:  44%|████▍     | 16/36 [00:48<00:45,  2.28s/cell]Executing:  53%|█████▎    | 19/36 [00:50<00:30,  1.77s/cell]Executing:  58%|█████▊    | 21/36 [00:50<00:20,  1.38s/cell]Executing:  72%|███████▏  | 26/36 [00:50<00:07,  1.30cell/s]Executing:  72%|███████▏  | 26/36 [01:10<00:07,  1.30cell/s]
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:04<02:52,  4.93s/cell]Executing:   8%|▊         | 3/36 [00:25<04:55,  8.94s/cell]Executing:  17%|█▋        | 6/36 [00:26<01:46,  3.55s/cell]Executing:  25%|██▌       | 9/36 [00:26<00:52,  1.95s/cell]Executing:  31%|███       | 11/36 [00:48<01:58,  4.75s/cell]Executing:  44%|████▍     | 16/36 [00:48<00:45,  2.28s/cell]Executing:  53%|█████▎    | 19/36 [00:50<00:30,  1.77s/cell]Executing:  58%|█████▊    | 21/36 [00:50<00:20,  1.38s/cell]Executing:  72%|███████▏  | 26/36 [00:50<00:07,  1.30cell/s]Executing:  72%|███████▏  | 26/36 [01:10<00:07,  1.30cell/s]Executing:  75%|███████▌  | 27/36 [50:36:14<51:44:01, 20693.45s/cell]Executing:  78%|███████▊  | 28/36 [50:36:14<39:33:49, 17803.69s/cell]Executing:  83%|████████▎ | 30/36 [50:36:15<21:12:37, 12726.20s/cell]Executing:  89%|████████▉ | 32/36 [50:36:20<10:02:51, 9042.93s/cell] Executing:  92%|█████████▏| 33/36 [50:36:25<6:14:43, 7494.45s/cell] Executing:  92%|█████████▏| 33/36 [50:36:29<4:36:02, 5520.88s/cell]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/run_training.py", line 89, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/run_training.py", line 79, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [18]":
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+Cell In[18], line 18
+     14 plt.show()
+     15 
+     16 # Montrer x_0, x_N//2, x_N  (premier pas de temps seulement pour la lisibilité)
+     17 for k_show in [0, len(iterates) // 2, len(iterates) - 1]:
+---> 18     plot_ssh(
+     19         iterates[k_show][b, :1].detach().cpu(),
+     20         title=f"x_k (k={k_show}) — pas de temps 0",
+     21         cols=1,
+
+Cell In[17], line 13, in plot_ssh(images, vmin, vmax, cols, title)
+      9             'time': np.arange(images.shape[0]),
+     10             'lon':  np.arange(images.shape[2]),
+     11             'lat':  np.arange(images.shape[1]),
+     12         },
+---> 13     ).ssh.plot(col='time', col_wrap=cols, vmin=vmin, vmax=vmax)
+     14     plt.show()
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/plot/accessor.py:47, in DataArrayPlotAccessor.__call__(self, **kwargs)
+     45 @functools.wraps(dataarray_plot.plot, assigned=("__doc__", "__annotations__"))
+     46 def __call__(self, **kwargs) -> Any:
+---> 47     return dataarray_plot.plot(self._da, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/plot/dataarray_plot.py:306, in plot(darray, row, col, col_wrap, ax, hue, subplot_kws, **kwargs)
+    302     plotfunc = hist
+    304 kwargs["ax"] = ax
+--> 306 return plotfunc(darray, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/plot/dataarray_plot.py:1499, in _plot2d.<locals>.newplotfunc(***failed resolving arguments***)
+   1497     # Need the decorated plotting function
+   1498     allargs["plotfunc"] = globals()[plotfunc.__name__]
+-> 1499     return _easy_facetgrid(darray, kind="dataarray", **allargs)
+   1501 if darray.ndim == 0 or darray.size == 0:
+   1502     # TypeError to be consistent with pandas
+   1503     raise TypeError("No numeric data to plot.")
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/plot/facetgrid.py:1042, in _easy_facetgrid(data, plotfunc, kind, x, y, row, col, col_wrap, sharex, sharey, aspect, size, subplot_kws, ax, figsize, **kwargs)
+   1039     sharex = False
+   1040     sharey = False
+-> 1042 g = FacetGrid(
+   1043     data=data,
+   1044     col=col,
+   1045     row=row,
+   1046     col_wrap=col_wrap,
+   1047     sharex=sharex,
+   1048     sharey=sharey,
+   1049     figsize=figsize,
+   1050     aspect=aspect,
+   1051     size=size,
+   1052     subplot_kws=subplot_kws,
+   1053 )
+   1055 if kind == "line":
+   1056     return g.map_dataarray_line(plotfunc, x, y, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/plot/facetgrid.py:172, in FacetGrid.__init__(self, data, col, row, col_wrap, sharex, sharey, figsize, aspect, size, subplot_kws)
+    169 plt = import_matplotlib_pyplot()
+    171 # Handle corner case of nonunique coordinates
+--> 172 rep_col = col is not None and not data[col].to_index().is_unique
+    173 rep_row = row is not None and not data[row].to_index().is_unique
+    174 if rep_col or rep_row:
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/core/dataarray.py:801, in DataArray.to_index(self)
+    797 def to_index(self) -> pd.Index:
+    798     """Convert this variable to a pandas.Index. Only possible for 1D
+    799     arrays.
+    800     """
+--> 801     return self.variable.to_index()
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/core/variable.py:633, in Variable.to_index(self)
+    631 def to_index(self) -> pd.Index:
+    632     """Convert this variable to a pandas.Index"""
+--> 633     return self.to_index_variable().to_index()
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/core/variable.py:622, in Variable.to_index_variable(self)
+    620 def to_index_variable(self) -> IndexVariable:
+    621     """Return this variable as an xarray.IndexVariable"""
+--> 622     return IndexVariable(
+    623         self._dims, self._data, self._attrs, encoding=self._encoding, fastpath=True
+    624     )
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/xarray/core/variable.py:2887, in IndexVariable.__init__(self, dims, data, attrs, encoding, fastpath)
+   2885 super().__init__(dims, data, attrs, encoding, fastpath)
+   2886 if self.ndim != 1:
+-> 2887     raise ValueError(f"{type(self).__name__} objects must be 1-dimensional")
+   2889 # Unlike in Variable, always eagerly load values into memory
+   2890 if not isinstance(self._data, PandasIndexingAdapter):
+
+ValueError: IndexVariable objects must be 1-dimensional
+
