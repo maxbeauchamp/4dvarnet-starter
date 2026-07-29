@@ -260,7 +260,10 @@ class ConsistencyTrainingFewSteps_TimeEmbedding:
                                                  num_timesteps, steps,
                                                  diag=diag,
                                                  noise=noise.detach(),
-                                                 sigma_tgt=sigma_tgt.detach())
+                                                 sigma_tgt=sigma_tgt.detach(),
+                                                 student_t1=student_t1.detach(),
+                                                 target_times=target_times.detach(),
+                                                 raw_student=raw_student)
 
 class ConsistencySamplingAndEditingFewSteps_TimeEmbedding:
     """Implements the Consistency Sampling and Few-Shot Editing algorithms.

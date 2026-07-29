@@ -376,6 +376,9 @@ class ConsistencyTrainingOutputFewSteps:
     diag: Optional[dict] = None
     noise: Optional[Tensor] = None
     sigma_tgt: Optional[Tensor] = None
+    student_t1: Optional[Tensor] = None
+    target_times: Optional[Tensor] = None
+    raw_student: Optional[Tensor] = None
 
 @dataclass
 class ConsistencyTrainingOutput4DVarNet:
