@@ -523,11 +523,6 @@ class XrDataset(torch.utils.data.Dataset):
         first_ref_var = self.satellite_vars[self.reference_source][0]
         actual_shape = ref_ds[first_ref_var].shape
 
-        print(f"[DEBUG] reference_source={self.reference_source} resize={self.resize} "
-              f"patch_dims={self.patch_dims} actual_shape={actual_shape} "
-              f"item_mask.shape={item_mask.shape} len(self.xc)={len(self.xc)} len(self.yc)={len(self.yc)} "
-              f"self.mask.sizes={dict(self.mask.sizes)}")
-
         ref_ds = ref_ds.update({"mask": (("yc", "xc"), item_mask)})
         if actual_shape != expected_shape:
             ix = [find_idx(self.xc, x) for x in self.xc[sl["xc"].start:sl["xc"].stop]]
@@ -972,7 +967,15 @@ class BaseDataModule(pl.LightningDataModule):
         self.cristal_paths = cristal_paths if 'cristal' in self.active_sources else []
         self.covariates_paths = covariates_paths
         
-        self.mask_path = mask_path
+        # Suffix the mask cache path with the reference source, so switching
+        # reference_source (e.g. asip -> cimr) doesn't silently reload a mask
+        # built for a different source's grid — each source gets its own
+        # cached mask file, rebuilt automatically the first time it's used.
+        if mask_path is not None:
+            _mask_root, _mask_ext = os.path.splitext(mask_path)
+            self.mask_path = f"{_mask_root}_ref_{self.reference_source.upper()}{_mask_ext}"
+        else:
+            self.mask_path = mask_path
         self.domain_name = domain_name
         self.domains = domains
         self.xrds_kw = xrds_kw
@@ -997,9 +1000,15 @@ class BaseDataModule(pl.LightningDataModule):
         print(f"{'='*60}\n")
        
         self.resize = resize
-        # Load base grid from the reference source to build lat/lon/xc/yc
+        # Load base grid from the reference source to build lat/lon/xc/yc.
+        # Must apply the same domain_limits crop that XrDataset.__init__ will
+        # later apply per split — otherwise self.mask (built from this grid,
+        # see build_land_mask) ends up on the source's full native extent
+        # while each XrDataset instance's own grid is domain-limited, and
+        # coarsening both independently misaligns their coordinates.
+        _domain_limits = (xrds_kw or {}).get('domain_limits')
         _paths_by_source = {"asip": self.asip_paths, "cimr": self.cimr_paths, "cristal": self.cristal_paths}
-        ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0])
+        ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0]).sel(**(_domain_limits or {}))
         self.xc = ref_base.xc.data
         self.yc = ref_base.yc.data
         self.lon = ref_base.lon.data
