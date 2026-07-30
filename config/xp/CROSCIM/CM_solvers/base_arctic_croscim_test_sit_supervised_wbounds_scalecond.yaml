@@ -20,7 +20,6 @@ var_config:
   satellite_vars:
     cristal: ["SIT"]
     cimr: ["SIT","SIC"]
-    asip: [sic]  # excluded from Gefion training preproc
   
   models_vars: null
   
