@@ -117,15 +117,21 @@ class XrDatasetMultiResTrain(XrDataset):
         super().__init__(subsel_patch=True, satellite_vars=satellite_vars, *args, **kwargs)
         
         self.multires = multires
+        # Nominal (config-facing, unit = asip's 500m) finest-level factor —
+        # used for all "how many multiples of the finest patch" bookkeeping
+        # below. Kept distinct from self.resize, which XrDataset.__init__
+        # (called above) has already turned into the EFFECTIVE raw-pixel
+        # coarsening factor for self.reference_source.
+        self.nominal_resize = self.multires[-1]
 
         # Precompute enlarged patch sizes per resolution
         self.enlarged_dims = {}
         for factor in self.multires:
             self.enlarged_dims[factor] = {
-                'yc': self.patch_dims['yc'] * (factor // self.resize),
-                'xc': self.patch_dims['xc'] * (factor // self.resize)
+                'yc': self.patch_dims['yc'] * (factor // self.nominal_resize),
+                'xc': self.patch_dims['xc'] * (factor // self.nominal_resize)
             }
-        
+
         print(f"XrDatasetMultiResTrain initialized:")
         print(f"  Satellite vars: {self.satellite_vars}")
         print(f"  Active sources: {self.active_sources}")
@@ -155,8 +161,13 @@ class XrDatasetMultiResTrain(XrDataset):
         y_center = (sl["yc"].start + sl["yc"].stop) // 2
         x_center = (sl["xc"].start + sl["xc"].stop) // 2
 
-        enlarged_yc = self.enlarged_dims[factor * self.resize]['yc']
-        enlarged_xc = self.enlarged_dims[factor * self.resize]['xc']
+        # `factor` is a ratio relative to the finest nominal level (invariant
+        # whether expressed in nominal or effective units, since
+        # effective_pixel_factor is linear) — reconstruct the nominal
+        # multires value with self.nominal_resize to key into enlarged_dims.
+        nominal_level = factor * self.nominal_resize
+        enlarged_yc = self.enlarged_dims[nominal_level]['yc']
+        enlarged_xc = self.enlarged_dims[nominal_level]['xc']
 
         y_start = max(0, y_center - enlarged_yc // 2)
         y_end = min(y_start + enlarged_yc, self.da_dims["yc"] - 1)
@@ -169,19 +180,27 @@ class XrDatasetMultiResTrain(XrDataset):
         # Load datasets based on active sources
         datasets = {}
         
+        _full_by_source = {"asip": getattr(self, "full_asip", None),
+                           "cimr": getattr(self, "full_cimr", None),
+                           "cristal": getattr(self, "full_cristal", None)}
+        _paths_by_source = {"asip": getattr(self, "asip_paths", None),
+                            "cimr": getattr(self, "cimr_paths", None),
+                            "cristal": getattr(self, "cristal_paths", None)}
+
         if self.load_data:
             # Load only active sources
-            if 'asip' in self.active_sources:
-                datasets['asip'] = self.full_asip.isel(
-                    time=sl["time"], 
-                    xc=slice(x_start, x_end), 
-                    yc=slice(y_start, y_end)
-                )
-            if 'cimr' in self.active_sources:
-                datasets['cimr'] = self.full_cimr.isel(time=sl["time"])
-            if 'cristal' in self.active_sources:
-                datasets['cristal'] = self.full_cristal.isel(time=sl["time"])
-            
+            for src in self.active_sources:
+                if src not in _full_by_source or _full_by_source[src] is None:
+                    continue
+                if src == self.reference_source:
+                    datasets[src] = _full_by_source[src].isel(
+                        time=sl["time"],
+                        xc=slice(x_start, x_end),
+                        yc=slice(y_start, y_end)
+                    )
+                else:
+                    datasets[src] = _full_by_source[src].isel(time=sl["time"])
+
             # Load covariates if configured
             if hasattr(self, 'covariates') and self.covariates:
                 datasets['covariates'] = self.full_covs.isel(time=sl["time"])
@@ -192,123 +211,89 @@ class XrDatasetMultiResTrain(XrDataset):
                 "yc": slice(self.yc[y_start], self.yc[y_end])
             }
             type_coords = "coords"
-            
+
             # Load only active sources
-            if 'asip' in self.active_sources:
-                datasets['asip'] = concatenate(
-                    self.asip_paths[time_indices], 
-                    var_list=self.satellite_vars['asip'],
-                    slices=slices, 
-                    type_coords=type_coords,
-                    resize=factor * self.resize, 
-                    domain_limits=self.domain_limits
-                )
-            if 'cimr' in self.active_sources:
-                datasets['cimr'] = concatenate(
-                    self.cimr_paths[time_indices], 
-                    var_list=self.satellite_vars['cimr'], 
-                    slices=None
-                )
-            if 'cristal' in self.active_sources:
-                datasets['cristal'] = concatenate(
-                    self.cristal_paths[time_indices], 
-                    var_list=self.satellite_vars['cristal'], 
-                    slices=None
-                )
+            for src in self.active_sources:
+                if src not in _paths_by_source or _paths_by_source[src] is None:
+                    continue
+                if src == self.reference_source:
+                    datasets[src] = concatenate(
+                        _paths_by_source[src][time_indices],
+                        var_list=self.satellite_vars[src],
+                        slices=slices,
+                        type_coords=type_coords,
+                        resize=effective_pixel_factor(nominal_level, self.reference_source),
+                        domain_limits=self.domain_limits
+                    )
+                else:
+                    datasets[src] = concatenate(
+                        _paths_by_source[src][time_indices],
+                        var_list=self.satellite_vars[src],
+                        slices=None
+                    )
             # Load covariates if configured
             if hasattr(self, 'covariates') and self.covariates:
                 datasets['covariates'] = concatenate(
-                    self.covariates_paths[time_indices], 
-                    var_list=self.covariates, 
+                    self.covariates_paths[time_indices],
+                    var_list=self.covariates,
                     slices=None
                 )
 
-        # Get ASIP dataset as reference (must be present)
-        if 'asip' not in datasets:
-            raise ValueError("ASIP dataset is required as reference grid but not loaded")
-        
-        asip_ds = datasets['asip']
+        # Get reference dataset (must be present)
+        if self.reference_source not in datasets:
+            raise ValueError(f"{self.reference_source} dataset is required as reference grid but not loaded")
+
+        ref_ds = datasets[self.reference_source]
 
         # Padding if necessary
         expected_shape = (self.patch_dims['time'], self.patch_dims['yc'], self.patch_dims['xc'])
-        # Use first available ASIP variable
-        first_asip_var = self.satellite_vars['asip'][0]
-        actual_shape = asip_ds[first_asip_var].shape
-        
+        # Use first available reference variable
+        first_ref_var = self.satellite_vars[self.reference_source][0]
+        actual_shape = ref_ds[first_ref_var].shape
+
         if actual_shape != expected_shape:
             pad_t = expected_shape[0] - actual_shape[0]
             pad_y = expected_shape[1] - actual_shape[1]
             pad_x = expected_shape[2] - actual_shape[2]
             pad = {dim: (0, pad_) for dim, pad_ in zip(["time", "yc", "xc"], [pad_t, pad_y, pad_x])}
             # add mask
-            asip_ds = asip_ds.update({"mask": (("yc", "xc"), item_mask)})
+            ref_ds = ref_ds.update({"mask": (("yc", "xc"), item_mask)})
             # pad
-            asip_ds = pad_dataset_with_coords(asip_ds, pad_yc=pad_y, pad_xc=pad_x)
-            asip_ds['mask'] = asip_ds['mask'].fillna(1)
-            item_mask = asip_ds.mask.data
+            ref_ds = pad_dataset_with_coords(ref_ds, pad_yc=pad_y, pad_xc=pad_x)
+            ref_ds['mask'] = ref_ds['mask'].fillna(1)
+            item_mask = ref_ds.mask.data
 
-        lon_target = asip_ds.lon.values
-        lat_target = asip_ds.lat.values
+        lon_target = ref_ds.lon.values
+        lat_target = ref_ds.lat.values
 
-        # Collect data from ASIP
+        # Collect data from the reference source
         sample = {}
-        for var in self.satellite_vars['asip']:
-            sample[f"asip_{var}"] = asip_ds[var].values
+        for var in self.satellite_vars[self.reference_source]:
+            sample[f"{self.reference_source}_{var}"] = ref_ds[var].values
 
-        # Interpolate other satellite sources (only if active)
+        # Interpolate other active satellite sources onto the reference grid
         if self.itrp_from_regular:
-            target_grid = (asip_ds.xc.values, asip_ds.yc.values)
-            if 'cimr' in datasets:
-                interpolated = self.interpolate_dataset(
-                    target_grid, 
-                    datasets['cimr'], 
-                    self.satellite_vars['cimr'],
-                    prefix="cimr"
-                )
-                sample.update(interpolated)
-            if 'cristal' in datasets:
-                interpolated = self.interpolate_dataset(
-                    target_grid, 
-                    datasets['cristal'], 
-                    self.satellite_vars['cristal'],
-                    prefix="cristal"
-                )
-                sample.update(interpolated)
-            if 'covariates' in datasets:
-                interpolated = self.interpolate_dataset(
-                    target_grid, 
-                    datasets['covariates'], 
-                    self.covariates
-                )
-                sample.update(interpolated)
+            target_grid = (ref_ds.xc.values, ref_ds.yc.values)
         else:
-            swath_def_target = pyresample.geometry.SwathDefinition(lons=lon_target, lats=lat_target)
-            
-            if 'cimr' in datasets:
-                interpolated = self.interpolate_dataset(
-                    swath_def_target, 
-                    datasets['cimr'], 
-                    self.satellite_vars['cimr'],
-                    prefix="cimr"
-                )
-                sample.update(interpolated)
-            
-            if 'cristal' in datasets:
-                interpolated = self.interpolate_dataset(
-                    swath_def_target, 
-                    datasets['cristal'], 
-                    self.satellite_vars['cristal'],
-                    prefix="cristal"
-                )
-                sample.update(interpolated)
-            
-            if 'covariates' in datasets:
-                interpolated = self.interpolate_dataset(
-                    swath_def_target, 
-                    datasets['covariates'], 
-                    self.covariates
-                )
-                sample.update(interpolated)
+            target_grid = pyresample.geometry.SwathDefinition(lons=lon_target, lats=lat_target)
+
+        for src in ("asip", "cimr", "cristal"):
+            if src == self.reference_source or src not in datasets:
+                continue
+            interpolated = self.interpolate_dataset(
+                target_grid,
+                datasets[src],
+                self.satellite_vars[src],
+                prefix=src
+            )
+            sample.update(interpolated)
+        if 'covariates' in datasets:
+            interpolated = self.interpolate_dataset(
+                target_grid,
+                datasets['covariates'],
+                self.covariates
+            )
+            sample.update(interpolated)
 
         # Add metadata
         sample["land_mask"] = np.expand_dims(item_mask, axis=0)
@@ -317,7 +302,7 @@ class XrDatasetMultiResTrain(XrDataset):
 
 
         # Determine which resolution key to use based on factor
-        res_key = f"patch_x{factor * self.resize}"
+        res_key = f"patch_x{nominal_level}"
         
         # Get resolution-specific mapping
         if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
@@ -343,11 +328,11 @@ class XrDatasetMultiResTrain(XrDataset):
 
         # Keep track of the coordinates
         sample["time"] = np.expand_dims(
-            np.array([np.datetime64(t, "s").astype('float64') for t in asip_ds.time.values]),
+            np.array([np.datetime64(t, "s").astype('float64') for t in ref_ds.time.values]),
             axis=0
         )
-        sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
-        sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
+        sample["xc"] = np.expand_dims(ref_ds.xc.values, axis=0)
+        sample["yc"] = np.expand_dims(ref_ds.yc.values, axis=0)
 
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)
@@ -365,9 +350,9 @@ class XrDatasetMultiResTrain(XrDataset):
         }
 
         out = {}
-        out[f"patch_x{self.resize}"] = hr_sample
+        out[f"patch_x{self.nominal_resize}"] = hr_sample
         for factor in self.multires[:-1]:
-            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor // (self.resize))
+            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor // (self.nominal_resize))
             out[f"patch_x{factor}"] = enlarged_patch
 
         return out
@@ -384,7 +369,17 @@ class XrDatasetMultiResTest:
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
         self.covariates = covariates or []
         self.target_vars = target_vars or []
-        self.var_mapping = var_mapping or {}     
+        self.var_mapping = var_mapping or {}
+
+        # Resolve which source drives the grid (each per-resolution XrDataset
+        # below will independently re-resolve the same value) so that nominal
+        # multires levels (config units = asip's 500m) can be converted to
+        # the raw pixel factor actually applicable to that source. Validate
+        # every level up front so an unreachable target fails fast here.
+        _active_sources = [src for src, v in self.satellite_vars.items() if v]
+        _reference_source = resolve_reference_source(_active_sources, override=kwargs.get('reference_source'))
+        for res in multires:
+            effective_pixel_factor(res, _reference_source)
 
         # Handle patch_dims_dict (new) vs patch_dims (legacy)
         if patch_dims_dict is not None:
@@ -432,7 +427,7 @@ class XrDatasetMultiResTest:
             res_kwargs = kwargs.copy()
             res_kwargs['patch_dims'] = patch_dims
             res_kwargs['strides_test'] = strides_test
-            res_kwargs['resize'] = res
+            res_kwargs['resize'] = effective_pixel_factor(res, _reference_source)
             print(f"  Resolution x{res}:")
             print(f"    patch_dims: time={patch_dims['time']}, yc={patch_dims['yc']}, xc={patch_dims['xc']}")
 
@@ -502,7 +497,16 @@ class BaseDataModuleMultiRes(BaseDataModule):
         
         # Store multi-resolution configuration
         self.multires = multires
-        self.resize = self.multires[-1]
+        # multires values are nominal (expressed in units of asip's 500m
+        # native resolution); self.nominal_resize keeps that config-facing
+        # meaning, while self.resize becomes the raw pixel-binning factor
+        # actually applicable to self.reference_source (identity when
+        # reference is asip). Validate every level up front so a
+        # physically-unreachable target fails fast at construction.
+        self.nominal_resize = self.multires[-1]
+        for level in self.multires:
+            effective_pixel_factor(level, self.reference_source)
+        self.resize = effective_pixel_factor(self.nominal_resize, self.reference_source)
         self.rand_obs = rand_obs
         
         # Convert target_vars to dict (handle OmegaConf)
@@ -664,12 +668,14 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 source_paths_attr = f"{source}_paths"
                 if hasattr(self, source_paths_attr):
                     fmt = "%Y%m%d" if source == "asip" else "%Y-%m-%d"
-                    paths, times = select_paths(
-                        getattr(self, source_paths_attr), 
+                    paths, source_times = select_paths(
+                        getattr(self, source_paths_attr),
                         self.domains[split]['time'],
                         fmt=fmt
                     )
                     paths_dict[f"{source}_paths"] = paths
+                    if source == self.reference_source:
+                        times = source_times
             
             # Ensure all required paths are present (even if empty)
             for source in ['asip', 'cimr', 'cristal']:
@@ -690,11 +696,12 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 return XrDatasetMultiResTest(
                     multires=self.multires,
                     patch_dims_dict=self.patch_dims_dict,  # Pass patch_dims_dict (can be None)
-                    strides_test_dict=self.strides_test_dict, 
+                    strides_test_dict=self.strides_test_dict,
                     satellite_vars=self.satellite_vars,
                     covariates=self.covariates,
                     target_vars=self.target_vars,
                     var_mapping=self.var_mapping,
+                    reference_source=self.reference_source,
                     **paths_dict,
                     mask=self.mask,
                     times=times,
@@ -715,6 +722,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     covariates=self.covariates,
                     target_vars=self.target_vars,
                     var_mapping=self.var_mapping,
+                    reference_source=self.reference_source,
                     **paths_dict,
                     mask=self.mask,
                     times=times,

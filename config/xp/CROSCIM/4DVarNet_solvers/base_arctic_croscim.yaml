@@ -13,7 +13,11 @@ var_config:
     cimr: ["SIC", "SIT"]
     cristal: ["SIT", "SSH"]
     asip: ["sic"]
-  
+
+  # Which source's grid/time axis is used as reference. null = auto (asip if
+  # present, else the finest-resolution active source).
+  reference_source: null
+
   # Atmospheric covariates
   covariates: ["msl", "t2m", "u10", "v10"]
   
@@ -67,10 +71,11 @@ datamodule:
   
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
+  reference_source: ${var_config.reference_source}
   covariates: ${var_config.covariates}
   target_vars: ${var_config.target_vars}
   var_mapping: ${var_config.var_mapping}
-  
+
   # Data paths - using load_data.py's get_paths_for_source
   asip_paths:
     _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source

@@ -117,27 +117,24 @@ def normalize_group(path, variables, norm_types, N_SAMPLES=50):
     files = random.sample(files, min(N_SAMPLES, len(files)))
     return compute_stats_from_files(files, variables, norm_types)
 
-def build_all_normalization_dicts(asip_dir, cimr_dir, cristal_dir, era5_dir, models_dir):
-    print("🧊 Calcul des stats ASIP...")
-    asip_stats = normalize_group(asip_dir, VAR_GROUPS["asip"], norm_types)
+def build_all_normalization_dicts(cimr_dir, cristal_dir, era5_dir, models_dir, asip_dir=None):
+    norm_stats = {}
+
+    if asip_dir is not None:
+        print("🧊 Calcul des stats ASIP...")
+        norm_stats["asip"] = normalize_group(asip_dir, VAR_GROUPS["asip"], norm_types)
 
     print("🛰️  Calcul des stats CIMR...")
-    cimr_stats = normalize_group(cimr_dir, VAR_GROUPS["cimr"], norm_types)
+    norm_stats["cimr"] = normalize_group(cimr_dir, VAR_GROUPS["cimr"], norm_types)
 
     print("🛰️  Calcul des stats CRISTAL...")
-    cristal_stats = normalize_group(cristal_dir, VAR_GROUPS["cristal"], norm_types)
+    norm_stats["cristal"] = normalize_group(cristal_dir, VAR_GROUPS["cristal"], norm_types)
 
     print("🌦️  Calcul des stats COVARIATES...")
     covs_stats = normalize_group(era5_dir, COVARIATES, norm_types)
 
     print("🔢 Calcul des stats MODELS...")
     models_stats = normalize_group(models_dir, MODEL_VARS, norm_types)
-
-    norm_stats = {
-        "asip": asip_stats,
-        "cimr": cimr_stats,
-        "cristal": cristal_stats
-    }
 
     return norm_stats, covs_stats, models_stats
 
@@ -149,7 +146,8 @@ era5_path = glob("/Odyssey/public/CROSCIM_dataset/atm_data/atm5km_*.nc")
 models_path = glob("/Odyssey/public/CROSCIM_dataset/out_MOD/MOD5km_*.nc")
 
 norm_stats, norm_stats_covs, norm_stats_models = build_all_normalization_dicts(
-    asip_path, cimr_path, cristal_path, era5_path, models_path
+    cimr_dir=cimr_path, cristal_dir=cristal_path, era5_dir=era5_path, models_dir=models_path,
+    asip_dir=asip_path
 )
 
 # Enregistrement .txt (format Python)

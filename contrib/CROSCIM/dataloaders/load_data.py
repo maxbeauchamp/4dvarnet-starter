@@ -20,6 +20,68 @@ DEFAULT_VAR_GROUPS = {
 
 DEFAULT_COVARIATES = ["msl", "t2m", "u10", "v10"]
 
+# Native pixel spacing (meters) per satellite source, used to pick the
+# reference/grid-defining source when ASIP is not active.
+SOURCE_RESOLUTION_M = {"asip": 500, "cimr": 5000, "cristal": 5000}
+# Fixed priority in case of a resolution tie (cimr and cristal are both
+# documented as "already at 5km", see the load_mfdata comment below).
+_RESOLUTION_TIEBREAK_ORDER = ["cimr", "cristal"]
+
+
+def resolve_reference_source(active_sources, preferred="asip", override=None):
+    """Choose which source's grid/time axis is used as reference.
+
+    - `override` (explicit config value) wins if set.
+    - Else `preferred` ("asip") wins if active.
+    - Else the active source with the smallest SOURCE_RESOLUTION_M (finest
+      resolution) wins; ties broken by _RESOLUTION_TIEBREAK_ORDER.
+    """
+    if override is not None:
+        if override not in active_sources:
+            raise ValueError(f"reference_source override {override!r} is not in active_sources={active_sources}")
+        return override
+    if preferred in active_sources:
+        return preferred
+    candidates = [s for s in active_sources if s in SOURCE_RESOLUTION_M]
+    if not candidates:
+        raise ValueError(f"No known-resolution source among active_sources={active_sources} to use as reference grid")
+    best_res = min(SOURCE_RESOLUTION_M[s] for s in candidates)
+    tied = [s for s in candidates if SOURCE_RESOLUTION_M[s] == best_res]
+    for s in _RESOLUTION_TIEBREAK_ORDER:
+        if s in tied:
+            return s
+    return tied[0]
+
+
+# Fixed unit (meters) that `multires` values are expressed in — this is
+# ASIP's native pixel spacing. Kept as a constant (not tied to whichever
+# source ends up being the reference) so `multires: [50, 10, 2]` always means
+# "target resolutions 25km/5km/1km", regardless of reference_source. This
+# keeps every existing xp config's `multires` values meaning exactly what
+# they meant before this source became configurable.
+_MULTIRES_UNIT_M = SOURCE_RESOLUTION_M["asip"]
+
+
+def effective_pixel_factor(nominal_multires_value, reference_source):
+    """Convert a nominal `multires` entry (expressed in units of
+    `_MULTIRES_UNIT_M` meters, e.g. 50 -> 25km) into the raw pixel-binning
+    factor actually needed to reach that physical resolution starting from
+    `reference_source`'s native pixel spacing.
+
+    Identity when reference_source == "asip" (SOURCE_RESOLUTION_M["asip"] ==
+    _MULTIRES_UNIT_M), so existing asip-based configs are unaffected.
+    """
+    target_m = nominal_multires_value * _MULTIRES_UNIT_M
+    factor = target_m / SOURCE_RESOLUTION_M[reference_source]
+    if factor < 1 or not float(factor).is_integer():
+        raise ValueError(
+            f"multires level {nominal_multires_value} (-> target {target_m:.0f}m) is finer than "
+            f"{reference_source}'s native resolution ({SOURCE_RESOLUTION_M[reference_source]}m) or "
+            f"not an integer factor of it — pick a coarser multires value or a finer reference_source."
+        )
+    return int(factor)
+
+
 def denormalize_minmax(norm_data, min_val, max_val):
     return norm_data * (max_val - min_val) + min_val
 
@@ -341,19 +403,20 @@ def concatenate_parallel(paths, var_list,
 
     return concat
 
-def load_mfdata(times, 
+def load_mfdata(times,
                 satellite_vars=None,
                 covariates=None,
-                models_vars=None, 
+                models_vars=None,
                 slices=None,
                 path_loaders=None,
                 type_coords="index",
                 resize=1,
-                domain_limits=None):
+                domain_limits=None,
+                reference_source=None):
     """
     Load multi-source data with configurable variables.
     Only loads data for satellites that are actually used.
-    
+
     Args:
         times: Time range(s) to load
         satellite_vars: dict of {source: [var_list]}, e.g., {"cimr": ["SIC", "SIT"], "asip": ["sic"]}
@@ -367,7 +430,10 @@ def load_mfdata(times,
         type_coords: "index" or "values"
         resize: Coarsening factor
         domain_limits: Optional domain limits dict
-        
+        reference_source: which source needs the slices/resize handling (the
+                           grid-defining source). Defaults to "asip" for
+                           backward compatibility if not passed.
+
     Returns:
         dict of {source: xr.Dataset} for each active source
     """
@@ -424,14 +490,14 @@ def load_mfdata(times,
             continue
         
         # Load and concatenate
-        if source == "asip":
-            # ASIP needs special handling for slices and resize
+        if source == (reference_source or "asip"):
+            # The reference source needs special handling for slices and resize
             datasets[source] = concatenate_parallel(
-                selected_paths, vars_list, slices, type_coords, 
+                selected_paths, vars_list, slices, type_coords,
                 resize=resize, domain_limits=domain_limits
             )
         else:
-            # CIMR and CRISTAL are already at 5km
+            # Non-reference sources are already at their own native resolution
             datasets[source] = concatenate_parallel(
                 selected_paths, vars_list, None, type_coords,
                 domain_limits=domain_limits

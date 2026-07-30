@@ -22,6 +22,8 @@ import cartopy.feature as cfeature
 import random
 
 # ===== VARIABLE CONFIGURATION =====
+# 'asip' is now optional: if omitted (or its value list left empty), the
+# reference grid falls back to the finest-resolution remaining active source.
 satellite_vars = {
     'asip': ['sic'],
     'cimr': ['SIC', 'SIT'],
