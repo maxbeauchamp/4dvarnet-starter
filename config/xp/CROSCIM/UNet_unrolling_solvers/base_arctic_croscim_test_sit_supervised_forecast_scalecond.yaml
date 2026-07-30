@@ -289,7 +289,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_scalecond.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

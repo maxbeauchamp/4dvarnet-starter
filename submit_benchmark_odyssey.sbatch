@@ -56,6 +56,7 @@ XP_YAMLS=(
     "config/xp/CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast.yaml"
     "config/xp/CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10.yaml"
     "config/xp/CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_scalecond.yaml"
+    "config/xp/CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_scalecond.yaml"
 )
 
 declare -A RAW_PATHS
