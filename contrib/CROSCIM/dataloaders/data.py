@@ -523,6 +523,11 @@ class XrDataset(torch.utils.data.Dataset):
         first_ref_var = self.satellite_vars[self.reference_source][0]
         actual_shape = ref_ds[first_ref_var].shape
 
+        print(f"[DEBUG] reference_source={self.reference_source} resize={self.resize} "
+              f"patch_dims={self.patch_dims} actual_shape={actual_shape} "
+              f"item_mask.shape={item_mask.shape} len(self.xc)={len(self.xc)} len(self.yc)={len(self.yc)} "
+              f"self.mask.sizes={dict(self.mask.sizes)}")
+
         ref_ds = ref_ds.update({"mask": (("yc", "xc"), item_mask)})
         if actual_shape != expected_shape:
             ix = [find_idx(self.xc, x) for x in self.xc[sl["xc"].start:sl["xc"].stop]]
