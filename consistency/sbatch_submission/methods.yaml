@@ -1,7 +1,8 @@
 # Registry of the 8 compared methods, per variable (xp).
 #
 # - `generative: true`  -> the method samples an ensemble (CRPS computable),
-#   `n_samples_metrics` = 50 for these 6 methods during the metrics phase.
+#   `n_samples_metrics` = 20 for these 6 methods during the metrics phase
+#   (reduced from 50 to keep the cost of full-test-set evaluation reasonable).
 # - `generative: false` -> deterministic method (UNet, 4dvarnet_lstm), no CRPS,
 #   `n_samples_metrics` = 1.
 # - For each xp (GP/SIC/SSH_GF), `notebook` points to the file under
@@ -55,7 +56,7 @@ methods:
 
   CM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params: {}
     xp:
       GP:
@@ -73,7 +74,7 @@ methods:
 
   VarCM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params:
       COND_MODE: grad
     xp:
@@ -92,7 +93,7 @@ methods:
 
   DynCM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params: {}
     xp:
       GP:
@@ -110,7 +111,7 @@ methods:
 
   VarDynCM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params:
       COND_MODE: grad
     xp:
@@ -129,7 +130,7 @@ methods:
 
   FM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params: {}
     xp:
       GP:
@@ -147,7 +148,7 @@ methods:
 
   DynFM:
     generative: true
-    n_samples_metrics: 50
+    n_samples_metrics: 20
     params: {}
     xp:
       GP:
