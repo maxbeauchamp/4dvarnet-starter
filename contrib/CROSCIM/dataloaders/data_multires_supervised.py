@@ -214,6 +214,15 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
 
         item_mask = fast_pool(self.mask.isel(xc=slice(x_start, x_end), yc=slice(y_start, y_end)),
                               factor, factor, mode="binary")
+        n_yc, n_xc = self.patch_dims['yc'], self.patch_dims['xc']
+        if item_mask.shape != (n_yc, n_xc):
+            # Clipped by a domain edge — pad with 1 (land/masked), matching
+            # the old ref_ds-based padding's fillna(1) convention.
+            item_mask = np.pad(
+                item_mask[:n_yc, :n_xc],
+                ((0, max(0, n_yc - item_mask.shape[0])), (0, max(0, n_xc - item_mask.shape[1]))),
+                constant_values=1
+            )
 
         # Load datasets based on active sources, always at native resolution
         # (every source is regridded onto the fixed gridref target below via
@@ -269,14 +278,23 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
 
         # Target grid for this level: the static asip-derived gridref for
         # `nominal_level` (self._gridref_ds, loaded once in __init__),
-        # cropped to the same physical window as item_mask above —
-        # independently of which sources are active. interpolate_dataset()
-        # guarantees each source's output is already exactly patch-shaped,
-        # so no separate padding step is needed here.
-        grid_ds = self._gridref_ds[nominal_level].sel(
-            xc=slice(self.xc[x_start], self.xc[x_end]),
-            yc=slice(self.yc[y_start], self.yc[y_end])
-        )
+        # indexed by NEAREST position rather than coordinate .sel(slice(...)) —
+        # xc/yc values differ in "phase" between resolutions (fast_coarsen_xr
+        # averages groups of native pixels, so each level's array has its own
+        # offset), so a coordinate-based slice can pick up an off-by-one
+        # point and yield a variable patch size across the batch. isel() from
+        # the nearest index guarantees the exact patch_dims shape every time;
+        # pad (edge-clipped domain boundary) if the window comes up short.
+        grid_full = self._gridref_ds[nominal_level]
+        ix0 = int(np.argmin(np.abs(grid_full.xc.values - self.xc[x_start])))
+        iy0 = int(np.argmin(np.abs(grid_full.yc.values - self.yc[y_start])))
+        grid_ds = grid_full.isel(xc=slice(ix0, ix0 + n_xc), yc=slice(iy0, iy0 + n_yc))
+        if grid_ds.sizes['xc'] < n_xc or grid_ds.sizes['yc'] < n_yc:
+            grid_ds = pad_dataset_with_coords(
+                grid_ds,
+                pad_yc=max(0, n_yc - grid_ds.sizes['yc']),
+                pad_xc=max(0, n_xc - grid_ds.sizes['xc'])
+            )
         xc_patch = grid_ds.xc.values
         yc_patch = grid_ds.yc.values
         lon_patch = grid_ds.lon.values
