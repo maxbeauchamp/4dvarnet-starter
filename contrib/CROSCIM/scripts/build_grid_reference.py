@@ -25,11 +25,11 @@ from glob import glob
 import xarray as xr
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
-from contrib.CROSCIM.dataloaders.load_data import fast_coarsen_xr
+from contrib.CROSCIM.dataloaders.load_data import _GRIDREF_DIR_DEFAULT, fast_coarsen_xr
 
 DEFAULT_LEVELS = [2, 10, 50]
 DEFAULT_ASIP_DIR = "/Odyssey/public/CROSCIM_dataset/ASIP_L3"
-DEFAULT_OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "gridref")
+DEFAULT_OUT_DIR = _GRIDREF_DIR_DEFAULT
 
 
 def build_gridref(asip_file, level, out_path):

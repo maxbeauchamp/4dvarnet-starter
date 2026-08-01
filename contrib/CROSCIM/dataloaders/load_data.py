@@ -58,7 +58,7 @@ def resolve_reference_source(active_sources, preferred="asip", override=None):
 # They hold the fixed asip-derived xc/yc/lon/lat grid used as the interpolation
 # target for every active source, independently of which sources are active —
 # so the spatial grid never depends on `satellite_vars`/`reference_source`.
-_GRIDREF_DIR_DEFAULT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gridref")
+_GRIDREF_DIR_DEFAULT = "/Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/gridref"
 
 
 def gridref_path(level, gridref_dir=None):
