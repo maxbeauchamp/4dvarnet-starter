@@ -11,9 +11,13 @@ consumed at runtime.
 Run once (the underlying ASIP grid is static); re-run only if that grid
 itself changes.
 
+Level 1 (native asip resolution, no coarsening) must be included — it's the
+base grid BaseDataModule.__init__ uses to build the land mask, needed even
+when no xp uses `resize=1`/`multires` level 1 directly.
+
 Usage:
     python build_grid_reference.py --asip-dir /Odyssey/public/CROSCIM_dataset/ASIP_L3 \
-        --out-dir contrib/CROSCIM/gridref --levels 2 10 50
+        --out-dir contrib/CROSCIM/gridref --levels 1 2 10 50
 """
 from __future__ import annotations
 
@@ -27,7 +31,7 @@ import xarray as xr
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 from contrib.CROSCIM.dataloaders.load_data import _GRIDREF_DIR_DEFAULT, fast_coarsen_xr
 
-DEFAULT_LEVELS = [2, 10, 50]
+DEFAULT_LEVELS = [1, 2, 10, 50]
 DEFAULT_ASIP_DIR = "/Odyssey/public/CROSCIM_dataset/ASIP_L3"
 DEFAULT_OUT_DIR = _GRIDREF_DIR_DEFAULT
 
