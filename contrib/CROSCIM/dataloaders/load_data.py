@@ -53,33 +53,17 @@ def resolve_reference_source(active_sources, preferred="asip", override=None):
     return tied[0]
 
 
-# Fixed unit (meters) that `multires` values are expressed in — this is
-# ASIP's native pixel spacing. Kept as a constant (not tied to whichever
-# source ends up being the reference) so `multires: [50, 10, 2]` always means
-# "target resolutions 25km/5km/1km", regardless of reference_source. This
-# keeps every existing xp config's `multires` values meaning exactly what
-# they meant before this source became configurable.
-_MULTIRES_UNIT_M = SOURCE_RESOLUTION_M["asip"]
+# Static, pre-built reference-grid files (contrib/CROSCIM/scripts/build_grid_reference.py),
+# one per nominal `multires` level (e.g. gridref_x50.nc for level 50 -> 25km).
+# They hold the fixed asip-derived xc/yc/lon/lat grid used as the interpolation
+# target for every active source, independently of which sources are active —
+# so the spatial grid never depends on `satellite_vars`/`reference_source`.
+_GRIDREF_DIR_DEFAULT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gridref")
 
 
-def effective_pixel_factor(nominal_multires_value, reference_source):
-    """Convert a nominal `multires` entry (expressed in units of
-    `_MULTIRES_UNIT_M` meters, e.g. 50 -> 25km) into the raw pixel-binning
-    factor actually needed to reach that physical resolution starting from
-    `reference_source`'s native pixel spacing.
-
-    Identity when reference_source == "asip" (SOURCE_RESOLUTION_M["asip"] ==
-    _MULTIRES_UNIT_M), so existing asip-based configs are unaffected.
-    """
-    target_m = nominal_multires_value * _MULTIRES_UNIT_M
-    factor = target_m / SOURCE_RESOLUTION_M[reference_source]
-    if factor < 1 or not float(factor).is_integer():
-        raise ValueError(
-            f"multires level {nominal_multires_value} (-> target {target_m:.0f}m) is finer than "
-            f"{reference_source}'s native resolution ({SOURCE_RESOLUTION_M[reference_source]}m) or "
-            f"not an integer factor of it — pick a coarser multires value or a finer reference_source."
-        )
-    return int(factor)
+def gridref_path(level, gridref_dir=None):
+    """Path to the static reference-grid file for a given nominal multires level."""
+    return os.path.join(gridref_dir or _GRIDREF_DIR_DEFAULT, f"gridref_x{level}.nc")
 
 
 def denormalize_minmax(norm_data, min_val, max_val):
@@ -425,14 +409,16 @@ def load_mfdata(times,
                     If None, uses DEFAULT_COVARIATES
         models_vars: list of model variable names, e.g., ["t2m", "msl", "sic", "sit"]
                      If None or empty, no model data is loaded
-        slices: Optional spatial slices
+        slices: unused (kept for signature compatibility) — every source is
+                loaded at native resolution and regridded downstream onto
+                the static gridref target grid.
         path_loaders: dict of {source: list_of_paths}
         type_coords: "index" or "values"
-        resize: Coarsening factor
+        resize: unused (kept for signature compatibility), see `slices` above.
         domain_limits: Optional domain limits dict
-        reference_source: which source needs the slices/resize handling (the
-                           grid-defining source). Defaults to "asip" for
-                           backward compatibility if not passed.
+        reference_source: unused (kept for signature compatibility) — the
+                           spatial grid no longer depends on which source is
+                           "reference"; see gridref_path().
 
     Returns:
         dict of {source: xr.Dataset} for each active source
@@ -489,19 +475,13 @@ def load_mfdata(times,
             print(f"  Warning: No files found for {source}")
             continue
         
-        # Load and concatenate
-        if source == (reference_source or "asip"):
-            # The reference source needs special handling for slices and resize
-            datasets[source] = concatenate_parallel(
-                selected_paths, vars_list, slices, type_coords,
-                resize=resize, domain_limits=domain_limits
-            )
-        else:
-            # Non-reference sources are already at their own native resolution
-            datasets[source] = concatenate_parallel(
-                selected_paths, vars_list, None, type_coords,
-                domain_limits=domain_limits
-            )
+        # All active sources are loaded at their own native resolution — each
+        # gets regridded onto the static gridref target grid later
+        # (XrDataset.interpolate_dataset), so none needs slicing/resize here.
+        datasets[source] = concatenate_parallel(
+            selected_paths, vars_list, None, type_coords,
+            domain_limits=domain_limits
+        )
         
         print(f"  Loaded {source}: {list(datasets[source].data_vars)}, shape: {datasets[source].dims}")
     
