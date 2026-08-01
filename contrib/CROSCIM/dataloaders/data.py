@@ -25,7 +25,7 @@ from torch.utils.data.sampler import Sampler
 import torch.nn.functional as F
 import cartopy
 from cartopy.io.shapereader import Reader
-cartopy.config['pre_existing_data_dir'] = os.path.abspath('contrib/CROSCIM')
+cartopy.config['pre_existing_data_dir'] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Create TrainingItem at module level with default config
 def create_training_item(satellite_vars, covariates, target_vars, models_vars=None):
