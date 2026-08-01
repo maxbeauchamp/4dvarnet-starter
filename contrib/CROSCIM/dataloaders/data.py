@@ -198,7 +198,7 @@ class XrDataset(torch.utils.data.Dataset):
         
         self.covariates_paths = covariates_paths
         self.postpro_fn = postpro_fn
-        self.mask = mask.sel(**(domain_limits or {}))
+        self.mask = mask
         self.times = times
         self.patch_dims = patch_dims
         self.strides = strides or {}
@@ -221,9 +221,15 @@ class XrDataset(torch.utils.data.Dataset):
         self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
         ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
+        # Coarsen (on the full, non-domain-limited mask) BEFORE domain-limiting,
+        # to match gridref_path()'s own "coarsen at full extent, crop at load
+        # time" order — coarsening after cropping would rebin a different set
+        # of native pixels near the domain boundary and drift out of sync
+        # with self.xc/yc by up to one grid cell.
         if self.resize != 1:
             self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
                                               mode="binary")
+        self.mask = self.mask.sel(**(domain_limits or {}))
 
         self.xc = ref_base.xc.data
         self.yc = ref_base.yc.data
@@ -944,13 +950,12 @@ class BaseDataModule(pl.LightningDataModule):
        
         self.resize = resize
         # Load base grid from the static asip-derived gridref (build_grid_reference.py),
-        # independently of which sources are active. Must apply the same
-        # domain_limits crop that XrDataset.__init__ will later apply per
-        # split — otherwise self.mask (built from this grid, see
-        # build_land_mask) ends up on the full native extent while each
-        # XrDataset instance's own grid is domain-limited.
-        _domain_limits = (xrds_kw or {}).get('domain_limits')
-        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(_domain_limits or {}))
+        # at FULL extent (no domain_limits crop) — this is only used to build
+        # the cached land mask (see build_land_mask), which must stay
+        # domain-independent so it's reusable across xps with different
+        # domains, and so it can be coarsened-then-cropped in the same order
+        # as XrDataset.__init__'s own grid (see the matching comment there).
+        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir))
         self.xc = ref_base.xc.data
         self.yc = ref_base.yc.data
         self.lon = ref_base.lon.data
