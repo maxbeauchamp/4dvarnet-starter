@@ -258,7 +258,8 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
                 datasets[src] = concatenate(
                     _paths_by_source[src][time_indices],
                     var_list=self.satellite_vars[src],
-                    slices=None
+                    slices=None,
+                    domain_limits=self.domain_limits
                 )
 
             #  Load models data
@@ -266,14 +267,16 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
                 datasets['models'] = concatenate(
                     self.models_paths[time_indices],
                     var_list=self.models_vars,
-                    slices=None
+                    slices=None,
+                    domain_limits=self.domain_limits
                 )
 
             if hasattr(self, 'covariates') and self.covariates:
                 datasets['covariates'] = concatenate(
                     self.covariates_paths[time_indices],
                     var_list=self.covariates,
-                    slices=None
+                    slices=None,
+                    domain_limits=self.domain_limits
                 )
 
         # Target grid for this level: the static asip-derived gridref for

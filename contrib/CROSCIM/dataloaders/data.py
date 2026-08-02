@@ -462,7 +462,6 @@ class XrDataset(torch.utils.data.Dataset):
 
         item_mask = self.mask.isel(xc=sl["xc"], yc=sl["yc"]).values
         n_yc, n_xc = self.patch_dims['yc'], self.patch_dims['xc']
-        print(f"[DEBUG item_mask] idx={idx} sl={sl} raw_shape={item_mask.shape} target=({n_yc},{n_xc})")
         if item_mask.shape != (n_yc, n_xc):
             # self.pad extends self.xc/yc (via np.linspace, in __init__) past
             # self.mask's own extent to cover the last, otherwise-incomplete
@@ -475,7 +474,6 @@ class XrDataset(torch.utils.data.Dataset):
                 ((0, max(0, n_yc - item_mask.shape[0])), (0, max(0, n_xc - item_mask.shape[1]))),
                 constant_values=1
             )
-        print(f"[DEBUG item_mask] idx={idx} final_shape={item_mask.shape}")
 
         # Loading datasets - only active sources, always at native resolution
         # (every active source is regridded onto the fixed gridref target
@@ -502,13 +500,15 @@ class XrDataset(torch.utils.data.Dataset):
                 datasets[src] = concatenate(
                     src_paths[time_indices],
                     var_list=self.satellite_vars[src],
-                    slices=None
+                    slices=None,
+                    domain_limits=self.domain_limits
                 )
             if self.covariates:
                 datasets['covariates'] = concatenate(
                     self.covariates_paths[time_indices],
                     var_list=self.covariates,
-                    slices=None
+                    slices=None,
+                    domain_limits=self.domain_limits
                 )
 
         # Target grid for this patch: always the static asip-derived gridref
