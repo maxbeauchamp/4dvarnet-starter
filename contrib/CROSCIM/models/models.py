@@ -52,6 +52,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
             condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
+            len_daw=None,  # optional override of the per-resolution crop_daw() window length ({res: n_timesteps}); defaults to the maxlen_daw/step-based schedule below
             *args, **kwargs):
 
         # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
@@ -109,12 +110,15 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.multires = multires
         self.maxlen_daw = 15
         #self.maxlen_daw = self.trainer.datamodule.test_dataloader()[f"patch_x{self.multires[0]}"].dataset.patch_dims["time"]
-        n = len(self.multires)
-        step = max(1, self.maxlen_daw // n)
-        self.len_daw = {
-                r: max(1, self.maxlen_daw - i * step)
-                for i, r in enumerate(self.multires)
-        }
+        if len_daw is not None:
+            self.len_daw = dict(len_daw)
+        else:
+            n = len(self.multires)
+            step = max(1, self.maxlen_daw // n)
+            self.len_daw = {
+                    r: max(1, self.maxlen_daw - i * step)
+                    for i, r in enumerate(self.multires)
+            }
         self._norm_stats = norm_stats
         self._norm_stats_cov = norm_stats_covs
 
