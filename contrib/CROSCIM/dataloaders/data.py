@@ -461,6 +461,19 @@ class XrDataset(torch.utils.data.Dataset):
         yc_slice = sl["yc"]
 
         item_mask = self.mask.isel(xc=sl["xc"], yc=sl["yc"]).values
+        n_yc, n_xc = self.patch_dims['yc'], self.patch_dims['xc']
+        if item_mask.shape != (n_yc, n_xc):
+            # self.pad extends self.xc/yc (via np.linspace, in __init__) past
+            # self.mask's own extent to cover the last, otherwise-incomplete
+            # stride block — self.mask itself is never padded, so patches
+            # that fall (partially) in that margin get clipped by isel here.
+            # Pad with 1 (land/masked), matching the old ref_ds-based
+            # padding's fillna(1) convention.
+            item_mask = np.pad(
+                item_mask[:n_yc, :n_xc],
+                ((0, max(0, n_yc - item_mask.shape[0])), (0, max(0, n_xc - item_mask.shape[1]))),
+                constant_values=1
+            )
 
         # Loading datasets - only active sources, always at native resolution
         # (every active source is regridded onto the fixed gridref target
