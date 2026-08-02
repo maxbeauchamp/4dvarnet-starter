@@ -221,20 +221,26 @@ class XrDataset(torch.utils.data.Dataset):
         self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
         ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
-        # Coarsen (on the full, non-domain-limited mask) BEFORE domain-limiting,
-        # to match gridref_path()'s own "coarsen at full extent, crop at load
-        # time" order — coarsening after cropping would rebin a different set
-        # of native pixels near the domain boundary and drift out of sync
-        # with self.xc/yc by up to one grid cell.
-        if self.resize != 1:
-            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
-                                              mode="binary")
-        self.mask = self.mask.sel(**(domain_limits or {}))
-
         self.xc = ref_base.xc.data
         self.yc = ref_base.yc.data
         self.lon = ref_base.lon.data
         self.lat = ref_base.lat.data
+
+        # Coarsen (on the full, non-domain-limited mask) at full extent, then
+        # align it to self.xc/yc by NEAREST INDEX position rather than
+        # re-selecting domain_limits independently on the mask's own
+        # coordinates — self.mask and self.xc/yc are computed via two
+        # separate code paths (cached mask rebuilt at runtime vs. static
+        # gridref file) that can differ by a float epsilon despite being
+        # mathematically the same grid, which would otherwise make an
+        # independent domain_limits .sel() pick a different point count.
+        # Index alignment guarantees the exact same shape regardless.
+        if self.resize != 1:
+            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
+                                              mode="binary")
+        ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
+        iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
+        self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
 
         # Load data in memory (for inference) - only active sources
         if self.load_data:
@@ -454,8 +460,7 @@ class XrDataset(torch.utils.data.Dataset):
         xc_slice = sl["xc"]
         yc_slice = sl["yc"]
 
-        item_mask = self.mask.sel(xc=slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop-1]),
-                                yc=slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop-1])).values
+        item_mask = self.mask.isel(xc=sl["xc"], yc=sl["yc"]).values
 
         # Loading datasets - only active sources, always at native resolution
         # (every active source is regridded onto the fixed gridref target
