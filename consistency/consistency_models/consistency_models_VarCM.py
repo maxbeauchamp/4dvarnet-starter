@@ -467,8 +467,12 @@ class VarCMTraining(nn.Module):
         #   times[0]  = T = 1.0   (starting noise level)
         #   times[-1] ≈ 0         (target x_0 scale)
         # and sampling j_idx < i_idx correctly gives t_s > t_p.
-        N = timesteps_schedule(global_step, total_steps,
-                               self.initial_timesteps, self.final_timesteps)
+        # Clamp to [3, final_timesteps]: timesteps_schedule() has no built-in
+        # ceiling and keeps growing unbounded once global_step exceeds
+        # total_steps (see consistency_models_CM.py fix -- same class of bug).
+        N = max(min(timesteps_schedule(global_step, total_steps,
+                               self.initial_timesteps, self.final_timesteps),
+                    self.final_timesteps), 3)
         times = karras_schedule(N, sigma_min=0.002 / self.sigma_noise,
                                 sigma_max=1.0, rho=7.0, device=device)
         times = times.flip(0).pow(self.schedule_power).clamp(0.0, 1.0)

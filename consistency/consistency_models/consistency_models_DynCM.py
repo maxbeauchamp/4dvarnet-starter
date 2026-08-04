@@ -136,9 +136,13 @@ class ConsistencyTrainingDynamicalSystems:
     def __call__(self, student_model, teacher_model, x, y,
                  current_training_step, total_training_steps, **kwargs):
 
-        num_timesteps = max(timesteps_schedule(
+        # Clamp to final_timesteps: timesteps_schedule() has no built-in ceiling
+        # and keeps growing unbounded once current_training_step exceeds
+        # total_training_steps (see consistency_models_CM.py fix -- same class
+        # of bug, same fix, applied here for consistency).
+        num_timesteps = max(min(timesteps_schedule(
             current_training_step, total_training_steps,
-            self.initial_timesteps, self.final_timesteps), 3)
+            self.initial_timesteps, self.final_timesteps), self.final_timesteps), 3)
 
         steps        = torch.linspace(1.0, 1e-8, num_timesteps, device=x.device)
         physical_lag = self.spinup_boundary

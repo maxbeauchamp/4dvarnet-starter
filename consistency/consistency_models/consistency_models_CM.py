@@ -159,8 +159,18 @@ class ConsistencyTrainingFewSteps_TimeEmbedding:
             self.initial_timesteps,
             self.final_timesteps,
         )
-        
-        num_timesteps = max(num_timesteps,3)
+
+        # timesteps_schedule() has no built-in ceiling: if current_training_step
+        # exceeds total_training_steps (e.g. a run trained for more actual steps
+        # than the total_steps value used to pace the schedule), num_timesteps
+        # keeps growing UNBOUNDED past final_timesteps instead of plateauing
+        # there. This went unnoticed because GP/SSH_GF's tiny datasets never
+        # accumulate that many steps within a normal run, but SIC's larger
+        # dataset does -- observed as num_timesteps=28 with final_timesteps=17,
+        # producing an over-fine discretization (tiny sigma gaps -> trivially
+        # low consistency loss, blurry/washed-out samples, no genuine sharp
+        # denoising). Clamp to [3, final_timesteps].
+        num_timesteps = max(min(num_timesteps, self.final_timesteps), 3)
 
         steps = karras_schedule(
             num_timesteps, self.sigma_min, self.sigma_max, self.rho, x.device, as_time=True

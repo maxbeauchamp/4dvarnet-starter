@@ -113,12 +113,15 @@ class ConsistencyTrainingObsCond:
         ConsistencyTrainingOutput
             The predicted and target values for computing the loss as well as sigmas (noise levels).
         """
-        num_timesteps = timesteps_schedule(
+        # Clamp to [3, final_timesteps]: timesteps_schedule() has no built-in
+        # ceiling and keeps growing unbounded once current_training_step
+        # exceeds total_training_steps (see consistency_models_CM.py fix).
+        num_timesteps = max(min(timesteps_schedule(
             current_training_step,
             total_training_steps,
             self.initial_timesteps,
             self.final_timesteps,
-        )
+        ), self.final_timesteps), 3)
         sigmas = karras_schedule(
             num_timesteps, self.sigma_min, self.sigma_max, self.rho, x.device
         )

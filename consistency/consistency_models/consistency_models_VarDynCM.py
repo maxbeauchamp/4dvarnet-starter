@@ -378,9 +378,12 @@ class VarDynCMTraining:
         sb  = self.spinup_boundary
         dev = x.device
 
-        N = max(timesteps_schedule(
+        # Clamp to final_timesteps: timesteps_schedule() has no built-in ceiling
+        # and keeps growing unbounded once current_step exceeds total_steps
+        # (see consistency_models_CM.py fix -- same class of bug).
+        N = max(min(timesteps_schedule(
             current_step, total_steps,
-            self.initial_timesteps, self.final_timesteps), 3)
+            self.initial_timesteps, self.final_timesteps), self.final_timesteps), 3)
         times = torch.linspace(1.0, 1e-8, N, device=dev)
 
         # ── Spinup / physical partition ───────────────────────────────────────
