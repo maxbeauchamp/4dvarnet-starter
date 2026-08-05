@@ -63,6 +63,14 @@ def main():
         print(f"No old x10 sibling found at {old_x10_path} — copied current {current_x10} -> {out_x10} unchanged "
               f"(this test then only validates x50)")
 
+    # BaseDataModule.__init__ always needs gridref_x1.nc (native grid, used
+    # only to build the land mask) regardless of which levels are under
+    # test — copy it unchanged, the mask isn't what this test is checking.
+    current_x1 = gridref_path(1)
+    out_x1 = out_dir / "gridref_x1.nc"
+    shutil.copyfile(current_x1, out_x1)
+    print(f"Copied {current_x1} -> {out_x1} unchanged (needed for mask-building, not under test here)")
+
 
 if __name__ == "__main__":
     main()
