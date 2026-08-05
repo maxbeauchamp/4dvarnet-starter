@@ -475,11 +475,25 @@ def load_mfdata(times,
             print(f"  Warning: No files found for {source}")
             continue
         
-        # All active sources are loaded at their own native resolution — each
-        # gets regridded onto the static gridref target grid later
-        # (XrDataset.interpolate_dataset), so none needs slicing/resize here.
+        # Pre-shrink each source to roughly its own resolution-appropriate
+        # pixel count before it's held in memory for the whole eager-loaded
+        # period (this is a memory/perf optimization only — the exact target
+        # grid is still handled later by XrDataset.interpolate_dataset, via
+        # the static gridref, regardless of this factor). `resize` is
+        # expressed in units of asip's native 500m spacing; convert it to the
+        # raw pixel-binning factor for THIS source's own native spacing, so
+        # e.g. asip (500m) at resize=50 doesn't get loaded at full 500m
+        # resolution for the whole test period just because a coarser
+        # multires level (e.g. patch_x50) also needs cimr/cristal (5km, for
+        # which resize=50 already means no coarsening at all).
+        source_native_m = SOURCE_RESOLUTION_M.get(source)
+        if source_native_m is not None and resize != 1:
+            source_factor = max(1, round(resize * SOURCE_RESOLUTION_M["asip"] / source_native_m))
+        else:
+            source_factor = 1
         datasets[source] = concatenate_parallel(
             selected_paths, vars_list, None, type_coords,
+            resize=source_factor,
             domain_limits=domain_limits
         )
         
