@@ -14,12 +14,14 @@ x50).
 Usage:
     python build_gridref_from_old_file.py /path/to/old_file_x50.nc /path/to/out_dir
 """
+import os
 import shutil
 import sys
 from pathlib import Path
 
 import xarray as xr
 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 from contrib.CROSCIM.dataloaders.load_data import gridref_path
 
 
