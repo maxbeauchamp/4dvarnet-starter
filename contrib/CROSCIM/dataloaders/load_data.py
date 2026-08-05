@@ -454,9 +454,23 @@ def load_mfdata(times,
         "models": "%Y-%m-%d", 
     }
     
+    # Cap parallelism to what's actually available — concatenate_parallel's
+    # own default (n_jobs=15) oversubscribes when the process is confined to
+    # fewer CPUs than the machine's total (e.g. a cgroup-limited Jupyter
+    # kernel on a shared node), which is much slower than running fewer,
+    # uncontended workers. os.cpu_count() reports the machine's total
+    # logical CPUs and ignores cgroup/affinity limits — os.sched_getaffinity
+    # reflects what this process can actually use. A dedicated compute node
+    # (e.g. a sbatch job) with no such restriction still gets up to 15.
+    try:
+        n_available_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+        n_available_cpus = os.cpu_count() or 1
+    n_jobs = min(15, n_available_cpus)
+
     # Load only required satellite data
     datasets = {}
-    
+
     for source, vars_list in satellite_vars.items():
         if not vars_list:  # Skip if empty list
             continue
@@ -494,7 +508,8 @@ def load_mfdata(times,
         datasets[source] = concatenate_parallel(
             selected_paths, vars_list, None, type_coords,
             resize=source_factor,
-            domain_limits=domain_limits
+            domain_limits=domain_limits,
+            n_jobs=n_jobs
         )
         
         print(f"  Loaded {source}: {list(datasets[source].data_vars)}, shape: {datasets[source].dims}")
@@ -512,7 +527,8 @@ def load_mfdata(times,
                 # Models are assumed to be at same resolution as CIMR/CRISTAL (5km)
                 datasets['models'] = concatenate_parallel(
                     selected_model_paths, models_vars, None, type_coords,
-                    domain_limits=domain_limits
+                    domain_limits=domain_limits,
+                    n_jobs=n_jobs
                 )
                 print(f"  Loaded models: {list(datasets['models'].data_vars)}, shape: {datasets['models'].dims}")
             else:
@@ -531,7 +547,8 @@ def load_mfdata(times,
             if len(selected_cov_paths) > 0:
                 datasets['covariates'] = concatenate_parallel(
                     selected_cov_paths, covariates, None, type_coords,
-                    domain_limits=domain_limits
+                    domain_limits=domain_limits,
+                    n_jobs=n_jobs
                 )
                 print(f"  Loaded covariates: {list(datasets['covariates'].data_vars)}, shape: {datasets['covariates'].dims}")
             else:
