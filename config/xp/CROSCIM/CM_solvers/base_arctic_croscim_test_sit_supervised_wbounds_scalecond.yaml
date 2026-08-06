@@ -20,6 +20,7 @@ var_config:
   satellite_vars:
     cristal: ["SIT"]
     cimr: ["SIT","SIC"]
+    asip: ["sic"]
   
   models_vars: null
   
