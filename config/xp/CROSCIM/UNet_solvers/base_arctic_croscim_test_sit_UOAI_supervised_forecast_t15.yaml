@@ -89,6 +89,15 @@ trainer:
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
 
+  # DIAGNOSTIC TOGGLE: reverts to the pre-gridref pipeline (live
+  # reference-source file + effective_pixel_factor, reference source
+  # exempted from interpolation) instead of the static gridref files, to
+  # A/B test whether the gridref refactor itself explains the raw-path
+  # prediction-quality regression. See legacy_reference_grid in
+  # data.py/data_multires_supervised.py. Remove once the investigation
+  # concludes.
+  legacy_reference_grid: true
+
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}

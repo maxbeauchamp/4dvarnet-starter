@@ -175,7 +175,8 @@ class XrDataset(torch.utils.data.Dataset):
                  resize=1, res=500, pad=False, stride_test=False,
                  subsel_patch=False, subsel_patch_path=None,
                  itrp_from_regular=True,
-                 load_data=False, domain=None, gridref_dir=None):
+                 load_data=False, domain=None, gridref_dir=None,
+                 legacy_reference_grid=False):
 
         super().__init__()
         
@@ -213,34 +214,55 @@ class XrDataset(torch.utils.data.Dataset):
         self.load_data = load_data
         self.domain = domain
         self.resize = resize
-        
+        self.legacy_reference_grid = legacy_reference_grid
+
         # Pick which active source's dates gate the sample's time axis (asip
         # if present, else the finest-resolution active source, or an
         # explicit override). The spatial grid no longer depends on this —
         # it always comes from the static asip-derived gridref file below.
         self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
-        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
-        self.xc = ref_base.xc.data
-        self.yc = ref_base.yc.data
-        self.lon = ref_base.lon.data
-        self.lat = ref_base.lat.data
+        if legacy_reference_grid:
+            # Diagnostic toggle: reproduces the pre-gridref pipeline exactly
+            # (live reference-source file + effective_pixel_factor instead
+            # of the static gridref) to A/B test whether the gridref
+            # refactor itself explains a prediction-quality regression. See
+            # load_data.py:effective_pixel_factor().
+            self.mask = self.mask.sel(**(domain_limits or {}))
+            _paths_by_source = {"asip": asip_paths, "cimr": cimr_paths, "cristal": cristal_paths}
+            ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0]).sel(**(domain_limits or {}))
+            if self.resize != 1:
+                print(f"Coarsening target data by factor {resize}")
+                ref_base = fast_coarsen_xr(ref_base, factor_x=resize, factor_y=resize)
+                self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
+                                                  mode="binary")
+            self.xc = ref_base.xc.data
+            self.yc = ref_base.yc.data
+            self.lon = ref_base.lon.data
+            self.lat = ref_base.lat.data
+        else:
+            ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
-        # Coarsen (on the full, non-domain-limited mask) at full extent, then
-        # align it to self.xc/yc by NEAREST INDEX position rather than
-        # re-selecting domain_limits independently on the mask's own
-        # coordinates — self.mask and self.xc/yc are computed via two
-        # separate code paths (cached mask rebuilt at runtime vs. static
-        # gridref file) that can differ by a float epsilon despite being
-        # mathematically the same grid, which would otherwise make an
-        # independent domain_limits .sel() pick a different point count.
-        # Index alignment guarantees the exact same shape regardless.
-        if self.resize != 1:
-            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
-                                              mode="binary")
-        ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
-        iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
-        self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
+            self.xc = ref_base.xc.data
+            self.yc = ref_base.yc.data
+            self.lon = ref_base.lon.data
+            self.lat = ref_base.lat.data
+
+            # Coarsen (on the full, non-domain-limited mask) at full extent, then
+            # align it to self.xc/yc by NEAREST INDEX position rather than
+            # re-selecting domain_limits independently on the mask's own
+            # coordinates — self.mask and self.xc/yc are computed via two
+            # separate code paths (cached mask rebuilt at runtime vs. static
+            # gridref file) that can differ by a float epsilon despite being
+            # mathematically the same grid, which would otherwise make an
+            # independent domain_limits .sel() pick a different point count.
+            # Index alignment guarantees the exact same shape regardless.
+            if self.resize != 1:
+                self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
+                                                  mode="binary")
+            ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
+            iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
+            self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
 
         # Load data in memory (for inference) - only active sources
         if self.load_data:
@@ -456,6 +478,9 @@ class XrDataset(torch.utils.data.Dataset):
             for dim, idx_dim in zip(self.ds_size.keys(), np.unravel_index(idx, tuple(self.ds_size.values())))
         }
 
+        if self.legacy_reference_grid:
+            return self._getitem_legacy(sl)
+
         t_idx = sl["time"].start
         xc_slice = sl["xc"]
         yc_slice = sl["yc"]
@@ -575,6 +600,156 @@ class XrDataset(torch.utils.data.Dataset):
         )
         sample["xc"] = np.expand_dims(xc_patch, axis=0)
         sample["yc"] = np.expand_dims(yc_patch, axis=0)
+
+        if self.postpro_fn is not None:
+            sample = self.postpro_fn(sample)
+
+        return sample
+
+    def _getitem_legacy(self, sl):
+        """Diagnostic toggle (`legacy_reference_grid=True`): verbatim
+        pre-gridref __getitem__ body — self.reference_source is loaded raw
+        (resize-coarsened via effective_pixel_factor) and exempted from
+        interpolation, instead of every active source going through the
+        static gridref. Kept only to A/B test whether the gridref refactor
+        explains a prediction-quality regression; not maintained otherwise.
+        """
+        item_mask = self.mask.sel(xc=slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop-1]),
+                                yc=slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop-1])).values
+
+        if self.load_data:
+            datasets = {}
+            _full_by_source = {"asip": self.full_asip, "cimr": self.full_cimr, "cristal": self.full_cristal}
+            for src in self.active_sources:
+                if src not in _full_by_source or _full_by_source[src] is None:
+                    continue
+                if src == self.reference_source:
+                    datasets[src] = _full_by_source[src].isel(time=sl["time"]).sel(
+                        xc=slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop-1]),
+                        yc=slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop-1])
+                    )
+                else:
+                    datasets[src] = _full_by_source[src].isel(time=sl["time"])
+            if self.covariates:
+                datasets['covariates'] = self.full_covs.isel(time=sl["time"])
+        else:
+            time_indices = np.arange(sl["time"].start, sl["time"].stop)
+            if self.resize == 1:
+                slices = {"xc": sl["xc"], "yc": sl["yc"]}
+                type_coords = "index"
+            else:
+                slices = {
+                    "xc": slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop]),
+                    "yc": slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop])
+                }
+                type_coords = "coords"
+
+            datasets = {}
+            _paths_by_source_item = {"asip": self.asip_paths if 'asip' in self.active_sources else None,
+                                      "cimr": self.cimr_paths if 'cimr' in self.active_sources else None,
+                                      "cristal": self.cristal_paths if 'cristal' in self.active_sources else None}
+            for src, src_paths in _paths_by_source_item.items():
+                if src_paths is None:
+                    continue
+                if src == self.reference_source:
+                    datasets[src] = concatenate(
+                        src_paths[time_indices],
+                        var_list=self.satellite_vars[src],
+                        slices=slices,
+                        type_coords=type_coords,
+                        resize=self.resize,
+                        domain_limits=self.domain_limits
+                    )
+                else:
+                    datasets[src] = concatenate(
+                        src_paths[time_indices],
+                        var_list=self.satellite_vars[src],
+                        slices=None
+                    )
+            if self.covariates:
+                datasets['covariates'] = concatenate(
+                    self.covariates_paths[time_indices],
+                    var_list=self.covariates,
+                    slices=None
+                )
+
+        ref_ds = datasets.get(self.reference_source)
+        if ref_ds is None:
+            raise ValueError(f"{self.reference_source} dataset is required but not loaded")
+
+        expected_shape = (self.patch_dims['time'], self.patch_dims['yc'], self.patch_dims['xc'])
+        first_ref_var = self.satellite_vars[self.reference_source][0]
+        actual_shape = ref_ds[first_ref_var].shape
+
+        ref_ds = ref_ds.update({"mask": (("yc", "xc"), item_mask)})
+        if actual_shape != expected_shape:
+            ix = [find_idx(self.xc, x) for x in self.xc[sl["xc"].start:sl["xc"].stop]]
+            iy = [find_idx(self.yc, y) for y in self.yc[sl["yc"].start:sl["yc"].stop]]
+            padded_patch = xr.Dataset(
+                coords={
+                    "time": ref_ds.time,
+                    "xc": self.xc[sl["xc"].start:sl["xc"].stop],
+                    "yc": self.yc[sl["yc"].start:sl["yc"].stop],
+                    "lon": (["yc", "xc"], self.lon[iy[0]:(iy[-1]+1), ix[0]:(ix[-1]+1)]),
+                    "lat": (["yc", "xc"], self.lat[iy[0]:(iy[-1]+1), ix[0]:(ix[-1]+1)])
+                }
+            )
+            ref_ds = xr.align(padded_patch, ref_ds, join="left")[1]
+            ref_ds['mask'] = ref_ds['mask'].fillna(1)
+            item_mask = ref_ds.mask.data
+
+        sample = {}
+        for var in self.satellite_vars[self.reference_source]:
+            if var in ref_ds:
+                sample[f"{self.reference_source}_{var}"] = ref_ds[var].values
+
+        lon_patch = ref_ds.lon.values
+        lat_patch = ref_ds.lat.values
+
+        if self.itrp_from_regular:
+            target_grid = (ref_ds.xc.values, ref_ds.yc.values)
+        else:
+            target_grid = pyresample.geometry.SwathDefinition(lons=lon_patch, lats=lat_patch)
+
+        for src in ("asip", "cimr", "cristal"):
+            if src == self.reference_source or src not in datasets:
+                continue
+            src_vars = self.interpolate_dataset(target_grid, datasets[src],
+                                                self.satellite_vars[src], prefix=src)
+            sample.update(src_vars)
+
+        if 'covariates' in datasets:
+            covariate_vars = self.interpolate_dataset(target_grid, datasets['covariates'],
+                                                    self.covariates)
+            sample.update(covariate_vars)
+
+        sample["land_mask"] = np.expand_dims(item_mask, axis=0)
+        sample["lat"] = np.expand_dims(lat_patch, axis=0)
+        sample["lon"] = np.expand_dims(lon_patch, axis=0)
+
+        if isinstance(self.target_vars, dict):
+            res_keys = [int(k.split('_x')[-1]) for k in self.target_vars.keys() if '_x' in k]
+            min_res = min(res_keys) if res_keys else list(self.target_vars.keys())[0]
+            min_res_key = f"patch_x{min_res}" if isinstance(min_res, int) else min_res
+            var_mapping_to_use = self.var_mapping.get(min_res_key, {}) if isinstance(self.var_mapping, dict) else {}
+        else:
+            var_mapping_to_use = self.var_mapping
+
+        for target_var, source_var in var_mapping_to_use.items():
+            if target_var.startswith('models_') and '_' in target_var:
+                suffix = target_var.split('_', 1)[1]
+                tgt_var = f"tgt_{suffix}"
+                if target_var in sample:
+                    sample[tgt_var] = sample[target_var].copy()
+            elif target_var.startswith('tgt_') and source_var in sample:
+                sample[target_var] = sample[source_var].copy()
+
+        sample["time"] = np.expand_dims(
+            np.array([np.datetime64(t, "s").astype('float64') for t in ref_ds.time.values]),
+            axis=0
+        )
+        sample["xc"] = np.expand_dims(ref_ds.xc.values, axis=0)
+        sample["yc"] = np.expand_dims(ref_ds.yc.values, axis=0)
 
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)
@@ -905,6 +1080,7 @@ class BaseDataModule(pl.LightningDataModule):
                  subsel_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/patch_in_ocean",
                  rand_obs=False,
                  gridref_dir=None,
+                 legacy_reference_grid=False,
                  **kwargs):
 
         super().__init__()
@@ -937,13 +1113,25 @@ class BaseDataModule(pl.LightningDataModule):
         # so the cached land mask (built from that same grid) is shared
         # across all reference_source choices.
         self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
+        self.legacy_reference_grid = legacy_reference_grid
 
         # Store paths only for active sources
         self.asip_paths = asip_paths if 'asip' in self.active_sources else []
         self.cimr_paths = cimr_paths if 'cimr' in self.active_sources else []
         self.cristal_paths = cristal_paths if 'cristal' in self.active_sources else []
         self.covariates_paths = covariates_paths
-        self.mask_path = mask_path
+        if legacy_reference_grid:
+            # Diagnostic toggle: pre-gridref pipeline suffixed the mask cache
+            # by reference source (switching reference_source rebuilds a
+            # fresh mask instead of silently reusing one built for a
+            # different source's grid).
+            if mask_path is not None:
+                _mask_root, _mask_ext = os.path.splitext(mask_path)
+                self.mask_path = f"{_mask_root}_ref_{self.reference_source.upper()}{_mask_ext}"
+            else:
+                self.mask_path = mask_path
+        else:
+            self.mask_path = mask_path
         self.gridref_dir = gridref_dir
         self.domain_name = domain_name
         self.domains = domains
@@ -969,13 +1157,22 @@ class BaseDataModule(pl.LightningDataModule):
         print(f"{'='*60}\n")
        
         self.resize = resize
-        # Load base grid from the static asip-derived gridref (build_grid_reference.py),
-        # at FULL extent (no domain_limits crop) — this is only used to build
-        # the cached land mask (see build_land_mask), which must stay
-        # domain-independent so it's reusable across xps with different
-        # domains, and so it can be coarsened-then-cropped in the same order
-        # as XrDataset.__init__'s own grid (see the matching comment there).
-        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir))
+        if legacy_reference_grid:
+            # Diagnostic toggle: pre-gridref pipeline built the base grid
+            # from a live file of the reference source itself, domain-limited
+            # up front (see legacy_reference_grid on XrDataset for the
+            # matching per-level logic).
+            _domain_limits = (xrds_kw or {}).get('domain_limits')
+            _paths_by_source = {"asip": self.asip_paths, "cimr": self.cimr_paths, "cristal": self.cristal_paths}
+            ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0]).sel(**(_domain_limits or {}))
+        else:
+            # Load base grid from the static asip-derived gridref (build_grid_reference.py),
+            # at FULL extent (no domain_limits crop) — this is only used to build
+            # the cached land mask (see build_land_mask), which must stay
+            # domain-independent so it's reusable across xps with different
+            # domains, and so it can be coarsened-then-cropped in the same order
+            # as XrDataset.__init__'s own grid (see the matching comment there).
+            ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir))
         self.xc = ref_base.xc.data
         self.yc = ref_base.yc.data
         self.lon = ref_base.lon.data

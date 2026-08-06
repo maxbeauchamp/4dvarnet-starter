@@ -53,6 +53,34 @@ def resolve_reference_source(active_sources, preferred="asip", override=None):
     return tied[0]
 
 
+# Fixed unit (meters) that `multires` values are expressed in — ASIP's
+# native pixel spacing. Kept only for effective_pixel_factor() below (the
+# `legacy_reference_grid` diagnostic toggle) — the default gridref-based
+# path doesn't need it.
+_MULTIRES_UNIT_M = SOURCE_RESOLUTION_M["asip"]
+
+
+def effective_pixel_factor(nominal_multires_value, reference_source):
+    """Convert a nominal `multires` entry (asip-500m units) into the raw
+    pixel-binning factor for `reference_source`'s own native spacing.
+
+    Diagnostic-toggle only (`legacy_reference_grid`): this is the pre-gridref
+    resize computation, kept so the old pipeline (live reference-source file,
+    reference source exempted from interpolation) can be reproduced exactly
+    for A/B testing against the current static-gridref pipeline. See
+    XrDataset/BaseDataModule's `legacy_reference_grid` param.
+    """
+    target_m = nominal_multires_value * _MULTIRES_UNIT_M
+    factor = target_m / SOURCE_RESOLUTION_M[reference_source]
+    if factor < 1 or not float(factor).is_integer():
+        raise ValueError(
+            f"multires level {nominal_multires_value} (-> target {target_m:.0f}m) is finer than "
+            f"{reference_source}'s native resolution ({SOURCE_RESOLUTION_M[reference_source]}m) or "
+            f"not an integer factor of it — pick a coarser multires value or a finer reference_source."
+        )
+    return int(factor)
+
+
 # Static, pre-built reference-grid files (contrib/CROSCIM/scripts/build_grid_reference.py),
 # one per nominal `multires` level (e.g. gridref_x50.nc for level 50 -> 25km).
 # They hold the fixed asip-derived xc/yc/lon/lat grid used as the interpolation

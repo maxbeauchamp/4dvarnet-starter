@@ -426,18 +426,30 @@ class XrDatasetMultiResTestSupervised:
         self.target_vars = target_vars if target_vars is not None else []
         self.var_mapping = var_mapping if var_mapping is not None else {}
 
-        # Fail fast if a static grid reference file is missing for any
-        # requested level (see gridref_path()/build_grid_reference.py) —
-        # each per-resolution XrDatasetSupervised below loads its own grid
-        # independently of which sources are active.
-        _gridref_dir = kwargs.get('gridref_dir')
-        for res in multires:
-            _gridref_p = gridref_path(res, _gridref_dir)
-            if not os.path.isfile(_gridref_p):
-                raise FileNotFoundError(
-                    f"Missing static grid reference file for multires level {res}: {_gridref_p}. "
-                    f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
-                )
+        # Diagnostic toggle (see load_data.py:effective_pixel_factor /
+        # XrDataset.legacy_reference_grid): reproduces the pre-gridref
+        # per-level resize computation instead of the static gridref files,
+        # to A/B test whether the gridref refactor itself explains a
+        # prediction-quality regression.
+        self._legacy_reference_grid = kwargs.get('legacy_reference_grid', False)
+        if self._legacy_reference_grid:
+            _active_sources = [src for src, v in self.satellite_vars.items() if v]
+            self._reference_source = resolve_reference_source(_active_sources, override=kwargs.get('reference_source'))
+            for res in multires:
+                effective_pixel_factor(res, self._reference_source)
+        else:
+            # Fail fast if a static grid reference file is missing for any
+            # requested level (see gridref_path()/build_grid_reference.py) —
+            # each per-resolution XrDatasetSupervised below loads its own grid
+            # independently of which sources are active.
+            _gridref_dir = kwargs.get('gridref_dir')
+            for res in multires:
+                _gridref_p = gridref_path(res, _gridref_dir)
+                if not os.path.isfile(_gridref_p):
+                    raise FileNotFoundError(
+                        f"Missing static grid reference file for multires level {res}: {_gridref_p}. "
+                        f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
+                    )
 
         # Handle patch_dims_dict (new) vs patch_dims (legacy)
         if patch_dims_dict is not None:
@@ -485,7 +497,7 @@ class XrDatasetMultiResTestSupervised:
             res_kwargs = kwargs.copy()
             res_kwargs['patch_dims'] = patch_dims
             res_kwargs['strides_test'] = strides_test
-            res_kwargs['resize'] = res
+            res_kwargs['resize'] = effective_pixel_factor(res, self._reference_source) if self._legacy_reference_grid else res
 
             #  Remove models_paths and models_vars before passing to XrDataset
             res_kwargs_clean = {k: v for k, v in res_kwargs.items() if k not in ['models_paths', 'models_vars']}
@@ -581,16 +593,23 @@ class BaseDataModuleMultiRes(BaseDataModule):
         # Store multi-resolution configuration
         self.multires = multires
         self.nominal_resize = self.multires[-1]
-        self.resize = self.nominal_resize
-        # Fail fast if a static grid reference file is missing for any
-        # requested level (see gridref_path()/build_grid_reference.py).
-        for level in self.multires:
-            _gridref_p = gridref_path(level, self.gridref_dir)
-            if not os.path.isfile(_gridref_p):
-                raise FileNotFoundError(
-                    f"Missing static grid reference file for multires level {level}: {_gridref_p}. "
-                    f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
-                )
+        if self.legacy_reference_grid:
+            # Diagnostic toggle: pre-gridref resize computation (see
+            # load_data.py:effective_pixel_factor).
+            for level in self.multires:
+                effective_pixel_factor(level, self.reference_source)
+            self.resize = effective_pixel_factor(self.nominal_resize, self.reference_source)
+        else:
+            self.resize = self.nominal_resize
+            # Fail fast if a static grid reference file is missing for any
+            # requested level (see gridref_path()/build_grid_reference.py).
+            for level in self.multires:
+                _gridref_p = gridref_path(level, self.gridref_dir)
+                if not os.path.isfile(_gridref_p):
+                    raise FileNotFoundError(
+                        f"Missing static grid reference file for multires level {level}: {_gridref_p}. "
+                        f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
+                    )
 
         # Convert target_vars to dict (handle OmegaConf)
         from omegaconf import OmegaConf
@@ -1085,6 +1104,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     var_mapping=self.var_mapping,
                     reference_source=self.reference_source,
                     gridref_dir=self.gridref_dir,
+                    legacy_reference_grid=self.legacy_reference_grid,
                     **paths_dict,
                     mask=self.mask,
                     times=times,
