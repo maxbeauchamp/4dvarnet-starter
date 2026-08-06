@@ -1,4 +1,4 @@
-from contrib.CROSCIM.dataloaders.data import *
+from contrib.CROSCIM.dataloaders.data_legacy import *
 
 import matplotlib
 matplotlib.use("Agg")
@@ -147,29 +147,15 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
         )
         
         self.multires = multires
-        # Finest-level factor — used for all "how many multiples of the
-        # finest patch" bookkeeping below. self.xc/yc/lon/lat (set by
-        # XrDatasetSupervised.__init__ above, from gridref_x{nominal_resize}.nc)
-        # already represent this level's grid.
-        self.nominal_resize = self.multires[-1]
-
-        # Pre-load the static gridref (xc/yc/lon/lat) for every coarser
-        # level used by extract_enlarged_patch_from_datasets, independently
-        # of which sources are active — see gridref_path()/build_grid_reference.py.
-        _gridref_dir = kwargs.get('gridref_dir')
-        self._gridref_ds = {
-            level: xr.open_dataset(gridref_path(level, _gridref_dir)).sel(**(self.domain_limits or {}))
-            for level in self.multires if level != self.nominal_resize
-        }
 
         # Precompute enlarged patch sizes per resolution
         self.enlarged_dims = {}
         for factor in self.multires:
             self.enlarged_dims[factor] = {
-                'yc': self.patch_dims['yc'] * (factor // self.nominal_resize),
-                'xc': self.patch_dims['xc'] * (factor // self.nominal_resize)
+                'yc': self.patch_dims['yc'] * (factor // self.resize),
+                'xc': self.patch_dims['xc'] * (factor // self.resize)
             }
-
+        
         print(f"XrDatasetMultiResTrainSupervised initialized:")
         print(f"  Satellite vars: {self.satellite_vars}")
         print(f"  Models vars: {self.models_vars}")
@@ -193,19 +179,15 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
 
     def extract_enlarged_patch_from_datasets(self, sl, factor):
         """
-        Extract a larger area from the original datasets, then interpolate
-        every active source onto the static gridref target grid for this
-        level. Only loads data for active sources.
+        Extract a larger area from the original datasets,
+        coarsen ASIP, then interpolate other datasets onto coarsened grid.
+        Only loads data for active sources.
         """
         y_center = (sl["yc"].start + sl["yc"].stop) // 2
         x_center = (sl["xc"].start + sl["xc"].stop) // 2
 
-        # `factor` is a ratio relative to the finest nominal level —
-        # reconstruct the nominal multires value with self.nominal_resize to
-        # key into enlarged_dims/self._gridref_ds.
-        nominal_level = factor * self.nominal_resize
-        enlarged_yc = self.enlarged_dims[nominal_level]['yc']
-        enlarged_xc = self.enlarged_dims[nominal_level]['xc']
+        enlarged_yc = self.enlarged_dims[factor * self.resize]['yc']
+        enlarged_xc = self.enlarged_dims[factor * self.resize]['xc']
 
         y_start = max(0, y_center - enlarged_yc // 2)
         y_end = min(y_start + enlarged_yc, self.da_dims["yc"] - 1)
@@ -214,137 +196,192 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
 
         item_mask = fast_pool(self.mask.isel(xc=slice(x_start, x_end), yc=slice(y_start, y_end)),
                               factor, factor, mode="binary")
-        n_yc, n_xc = self.patch_dims['yc'], self.patch_dims['xc']
-        if item_mask.shape != (n_yc, n_xc):
-            # Clipped by a domain edge — pad with 1 (land/masked), matching
-            # the old ref_ds-based padding's fillna(1) convention.
-            item_mask = np.pad(
-                item_mask[:n_yc, :n_xc],
-                ((0, max(0, n_yc - item_mask.shape[0])), (0, max(0, n_xc - item_mask.shape[1]))),
-                constant_values=1
-            )
 
-        # Load datasets based on active sources, always at native resolution
-        # (every source is regridded onto the fixed gridref target below via
-        # interpolate_dataset — no source gets a privileged "already on the
-        # target grid" shortcut anymore).
+        # Load datasets based on active sources
         datasets = {}
-
-        _full_by_source = {"asip": getattr(self, "full_asip", None),
-                           "cimr": getattr(self, "full_cimr", None),
-                           "cristal": getattr(self, "full_cristal", None)}
-        _paths_by_source = {"asip": getattr(self, "asip_paths", None),
-                            "cimr": getattr(self, "cimr_paths", None),
-                            "cristal": getattr(self, "cristal_paths", None)}
-
+        
         if self.load_data:
-            for src in self.active_sources:
-                if src not in _full_by_source or _full_by_source[src] is None:
-                    continue
-                datasets[src] = _full_by_source[src].isel(time=sl["time"])
-
+            # Load only active sources
+            if 'asip' in self.active_sources:
+                datasets['asip'] = self.full_asip.isel(
+                    time=sl["time"], 
+                    xc=slice(x_start, x_end), 
+                    yc=slice(y_start, y_end)
+                )
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = self.full_cimr.isel(time=sl["time"])
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = self.full_cristal.isel(time=sl["time"])
+            
             #  Load models data
             if 'models' in self.active_sources:
                 datasets['models'] = self.full_models.isel(time=sl["time"])
-
+            
+            # Load covariates if configured
             if hasattr(self, 'covariates') and self.covariates:
                 datasets['covariates'] = self.full_covs.isel(time=sl["time"])
         else:
             time_indices = np.arange(sl["time"].start, sl["time"].stop)
-
-            for src in self.active_sources:
-                if src not in _paths_by_source or _paths_by_source[src] is None:
-                    continue
-                datasets[src] = concatenate(
-                    _paths_by_source[src][time_indices],
-                    var_list=self.satellite_vars[src],
-                    slices=None,
+            slices = {
+                "xc": slice(self.xc[x_start], self.xc[x_end]),
+                "yc": slice(self.yc[y_start], self.yc[y_end])
+            }
+            type_coords = "coords"
+            
+            # Load only active sources
+            if 'asip' in self.active_sources:
+                datasets['asip'] = concatenate(
+                    self.asip_paths[time_indices], 
+                    var_list=self.satellite_vars['asip'],
+                    slices=slices, 
+                    type_coords=type_coords,
+                    resize=factor * self.resize, 
                     domain_limits=self.domain_limits
                 )
-
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = concatenate(
+                    self.cimr_paths[time_indices], 
+                    var_list=self.satellite_vars['cimr'], 
+                    slices=None
+                )
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = concatenate(
+                    self.cristal_paths[time_indices], 
+                    var_list=self.satellite_vars['cristal'], 
+                    slices=None
+                )
+            
             #  Load models data
             if 'models' in self.active_sources:
                 datasets['models'] = concatenate(
-                    self.models_paths[time_indices],
-                    var_list=self.models_vars,
-                    slices=None,
-                    domain_limits=self.domain_limits
+                    self.models_paths[time_indices], 
+                    var_list=self.models_vars, 
+                    slices=None
                 )
-
+            
+            # Load covariates if configured
             if hasattr(self, 'covariates') and self.covariates:
                 datasets['covariates'] = concatenate(
-                    self.covariates_paths[time_indices],
-                    var_list=self.covariates,
-                    slices=None,
-                    domain_limits=self.domain_limits
+                    self.covariates_paths[time_indices], 
+                    var_list=self.covariates, 
+                    slices=None
                 )
 
-        # Target grid for this level: the static asip-derived gridref for
-        # `nominal_level` (self._gridref_ds, loaded once in __init__),
-        # indexed by NEAREST position rather than coordinate .sel(slice(...)) —
-        # xc/yc values differ in "phase" between resolutions (fast_coarsen_xr
-        # averages groups of native pixels, so each level's array has its own
-        # offset), so a coordinate-based slice can pick up an off-by-one
-        # point and yield a variable patch size across the batch. isel() from
-        # the nearest index guarantees the exact patch_dims shape every time;
-        # pad (edge-clipped domain boundary) if the window comes up short.
-        grid_full = self._gridref_ds[nominal_level]
-        ix0 = int(np.argmin(np.abs(grid_full.xc.values - self.xc[x_start])))
-        iy0 = int(np.argmin(np.abs(grid_full.yc.values - self.yc[y_start])))
-        grid_ds = grid_full.isel(xc=slice(ix0, ix0 + n_xc), yc=slice(iy0, iy0 + n_yc))
-        if grid_ds.sizes['xc'] < n_xc or grid_ds.sizes['yc'] < n_yc:
-            grid_ds = pad_dataset_with_coords(
-                grid_ds,
-                pad_yc=max(0, n_yc - grid_ds.sizes['yc']),
-                pad_xc=max(0, n_xc - grid_ds.sizes['xc'])
-            )
-        xc_patch = grid_ds.xc.values
-        yc_patch = grid_ds.yc.values
-        lon_patch = grid_ds.lon.values
-        lat_patch = grid_ds.lat.values
+        # Get ASIP dataset as reference (must be present)
+        if 'asip' not in datasets:
+            raise ValueError("ASIP dataset is required as reference grid but not loaded")
+        
+        asip_ds = datasets['asip']
 
+        # Padding if necessary
+        expected_shape = (self.patch_dims['time'], self.patch_dims['yc'], self.patch_dims['xc'])
+        # Use first available ASIP variable
+        first_asip_var = self.satellite_vars['asip'][0]
+        actual_shape = asip_ds[first_asip_var].shape
+        
+        if actual_shape != expected_shape:
+            pad_t = expected_shape[0] - actual_shape[0]
+            pad_y = expected_shape[1] - actual_shape[1]
+            pad_x = expected_shape[2] - actual_shape[2]
+            pad = {dim: (0, pad_) for dim, pad_ in zip(["time", "yc", "xc"], [pad_t, pad_y, pad_x])}
+            # add mask
+            asip_ds = asip_ds.update({"mask": (("yc", "xc"), item_mask)})
+            # pad
+            asip_ds = pad_dataset_with_coords(asip_ds, pad_yc=pad_y, pad_xc=pad_x)
+            asip_ds['mask'] = asip_ds['mask'].fillna(1)
+            item_mask = asip_ds.mask.data
+
+        lon_target = asip_ds.lon.values
+        lat_target = asip_ds.lat.values
+
+        # Collect data from ASIP
         sample = {}
+        for var in self.satellite_vars['asip']:
+            sample[f"asip_{var}"] = asip_ds[var].values
+
+        # Interpolate other satellite sources (only if active)
         if self.itrp_from_regular:
-            target_grid = (xc_patch, yc_patch)
+            target_grid = (asip_ds.xc.values, asip_ds.yc.values)
+            if 'cimr' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['cimr'], 
+                    self.satellite_vars['cimr'],
+                    prefix="cimr"
+                )
+                sample.update(interpolated)
+            if 'cristal' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['cristal'], 
+                    self.satellite_vars['cristal'],
+                    prefix="cristal"
+                )
+                sample.update(interpolated)
+            
+            # Interpolate models data
+            if 'models' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['models'], 
+                    self.models_vars,
+                    prefix="models"
+                )
+                sample.update(interpolated)
+            
+            if 'covariates' in datasets:
+                interpolated = self.interpolate_dataset(
+                    target_grid, 
+                    datasets['covariates'], 
+                    self.covariates
+                )
+                sample.update(interpolated)
         else:
-            target_grid = pyresample.geometry.SwathDefinition(lons=lon_patch, lats=lat_patch)
-
-        for src in ("asip", "cimr", "cristal"):
-            if src not in datasets:
-                continue
-            interpolated = self.interpolate_dataset(
-                target_grid,
-                datasets[src],
-                self.satellite_vars[src],
-                prefix=src
-            )
-            sample.update(interpolated)
-
-        # Interpolate models data
-        if 'models' in datasets:
-            interpolated = self.interpolate_dataset(
-                target_grid,
-                datasets['models'],
-                self.models_vars,
-                prefix="models"
-            )
-            sample.update(interpolated)
-
-        if 'covariates' in datasets:
-            interpolated = self.interpolate_dataset(
-                target_grid,
-                datasets['covariates'],
-                self.covariates
-            )
-            sample.update(interpolated)
+            swath_def_target = pyresample.geometry.SwathDefinition(lons=lon_target, lats=lat_target)
+            
+            if 'cimr' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['cimr'], 
+                    self.satellite_vars['cimr'],
+                    prefix="cimr"
+                )
+                sample.update(interpolated)
+            
+            if 'cristal' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['cristal'], 
+                    self.satellite_vars['cristal'],
+                    prefix="cristal"
+                )
+                sample.update(interpolated)
+            
+            #  Interpolate models data
+            if 'models' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['models'], 
+                    self.models_vars,
+                    prefix="models"
+                )
+                sample.update(interpolated)
+            
+            if 'covariates' in datasets:
+                interpolated = self.interpolate_dataset(
+                    swath_def_target, 
+                    datasets['covariates'], 
+                    self.covariates
+                )
+                sample.update(interpolated)
 
         # Add metadata
         sample["land_mask"] = np.expand_dims(item_mask, axis=0)
-        sample["lat"] = np.expand_dims(lat_patch, axis=0)
-        sample["lon"] = np.expand_dims(lon_patch, axis=0)
+        sample["lat"] = np.expand_dims(lat_target, axis=0)
+        sample["lon"] = np.expand_dims(lon_target, axis=0)
 
         # Determine which resolution key to use based on factor
-        res_key = f"patch_x{nominal_level}"
+        res_key = f"patch_x{factor * self.resize}"
         
         # Get resolution-specific mapping
         if isinstance(self.var_mapping, dict) and res_key in self.var_mapping:
@@ -373,11 +410,11 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
 
         # Keep track of the coordinates
         sample["time"] = np.expand_dims(
-            np.array([np.datetime64(t, "s").astype('float64') for t in self.times[sl["time"].start:sl["time"].stop]]),
+            np.array([np.datetime64(t, "s").astype('float64') for t in asip_ds.time.values]),
             axis=0
         )
-        sample["xc"] = np.expand_dims(xc_patch, axis=0)
-        sample["yc"] = np.expand_dims(yc_patch, axis=0)
+        sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
+        sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
 
         # Apply postprocessing WITH resolution key
         if self.postpro_fn is not None:
@@ -403,9 +440,9 @@ class XrDatasetMultiResTrainSupervised(XrDatasetSupervised):
         }
 
         out = {}
-        out[f"patch_x{self.nominal_resize}"] = hr_sample
+        out[f"patch_x{self.resize}"] = hr_sample
         for factor in self.multires[:-1]:
-            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor // (self.nominal_resize))
+            enlarged_patch = self.extract_enlarged_patch_from_datasets(sl, factor // (self.resize))
             out[f"patch_x{factor}"] = enlarged_patch
 
         return out
@@ -424,20 +461,7 @@ class XrDatasetMultiResTestSupervised:
         self.models_vars = models_vars if models_vars is not None else []
         self.models_paths = models_paths if models_paths is not None else np.array([])
         self.target_vars = target_vars if target_vars is not None else []
-        self.var_mapping = var_mapping if var_mapping is not None else {}
-
-        # Fail fast if a static grid reference file is missing for any
-        # requested level (see gridref_path()/build_grid_reference.py) —
-        # each per-resolution XrDatasetSupervised below loads its own grid
-        # independently of which sources are active.
-        _gridref_dir = kwargs.get('gridref_dir')
-        for res in multires:
-            _gridref_p = gridref_path(res, _gridref_dir)
-            if not os.path.isfile(_gridref_p):
-                raise FileNotFoundError(
-                    f"Missing static grid reference file for multires level {res}: {_gridref_p}. "
-                    f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
-                )
+        self.var_mapping = var_mapping if var_mapping is not None else {}    
 
         # Handle patch_dims_dict (new) vs patch_dims (legacy)
         if patch_dims_dict is not None:
@@ -486,7 +510,7 @@ class XrDatasetMultiResTestSupervised:
             res_kwargs['patch_dims'] = patch_dims
             res_kwargs['strides_test'] = strides_test
             res_kwargs['resize'] = res
-
+            
             #  Remove models_paths and models_vars before passing to XrDataset
             res_kwargs_clean = {k: v for k, v in res_kwargs.items() if k not in ['models_paths', 'models_vars']}
             
@@ -514,7 +538,7 @@ class XrDatasetMultiResTestSupervised:
         from torch.utils.data import DataLoader
         return {
             res: DataLoader(ds, batch_size=batch_size, **loader_kwargs)
-            for res, ds in self.datasets.items()
+            for res, ds in self.d
         }
 
 class BaseDataModuleMultiRes(BaseDataModule):
@@ -580,17 +604,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
         
         # Store multi-resolution configuration
         self.multires = multires
-        self.nominal_resize = self.multires[-1]
-        self.resize = self.nominal_resize
-        # Fail fast if a static grid reference file is missing for any
-        # requested level (see gridref_path()/build_grid_reference.py).
-        for level in self.multires:
-            _gridref_p = gridref_path(level, self.gridref_dir)
-            if not os.path.isfile(_gridref_p):
-                raise FileNotFoundError(
-                    f"Missing static grid reference file for multires level {level}: {_gridref_p}. "
-                    f"Run contrib/CROSCIM/scripts/build_grid_reference.py first."
-                )
+        self.resize = self.multires[-1]
 
         # Convert target_vars to dict (handle OmegaConf)
         from omegaconf import OmegaConf
@@ -670,7 +684,7 @@ class BaseDataModuleMultiRes(BaseDataModule):
             return self.target_vars
         
     def save_batch_as_NetCDF_multires(self, batch_dict, ibatch, patch_dims_dict, 
-                                      save_dir="/Odyssey/public/CROSCIM_dataset/"):
+                                      save_dir="/Odyssey/private/m19beauc/CROSCIM_dataset/"):
         """
         Save a multiresolution batch dictionary as separate NetCDF files.
         batch_dict: dict of {f"patch_x{res}": TrainingItem}
@@ -1040,14 +1054,12 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 source_paths_attr = f"{source}_paths"
                 if hasattr(self, source_paths_attr):
                     fmt = "%Y%m%d" if source == "asip" else "%Y-%m-%d"
-                    paths, source_times = select_paths(
-                        getattr(self, source_paths_attr),
+                    paths, times = select_paths(
+                        getattr(self, source_paths_attr), 
                         self.domains[split]['time'],
                         fmt=fmt
                     )
                     paths_dict[f"{source}_paths"] = paths
-                    if source == self.reference_source:
-                        times = source_times
             
             # Ensure all required paths are present (even if empty)
             for source in ['asip', 'cimr', 'cristal']:
@@ -1077,14 +1089,12 @@ class BaseDataModuleMultiRes(BaseDataModule):
                 return XrDatasetMultiResTestSupervised(
                     multires=self.multires,
                     patch_dims_dict=self.patch_dims_dict,
-                    strides_test_dict=self.strides_test_dict,
+                    strides_test_dict=self.strides_test_dict, 
                     satellite_vars=self.satellite_vars,
                     covariates=self.covariates,
                     models_vars=self.models_vars,
                     target_vars=self.target_vars,
                     var_mapping=self.var_mapping,
-                    reference_source=self.reference_source,
-                    gridref_dir=self.gridref_dir,
                     **paths_dict,
                     mask=self.mask,
                     times=times,
@@ -1106,8 +1116,6 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     models_vars=self.models_vars,
                     target_vars=self.target_vars,
                     var_mapping=self.var_mapping,
-                    reference_source=self.reference_source,
-                    gridref_dir=self.gridref_dir,
                     **paths_dict,
                     mask=self.mask,
                     times=times,

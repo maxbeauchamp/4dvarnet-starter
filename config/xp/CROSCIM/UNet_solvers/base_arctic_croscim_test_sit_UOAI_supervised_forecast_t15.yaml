@@ -87,16 +87,15 @@ trainer:
       filename: '{val_loss:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
-
-  # DIAGNOSTIC TOGGLE: reverts to the pre-gridref pipeline (live
-  # reference-source file + effective_pixel_factor, reference source
-  # exempted from interpolation) instead of the static gridref files, to
-  # A/B test whether the gridref refactor itself explains the raw-path
-  # prediction-quality regression. See legacy_reference_grid in
-  # data.py/data_multires_supervised.py. Remove once the investigation
-  # concludes.
-  legacy_reference_grid: true
+  # DIAGNOSTIC TOGGLE: points at the pre-July dataloaders (verbatim copy of
+  # commit 3a23b6f — asip hardcoded as the grid source, required active, no
+  # gridref/reference_source generalization) instead of the current
+  # gridref-based pipeline, to A/B test whether the gridref refactor itself
+  # explains the raw-path prediction-quality regression. See
+  # data_legacy.py/data_multires_supervised_legacy.py/load_data_legacy.py.
+  # Revert to data_multires_supervised.BaseDataModuleMultiRes once the
+  # investigation concludes.
+  _target_: contrib.CROSCIM.dataloaders.data_multires_supervised_legacy.BaseDataModuleMultiRes
 
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}

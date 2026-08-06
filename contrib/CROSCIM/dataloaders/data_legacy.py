@@ -12,7 +12,7 @@ import multiprocessing
 import gc
 from random import sample 
 import contrib
-from contrib.CROSCIM.dataloaders.load_data import *
+from contrib.CROSCIM.dataloaders.load_data_legacy import *
 import datetime
 import pyresample
 import pandas as pd
@@ -25,7 +25,7 @@ from torch.utils.data.sampler import Sampler
 import torch.nn.functional as F
 import cartopy
 from cartopy.io.shapereader import Reader
-cartopy.config['pre_existing_data_dir'] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cartopy.config['pre_existing_data_dir'] = os.path.abspath('contrib/CROSCIM')
 
 # Create TrainingItem at module level with default config
 def create_training_item(satellite_vars, covariates, target_vars, models_vars=None):
@@ -164,18 +164,17 @@ def pad_batch_with_coords(ds, sl, global_xc, global_yc, global_lon, global_lat):
 class XrDataset(torch.utils.data.Dataset):
 
     def __init__(self, asip_paths, cimr_paths, cristal_paths,
-                 covariates_paths, covariates,
+                 covariates_paths, covariates, 
                  target_vars,
                  satellite_vars=None,  # NEW: satellite variable config
                  var_mapping=None,     # NEW: mapping config
-                 reference_source=None,  # NEW: explicit override, else auto (asip if present, else finest resolution)
                  mask=None, times=None,
                  patch_dims=None, domain_limits=None, strides=None,
                  strides_test=None, postpro_fn=None,
                  resize=1, res=500, pad=False, stride_test=False,
                  subsel_patch=False, subsel_patch_path=None,
                  itrp_from_regular=True,
-                 load_data=False, domain=None, gridref_dir=None):
+                 load_data=False, domain=None):
 
         super().__init__()
         
@@ -198,7 +197,7 @@ class XrDataset(torch.utils.data.Dataset):
         
         self.covariates_paths = covariates_paths
         self.postpro_fn = postpro_fn
-        self.mask = mask
+        self.mask = mask.sel(**(domain_limits or {}))
         self.times = times
         self.patch_dims = patch_dims
         self.strides = strides or {}
@@ -214,33 +213,22 @@ class XrDataset(torch.utils.data.Dataset):
         self.domain = domain
         self.resize = resize
         
-        # Pick which active source's dates gate the sample's time axis (asip
-        # if present, else the finest-resolution active source, or an
-        # explicit override). The spatial grid no longer depends on this —
-        # it always comes from the static asip-derived gridref file below.
-        self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
-        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
-
-        self.xc = ref_base.xc.data
-        self.yc = ref_base.yc.data
-        self.lon = ref_base.lon.data
-        self.lat = ref_base.lat.data
-
-        # Coarsen (on the full, non-domain-limited mask) at full extent, then
-        # align it to self.xc/yc by NEAREST INDEX position rather than
-        # re-selecting domain_limits independently on the mask's own
-        # coordinates — self.mask and self.xc/yc are computed via two
-        # separate code paths (cached mask rebuilt at runtime vs. static
-        # gridref file) that can differ by a float epsilon despite being
-        # mathematically the same grid, which would otherwise make an
-        # independent domain_limits .sel() pick a different point count.
-        # Index alignment guarantees the exact same shape regardless.
+        # Use first available ASIP file as reference (ASIP should always be present)
+        if 'asip' not in self.active_sources:
+            raise ValueError("ASIP is required as reference grid")
+            
+        asip_base = xr.open_dataset(self.asip_paths[0]).sel(**(domain_limits or {}))
+        
         if self.resize != 1:
-            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
+            print(f"Coarsening target data by factor {resize}")
+            asip_base = fast_coarsen_xr(asip_base, factor_x=resize, factor_y=resize)
+            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize, 
                                               mode="binary")
-        ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
-        iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
-        self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
+        
+        self.xc = asip_base.xc.data
+        self.yc = asip_base.yc.data
+        self.lon = asip_base.lon.data
+        self.lat = asip_base.lat.data
 
         # Load data in memory (for inference) - only active sources
         if self.load_data:
@@ -268,19 +256,18 @@ class XrDataset(torch.utils.data.Dataset):
                 path_loaders=paths_loaders,
                 type_coords="coords",
                 resize=self.resize,
-                domain_limits=self.domain_limits,
-                reference_source=self.reference_source
+                domain_limits=self.domain_limits
             )
-
+            
             # Extract datasets from the returned dict
             self.full_asip = datasets.get('asip', None)
             self.full_cimr = datasets.get('cimr', None)
             self.full_cristal = datasets.get('cristal', None)
             self.full_covs = datasets.get('covariates', None)
-
-            # Validate that the reference source is loaded
-            if datasets.get(self.reference_source) is None:
-                raise ValueError(f"{self.reference_source} dataset is required as reference grid but was not loaded")
+            
+            # Validate that ASIP is loaded (required as reference)
+            if self.full_asip is None:
+                raise ValueError("ASIP dataset is required as reference grid but was not loaded")
 
         # padding
         if self.pad:
@@ -460,82 +447,118 @@ class XrDataset(torch.utils.data.Dataset):
         xc_slice = sl["xc"]
         yc_slice = sl["yc"]
 
-        item_mask = self.mask.isel(xc=sl["xc"], yc=sl["yc"]).values
-        n_yc, n_xc = self.patch_dims['yc'], self.patch_dims['xc']
-        if item_mask.shape != (n_yc, n_xc):
-            # self.pad extends self.xc/yc (via np.linspace, in __init__) past
-            # self.mask's own extent to cover the last, otherwise-incomplete
-            # stride block — self.mask itself is never padded, so patches
-            # that fall (partially) in that margin get clipped by isel here.
-            # Pad with 1 (land/masked), matching the old ref_ds-based
-            # padding's fillna(1) convention.
-            item_mask = np.pad(
-                item_mask[:n_yc, :n_xc],
-                ((0, max(0, n_yc - item_mask.shape[0])), (0, max(0, n_xc - item_mask.shape[1]))),
-                constant_values=1
-            )
+        item_mask = self.mask.sel(xc=slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop-1]),
+                                yc=slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop-1])).values
 
-        # Loading datasets - only active sources, always at native resolution
-        # (every active source is regridded onto the fixed gridref target
-        # below via interpolate_dataset — no source gets a privileged
-        # "already on the target grid" shortcut anymore).
+        # Loading datasets - only active sources
         if self.load_data:
             datasets = {}
-            _full_by_source = {"asip": self.full_asip, "cimr": self.full_cimr, "cristal": self.full_cristal}
-            for src in self.active_sources:
-                if src not in _full_by_source or _full_by_source[src] is None:
-                    continue
-                datasets[src] = _full_by_source[src].isel(time=sl["time"])
+            if 'asip' in self.active_sources:
+                datasets['asip'] = self.full_asip.isel(time=sl["time"]).sel(
+                    xc=slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop-1]),
+                    yc=slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop-1])
+                )
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = self.full_cimr.isel(time=sl["time"])
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = self.full_cristal.isel(time=sl["time"])
             if self.covariates:
                 datasets['covariates'] = self.full_covs.isel(time=sl["time"])
         else:
             time_indices = np.arange(sl["time"].start, sl["time"].stop)
+            if self.resize == 1:
+                slices = {"xc": sl["xc"], "yc": sl["yc"]}
+                type_coords = "index"
+            else:
+                slices = {
+                    "xc": slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop]), 
+                    "yc": slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop])
+                }
+                type_coords = "coords"
+            
             datasets = {}
-            _paths_by_source_item = {"asip": self.asip_paths if 'asip' in self.active_sources else None,
-                                      "cimr": self.cimr_paths if 'cimr' in self.active_sources else None,
-                                      "cristal": self.cristal_paths if 'cristal' in self.active_sources else None}
-            for src, src_paths in _paths_by_source_item.items():
-                if src_paths is None:
-                    continue
-                datasets[src] = concatenate(
-                    src_paths[time_indices],
-                    var_list=self.satellite_vars[src],
-                    slices=None,
+            if 'asip' in self.active_sources:
+                datasets['asip'] = concatenate(
+                    self.asip_paths[time_indices], 
+                    var_list=self.satellite_vars['asip'],
+                    slices=slices, 
+                    type_coords=type_coords, 
+                    resize=self.resize,
                     domain_limits=self.domain_limits
+                )
+            if 'cimr' in self.active_sources:
+                datasets['cimr'] = concatenate(
+                    self.cimr_paths[time_indices], 
+                    var_list=self.satellite_vars['cimr'], 
+                    slices=None
+                )
+            if 'cristal' in self.active_sources:
+                datasets['cristal'] = concatenate(
+                    self.cristal_paths[time_indices], 
+                    var_list=self.satellite_vars['cristal'], 
+                    slices=None
                 )
             if self.covariates:
                 datasets['covariates'] = concatenate(
-                    self.covariates_paths[time_indices],
-                    var_list=self.covariates,
-                    slices=None,
-                    domain_limits=self.domain_limits
+                    self.covariates_paths[time_indices], 
+                    var_list=self.covariates, 
+                    slices=None
                 )
 
-        # Target grid for this patch: always the static asip-derived gridref
-        # (self.xc/yc/lon/lat, loaded once in __init__), independently of
-        # which sources are active. interpolate_dataset() guarantees each
-        # source's output is already exactly patch-shaped, so no separate
-        # padding step is needed here.
-        xc_patch = self.xc[sl["xc"].start:sl["xc"].stop]
-        yc_patch = self.yc[sl["yc"].start:sl["yc"].stop]
-        lon_patch = self.lon[sl["yc"].start:sl["yc"].stop, sl["xc"].start:sl["xc"].stop]
-        lat_patch = self.lat[sl["yc"].start:sl["yc"].stop, sl["xc"].start:sl["xc"].stop]
+        # Get ASIP dataset (must exist)
+        asip_ds = datasets.get('asip')
+        if asip_ds is None:
+            raise ValueError("ASIP dataset is required but not loaded")
 
+        # Padding if necessary
+        expected_shape = (self.patch_dims['time'], self.patch_dims['yc'], self.patch_dims['xc'])
+        first_asip_var = self.satellite_vars['asip'][0]
+        actual_shape = asip_ds[first_asip_var].shape
+
+        asip_ds = asip_ds.update({"mask": (("yc", "xc"), item_mask)})
+        if actual_shape != expected_shape:
+            ix = [find_idx(self.xc, x) for x in self.xc[sl["xc"].start:sl["xc"].stop]]
+            iy = [find_idx(self.yc, y) for y in self.yc[sl["yc"].start:sl["yc"].stop]]
+            padded_patch = xr.Dataset(
+                coords={
+                    "time": asip_ds.time,
+                    "xc": self.xc[sl["xc"].start:sl["xc"].stop],
+                    "yc": self.yc[sl["yc"].start:sl["yc"].stop],
+                    "lon": (["yc", "xc"], self.lon[iy[0]:(iy[-1]+1), ix[0]:(ix[-1]+1)]),
+                    "lat": (["yc", "xc"], self.lat[iy[0]:(iy[-1]+1), ix[0]:(ix[-1]+1)])
+                }
+            )
+            asip_ds = xr.align(padded_patch, asip_ds, join="left")[1]
+            asip_ds['mask'] = asip_ds['mask'].fillna(1)
+            item_mask = asip_ds.mask.data
+
+        # Collect ASIP variables
         sample = {}
+        for var in self.satellite_vars['asip']:
+            if var in asip_ds:
+                sample[f"asip_{var}"] = asip_ds[var].values
+
+        lon_patch = asip_ds.lon.values
+        lat_patch = asip_ds.lat.values
+
+        # Interpolate other sources (only if active)
         if self.itrp_from_regular:
-            target_grid = (xc_patch, yc_patch)
+            target_grid = (asip_ds.xc.values, asip_ds.yc.values)
         else:
             target_grid = pyresample.geometry.SwathDefinition(lons=lon_patch, lats=lat_patch)
-
-        for src in ("asip", "cimr", "cristal"):
-            if src not in datasets:
-                continue
-            src_vars = self.interpolate_dataset(target_grid, datasets[src],
-                                                self.satellite_vars[src], prefix=src)
-            sample.update(src_vars)
-
+        
+        if 'cimr' in datasets:
+            cimr_vars = self.interpolate_dataset(target_grid, datasets['cimr'], 
+                                                self.satellite_vars['cimr'], prefix="cimr")
+            sample.update(cimr_vars)
+        
+        if 'cristal' in datasets:
+            cristal_vars = self.interpolate_dataset(target_grid, datasets['cristal'], 
+                                                    self.satellite_vars['cristal'], prefix="cristal")
+            sample.update(cristal_vars)
+        
         if 'covariates' in datasets:
-            covariate_vars = self.interpolate_dataset(target_grid, datasets['covariates'],
+            covariate_vars = self.interpolate_dataset(target_grid, datasets['covariates'], 
                                                     self.covariates)
             sample.update(covariate_vars)
 
@@ -570,11 +593,11 @@ class XrDataset(torch.utils.data.Dataset):
 
         # Keep track of coordinates
         sample["time"] = np.expand_dims(
-            np.array([np.datetime64(t, "s").astype('float64') for t in self.times[sl["time"].start:sl["time"].stop]]),
+            np.array([np.datetime64(t, "s").astype('float64') for t in asip_ds.time.values]),
             axis=0
         )
-        sample["xc"] = np.expand_dims(xc_patch, axis=0)
-        sample["yc"] = np.expand_dims(yc_patch, axis=0)
+        sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
+        sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
 
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)
@@ -678,20 +701,19 @@ class XrDatasetSupervised(XrDataset):
                 path_loaders=paths_loaders,
                 type_coords="coords",
                 resize=self.resize,
-                domain_limits=self.domain_limits,
-                reference_source=self.reference_source
+                domain_limits=self.domain_limits
             )
-
+            
             # Extract datasets from the returned dict
             self.full_asip = datasets.get('asip', None)
             self.full_cimr = datasets.get('cimr', None)
             self.full_cristal = datasets.get('cristal', None)
             self.full_covs = datasets.get('covariates', None)
             self.full_models = datasets.get('models', None)
-
-            # Validate that the reference source is loaded
-            if datasets.get(self.reference_source) is None:
-                raise ValueError(f"{self.reference_source} dataset is required as reference grid but was not loaded")
+            
+            # Validate that ASIP is loaded (required as reference)
+            if self.full_asip is None:
+                raise ValueError("ASIP dataset is required as reference grid but was not loaded")
 
         
         print(f"XrDatasetSupervised initialized:")
@@ -767,13 +789,13 @@ class XrDatasetSupervised(XrDataset):
                     sample = self.postpro_fn(sample)
                 return sample
         
-        #  Interpolate model data onto the reference grid
+        #  Interpolate model data onto ASIP grid
         # sample is a dict with keys like 'xc', 'yc', 'lon', 'lat'
         if self.itrp_from_regular:
-            # Get reference coords from sample dict - remove batch dimension
-            ref_xc = np.squeeze(sample['xc'])  # Shape: (xc,)
-            ref_yc = np.squeeze(sample['yc'])  # Shape: (yc,)
-            target_grid = (ref_xc, ref_yc)
+            # Get ASIP coords from sample dict - remove batch dimension
+            asip_xc = np.squeeze(sample['xc'])  # Shape: (xc,)
+            asip_yc = np.squeeze(sample['yc'])  # Shape: (yc,)
+            target_grid = (asip_xc, asip_yc)
         else:
             lon = np.squeeze(sample['lon'])  # Shape: (yc, xc)
             lat = np.squeeze(sample['lat'])  # Shape: (yc, xc)
@@ -894,7 +916,6 @@ class BaseDataModule(pl.LightningDataModule):
                  target_vars,
                  satellite_vars=None,  # NEW
                  var_mapping=None,     # NEW
-                 reference_source=None,  # NEW: explicit override, else auto (asip if present, else finest resolution)
                  models_vars=None,  #  Accept models_vars
                  mask_path=None,
                  domain_name=None, domains=None,
@@ -904,9 +925,8 @@ class BaseDataModule(pl.LightningDataModule):
                  resize=1,
                  subsel_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/patch_in_ocean",
                  rand_obs=False,
-                 gridref_dir=None,
                  **kwargs):
-
+        
         super().__init__()
         
         # Store variable configuration
@@ -929,22 +949,14 @@ class BaseDataModule(pl.LightningDataModule):
 
         # Determine active sources
         self.active_sources = [src for src, vars in self.satellite_vars.items() if vars]
-
-        # Pick which active source's dates gate the sample's time axis (asip
-        # if present, else the finest-resolution active source, or an
-        # explicit override). The spatial grid no longer depends on this —
-        # it always comes from the static asip-derived gridref file below,
-        # so the cached land mask (built from that same grid) is shared
-        # across all reference_source choices.
-        self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
-
+        
         # Store paths only for active sources
         self.asip_paths = asip_paths if 'asip' in self.active_sources else []
         self.cimr_paths = cimr_paths if 'cimr' in self.active_sources else []
         self.cristal_paths = cristal_paths if 'cristal' in self.active_sources else []
         self.covariates_paths = covariates_paths
+        
         self.mask_path = mask_path
-        self.gridref_dir = gridref_dir
         self.domain_name = domain_name
         self.domains = domains
         self.xrds_kw = xrds_kw
@@ -969,17 +981,12 @@ class BaseDataModule(pl.LightningDataModule):
         print(f"{'='*60}\n")
        
         self.resize = resize
-        # Load base grid from the static asip-derived gridref (build_grid_reference.py),
-        # at FULL extent (no domain_limits crop) — this is only used to build
-        # the cached land mask (see build_land_mask), which must stay
-        # domain-independent so it's reusable across xps with different
-        # domains, and so it can be coarsened-then-cropped in the same order
-        # as XrDataset.__init__'s own grid (see the matching comment there).
-        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir))
-        self.xc = ref_base.xc.data
-        self.yc = ref_base.yc.data
-        self.lon = ref_base.lon.data
-        self.lat = ref_base.lat.data
+        # Load base grid from ASIP to build lat/lon/xc/yc
+        asip_base = xr.open_dataset(self.asip_paths[0])
+        self.xc = asip_base.xc.data
+        self.yc = asip_base.yc.data
+        self.lon = asip_base.lon.data
+        self.lat = asip_base.lat.data
 
         self.train_ds = None
         self.val_ds = None
@@ -1207,7 +1214,7 @@ class BaseDataModule(pl.LightningDataModule):
 
         return ft.partial(ft.reduce, lambda i, f: f(i), [apply_norm])
 
-    def save_batch_as_NetCDF(self, batch, ibatch, patch_dims, save_dir="/Odyssey/public/CROSCIM_dataset/"):
+    def save_batch_as_NetCDF(self, batch, ibatch, patch_dims, save_dir="/Odyssey/private/m19beauc/CROSCIM_dataset/"):
         """Save a batch in NetCDF format using dynamic variable configuration."""
         
         data_vars = {}
@@ -1311,30 +1318,29 @@ class BaseDataModule(pl.LightningDataModule):
             # Get paths only for active sources
             paths_dict = {}
             times = None
-
-            _date_fmt_by_source = {"asip": "%Y%m%d", "cimr": "%Y-%m-%d", "cristal": "%Y-%m-%d"}
-            _paths_by_source = {"asip": self.asip_paths, "cimr": self.cimr_paths, "cristal": self.cristal_paths}
-            for src in ("asip", "cimr", "cristal"):
-                if src not in self.active_sources:
-                    continue
-                src_paths, src_times = select_paths(_paths_by_source[src], self.domains[split]['time'],
-                                                     fmt=_date_fmt_by_source[src])
-                paths_dict[f'{src}_paths'] = src_paths
-                if src == self.reference_source:
-                    times = src_times
-
+            
+            if 'asip' in self.active_sources:
+                asip_paths, times = select_paths(self.asip_paths, self.domains[split]['time'])
+                paths_dict['asip_paths'] = asip_paths
+            
+            if 'cimr' in self.active_sources:
+                cimr_paths, _ = select_paths(self.cimr_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
+                paths_dict['cimr_paths'] = cimr_paths
+            
+            if 'cristal' in self.active_sources:
+                cristal_paths, _ = select_paths(self.cristal_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
+                paths_dict['cristal_paths'] = cristal_paths
+            
             if self.covariates:
                 cov_paths, _ = select_paths(self.covariates_paths, self.domains[split]['time'], fmt="%Y-%m-%d")
                 paths_dict['covariates_paths'] = cov_paths
-
+            
             return XrDataset(
                 **paths_dict,
                 covariates=self.covariates,
                 target_vars=self.target_vars,
                 satellite_vars=self.satellite_vars,  # NEW
                 var_mapping=self.var_mapping,        # NEW
-                reference_source=self.reference_source,
-                gridref_dir=self.gridref_dir,
                 mask=self.mask,
                 times=times,
                 **self.xrds_kw,
@@ -1374,10 +1380,8 @@ class ConcatDataModule(BaseDataModule):
             XrDataset(
                 asip_paths=self.asip_paths, 
                 cimr_paths=self.cimr_paths, 
-                cristal_paths=self.cristal_paths,
-                reference_source=self.reference_source,
-                gridref_dir=self.gridref_dir,
-                covariates_paths=self.covariates_paths,
+                cristal_paths=self.cristal_paths, 
+                covariates_paths=self.covariates_paths, 
                 covariates=COVARIATES,
                 mask=self.mask,
                 times=None,  # Optional, depending on XrDataset signature
@@ -1401,10 +1405,8 @@ class ConcatDataModule(BaseDataModule):
             XrDataset(
                 asip_paths=self.asip_paths, 
                 cimr_paths=self.cimr_paths, 
-                cristal_paths=self.cristal_paths,
-                reference_source=self.reference_source,
-                gridref_dir=self.gridref_dir,
-                covariates_paths=self.covariates_paths,
+                cristal_paths=self.cristal_paths, 
+                covariates_paths=self.covariates_paths, 
                 covariates=COVARIATES,
                 mask=self.mask,
                 times=None,
@@ -1425,10 +1427,8 @@ class ConcatDataModule(BaseDataModule):
             XrDataset(
                 asip_paths=self.asip_paths, 
                 cimr_paths=self.cimr_paths, 
-                cristal_paths=self.cristal_paths,
-                reference_source=self.reference_source,
-                gridref_dir=self.gridref_dir,
-                covariates_paths=self.covariates_paths,
+                cristal_paths=self.cristal_paths, 
+                covariates_paths=self.covariates_paths, 
                 covariates=COVARIATES,
                 mask=self.mask,
                 times=None,
