@@ -230,11 +230,13 @@ class XrDataset(torch.utils.data.Dataset):
             self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
 
         if legacy_reference_grid:
-            # Diagnostic toggle: reproduces the pre-gridref pipeline exactly
-            # (live reference-source file + effective_pixel_factor instead
-            # of the static gridref) to A/B test whether the gridref
-            # refactor itself explains a prediction-quality regression. See
+            # Diagnostic toggle: reproduces the strict pre-July pipeline
+            # (live asip file + effective_pixel_factor instead of the
+            # static gridref) to A/B test whether the gridref refactor
+            # itself explains a prediction-quality regression. See
             # load_data.py:effective_pixel_factor().
+            if 'asip' not in self.active_sources:
+                raise ValueError("ASIP is required as reference grid")
             self.mask = self.mask.sel(**(domain_limits or {}))
             _paths_by_source = {"asip": asip_paths, "cimr": cimr_paths, "cristal": cristal_paths}
             ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0]).sel(**(domain_limits or {}))
@@ -1133,18 +1135,10 @@ class BaseDataModule(pl.LightningDataModule):
         self.cimr_paths = cimr_paths if 'cimr' in self.active_sources else []
         self.cristal_paths = cristal_paths if 'cristal' in self.active_sources else []
         self.covariates_paths = covariates_paths
-        if legacy_reference_grid:
-            # Diagnostic toggle: pre-gridref pipeline suffixed the mask cache
-            # by reference source (switching reference_source rebuilds a
-            # fresh mask instead of silently reusing one built for a
-            # different source's grid).
-            if mask_path is not None:
-                _mask_root, _mask_ext = os.path.splitext(mask_path)
-                self.mask_path = f"{_mask_root}_ref_{self.reference_source.upper()}{_mask_ext}"
-            else:
-                self.mask_path = mask_path
-        else:
-            self.mask_path = mask_path
+        # legacy_reference_grid: strict pre-July code used the plain
+        # mask_path unsuffixed (no reference_source-aware caching existed
+        # yet) — same as the default path, nothing to branch here.
+        self.mask_path = mask_path
         self.gridref_dir = gridref_dir
         self.domain_name = domain_name
         self.domains = domains
@@ -1171,13 +1165,12 @@ class BaseDataModule(pl.LightningDataModule):
        
         self.resize = resize
         if legacy_reference_grid:
-            # Diagnostic toggle: pre-gridref pipeline built the base grid
-            # from a live file of the reference source itself, domain-limited
-            # up front (see legacy_reference_grid on XrDataset for the
-            # matching per-level logic).
-            _domain_limits = (xrds_kw or {}).get('domain_limits')
-            _paths_by_source = {"asip": self.asip_paths, "cimr": self.cimr_paths, "cristal": self.cristal_paths}
-            ref_base = xr.open_dataset(_paths_by_source[self.reference_source][0]).sel(**(_domain_limits or {}))
+            # Diagnostic toggle: strict pre-July code — base grid loaded
+            # from a live asip file at FULL extent, no domain_limits crop
+            # (that crop was only introduced in the later reference_source
+            # generalization to fix a mask/grid misalignment bug unrelated
+            # to the gridref-vs-live-file question this toggle tests).
+            ref_base = xr.open_dataset(self.asip_paths[0])
         else:
             # Load base grid from the static asip-derived gridref (build_grid_reference.py),
             # at FULL extent (no domain_limits crop) — this is only used to build
