@@ -1,4 +1,22 @@
 # @package _global_
+#
+# Variant of base_arctic_croscim_test_sit_supervised_forecast.yaml with
+# patch_x10 using the full 15 timesteps instead of 8 (SIT is highly
+# persistent — 8 steps may be too short a window for the anomaly). Requires
+# the matching len_daw override below, since crop_daw()'s default window
+# length (models.py, Lit4dVarNet_CROSCIM.__init__) is otherwise hardcoded
+# from maxlen_daw/len(multires), independently of var_config.time_steps.
+# xrds_kw.patch_dims_dict.10.time was already 15 (the raw loader always
+# loads 15 timesteps for patch_x10; only crop_daw used to trim it to 8).
+#
+# NOTE: solver_x10's grad_model in_channels/out_channels change with this
+# (8 -> 15 timesteps), so the base xp's checkpoint is NOT compatible — this
+# needs a checkpoint trained from
+# base_arctic_croscim_wpreproc_sit_supervised_forecast_t15.yaml (ckpt_path
+# below points at a name that doesn't exist yet).
+#
+# NOTE: domains.test.time uses the same 2022-02-01..2022-02-15 window
+# (confirmed CIMR coverage) as the UOAI xps.
 
 paths:
   src: /Odyssey/private/m19beauc
@@ -17,31 +35,31 @@ var_config:
   satellite_vars:
     cristal: ["SIT"]
     cimr: ["SIT","SIC"]
-  
+
   # Numerical model variables
   models_vars: ["SIT"]
-  
+
   # Atmospheric covariates (reduced since some moved to models)
   covariates: ["t2m", "msl", "u10", "v10"]
-  
+
   # Target variables
   target_vars:
     patch_x50:
-      - models_SIT 
+      - models_SIT
     patch_x10:
       - models_SIT
 
   # Mapping: which input variable initializes which target
   var_mapping:
     patch_x50:
-      models_SIT: cristal_SIT 
+      models_SIT: cristal_SIT
     patch_x10:
       models_SIT: cristal_SIT
-  
-  # Time steps per resolution 
+
+  # Time steps per resolution
   time_steps:
     patch_x50: 15
-    patch_x10: 8
+    patch_x10: 15
 
 # ===== COMPUTED VARIABLES (using OmegaConf interpolation) =====
 computed:
@@ -73,14 +91,14 @@ trainer:
 
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
-  
+
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}
-  models_vars: ${var_config.models_vars} 
+  models_vars: ${var_config.models_vars}
   target_vars: ${var_config.target_vars}
   var_mapping: ${var_config.var_mapping}
-  
+
   # Data paths
   asip_paths:
     _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
@@ -102,7 +120,7 @@ datamodule:
     _target_: contrib.CROSCIM.dataloaders.load_data.get_paths_for_source
     source: models
     paths: ${paths}
-  
+
   mask_path: ${paths.mask}
   domain_name: arctic_croscim
   domains:
@@ -118,10 +136,10 @@ datamodule:
     patch_dims: { time: 15, yc: 256, xc: 256}
     strides: { time: 1, yc: 28, xc: 28}
     strides_test: {time: 1, yc: 200, xc: 200}
-    patch_dims_dict: 
+    patch_dims_dict:
       50: {time: 15, yc: 294, xc: 304}
       10: {time: 15, yc: 256, xc: 256}
-    strides_test_dict: 
+    strides_test_dict:
       50: {time: 1, yc: 294, xc: 304}
       10: {time: 1, yc: 200, xc: 200}
     domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
@@ -160,7 +178,7 @@ datamodule:
   multires: [50, 10]
 
 model:
-  _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised 
+  _target_: contrib.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised
   persist_rw: False
   multires: [50,10]
   normalize_anomaly: false
@@ -169,23 +187,27 @@ model:
   tgt_vars: ${var_config.target_vars}
   satellite_vars: ${var_config.satellite_vars}
   covariates: ${var_config.covariates}
-  models_vars: ${var_config.models_vars} 
+  models_vars: ${var_config.models_vars}
   var_mapping: ${var_config.var_mapping}
-  
+
   domain_limits: {xc: {_target_: builtins.slice, _args_: [-3849750., 3749750.]},
                   yc: {_target_: builtins.slice, _args_: [2473750., -4896250.]}}
   rec_weight: ${optim_weight}
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
   frcst_lead: 2
+  # crop_daw() window length per resolution — default (maxlen_daw=15,
+  # len(multires)=2) would give {50: 15, 10: 8}; SIT is too persistent for
+  # an 8-step window, so keep the full 15 for patch_x10 too.
+  len_daw: {50: 15, 10: 15}
   solver:
-    _target_: contrib.CROSCIM.solvers.solver.GradSolvers
+    _target_: contrib.CROSCIM.solvers.solver_expanded.GradSolvers
     solvers:
       solver_x50:
         _target_: contrib.CROSCIM.solvers.solver_expanded.GradSolver
         n_step: 10
         lr_grad: 0.2
-        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
+        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #
         input_vars: ${computed.input_vars_all}
         target_vars: ${var_config.target_vars.patch_x50}
         var_mapping: ${var_config.var_mapping.patch_x50}
@@ -221,7 +243,7 @@ model:
         _target_: contrib.CROSCIM.solvers.solver_expanded.GradSolver
         n_step: 10
         lr_grad: 0.2
-        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #    
+        input_grad_update: 'grad' #'obs+state' ##'grad-only' #'grad+state' #'obs-only'  # 'grad+previous'  #'gobs+sgprior' #'grad+state'  #'grad-only' #'grad+state'  #'grad+state' #
         input_vars: ${computed.input_vars_all}
         target_vars: ${var_config.target_vars.patch_x10}
         var_mapping: ${var_config.var_mapping.patch_x10}
@@ -255,7 +277,7 @@ model:
         fill_missing_inp: false
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}
-  norm_stats_models: ${datamodule.norm_stats_models} 
+  norm_stats_models: ${datamodule.norm_stats_models}
 
 optim_weight:
   patch_x50:
@@ -266,7 +288,7 @@ optim_weight:
     dim_order: ["time", "yc", "xc"]
   patch_x10:
     _target_: src.utils.get_linear_time_wei
-    patch_dims: {time: 8, yc: 256, xc: 256}
+    patch_dims: {time: 15, yc: 256, xc: 256}
     crop: {time: 0, yc: 28, xc: 28}
     offset: 1
     dim_order: ["time", "yc", "xc"]
@@ -287,7 +309,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_t15.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

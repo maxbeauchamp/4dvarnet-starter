@@ -65,7 +65,9 @@ MAX_ATTEMPTS = 3
 EXPERIMENTS = {
     "UNet_UOAI":           ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast",            [50, 10], "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast.ckpt"),
     "UNet_UOAI_res10":     ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_res10",      [10],     "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast_res10.ckpt"),
+    "UNet_UOAI_t15":       ("CROSCIM/UNet_solvers/base_arctic_croscim_test_sit_UOAI_supervised_forecast_t15",       [50, 10], "ckpt/CROSCIM/base_croscim_UNet_sit_UOAI_supervised_forecast_t15.ckpt"),
     "UNet_unrolling":      ("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast",       [50, 10], "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast.ckpt"),
+    "UNet_unrolling_t15":  ("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_t15",   [50, 10], "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_t15.ckpt"),
     "UNet_unrolling_res10":("CROSCIM/UNet_unrolling_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10", [10],     "ckpt/CROSCIM/base_croscim_UNet_unrolling_sit_supervised_forecast_res10.ckpt"),
     "4DVarNet":            ("CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast",             [50, 10], "ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast.ckpt"),
     "4DVarNet_res10":      ("CROSCIM/4DVarNet_solvers/base_arctic_croscim_test_sit_supervised_forecast_res10",       [10],     "ckpt/CROSCIM/base_croscim_4DVarNet_sit_supervised_forecast_res10.ckpt"),
