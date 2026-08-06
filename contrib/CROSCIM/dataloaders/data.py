@@ -220,7 +220,14 @@ class XrDataset(torch.utils.data.Dataset):
         # if present, else the finest-resolution active source, or an
         # explicit override). The spatial grid no longer depends on this —
         # it always comes from the static asip-derived gridref file below.
-        self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
+        if legacy_reference_grid:
+            # Diagnostic toggle: pre-July code hardcoded asip as the grid
+            # source (no reference_source concept existed) and required it
+            # to be active — reproduce that exactly, rather than the
+            # Phase-B generic resolve_reference_source fallback.
+            self.reference_source = "asip"
+        else:
+            self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
 
         if legacy_reference_grid:
             # Diagnostic toggle: reproduces the pre-gridref pipeline exactly
@@ -1112,7 +1119,13 @@ class BaseDataModule(pl.LightningDataModule):
         # it always comes from the static asip-derived gridref file below,
         # so the cached land mask (built from that same grid) is shared
         # across all reference_source choices.
-        self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
+        if legacy_reference_grid:
+            # Diagnostic toggle: pre-July code hardcoded asip as the grid
+            # source (no reference_source concept existed) and required it
+            # to be active — reproduce that exactly.
+            self.reference_source = "asip"
+        else:
+            self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
         self.legacy_reference_grid = legacy_reference_grid
 
         # Store paths only for active sources

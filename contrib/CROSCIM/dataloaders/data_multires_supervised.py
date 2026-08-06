@@ -427,14 +427,14 @@ class XrDatasetMultiResTestSupervised:
         self.var_mapping = var_mapping if var_mapping is not None else {}
 
         # Diagnostic toggle (see load_data.py:effective_pixel_factor /
-        # XrDataset.legacy_reference_grid): reproduces the pre-gridref
-        # per-level resize computation instead of the static gridref files,
-        # to A/B test whether the gridref refactor itself explains a
-        # prediction-quality regression.
+        # XrDataset.legacy_reference_grid): reproduces the pre-July pipeline
+        # (asip hardcoded as the grid source, required active — no
+        # reference_source concept existed yet) instead of the static
+        # gridref files, to A/B test whether the gridref refactor itself
+        # explains a prediction-quality regression.
         self._legacy_reference_grid = kwargs.get('legacy_reference_grid', False)
         if self._legacy_reference_grid:
-            _active_sources = [src for src, v in self.satellite_vars.items() if v]
-            self._reference_source = resolve_reference_source(_active_sources, override=kwargs.get('reference_source'))
+            self._reference_source = "asip"
             for res in multires:
                 effective_pixel_factor(res, self._reference_source)
         else:
