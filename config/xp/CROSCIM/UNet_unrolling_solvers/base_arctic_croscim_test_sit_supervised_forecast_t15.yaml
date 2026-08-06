@@ -91,7 +91,11 @@ trainer:
       filename: '{val_loss:.5f}-{epoch:03d}'
 
 datamodule:
-  _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
+  # TEMPORAIRE: legacy dataloader (pre-juillet, connu bon) le temps de finir
+  # d'investiguer pourquoi le pipeline gridref corrige (data_multires_supervised,
+  # sans _legacy) diverge encore en sortie malgre un chargement identique au
+  # niveau dataloader (voir Notebook_CROSCIM_compare_legacy_vs_fixed_t15.ipynb).
+  _target_: contrib.CROSCIM.dataloaders.data_multires_supervised_legacy.BaseDataModuleMultiRes
 
   # Variable configuration
   satellite_vars: ${var_config.satellite_vars}
