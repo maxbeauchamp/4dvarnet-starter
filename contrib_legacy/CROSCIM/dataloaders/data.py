@@ -901,7 +901,7 @@ class BaseDataModule(pl.LightningDataModule):
                  norm_stats=None, norm_stats_covs=None,
                  aug_kw=None, res=500, pads=[False,False,False], 
                  resize=1,
-                 subsel_path="/dmidata/users/maxb/4dvarnet-starter/contrib/CROSCIM/patch_in_ocean",
+                 subsel_path="/Odyssey/private/m19beauc/4dvarnet-starter/contrib/CROSCIM/patch_in_ocean",
                  rand_obs=False,
                  **kwargs):
         
@@ -1192,7 +1192,7 @@ class BaseDataModule(pl.LightningDataModule):
 
         return ft.partial(ft.reduce, lambda i, f: f(i), [apply_norm])
 
-    def save_batch_as_NetCDF(self, batch, ibatch, patch_dims, save_dir="/dmidata/users/maxb/PREPROC/"):
+    def save_batch_as_NetCDF(self, batch, ibatch, patch_dims, save_dir="/Odyssey/private/m19beauc/CROSCIM_dataset/"):
         """Save a batch in NetCDF format using dynamic variable configuration."""
         
         data_vars = {}
