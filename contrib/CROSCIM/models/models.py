@@ -53,6 +53,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
             condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
             len_daw=None,  # optional override of the per-resolution crop_daw() window length ({res: n_timesteps}); defaults to the maxlen_daw/step-based schedule below
+            save_obs_vars=False,  # also save raw satellite obs (asip_sic, cimr_*, cristal_*) in the test NetCDF, coarsest resolution only
             *args, **kwargs):
 
         # training_strategy options: 'simultaneous', 'progressive', 'hybrid'
@@ -64,6 +65,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.normalize_anomaly = normalize_anomaly
         self.normalize_anomaly_patch_only = normalize_anomaly_patch_only
         self.condition_on_scale = condition_on_scale
+        self.save_obs_vars = save_obs_vars
 
         # Store variable configuration
         self.satellite_vars = satellite_vars or DEFAULT_VAR_GROUPS
@@ -198,6 +200,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         else:
             # Global tgt_vars apply to all resolutions
             return self.tgt_vars_config
+
+    def _get_obs_var_names(self, dataloader_idx):
+        """Raw satellite obs field names (e.g. 'asip_sic') to include in the
+        test NetCDF, when save_obs_vars=True — coarsest resolution only
+        (dataloader_idx == 0), for diagnostic visualisation of the raw inputs."""
+        if not (self.save_obs_vars and dataloader_idx == 0):
+            return []
+        return [f"{source}_{var}" for source, vars_list in self.satellite_vars.items() for var in vars_list]
 
     def _process_weights(self, weight_dict, prefix='_weight'):
         """
@@ -2189,7 +2199,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 pred_vars.append(f"pred_{suffix}")
             else:
                 pred_vars.append(f"pred_{var}")
-        var_names = pred_vars + tgt_vars
+        var_names = pred_vars + tgt_vars + self._get_obs_var_names(dataloader_idx)
 
         netcdf_final = []
                                        
@@ -2352,6 +2362,16 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     var: (("time", "yc", "xc"),
                                         unnormalize(var, test_data_uniq[var].data))
                 })
+
+            for field in self._get_obs_var_names(dataloader_idx):
+                source, obs_var = field.split('_', 1)
+                stats = self.norm_stats[source][obs_var]
+                data = test_data_uniq[field].data
+                if stats["type"] == "zscore":
+                    data = data * stats["std"] + stats["mean"]
+                elif stats["type"] == "minmax":
+                    data = data * (stats["max"] - stats["min"]) + stats["min"]
+                test_data_unnorm = test_data_unnorm.update({field: (("time", "yc", "xc"), data)})
 
             if metrics:
                 metric_data = test_data_unnorm.pipe(self.pre_metric_fn),
@@ -2702,8 +2722,10 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # apply constraints
         out_norm = self._apply_constraints(out_norm, res)
         #tgt_norm = self._apply_constraints(tgt_norm, res)
-        
-        combined = list(out_norm.values()) + list(tgt_norm.values())
+
+        obs_norm = {field: getattr(batch, field) for field in self._get_obs_var_names(dataloader_idx)}
+
+        combined = list(out_norm.values()) + list(tgt_norm.values()) + list(obs_norm.values())
         stacked = torch.stack(combined, dim=1)
 
         # stacked has shape (B,V,T,H,W) with V the number of variables

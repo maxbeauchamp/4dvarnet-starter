@@ -179,6 +179,10 @@ model:
   persist_rw: False
   multires: [50,10]
   normalize_anomaly: false
+  # Diagnostic: also save raw satellite obs (asip_sic, cimr_*, cristal_SIT) in
+  # the test NetCDF at x50 (coarsest resolution), to check for a data-coverage
+  # gap (e.g. cristal's pole hole) rather than a model/reconstruction issue.
+  save_obs_vars: true
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}
