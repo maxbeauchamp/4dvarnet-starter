@@ -10,14 +10,10 @@
 # whether it's a data/coverage characteristic rather than a code regression from
 # any recent period.
 #
-# CAVEAT: contrib_legacy's models.py doesn't support the `len_daw` override (added
-# this session) — passing it isn't possible here, so it's omitted. crop_daw()
-# falls back to the old default formula (maxlen_daw=15, len(multires)=2) which
-# gives len_daw={50: 15, 10: 8}. x50 is unaffected (15 either way — this is the
-# resolution under investigation). x10 gets only 8 timesteps, which will NOT match
-# the t15 checkpoint's solver_x10 (built for 15 timesteps) — expect an error or
-# garbage output for x10 specifically; x50 finishes and saves before x10 runs, so
-# its output is still valid to inspect.
+# contrib_legacy's models.py has been given a minimal, targeted backport of the
+# `len_daw` override (added this session, otherwise absent from the 2026-05-21
+# snapshot) so both x50 and x10 get the full 15 timesteps, matching the t15
+# checkpoint's solver_x50/solver_x10 (no other May-vs-now behaviour touched).
 
 paths:
   src: /Odyssey/private/m19beauc
@@ -198,8 +194,10 @@ model:
   optim_weight: ${optim_weight}
   prior_weight: ${optim_weight}
   frcst_lead: 2
-  # No len_daw override here — contrib_legacy's models.py predates that
-  # parameter. See the CAVEAT note at the top of this file.
+  # crop_daw() window length per resolution — see the backport note at the
+  # top of this file; without this, contrib_legacy's default formula would
+  # give {50: 15, 10: 8} instead of the 15/15 the t15 checkpoint expects.
+  len_daw: {50: 15, 10: 15}
   solver:
     _target_: contrib.CROSCIM.solvers.solver.GradSolvers
     solvers:
