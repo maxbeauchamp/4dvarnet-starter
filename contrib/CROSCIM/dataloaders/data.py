@@ -219,51 +219,35 @@ class XrDataset(torch.utils.data.Dataset):
         # explicit override).
         self.reference_source = resolve_reference_source(self.active_sources, override=reference_source)
 
-        if 'asip' in self.active_sources:
-            # asip defines the grid directly — never regridded (see
-            # __getitem__): its own coarsened values ARE the grid, by
-            # construction, matching training/wpreproc data (always built
-            # from asip's own coarsened grid, never through a generic
-            # regrid). domain-crop THEN coarsen, so a per-patch reload in
-            # __getitem__ (same crop-then-slice order) stays in phase —
-            # unlike gridref (coarsened at full extent, cropped after),
-            # crop-then-coarsen here would drift out of phase with a
-            # separately-built target grid.
-            ref_base = xr.open_dataset(asip_paths[0]).sel(**(domain_limits or {}))
-            self.mask = self.mask.sel(**(domain_limits or {}))
-            if self.resize != 1:
-                ref_base = fast_coarsen_xr(ref_base, factor_x=resize, factor_y=resize)
-                self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
-                                                  mode="binary")
-            self.xc = ref_base.xc.data
-            self.yc = ref_base.yc.data
-            self.lon = ref_base.lon.data
-            self.lat = ref_base.lat.data
-        else:
-            # Fallback when asip isn't loaded: the static asip-derived
-            # gridref file (same grid asip would give, precomputed).
-            ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
+        # The grid always comes from the static asip-derived gridref file,
+        # independently of which sources are active (asip included) — see
+        # gridref_path()/build_grid_reference.py. Sources are never exempted
+        # from regridding (see __getitem__); the one real bug this had
+        # (sample["time"] drifting from self.times instead of the actually
+        # -loaded reference source's own dates) is fixed at the source in
+        # __getitem__, not by special-casing asip here.
+        ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
-            self.xc = ref_base.xc.data
-            self.yc = ref_base.yc.data
-            self.lon = ref_base.lon.data
-            self.lat = ref_base.lat.data
+        self.xc = ref_base.xc.data
+        self.yc = ref_base.yc.data
+        self.lon = ref_base.lon.data
+        self.lat = ref_base.lat.data
 
-            # Coarsen (on the full, non-domain-limited mask) at full extent, then
-            # align it to self.xc/yc by NEAREST INDEX position rather than
-            # re-selecting domain_limits independently on the mask's own
-            # coordinates — self.mask and self.xc/yc are computed via two
-            # separate code paths (cached mask rebuilt at runtime vs. static
-            # gridref file) that can differ by a float epsilon despite being
-            # mathematically the same grid, which would otherwise make an
-            # independent domain_limits .sel() pick a different point count.
-            # Index alignment guarantees the exact same shape regardless.
-            if self.resize != 1:
-                self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
-                                                  mode="binary")
-            ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
-            iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
-            self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
+        # Coarsen (on the full, non-domain-limited mask) at full extent, then
+        # align it to self.xc/yc by NEAREST INDEX position rather than
+        # re-selecting domain_limits independently on the mask's own
+        # coordinates — self.mask and self.xc/yc are computed via two
+        # separate code paths (cached mask rebuilt at runtime vs. static
+        # gridref file) that can differ by a float epsilon despite being
+        # mathematically the same grid, which would otherwise make an
+        # independent domain_limits .sel() pick a different point count.
+        # Index alignment guarantees the exact same shape regardless.
+        if self.resize != 1:
+            self.mask = fast_coarsen_xr_array(self.mask, factor_x=resize, factor_y=resize,
+                                              mode="binary")
+        ix0 = int(np.argmin(np.abs(self.mask.xc.values - self.xc[0])))
+        iy0 = int(np.argmin(np.abs(self.mask.yc.values - self.yc[0])))
+        self.mask = self.mask.isel(xc=slice(ix0, ix0 + len(self.xc)), yc=slice(iy0, iy0 + len(self.yc)))
 
         # Load data in memory (for inference) - only active sources
         if self.load_data:
@@ -498,25 +482,25 @@ class XrDataset(torch.utils.data.Dataset):
                 constant_values=1
             )
 
-        asip_active = 'asip' in self.active_sources
         time_indices = np.arange(sl["time"].start, sl["time"].stop)
 
-        # Loading datasets — cimr/cristal always at native resolution,
-        # regridded onto the target grid below via interpolate_dataset.
-        # asip (when active) is handled separately below: it DEFINES the
-        # grid (see __init__) and is never regridded.
+        # Loading datasets - only active sources, always at native resolution
+        # (every active source is regridded onto the fixed gridref target
+        # below via interpolate_dataset — no source gets a privileged
+        # "already on the target grid" shortcut).
         if self.load_data:
             datasets = {}
-            _full_by_source = {"cimr": self.full_cimr, "cristal": self.full_cristal}
+            _full_by_source = {"asip": self.full_asip, "cimr": self.full_cimr, "cristal": self.full_cristal}
             for src in self.active_sources:
-                if src == 'asip' or src not in _full_by_source or _full_by_source[src] is None:
+                if src not in _full_by_source or _full_by_source[src] is None:
                     continue
                 datasets[src] = _full_by_source[src].isel(time=sl["time"])
             if self.covariates:
                 datasets['covariates'] = self.full_covs.isel(time=sl["time"])
         else:
             datasets = {}
-            _paths_by_source_item = {"cimr": self.cimr_paths if 'cimr' in self.active_sources else None,
+            _paths_by_source_item = {"asip": self.asip_paths if 'asip' in self.active_sources else None,
+                                      "cimr": self.cimr_paths if 'cimr' in self.active_sources else None,
                                       "cristal": self.cristal_paths if 'cristal' in self.active_sources else None}
             for src, src_paths in _paths_by_source_item.items():
                 if src_paths is None:
@@ -535,62 +519,23 @@ class XrDataset(torch.utils.data.Dataset):
                     domain_limits=self.domain_limits
                 )
 
-        # Target grid for this patch (self.xc/yc/lon/lat: asip-derived
-        # directly when asip is active, else the static gridref — see
-        # __init__). interpolate_dataset() guarantees each cimr/cristal
-        # output is already exactly patch-shaped, so no separate padding
-        # step is needed here.
+        # Target grid for this patch: always the static asip-derived gridref
+        # (self.xc/yc/lon/lat, loaded once in __init__), independently of
+        # which sources are active. interpolate_dataset() guarantees each
+        # source's output is already exactly patch-shaped, so no separate
+        # padding step is needed here.
         xc_patch = self.xc[sl["xc"].start:sl["xc"].stop]
         yc_patch = self.yc[sl["yc"].start:sl["yc"].stop]
         lon_patch = self.lon[sl["yc"].start:sl["yc"].stop, sl["xc"].start:sl["xc"].stop]
         lat_patch = self.lat[sl["yc"].start:sl["yc"].stop, sl["xc"].start:sl["xc"].stop]
 
         sample = {}
-
-        # asip (when active) defines the grid — load its own coarsened
-        # values directly instead of regridding through interpolate_dataset
-        # (see __init__: they're already exactly on xc_patch/yc_patch by
-        # construction).
-        if asip_active:
-            if self.load_data:
-                asip_ds = self.full_asip.isel(time=sl["time"], xc=sl["xc"], yc=sl["yc"])
-            else:
-                asip_ds = concatenate(
-                    self.asip_paths[time_indices],
-                    var_list=self.satellite_vars['asip'],
-                    slices={
-                        "xc": slice(self.xc[sl["xc"].start], self.xc[sl["xc"].stop]),
-                        "yc": slice(self.yc[sl["yc"].start], self.yc[sl["yc"].stop])
-                    },
-                    type_coords="coords",
-                    resize=self.resize,
-                    domain_limits=self.domain_limits
-                )
-            for var in self.satellite_vars['asip']:
-                if var in asip_ds:
-                    var_data = asip_ds[var].values
-                    n_t = self.patch_dims['time']
-                    if var_data.shape != (n_t, n_yc, n_xc):
-                        # Domain-edge patch: asip's own crop came up short
-                        # (no interpolate_dataset guarantee here since asip
-                        # is loaded directly) — pad with NaN, matching
-                        # interpolate_dataset's natural out-of-coverage
-                        # behavior for the other sources.
-                        var_data = np.pad(
-                            var_data[:n_t, :n_yc, :n_xc],
-                            ((0, max(0, n_t - var_data.shape[0])),
-                             (0, max(0, n_yc - var_data.shape[1])),
-                             (0, max(0, n_xc - var_data.shape[2]))),
-                            constant_values=np.nan
-                        )
-                    sample[f"asip_{var}"] = var_data
-
         if self.itrp_from_regular:
             target_grid = (xc_patch, yc_patch)
         else:
             target_grid = pyresample.geometry.SwathDefinition(lons=lon_patch, lats=lat_patch)
 
-        for src in ("cimr", "cristal"):
+        for src in ("asip", "cimr", "cristal"):
             if src not in datasets:
                 continue
             src_vars = self.interpolate_dataset(target_grid, datasets[src],
@@ -631,26 +576,19 @@ class XrDataset(torch.utils.data.Dataset):
             elif target_var.startswith('tgt_') and source_var in sample:
                 sample[target_var] = sample[source_var].copy()
 
-        # Keep track of coordinates. When asip is active, use its own loaded
-        # time coordinate (matches pre-July behaviour) rather than
-        # self.times[sl] — self.times is a date list built independently of
-        # which files actually exist, so it can silently drift from what was
-        # really loaded if a day is missing from asip_paths. asip_ds is only
-        # available in that branch; self.times remains the only option when
-        # asip isn't loaded (gridref fallback).
-        if asip_active:
-            time_values = asip_ds.time.values
-        else:
-            time_values = self.times[sl["time"].start:sl["time"].stop]
+        # Keep track of coordinates. Time comes from the reference source's
+        # own loaded dataset (whichever source resolve_reference_source
+        # picked — asip, cimr, or cristal), not from self.times[sl]: that
+        # date list is built independently of which files actually exist, so
+        # it can silently drift from what was really loaded if a day is
+        # missing for that source. xc/yc/lon/lat, by contrast, always come
+        # from the static gridref grid (see above) — no live per-patch file
+        # to drift from.
         sample["time"] = np.expand_dims(
-            np.array([np.datetime64(t, "s").astype('float64') for t in time_values]),
+            np.array([np.datetime64(t, "s").astype('float64')
+                      for t in datasets[self.reference_source].time.values]),
             axis=0
         )
-        # xc_patch/yc_patch already prefer asip_ds's own coords when asip is
-        # active (with the edge-clip fallback applied above) — reuse them
-        # directly instead of re-reading asip_ds.xc/yc.values here, which
-        # would bypass that fallback and reintroduce variable patch sizes
-        # across a batch (collate failure) for domain-edge patches.
         sample["xc"] = np.expand_dims(xc_patch, axis=0)
         sample["yc"] = np.expand_dims(yc_patch, axis=0)
 
