@@ -8,6 +8,12 @@ of which sources a given xp actually declares in `satellite_vars`. See
 `gridref_path()` in contrib/CROSCIM/dataloaders/load_data.py for how they get
 consumed at runtime.
 
+Cropped to DEFAULT_DOMAIN_LIMITS (the project's fixed domain, same in every
+xp config) BEFORE coarsening — same crop-then-coarsen order the live
+dataloading path and the wpreproc build have always used, so the resulting
+grid is actually the same one the model was trained against, not just the
+same region at a slightly different pixel phase.
+
 Run once (the underlying ASIP grid is static); re-run only if that grid
 itself changes.
 
@@ -35,9 +41,24 @@ DEFAULT_LEVELS = [1, 2, 10, 50]
 DEFAULT_ASIP_DIR = "/Odyssey/public/CROSCIM_dataset/ASIP_L3"
 DEFAULT_OUT_DIR = _GRIDREF_DIR_DEFAULT
 
+# Same domain_limits every CROSCIM xp config uses (project-wide constant, not
+# per-xp). Applied BEFORE coarsening, not after: coarsening groups native
+# pixels into blocks starting from index 0 of whatever array it's given, so
+# cropping first vs. cropping after coarsening a full-extent grid lands the
+# coarse pixel centers at different physical offsets ("phase") — a few
+# hundred metres apart, but enough to misalign the model's input against
+# what it was trained on. The live per-file loading path (and, at training
+# time, the wpreproc build) has always cropped first, then coarsened; gridref
+# must match that order to actually be the same grid, not just "close".
+DEFAULT_DOMAIN_LIMITS = {
+    "xc": slice(-3849750., 3749750.),
+    "yc": slice(2473750., -4896250.),
+}
 
-def build_gridref(asip_file, level, out_path):
+
+def build_gridref(asip_file, level, out_path, domain_limits):
     with xr.open_dataset(asip_file) as ds:
+        ds = ds.sel(**domain_limits)
         grid = xr.Dataset(coords={"xc": ds["xc"], "yc": ds["yc"], "lon": ds["lon"], "lat": ds["lat"]})
     if level != 1:
         grid = fast_coarsen_xr(grid, factor_y=level, factor_x=level)
@@ -62,7 +83,7 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     for level in args.levels:
         out_path = os.path.join(args.out_dir, f"gridref_x{level}.nc")
-        build_gridref(asip_file, level, out_path)
+        build_gridref(asip_file, level, out_path, DEFAULT_DOMAIN_LIMITS)
 
 
 if __name__ == "__main__":

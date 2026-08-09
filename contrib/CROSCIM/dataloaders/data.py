@@ -221,11 +221,11 @@ class XrDataset(torch.utils.data.Dataset):
 
         # The grid always comes from the static asip-derived gridref file,
         # independently of which sources are active (asip included) — see
-        # gridref_path()/build_grid_reference.py. Sources are never exempted
-        # from regridding (see __getitem__); the one real bug this had
-        # (sample["time"] drifting from self.times instead of the actually
-        # -loaded reference source's own dates) is fixed at the source in
-        # __getitem__, not by special-casing asip here.
+        # gridref_path()/build_grid_reference.py. build_grid_reference.py
+        # crops to domain_limits BEFORE coarsening (same order as the
+        # per-patch loading below), so this static grid has the same pixel
+        # phase as what's actually loaded — no live-file special-casing
+        # needed for asip to "stay in phase" anymore.
         ref_base = xr.open_dataset(gridref_path(self.resize, gridref_dir)).sel(**(domain_limits or {}))
 
         self.xc = ref_base.xc.data
@@ -582,8 +582,8 @@ class XrDataset(torch.utils.data.Dataset):
         # date list is built independently of which files actually exist, so
         # it can silently drift from what was really loaded if a day is
         # missing for that source. xc/yc/lon/lat, by contrast, always come
-        # from the static gridref grid (see above) — no live per-patch file
-        # to drift from.
+        # from the static gridref grid (see __init__) — no live per-patch
+        # file to drift from.
         sample["time"] = np.expand_dims(
             np.array([np.datetime64(t, "s").astype('float64')
                       for t in datasets[self.reference_source].time.values]),
