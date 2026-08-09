@@ -646,15 +646,13 @@ class XrDataset(torch.utils.data.Dataset):
             np.array([np.datetime64(t, "s").astype('float64') for t in time_values]),
             axis=0
         )
-        # Same reasoning as sample["time"] above: prefer asip_ds's own
-        # coords (what pre-July code used) over xc_patch/yc_patch (from
-        # self.xc/yc) when asip is active.
-        if asip_active:
-            sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
-            sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
-        else:
-            sample["xc"] = np.expand_dims(xc_patch, axis=0)
-            sample["yc"] = np.expand_dims(yc_patch, axis=0)
+        # xc_patch/yc_patch already prefer asip_ds's own coords when asip is
+        # active (with the edge-clip fallback applied above) — reuse them
+        # directly instead of re-reading asip_ds.xc/yc.values here, which
+        # would bypass that fallback and reintroduce variable patch sizes
+        # across a batch (collate failure) for domain-edge patches.
+        sample["xc"] = np.expand_dims(xc_patch, axis=0)
+        sample["yc"] = np.expand_dims(yc_patch, axis=0)
 
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)
