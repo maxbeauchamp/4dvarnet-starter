@@ -173,7 +173,13 @@ model:
   _target_: contrib_legacy.CROSCIM.models.models_supervised.Lit4dVarNet_CROSCIM_Supervised
   persist_rw: False
   multires: [50,10]
-  normalize_anomaly: false
+  # At the 2026-05-21 baseline this key wasn't set in the config at all, so
+  # the model used its own default (normalize_anomaly=True) — and
+  # normalize_anomaly_patch_only didn't exist yet (added 2026-07-24), so
+  # that default-True normalization was unconditionally batch-pooled, not
+  # per-patch. contrib_legacy's models.py still only has the batch-pooled
+  # behaviour, so True here reproduces May exactly.
+  normalize_anomaly: true
   opt_fn: null
   # Variable configuration
   tgt_vars: ${var_config.target_vars}
