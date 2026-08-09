@@ -631,13 +631,30 @@ class XrDataset(torch.utils.data.Dataset):
             elif target_var.startswith('tgt_') and source_var in sample:
                 sample[target_var] = sample[source_var].copy()
 
-        # Keep track of coordinates
+        # Keep track of coordinates. When asip is active, use its own loaded
+        # time coordinate (matches pre-July behaviour) rather than
+        # self.times[sl] — self.times is a date list built independently of
+        # which files actually exist, so it can silently drift from what was
+        # really loaded if a day is missing from asip_paths. asip_ds is only
+        # available in that branch; self.times remains the only option when
+        # asip isn't loaded (gridref fallback).
+        if asip_active:
+            time_values = asip_ds.time.values
+        else:
+            time_values = self.times[sl["time"].start:sl["time"].stop]
         sample["time"] = np.expand_dims(
-            np.array([np.datetime64(t, "s").astype('float64') for t in self.times[sl["time"].start:sl["time"].stop]]),
+            np.array([np.datetime64(t, "s").astype('float64') for t in time_values]),
             axis=0
         )
-        sample["xc"] = np.expand_dims(xc_patch, axis=0)
-        sample["yc"] = np.expand_dims(yc_patch, axis=0)
+        # Same reasoning as sample["time"] above: prefer asip_ds's own
+        # coords (what pre-July code used) over xc_patch/yc_patch (from
+        # self.xc/yc) when asip is active.
+        if asip_active:
+            sample["xc"] = np.expand_dims(asip_ds.xc.values, axis=0)
+            sample["yc"] = np.expand_dims(asip_ds.yc.values, axis=0)
+        else:
+            sample["xc"] = np.expand_dims(xc_patch, axis=0)
+            sample["yc"] = np.expand_dims(yc_patch, axis=0)
 
         if self.postpro_fn is not None:
             sample = self.postpro_fn(sample)

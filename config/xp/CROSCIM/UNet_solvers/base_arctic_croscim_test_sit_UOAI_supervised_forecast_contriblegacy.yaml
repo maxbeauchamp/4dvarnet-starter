@@ -117,13 +117,15 @@ datamodule:
   domain_name: arctic_croscim
   domains:
     train:
-      time: {_target_: builtins.slice, _args_: ['2022-01-01', '2022-12-31']}
+      time: {_target_: builtins.slice, _args_: ['2022-05-01', '2022-12-31']}
     val:
       time:
         - {_target_: builtins.slice, _args_: ['2022-05-01', '2022-06-30']}
         - {_target_: builtins.slice, _args_: ['2022-07-01', '2022-12-31']}
     test:
-      time: {_target_: builtins.slice, _args_: ['2022-02-01', '2022-02-15']}
+      # 2021, not 2022 — matches the domains actually in the config at the
+      # 2026-05-21 baseline (commit e48d489), not the current xp's dates.
+      time: {_target_: builtins.slice, _args_: ['2021-02-01', '2021-02-15']}
   xrds_kw:
     patch_dims: { time: 15, yc: 256, xc: 256}
     strides: { time: 1, yc: 28, xc: 28}
