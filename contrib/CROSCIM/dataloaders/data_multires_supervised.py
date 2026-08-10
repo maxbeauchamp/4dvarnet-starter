@@ -1074,6 +1074,21 @@ class BaseDataModuleMultiRes(BaseDataModule):
 
             # TEST: Use XrDatasetMultiResTest with patch_dims_dict
             if split == "test":
+                # subsel_patch is only actually consulted for the finest
+                # resolution (multires[-1], see XrDatasetMultiResTestSupervised),
+                # so the cache filename must track ITS actual patch_dims/strides
+                # (patch_dims_dict/strides_test_dict), not the generic
+                # xrds_kw.patch_dims/strides — otherwise changing per-resolution
+                # test geometry silently reuses a cache built for the old one.
+                _finest_res = self.multires[-1]
+                _subsel_patch_yc = (
+                    self.patch_dims_dict[_finest_res]['yc'] if self.patch_dims_dict
+                    else self.xrds_kw['patch_dims']['yc']
+                )
+                _subsel_stride_yc = (
+                    self.strides_test_dict[_finest_res]['yc'] if self.strides_test_dict
+                    else self.xrds_kw['strides']['yc']
+                )
                 return XrDatasetMultiResTestSupervised(
                     multires=self.multires,
                     patch_dims_dict=self.patch_dims_dict,
@@ -1094,9 +1109,9 @@ class BaseDataModuleMultiRes(BaseDataModule):
                     pad=self.pads[2],
                     stride_test=True,
                     resize=self.resize,
-                    subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{self.xrds_kw['patch_dims']['yc']}_{self.xrds_kw['strides']['yc']}_resize_x{self.resize}.txt"
+                    subsel_patch_path=f"{self.subsel_path}/patch_in_ocean_{split}_{self.domain_name}_patch_{_subsel_patch_yc}_{_subsel_stride_yc}_resize_x{self.resize}.txt"
                 )
-            
+
             # TRAIN/VAL: Use XrDatasetMultiResTrain
             else:
                 return XrDatasetMultiResTrainSupervised(
