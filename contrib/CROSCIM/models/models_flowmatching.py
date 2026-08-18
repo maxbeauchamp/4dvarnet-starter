@@ -206,6 +206,17 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
             )
         return {"boundaries": bound, "mask_bound": mbound}
 
+    def _get_latent_bounds(self) -> Optional[Tuple[Optional[float], Optional[float]]]:
+        """(lower, upper) for FlowMatchingSampler's inference-time hard clamp
+        (``_bound_grad``) — same guard as the training-time censored loss in
+        ``base_step``, so the physical bound is actually enforced at sampling
+        time, not just encouraged through the loss."""
+        if not self.add_bounds:
+            return None
+        if self._fm_lower_bound is None and self._fm_upper_bound is None:
+            return None
+        return (self._fm_lower_bound, self._fm_upper_bound)
+
     # ─────────────────────────────────────────────────────────────────────────
     # base_step — FM training / validation loss
     # ─────────────────────────────────────────────────────────────────────────
@@ -346,7 +357,9 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
         solver.network = ema_net.module   # AveragedModel.module = averaged copy
         solver.sampler.model = solver.network
         try:
-            out = solver.sample_one(sbatch.input, **boundary_kwargs)
+            out = solver.sample_one(
+                sbatch.input, latent_bounds=self._get_latent_bounds(), **boundary_kwargs
+            )
         finally:
             solver.network = orig_net
             solver.sampler.model = orig_net
@@ -535,7 +548,8 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
             mbound = mbound.unsqueeze(0).to(device)
 
             pred = solver.sample_one(
-                y_single, boundaries=bound, mask_bound=mbound
+                y_single, boundaries=bound, mask_bound=mbound,
+                latent_bounds=self._get_latent_bounds(),
             )
 
             cache[(iy, ix)] = pred[0].cpu()
