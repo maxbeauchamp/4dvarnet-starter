@@ -418,6 +418,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
     # ─────────────────────────────────────────────────────────────────────────
 
     def forward(self, batch, res: int = 1) -> Tensor:
+        solver = self.solver.solvers[f"solver_x{res}"]
         if self.add_bounds and not self.training:
             res_key = f"patch_x{res}"
             if not hasattr(self, "_bound_inputs"):
@@ -425,7 +426,24 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
             if res_key not in self._bound_inputs:
                 self._bound_inputs[res_key] = []
             self._bound_inputs[res_key].append(batch.input.detach().cpu())
-        return self.solver.solvers[f"solver_x{res}"](batch)
+
+        if self.add_bounds:
+            # No neighbouring-patch boundary info exists yet at this stage
+            # (that only exists once _finalize_res's _apply_sequential_inference
+            # reconstructs patches in raster order and this pass's output gets
+            # superseded) — feed zero placeholders (mask_bound=0 => "no
+            # boundary info") so the network still receives the channel count
+            # it was built for, without fabricating values or leaking GT.
+            n_out = solver.n_output_channels
+            zeros = torch.zeros(
+                batch.input.shape[0], n_out, *batch.input.shape[2:],
+                device=batch.input.device, dtype=batch.input.dtype,
+            )
+            return solver.sample_one(
+                batch.input, boundaries=zeros, mask_bound=zeros,
+                latent_bounds=self._get_latent_bounds(),
+            )
+        return solver(batch)
 
     # ─────────────────────────────────────────────────────────────────────────
     # on_test_start: build boundary masks
