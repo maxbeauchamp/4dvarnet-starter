@@ -199,9 +199,23 @@ class FMTransformerWrapper(nn.Module):
                 (B, 1), self.resolution_km, device=device, dtype=dtype
             )
 
-        return self.transformer(
+        # The tokenizer patchifies with a fixed patch_size, which requires H
+        # and W to be exact multiples of it — not guaranteed for every domain
+        # shape (e.g. the x50 grid is 294x304; 294 isn't a multiple of 4).
+        # Pad up to the next multiple, run the transformer, then crop back.
+        p = self.transformer.patch_size
+        pad_h, pad_w = (-H) % p, (-W) % p
+        if pad_h or pad_w:
+            in_tensor = F.pad(in_tensor, (0, pad_w, 0, pad_h))
+            mesh = F.pad(mesh, (0, pad_w, 0, pad_h))
+            mask = F.pad(mask, (0, pad_w, 0, pad_h))
+
+        out = self.transformer(
             in_tensor, mesh, mask, pseudo_time, labels, resolution
         )
+        if pad_h or pad_w:
+            out = out[..., :H, :W]
+        return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
