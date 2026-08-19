@@ -173,6 +173,7 @@ model:
         rho: ${consistency_config.rho}
         sigma_data: ${consistency_config.sigma_data}
         sampling_steps: 15
+        add_bounds: ${model.add_bounds}
       solver_x10:
         _target_: contrib.CROSCIM.solvers.consistency_solver.ConsistencyUNetSolver
         n_input_channels: ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
@@ -183,6 +184,7 @@ model:
         rho: ${consistency_config.rho}
         sigma_data: ${consistency_config.sigma_data}
         sampling_steps: 15
+        add_bounds: ${model.add_bounds}
 
   norm_stats: ${datamodule.norm_stats}
   norm_stats_covs: ${datamodule.norm_stats_covs}

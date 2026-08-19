@@ -265,11 +265,17 @@ metrics:
     lx: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get0}']}
     lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
 
+# CM is a stochastic solver: sample_one() draws fresh noise per call, so
+# repeated test runs give different realizations — ensemble_test reruns
+# base_test n_members times and merges into pred_<var>(member=...) + spread_<var>.
+n_test_members: 5
+
 entrypoints:
-  - _target_: src.test.base_test
+  - _target_: src.test.ensemble_test
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
+    n_members: ${n_test_members}
     ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_CM_sit_supervised_wbounds.ckpt
     save_dir: ${paths.src}/results
 
