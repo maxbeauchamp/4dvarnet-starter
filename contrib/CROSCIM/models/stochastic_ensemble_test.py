@@ -59,6 +59,10 @@ class StochasticEnsembleTestMixin:
                   else torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 
         for m in range(n_members):
+            # Read by FM/CM's forward() to append to _bound_inputs only once
+            # per batch (on member 0) instead of once per member — the
+            # observations it stores don't vary across members.
+            self._ensemble_member_idx = m
             batch_m = orig_batch
 
             if dataloader_idx > 0:

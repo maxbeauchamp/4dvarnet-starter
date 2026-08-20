@@ -332,7 +332,11 @@ class Lit4dVarNet_CROSCIM_Consistency(StochasticEnsembleTestMixin, Lit4dVarNet_C
                 self._bound_inputs = {}
             if res_key not in self._bound_inputs:
                 self._bound_inputs[res_key] = []
-            self._bound_inputs[res_key].append(batch.input.detach().cpu())
+            # Observations don't vary across ensemble members (only the noise
+            # draw inside sample_one does) — append once per batch, not once
+            # per member, so _bound_inputs stays aligned with domain_masks.
+            if getattr(self, "_ensemble_member_idx", 0) == 0:
+                self._bound_inputs[res_key].append(batch.input.detach().cpu())
         return self.solver.solvers[f"solver_x{res}"](batch)
 
     # ── Override on_test_start: set up boundary masks ─────────────────────
@@ -711,66 +715,75 @@ class Lit4dVarNet_CROSCIM_Consistency(StochasticEnsembleTestMixin, Lit4dVarNet_C
 
         import torch.distributed as dist
 
-        res     = self.multires[dataloader_idx]
-        res_key = f"patch_x{res}"
+        res       = self.multires[dataloader_idx]
+        res_key   = f"patch_x{res}"
+        n_members = getattr(self, "n_test_members", 1)
 
-        # ── Flatten locally accumulated lists ────────────────────────────────
-        inputs       = list(itertools.chain(*self._bound_inputs.get(res_key, [])))
+        # Observations / domain mask are shared across members (only
+        # test_data/test_times/test_coords become member-nested lists, via
+        # StochasticEnsembleTestMixin.test_step, when n_members > 1).
         # (each element of _bound_inputs is (B, C_in, H, W); chain iterates dim-0)
-        times        = list(itertools.chain(*self.test_times[res_key]))
-        coords       = list(itertools.chain(*self.test_coords[res_key]))
-        stacked      = list(itertools.chain(*self.test_data[res_key]))
+        inputs       = list(itertools.chain(*self._bound_inputs.get(res_key, [])))
         domain_masks = list(getattr(self, '_bound_domain_masks', {}).get(res_key, []))
-        # Each stacked item is now (V, T, H, W) after chain over the batch dim
 
-        # ── Multi-GPU gathering ───────────────────────────────────────────────
-        if self.trainer.world_size > 1:
-            gathered = [None] * self.trainer.world_size
-            dist.all_gather_object(
-                gathered,
-                {
-                    'inputs':       [x.cpu() for x in inputs],
-                    'times':        [t.cpu() for t in times],
-                    'coords':       coords,
-                    'stacked':      [s.cpu() for s in stacked],
-                    'domain_masks': [m.cpu() for m in domain_masks],
-                }
-            )
-            inputs       = [x for g in gathered for x in g['inputs']]
-            times        = [t for g in gathered for t in g['times']]
-            coords       = [c for g in gathered for c in g['coords']]
-            stacked      = [s for g in gathered for s in g['stacked']]
-            domain_masks = [m for g in gathered for m in g['domain_masks']]
+        results = []
+        for m in range(n_members):
+            if n_members > 1:
+                times   = list(itertools.chain(*self.test_times[res_key][m]))
+                coords  = list(itertools.chain(*self.test_coords[res_key][m]))
+                stacked = list(itertools.chain(*self.test_data[res_key][m]))
+            else:
+                times   = list(itertools.chain(*self.test_times[res_key]))
+                coords  = list(itertools.chain(*self.test_coords[res_key]))
+                stacked = list(itertools.chain(*self.test_data[res_key]))
+            # Each stacked item is now (V, T, H, W) after chain over the batch dim
 
-        # ── Sequential inference on rank 0, broadcast to all ─────────────────
-        if self.trainer.world_size > 1:
-            if self.trainer.is_global_zero:
+            cur_inputs, cur_times, cur_coords = inputs, times, coords
+            cur_stacked, cur_domain_masks = stacked, domain_masks
+
+            # ── Multi-GPU gathering ───────────────────────────────────────────
+            if self.trainer.world_size > 1:
+                gathered = [None] * self.trainer.world_size
+                dist.all_gather_object(
+                    gathered,
+                    {
+                        'inputs':       [x.cpu() for x in cur_inputs],
+                        'times':        [t.cpu() for t in cur_times],
+                        'coords':       cur_coords,
+                        'stacked':      [s.cpu() for s in cur_stacked],
+                        'domain_masks': [dm.cpu() for dm in cur_domain_masks],
+                    }
+                )
+                cur_inputs       = [x for g in gathered for x in g['inputs']]
+                cur_times        = [t for g in gathered for t in g['times']]
+                cur_coords       = [c for g in gathered for c in g['coords']]
+                cur_stacked      = [s for g in gathered for s in g['stacked']]
+                cur_domain_masks = [dm for g in gathered for dm in g['domain_masks']]
+
+            # ── Sequential inference on rank 0, broadcast to all ─────────────
+            if self.trainer.world_size > 1 and not self.trainer.is_global_zero:
+                result = None
+            else:
                 new_stacked = self._apply_sequential_inference(
-                    res, inputs, coords, stacked,
-                    domain_masks=domain_masks or None,
+                    res, cur_inputs, cur_coords, cur_stacked,
+                    domain_masks=cur_domain_masks or None,
                 )
                 result = self.aggregate_batches(
-                    idx_rec, new_stacked, times, dataloader_idx,
+                    idx_rec, new_stacked, cur_times, dataloader_idx,
                     metrics=False, write_netcdf=write_netcdf,
-                    patch_coords=coords,
+                    patch_coords=cur_coords,
+                    member=(m if n_members > 1 else None),
                 )
                 print(result)
-            else:
-                result = None
-            container = [result]
-            dist.broadcast_object_list(container, src=0)
-            self.aggregate_results[res_key] = container[0]
-        else:
-            new_stacked = self._apply_sequential_inference(
-                res, inputs, coords, stacked,
-                domain_masks=domain_masks or None,
-            )
-            self.aggregate_results[res_key] = self.aggregate_batches(
-                idx_rec, new_stacked, times, dataloader_idx,
-                metrics=False, write_netcdf=write_netcdf,
-                patch_coords=coords,
-            )
-            print(self.aggregate_results[res_key])
+
+            if self.trainer.world_size > 1:
+                container = [result]
+                dist.broadcast_object_list(container, src=0)
+                result = container[0]
+
+            results.append(result)
+
+        self.aggregate_results[res_key] = results if n_members > 1 else results[0]
 
     # ── Utility: save/load EMA models ─────────────────────────────────
     def save_ema_models(self, base_path: str):
