@@ -97,8 +97,7 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
     time_index: index temporel à tracer
     """
     # charge datasets
-    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(record=10,
-                                                     sample=0) for res in multires}
+    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(sample=0) for res in multires}
 
     nrows = len(vars_to_plot)
     ncols = len(multires)
