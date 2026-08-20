@@ -25,6 +25,7 @@ import pytorch_lightning as pl
 from torch import Tensor
 
 from .models_supervised import Lit4dVarNet_CROSCIM_Supervised
+from .stochastic_ensemble_test import StochasticEnsembleTestMixin
 from contrib.CROSCIM.solvers.consistency_solver import (
     ConsistencyUNet,
     ConsistencyUNetConfig,
@@ -194,7 +195,7 @@ class PairwiseConsistencyTraining:
 # Lightning Module
 # ──────────────────────────────────────────────────────────────────────
 
-class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
+class Lit4dVarNet_CROSCIM_Consistency(StochasticEnsembleTestMixin, Lit4dVarNet_CROSCIM_Supervised):
     """
     Consistency-model variant of the CROSCIM multi-resolution Lightning module.
     
@@ -213,6 +214,7 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         self,
         consistency_config: dict = None,
         add_bounds: bool = False,
+        n_test_members: int = 1,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -220,6 +222,7 @@ class Lit4dVarNet_CROSCIM_Consistency(Lit4dVarNet_CROSCIM_Supervised):
         cfg = consistency_config or {}
 
         self.add_bounds = add_bounds
+        self.n_test_members = n_test_members
 
         # Consistency hyper-parameters
         self.sigma_min = cfg.get("sigma_min", 0.002)

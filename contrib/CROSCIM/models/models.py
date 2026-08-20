@@ -2248,13 +2248,14 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         # merge all time steps for final NetCDFs
         return xr.concat(netcdf_final, dim="time").sortby("time")
 
-    def aggregate_batches(self, idx_rec, 
+    def aggregate_batches(self, idx_rec,
                         test_data, test_times,
                         dataloader_idx=None,
                         metrics=False,
                         write_netcdf=False,
                         use_datamodule=False,
-                        patch_coords=None):
+                        patch_coords=None,
+                        member=None):
 
         res = self.multires[dataloader_idx]
         res_key = f"patch_x{res}"
@@ -2382,7 +2383,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                 print(metrics.to_frame(name="Metrics").to_markdown())
             # save NetCDFs
             time = [ datetime.datetime.strptime(str(t)[:10], "%Y-%m-%d").strftime("%Y%m%d") for t in test_data_unnorm.time.data ]
-            file = f'test_data_{time[0]}_{time[-1]}_patch_x{res}.nc'
+            member_suffix = f'_member{member}' if member is not None else ''
+            file = f'test_data_{time[0]}_{time[-1]}_patch_x{res}{member_suffix}.nc'
             if self.logger and write_netcdf:
                  test_data_unnorm.attrs['croscim_model_class'] = type(self).__name__
                  test_data_unnorm.to_netcdf(Path(self.logger.log_dir) / file)

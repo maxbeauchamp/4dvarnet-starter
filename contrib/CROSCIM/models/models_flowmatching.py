@@ -40,6 +40,7 @@ from torch import Tensor
 from torch.optim.swa_utils import AveragedModel
 
 from .models_supervised import Lit4dVarNet_CROSCIM_Supervised
+from .stochastic_ensemble_test import StochasticEnsembleTestMixin
 from contrib.CROSCIM.solvers.flowmatching_solver import (
     FMSolver,
     FMGradSolvers,
@@ -83,7 +84,7 @@ def _make_ema(module: nn.Module, decay: float) -> AveragedModel:
 # Lightning Module
 # ─────────────────────────────────────────────────────────────────────────────
 
-class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
+class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_CROSCIM_Supervised):
     """Flow Matching variant of the CROSCIM multi-resolution Lightning module.
 
     Replaces the iterative 4DVarNet solver with a conditional FM training loop.
@@ -120,12 +121,14 @@ class Lit4dVarNet_CROSCIM_FlowMatching(Lit4dVarNet_CROSCIM_Supervised):
         self,
         fm_config: Optional[dict] = None,
         add_bounds: bool = False,
+        n_test_members: int = 1,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         cfg = fm_config or {}
         self.add_bounds = add_bounds
+        self.n_test_members = n_test_members
 
         # ── FM hyper-parameters ───────────────────────────────────────────
         self._fm_lr                   = cfg.get("lr", 1e-4)

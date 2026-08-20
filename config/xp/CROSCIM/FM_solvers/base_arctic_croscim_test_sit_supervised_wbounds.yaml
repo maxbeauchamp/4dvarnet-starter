@@ -187,6 +187,7 @@ model:
   prior_weight: ${optim_weight}
   frcst_lead: 0
   add_bounds: True
+  n_test_members: ${n_test_members}
 
   fm_config: ${fm_config}
 
@@ -249,17 +250,18 @@ metrics:
     lx: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get0}']}
     lt: {_target_: src.utils.pipe, _partial_: true, fns: ['${metrics.psd_scores}', '${metrics.get1}']}
 
-# FM is a stochastic solver: sample_one() draws fresh noise per call, so
-# repeated test runs give different realizations — ensemble_test reruns
-# base_test n_members times and merges into pred_<var>(member=...) + spread_<var>.
+# FM is a stochastic solver: sample_one() draws fresh noise per call. With
+# n_test_members > 1, test_step (via StochasticEnsembleTestMixin) generates
+# that many members per batch inside this single test pass — dataloader and
+# checkpoint are loaded once, not once per member — and writes one NetCDF
+# per member (test_data_..._member{m}.nc).
 n_test_members: 5
 
 entrypoints:
-  - _target_: src.test.ensemble_test
+  - _target_: src.test.base_test
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    n_members: ${n_test_members}
     ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
     save_dir: ${paths.src}/results
 
