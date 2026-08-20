@@ -262,7 +262,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
+    ckpt_path: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised_wbounds.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

@@ -25,7 +25,7 @@ import pytorch_lightning as pl
 from torch import Tensor
 
 from .models_supervised import Lit4dVarNet_CROSCIM_Supervised
-from .stochastic_ensemble_test import StochasticEnsembleTestMixin
+from .stochastic_ensemble_test import StochasticEnsembleTestMixin, write_spread_netcdf
 from contrib.CROSCIM.solvers.consistency_solver import (
     ConsistencyUNet,
     ConsistencyUNetConfig,
@@ -782,6 +782,9 @@ class Lit4dVarNet_CROSCIM_Consistency(StochasticEnsembleTestMixin, Lit4dVarNet_C
                 result = container[0]
 
             results.append(result)
+
+        if self.trainer.world_size <= 1 or self.trainer.is_global_zero:
+            write_spread_netcdf(self, res, n_members, write_netcdf=write_netcdf)
 
         self.aggregate_results[res_key] = results if n_members > 1 else results[0]
 

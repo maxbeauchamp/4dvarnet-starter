@@ -23,10 +23,43 @@ addition to its normal base), and set ``self.n_test_members`` from config in
 """
 from __future__ import annotations
 
+import glob
 import itertools
+import os
 
 import numpy as np
 import torch
+import xarray as xr
+
+
+def write_spread_netcdf(lit_mod, res, n_members, write_netcdf=True):
+    """After ``_finalize_res`` has written one NetCDF per member (via
+    ``aggregate_batches(..., member=m)``), read them back and write one more
+    NetCDF per test window where every ``pred_<var>`` is replaced by
+    ``spread_<var>`` = std across the ``n_members`` values. ``tgt_<var>``/obs
+    fields are taken from member 0 unchanged (deterministic, don't vary by
+    member). No-op when there is nothing to merge (n_members <= 1,
+    write_netcdf=False, or no logger)."""
+    if not (write_netcdf and lit_mod.logger and n_members > 1):
+        return
+    log_dir = lit_mod.logger.log_dir
+    member0_files = sorted(glob.glob(os.path.join(log_dir, f"test_data_*_patch_x{res}_member0.nc")))
+    for f0 in member0_files:
+        out_path = f0[: -len("_member0.nc")] + ".nc"
+        member_paths = [f0[: -len("_member0.nc")] + f"_member{m}.nc" for m in range(n_members)]
+        member_ds = [xr.open_dataset(p) for p in member_paths]
+
+        pred_vars = [v for v in member_ds[0].data_vars if v.startswith("pred_")]
+        merged = member_ds[0].copy(deep=True)
+        for var in pred_vars:
+            spread = xr.concat([ds[var] for ds in member_ds], dim="member").std(dim="member")
+            del merged[var]
+            merged[f"spread_{var[len('pred_'):]}"] = spread
+
+        merged.to_netcdf(out_path)
+        print(f"[ensemble] wrote {out_path} (spread over {n_members} members)")
+        for ds in member_ds:
+            ds.close()
 
 
 class StochasticEnsembleTestMixin:
@@ -225,5 +258,8 @@ class StochasticEnsembleTestMixin:
                 )
                 print(result)
                 results.append(result)
+
+        if self.trainer.world_size <= 1 or self.trainer.is_global_zero:
+            write_spread_netcdf(self, res, n_members, write_netcdf=write_netcdf)
 
         self.aggregate_results[res_key] = results
