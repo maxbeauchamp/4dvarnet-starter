@@ -102,7 +102,7 @@ trainer:
       monitor: val_loss
       save_top_k: 3
       save_last: true
-      filename: '{val_loss:.5f}-{epoch:03d}'
+      filename: 'GNN-{val_loss:.5f}-{epoch:03d}'
 
 # ===== DATAMODULE =====
 # Same as CM / UNet: the TrainingItem already contains lat, lon, land_mask.

@@ -2384,6 +2384,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             time = [ datetime.datetime.strptime(str(t)[:10], "%Y-%m-%d").strftime("%Y%m%d") for t in test_data_unnorm.time.data ]
             file = f'test_data_{time[0]}_{time[-1]}_patch_x{res}.nc'
             if self.logger and write_netcdf:
+                 test_data_unnorm.attrs['croscim_model_class'] = type(self).__name__
                  test_data_unnorm.to_netcdf(Path(self.logger.log_dir) / file)
                  print(Path(self.trainer.log_dir) / file)
                  if metrics:

@@ -36,9 +36,29 @@ to SIT):
    a post-processing step on the already-produced file — the raw per-pixel
    acquisition timestamps aren't retained past that point today.
 
-Usage:
+The input file covers the full analysis+forecast window; by default only the
+last 3 time steps (the forecast leads — lead-0/1/2, same N_FORECAST=3
+convention used throughout the benchmark notebooks) are kept in the output.
+Pass --n-forecast to change that, or a value >= the file's time length to
+keep everything.
+
+------------------------------------------------------------------------
+How to run
+------------------------------------------------------------------------
+Minimal (keeps only the last 3 forecast time steps, default):
+
+    python postprocess_forecast_netcdf.py IN.nc OUT.nc
+
+Document what tgt_<var> actually is for this file's experiment config
+(recommended — see point 2 above):
+
     python postprocess_forecast_netcdf.py IN.nc OUT.nc \\
-        [--tgt-description "tgt_SIC = asip_sic (ASIP obs), not models_SIC"]
+        --tgt-description "tgt_SIC = asip_sic (ASIP obs), not models_SIC"
+
+Keep a different number of trailing time steps, or the whole file:
+
+    python postprocess_forecast_netcdf.py IN.nc OUT.nc --n-forecast 5
+    python postprocess_forecast_netcdf.py IN.nc OUT.nc --n-forecast 999999
 """
 from __future__ import annotations
 
@@ -114,8 +134,13 @@ def _var_comment(name: str, tgt_description: str | None) -> str | None:
     return None
 
 
-def postprocess(in_path: str, out_path: str, tgt_description: str | None = None) -> None:
+def postprocess(in_path: str, out_path: str, tgt_description: str | None = None,
+                 n_forecast: int = 3) -> None:
     ds = xr.open_dataset(in_path)
+
+    # ── 0. Keep only the last n_forecast time steps (forecast leads) ───────
+    if "time" in ds.dims and n_forecast < ds.sizes["time"]:
+        ds = ds.isel(time=slice(-n_forecast, None))
 
     # ── 1. CF-compliant georeferencing ─────────────────────────────────────
     ds["polar_stereographic"] = xr.DataArray(0, attrs=dict(_PROJ_ATTRS))
@@ -172,8 +197,13 @@ def main():
         help="What tgt_<var> actually is in THIS file's config, e.g. "
              "'tgt_SIC = asip_sic (ASIP obs, not models_SIC)'. "
              "Embedded verbatim into tgt_* variable comments.")
+    ap.add_argument(
+        "--n-forecast", type=int, default=3,
+        help="Number of trailing time steps to keep (default: 3, the "
+             "forecast leads — same N_FORECAST convention as the benchmark "
+             "notebooks). Use a value >= the file's time length to keep everything.")
     args = ap.parse_args()
-    postprocess(args.in_path, args.out_path, args.tgt_description)
+    postprocess(args.in_path, args.out_path, args.tgt_description, args.n_forecast)
 
 
 if __name__ == "__main__":

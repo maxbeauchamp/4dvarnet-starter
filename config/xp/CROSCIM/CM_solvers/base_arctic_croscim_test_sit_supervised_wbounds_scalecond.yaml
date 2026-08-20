@@ -88,7 +88,7 @@ trainer:
       monitor: val_loss
       save_top_k: 3
       save_last: true
-      filename: '{val_consistency_loss:.5f}-{epoch:03d}'
+      filename: 'CM-{val_consistency_loss:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: contrib.CROSCIM.dataloaders.data_multires_supervised.BaseDataModuleMultiRes
