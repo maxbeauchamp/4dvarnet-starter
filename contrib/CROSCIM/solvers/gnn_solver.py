@@ -72,6 +72,8 @@ class GNNSolver(nn.Module):
     n_heads           : multi-head attention heads
     pos_dim           : positional-encoding embedding dimension (0 = disabled)
     dropout           : dropout throughout the network
+    n_levels          : number of ×2 pooling levels (1 = flat, previous
+                         behaviour; >1 = Graph-UNet, see MultiResGridGNN)
     """
 
     def __init__(
@@ -83,6 +85,7 @@ class GNNSolver(nn.Module):
         n_heads:           int   = 4,
         pos_dim:           int   = 16,
         dropout:           float = 0.1,
+        n_levels:          int   = 1,
     ) -> None:
         super().__init__()
         self.n_input_channels  = n_input_channels
@@ -96,6 +99,7 @@ class GNNSolver(nn.Module):
             n_heads      = n_heads,
             pos_dim      = pos_dim,
             dropout      = dropout,
+            n_levels     = n_levels,
         )
 
     # ------------------------------------------------------------------

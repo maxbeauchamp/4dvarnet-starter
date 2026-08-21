@@ -20,12 +20,28 @@ For each node:
 Positional encoding is injected from lat/lon (or from normalised pixel
 coordinates as a fallback).
 
+Pooling
+-------
+By default (``n_levels=1``) the whole grid is kept at full resolution
+throughout, which means every GNNBlock attends over the entire H×W node set
+(e.g. ~65k nodes for a 256×256 patch) with only a 3×3 receptive field per
+layer — the receptive field grows linearly with depth, unlike a UNet's
+exponential growth via downsampling. Setting ``n_levels>1`` turns the stack
+into a Graph-UNet: ``n_levels`` steps of (GNNBlock(s) at current resolution
+→ strided-conv downsample ×2), a bottleneck at the coarsest resolution, then
+``n_levels`` steps of (upsample ×2 → fuse with the matching skip connection
+→ GNNBlock(s)). This both shrinks the node count at deeper layers and lets
+information cross large physical distances in few hops. ``n_levels=1`` is
+the exact previous flat behaviour (checkpoint-compatible).
+
 Classes
 -------
 PositionalEncoding2D       Lat/lon → learnable embedding (B, pos_dim, H, W)
 SpatialGraphAttention      One graph-attention message-passing step
 GNNBlock                   Attention + FFN with residual
-MultiResGridGNN            Full encoder-decoder pipeline
+GNNDownBlock                GNNBlock(s) + strided-conv downsample (Graph-UNet encoder step)
+GNNUpBlock                  Upsample + skip fusion + GNNBlock(s) (Graph-UNet decoder step)
+MultiResGridGNN             Full encoder-decoder pipeline (flat, or Graph-UNet if n_levels>1)
 """
 
 import math
@@ -240,6 +256,54 @@ class GNNBlock(nn.Module):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Graph-UNet encoder/decoder steps (used when n_levels > 1)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class GNNDownBlock(nn.Module):
+    """GNNBlock(s) at the current resolution, then strided-conv downsample ×2.
+
+    Invalid nodes are zeroed before the strided conv so land does not leak
+    into coarse cells; the mask itself is downsampled with max-pool (a coarse
+    cell is valid if any of its 4 finer cells was valid).
+    """
+
+    def __init__(self, ch: int, n_heads: int, n_blocks: int, dropout: float) -> None:
+        super().__init__()
+        self.blocks = nn.ModuleList([
+            GNNBlock(ch, ch, n_heads=n_heads, ff_mult=4, dropout=dropout)
+            for _ in range(n_blocks)
+        ])
+        self.down = nn.Conv2d(ch, ch, kernel_size=2, stride=2)
+
+    def forward(self, x: Tensor, mask: Tensor):
+        for blk in self.blocks:
+            x = blk(x, mask)
+        skip = x
+        x_down = self.down(x * mask)
+        mask_down = F.max_pool2d(mask, kernel_size=2, stride=2)
+        return x_down, mask_down, skip
+
+
+class GNNUpBlock(nn.Module):
+    """Upsample ×2, fuse with the matching skip connection, then GNNBlock(s)."""
+
+    def __init__(self, ch: int, n_heads: int, n_blocks: int, dropout: float) -> None:
+        super().__init__()
+        self.fuse = nn.Conv2d(2 * ch, ch, kernel_size=1)
+        self.blocks = nn.ModuleList([
+            GNNBlock(ch, ch, n_heads=n_heads, ff_mult=4, dropout=dropout)
+            for _ in range(n_blocks)
+        ])
+
+    def forward(self, x: Tensor, skip: Tensor, mask: Tensor) -> Tensor:
+        x = F.interpolate(x, size=skip.shape[-2:], mode="nearest")
+        x = self.fuse(torch.cat([x, skip], dim=1))
+        for blk in self.blocks:
+            x = blk(x, mask)
+        return x
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Full GNN pipeline
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -263,10 +327,16 @@ class MultiResGridGNN(nn.Module):
         in_channels  : C_in  (n_input_vars × T)
         out_channels : C_out (n_target_vars × T)
         hidden_dim   : width of all internal GNN layers
-        n_layers     : number of GNNBlock stacked
+        n_layers     : number of GNNBlock stacked (flat mode), or number of
+                       GNNBlocks per resolution level (Graph-UNet mode)
         n_heads      : attention heads (hidden_dim must be divisible)
         pos_dim      : dimension of positional encoding (0 = disabled)
         dropout      : dropout rate throughout the network
+        n_levels     : number of ×2 pooling levels. 1 (default) = flat,
+                       full-resolution stack, identical to the previous
+                       behaviour. >1 = Graph-UNet: n_levels encoder steps
+                       (GNNBlock(s) + downsample ×2), a bottleneck, then
+                       n_levels decoder steps (upsample ×2 + skip + GNNBlock(s)).
     """
 
     def __init__(
@@ -278,11 +348,13 @@ class MultiResGridGNN(nn.Module):
         n_heads:      int = 4,
         pos_dim:      int = 16,
         dropout:      float = 0.1,
+        n_levels:     int = 1,
     ) -> None:
         super().__init__()
         self.pos_dim      = pos_dim
         self.in_channels  = in_channels
         self.out_channels = out_channels
+        self.n_levels     = n_levels
 
         if pos_dim > 0:
             self.pos_enc = PositionalEncoding2D(pos_dim)
@@ -292,12 +364,28 @@ class MultiResGridGNN(nn.Module):
         # Input projection
         self.input_proj = nn.Conv2d(total_in, hidden_dim, kernel_size=1)
 
-        # Stack of GNN blocks (all same hidden_dim)
-        self.gnn_blocks = nn.ModuleList([
-            GNNBlock(hidden_dim, hidden_dim, n_heads=n_heads,
-                     ff_mult=4, dropout=dropout)
-            for _ in range(n_layers)
-        ])
+        if n_levels <= 1:
+            # Flat stack of GNN blocks (all same hidden_dim)
+            self.gnn_blocks = nn.ModuleList([
+                GNNBlock(hidden_dim, hidden_dim, n_heads=n_heads,
+                         ff_mult=4, dropout=dropout)
+                for _ in range(n_layers)
+            ])
+        else:
+            # Graph-UNet: encoder / bottleneck / decoder
+            self.down_blocks = nn.ModuleList([
+                GNNDownBlock(hidden_dim, n_heads, n_layers, dropout)
+                for _ in range(n_levels)
+            ])
+            self.bottleneck = nn.ModuleList([
+                GNNBlock(hidden_dim, hidden_dim, n_heads=n_heads,
+                         ff_mult=4, dropout=dropout)
+                for _ in range(n_layers)
+            ])
+            self.up_blocks = nn.ModuleList([
+                GNNUpBlock(hidden_dim, n_heads, n_layers, dropout)
+                for _ in range(n_levels)
+            ])
 
         # Output projection
         self.output_proj = nn.Conv2d(hidden_dim, out_channels, kernel_size=1)
@@ -348,9 +436,32 @@ class MultiResGridGNN(nn.Module):
         # Input projection
         h = self.input_proj(x_clean)                         # (B, hidden_dim, H, W)
 
-        # GNN blocks
-        for block in self.gnn_blocks:
-            h = block(h, valid_mask)
+        if self.n_levels <= 1:
+            # GNN blocks
+            for block in self.gnn_blocks:
+                h = block(h, valid_mask)
+        else:
+            # Graph-UNet: pad to a multiple of 2**n_levels so every pooling
+            # step divides evenly, then crop back before the output projection.
+            factor = 2 ** self.n_levels
+            pad_h = (-H) % factor
+            pad_w = (-W) % factor
+            h = F.pad(h, (0, pad_w, 0, pad_h), "constant", 0.0)
+            mask = F.pad(valid_mask, (0, pad_w, 0, pad_h), "constant", 0.0)
+
+            skips, masks_at_level = [], [mask]
+            for down in self.down_blocks:
+                h, mask, skip = down(h, mask)
+                skips.append(skip)
+                masks_at_level.append(mask)
+
+            for block in self.bottleneck:
+                h = block(h, masks_at_level[-1])
+
+            for level in reversed(range(self.n_levels)):
+                h = self.up_blocks[level](h, skips[level], masks_at_level[level])
+
+            h = h[:, :, :H, :W]                               # crop back padding
 
         # Output projection
         out = self.output_proj(h)                            # (B, C_out, H, W)

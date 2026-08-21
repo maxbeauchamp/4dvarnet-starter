@@ -70,10 +70,14 @@ computed:
 # ===== GNN ARCHITECTURE HYPER-PARAMETERS =====
 gnn_config:
   hidden_dim: 128    # width of all internal GNN layers
-  n_layers:   6      # number of GNNBlock stacked (attention + FFN)
+  n_layers:   6      # number of GNNBlock stacked per resolution level (attention + FFN)
   n_heads:    4      # multi-head attention heads (hidden_dim must be divisible)
   pos_dim:    16     # positional-encoding embedding dim  (0 = disabled)
   dropout:    0.1    # dropout throughout the network
+  n_levels:   1      # number of x2 pooling levels: 1 = flat full-resolution stack
+                      # (previous behaviour, checkpoint-compatible). >1 = Graph-UNet
+                      # (pool/GNNBlock/unpool), lighter and with a larger receptive
+                      # field per layer -- see GNN.py docstring.
 
 trainer:
   _target_: pytorch_lightning.Trainer
@@ -201,6 +205,7 @@ model:
         n_heads:    ${gnn_config.n_heads}
         pos_dim:    ${gnn_config.pos_dim}
         dropout:    ${gnn_config.dropout}
+        n_levels:   ${gnn_config.n_levels}
       solver_x10:
         _target_: contrib.CROSCIM.solvers.gnn_solver.GNNSolver
         n_input_channels:  ${python_eval:"len(${computed.input_vars_all}) * ${var_config.time_steps.patch_x10}"}
@@ -210,6 +215,7 @@ model:
         n_heads:    ${gnn_config.n_heads}
         pos_dim:    ${gnn_config.pos_dim}
         dropout:    ${gnn_config.dropout}
+        n_levels:   ${gnn_config.n_levels}
 
 # ===== OPTIMISATION WEIGHTS =====
 optim_weight:
