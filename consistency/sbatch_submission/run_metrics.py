@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import papermill as pm
@@ -66,19 +67,34 @@ def main():
     }
     params.update(method_cfg.get("params") or {})
 
-    print(f"[run_metrics] {args.method} / {args.xp} -> {notebook_out} (n_members={n_members})")
-    print(f"[run_metrics] params = {params}")
+    print(f"\n{'='*88}\n[run_metrics] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
+    print(f"[run_metrics] {args.method} / {args.xp} -> {notebook_out} (n_members={n_members})", flush=True)
+    print(f"[run_metrics] params = {params}", flush=True)
     # IMPORTANT: see the matching comment in run_training.py — force cwd to the
     # notebook's own directory so relative paths (and checkpoint lookup under
     # LOG_DIR) resolve exactly as they would for run_training.py or a manually
     # reopened notebook.
+    # log_output=True: without it, papermill only captures each cell's stdout
+    # into the OUTPUT .ipynb -- nothing is streamed live to this process's
+    # stdout/stderr (i.e. nothing shows up in a redirected sbatch .out log)
+    # until the whole notebook finishes. That made it impossible to tell, from
+    # the .out file alone, whether a run was doing the expected fast metrics
+    # pass or had silently fallen back to retraining from scratch (no matching
+    # checkpoint found) for 2000 epochs. With log_output=True, every print()
+    # inside the notebook (checkpoint-found/not-found messages, the
+    # EpochHeartbeat "[progress] epoch X/Y" lines, ensemble-generation and
+    # metrics-serialization prints) is now prefixed with the cell index and
+    # streamed immediately.
     pm.execute_notebook(
         str(notebook_in),
         str(notebook_out),
         parameters=params,
         cwd=str(notebook_in.parent),
+        log_output=True,
+        stdout_file=sys.stdout,
+        stderr_file=sys.stderr,
     )
-    print(f"[run_metrics] done: {metrics_csv}")
+    print(f"[run_metrics] done: {metrics_csv}", flush=True)
 
 
 if __name__ == "__main__":

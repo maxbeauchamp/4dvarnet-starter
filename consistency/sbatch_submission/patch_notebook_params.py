@@ -156,9 +156,24 @@ def apply_substitutions(nb) -> None:
         def _attach_heartbeat(m: re.Match) -> str:
             indent, trainer_expr = m.group(1), m.group(2)
             attach_line = f"{indent}{trainer_expr}.callbacks.append(EpochHeartbeat(every_n_epochs=1))\n"
-            if attach_line in src:
-                return m.group(0)
-            return attach_line + m.group(0)
+            # Printed right before trainer.fit(): with log_output=True (now set
+            # in run_training.py/run_metrics.py), this is the first thing that
+            # shows up in a redirected sbatch .out log for this cell, making it
+            # immediately clear whether the run is about to do a full 2000-epoch
+            # training pass (resume_ckpt=None -> starting from scratch, or a
+            # stale/mismatched checkpoint) or a fast resume/no-op (checkpoint
+            # already at MAX_EPOCHS) -- previously indistinguishable from the
+            # outside until the whole notebook finished.
+            diag_line = (
+                f"{indent}print(f'[TRAINING] resume_ckpt={{resume_ckpt!r}} | "
+                f"MAX_EPOCHS={{MAX_EPOCHS}}', flush=True)\n"
+            )
+            prefix = ""
+            if attach_line not in src:
+                prefix += attach_line
+            if diag_line not in src:
+                prefix += diag_line
+            return prefix + m.group(0)
 
         src = _TRAINER_FIT_RE.sub(_attach_heartbeat, src)
         cell.source = src

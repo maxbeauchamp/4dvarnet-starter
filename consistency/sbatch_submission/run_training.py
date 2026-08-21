@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import papermill as pm
@@ -67,8 +68,9 @@ def main():
     }
     params.update(method_cfg.get("params") or {})
 
-    print(f"[run_training] {args.method} / {args.xp} -> {notebook_out}")
-    print(f"[run_training] params = {params}")
+    print(f"\n{'='*88}\n[run_training] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
+    print(f"[run_training] {args.method} / {args.xp} -> {notebook_out}", flush=True)
+    print(f"[run_training] params = {params}", flush=True)
     # IMPORTANT: papermill's default working directory is the CALLER's cwd, not
     # the notebook's own directory. All relative paths inside the notebooks
     # (LOG_DIR, SPDE_PATH, sys.path.append('../..'), ...) are written assuming
@@ -76,13 +78,20 @@ def main():
     # here to match that, otherwise checkpoints/logs would land under
     # sbatch_submission/ instead of Notebooks/Notebooks_<XP>/, and a manually
     # reopened notebook would not find them.
+    # log_output=True: without it, cell stdout is only captured into the
+    # OUTPUT .ipynb, never streamed live -- see the matching comment in
+    # run_metrics.py for why that made it impossible to tell, from a
+    # redirected sbatch .out log alone, what phase a run was actually in.
     pm.execute_notebook(
         str(notebook_in),
         str(notebook_out),
         parameters=params,
         cwd=str(notebook_in.parent),
+        log_output=True,
+        stdout_file=sys.stdout,
+        stderr_file=sys.stderr,
     )
-    print(f"[run_training] done: {notebook_out}")
+    print(f"[run_training] done: {notebook_out}", flush=True)
 
 
 if __name__ == "__main__":
