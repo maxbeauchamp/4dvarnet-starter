@@ -72,6 +72,11 @@ def build_parameters_cell() -> "cl.nbformat.NotebookNode":
         + 'RESET_TRAINING = False\n'
         + 'CUDA_VISIBLE_DEVICES = "0"\n'
         + 'METRICS_CSV = "results/metrics.csv"\n'
+        + 'SKIP_TRAINING = False    # run_metrics.py sets this True: load weights from\n'
+        + '                         # the checkpoint directly instead of calling\n'
+        + '                         # trainer.fit(), which can silently retrain for the\n'
+        + '                         # full schedule if the checkpoint does not cleanly\n'
+        + '                         # resume to exactly MAX_EPOCHS.\n'
     )
     cell.metadata["tags"] = ["parameters"]
     return cell

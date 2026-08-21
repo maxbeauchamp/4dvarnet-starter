@@ -64,6 +64,11 @@ def main():
         "RESET_TRAINING": False,
         "CUDA_VISIBLE_DEVICES": args.cuda_device,
         "METRICS_CSV": str(metrics_csv),
+        # Metrics-only: load whatever checkpoint is on disk directly rather than
+        # calling trainer.fit(), which previously could silently retrain for the
+        # full 2000-epoch schedule whenever the checkpoint didn't cleanly resume
+        # to exactly MAX_EPOCHS (observed in practice on GP).
+        "SKIP_TRAINING": True,
     }
     params.update(method_cfg.get("params") or {})
 
