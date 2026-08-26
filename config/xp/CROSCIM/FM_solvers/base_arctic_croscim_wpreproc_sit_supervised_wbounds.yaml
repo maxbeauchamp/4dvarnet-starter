@@ -51,6 +51,7 @@ fm_config:
   ema_decay: 0.999
   lower_bound: -0.693  # ~0 in normalised SIT space (μ=0.57,σ=0.82 → (0-0.57)/0.82≈-0.69)
   upper_bound: null
+  tv_weight: {50: 0.01}  # smoothness penalty at x50 only, to reduce patch-boundary blockiness; starting value, tune from val curves
 
 trainer:
   _target_: pytorch_lightning.Trainer
@@ -64,7 +65,7 @@ trainer:
   accumulate_grad_batches: 2
   limit_train_batches: 1000.
   limit_val_batches: 500.
-  max_epochs: 500
+  max_epochs: 2240  # switch to x10 at epoch/2=1120; resuming from the epoch-870 checkpoint gives x50 a 250-epoch fine-tune window (870->1120) before switching back
   precision: bf16-mixed
   logger:
     _target_: pytorch_lightning.loggers.CSVLogger
@@ -212,7 +213,7 @@ entrypoints:
     trainer: ${trainer}
     lit_mod: ${model}
     dm: ${datamodule}
-    #ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised.ckpt
+    ckpt: ${paths.src}/4dvarnet-starter/ckpt/CROSCIM/base_croscim_FM_sit_supervised_wbounds.ckpt
     save_dir: ${paths.src}/results
 
 defaults:

@@ -1247,6 +1247,23 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             if self.global_rank == 0:
                 print(f"  ↺  Resolution switch x{self.multires[prev_res_idx]} → x{train_res}: "
                       f"ModelCheckpoint best scores reset.")
+
+            # Restart the LR scheduler from its own beginning at each
+            # resolution switch (progressive mode only) -- otherwise a
+            # single scheduler keeps running on the global step/epoch count,
+            # independently of when each resolution's own training actually
+            # begins (e.g. it may already be at its plateau, or mid-cycle,
+            # by the time a newly-unfrozen resolution starts learning).
+            if getattr(self, 'training_strategy', None) == 'progressive':
+                scheduler = self.lr_schedulers()
+                if isinstance(scheduler, list):
+                    scheduler = scheduler[0] if scheduler else None
+                if scheduler is not None:
+                    scheduler.last_epoch = -1
+                    scheduler._step_count = 0
+                    scheduler.step()
+                    if self.global_rank == 0:
+                        print(f"  ↺  LR scheduler restarted for x{train_res} phase.")
         self._prev_res_idx = res_idx
 
         if self.global_rank == 0:

@@ -112,6 +112,12 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             Used for censored FM loss when ``add_bounds=True``.
         ``upper_bound`` (float or None)
             Physical upper bound in normalised space.
+        ``tv_weight`` (dict[int, float], {})
+            Per-resolution total-variation weight added to the training loss,
+            e.g. ``{50: 0.01}`` to penalise blocky patch-boundary artefacts at
+            x50 only. Computed on the one-step predicted field
+            (``x_t + (1-t)*v_pred``), masked to pairs of finite target pixels.
+            Missing resolutions default to 0 (no TV term, previous behaviour).
 
     add_bounds : bool
         Enable boundary-ring conditioning at inference + censored FM loss.
@@ -138,6 +144,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         self._fm_ema_decay            = cfg.get("ema_decay", 0.999)
         self._fm_lower_bound: Optional[float] = cfg.get("lower_bound", None)
         self._fm_upper_bound: Optional[float] = cfg.get("upper_bound", None)
+        self._fm_tv_weight: Dict[int, float] = dict(cfg.get("tv_weight", {}))
 
         # ── Per-resolution EMA networks (student networks live in self.solver) ─
         self.ema_networks = nn.ModuleDict()
@@ -171,6 +178,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         print(f"  add_bounds   : {add_bounds}")
         print(f"  EMA decay    : {self._fm_ema_decay}")
         print(f"  LR           : {self._fm_lr}")
+        print(f"  TV weight    : {self._fm_tv_weight or '(none)'}")
         for res in self.multires:
             key = f"solver_x{res}"
             n_params = sum(
@@ -285,12 +293,14 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             # NegLogPDF loss (only on finite pixels)
             loss_grid = neglogpdf(residual, log_scale)     # (B, C, H, W)
 
+            # One-step predicted x_1 from the current interpolant, reused by
+            # both the censored-loss bound check below and the TV term.
+            x_pred = x_t + (1.0 - pseudo_time) * v_pred
+
             if self.add_bounds and (
                 self._fm_lower_bound is not None or self._fm_upper_bound is not None
             ):
                 # Censoring: add neglogcdf at the bounds
-                # Predict x_1 from current interpolant: x_1 = x_t + (1-t)*v_pred
-                x_pred = x_t + (1.0 - pseudo_time) * v_pred
                 if self._fm_lower_bound is not None:
                     lb = torch.full_like(x_pred, self._fm_lower_bound)
                     censor_lower = (x_pred <= lb).float()
@@ -311,6 +321,23 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
                 loss_grid,
                 finite_mask,
             )
+
+            # Total-variation penalty on the predicted field, to discourage
+            # blocky patch-boundary artefacts (opt-in per resolution via
+            # fm_config.tv_weight, default 0 -- no effect on existing runs).
+            tv_weight = self._fm_tv_weight.get(res, 0.0)
+            if tv_weight > 0.0:
+                tv_h_mask = finite_mask[:, :, 1:, :] & finite_mask[:, :, :-1, :]
+                tv_w_mask = finite_mask[:, :, :, 1:] & finite_mask[:, :, :, :-1]
+                tv_h = (x_pred[:, :, 1:, :] - x_pred[:, :, :-1, :]).abs()
+                tv_w = (x_pred[:, :, :, 1:] - x_pred[:, :, :, :-1]).abs()
+                tv_loss = masked_average(tv_h, tv_h_mask) + masked_average(tv_w, tv_w_mask)
+                loss = loss + tv_weight * tv_loss
+                if phase:
+                    self.log(
+                        f"{phase}_tv_loss", tv_loss,
+                        on_step=True, on_epoch=True, sync_dist=True,
+                    )
 
             if phase:
                 self.log(
