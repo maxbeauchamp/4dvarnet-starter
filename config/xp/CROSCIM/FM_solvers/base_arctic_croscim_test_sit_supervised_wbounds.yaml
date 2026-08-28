@@ -55,6 +55,7 @@ fm_config:
   ema_decay: 0.999
   lower_bound: -0.693
   upper_bound: null
+  use_ema_at_inference: false  # diagnostic: sample from the raw student network instead of EMA
 
 trainer:
   _target_: pytorch_lightning.Trainer

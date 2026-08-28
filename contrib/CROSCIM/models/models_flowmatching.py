@@ -112,6 +112,11 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             Used for censored FM loss when ``add_bounds=True``.
         ``upper_bound`` (float or None)
             Physical upper bound in normalised space.
+        ``use_ema_at_inference`` (bool, True)
+            Use the EMA network at validation/test time (previous, default
+            behaviour). Set False to sample from the raw student network
+            instead -- e.g. to diagnose whether the EMA is lagging behind a
+            student that recently resumed training.
         ``tv_weight`` (dict[int, float], {})
             Per-resolution total-variation weight added to the training loss,
             e.g. ``{50: 0.01}`` to penalise blocky patch-boundary artefacts at
@@ -145,6 +150,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         self._fm_lower_bound: Optional[float] = cfg.get("lower_bound", None)
         self._fm_upper_bound: Optional[float] = cfg.get("upper_bound", None)
         self._fm_tv_weight: Dict[int, float] = dict(cfg.get("tv_weight", {}))
+        self._fm_use_ema_at_inference: bool = cfg.get("use_ema_at_inference", True)
 
         # ── Per-resolution EMA networks (student networks live in self.solver) ─
         self.ema_networks = nn.ModuleDict()
@@ -179,6 +185,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         print(f"  EMA decay    : {self._fm_ema_decay}")
         print(f"  LR           : {self._fm_lr}")
         print(f"  TV weight    : {self._fm_tv_weight or '(none)'}")
+        print(f"  Use EMA @inf : {self._fm_use_ema_at_inference}")
         for res in self.multires:
             key = f"solver_x{res}"
             n_params = sum(
@@ -375,12 +382,24 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _ema_forward(self, solver_key: str, sbatch) -> Tensor:
-        """Run the EMA network through the solver's sampler."""
-        solver     = self.solver.solvers[solver_key]
-        ema_net    = self.ema_networks[solver_key]
+        """Run the EMA network through the solver's sampler -- or the raw
+        student network if ``self._fm_use_ema_at_inference`` is False (e.g.
+        to check whether the EMA is lagging behind a student that just
+        resumed training after being frozen for a while: the EMA keeps
+        updating every batch even while its resolution is frozen, so it
+        fully converges to that frozen/untrained state and then needs many
+        steps to catch up once the student starts moving again)."""
+        solver = self.solver.solvers[solver_key]
 
         # Build boundary kwargs (zeros / mask if add_bounds=True)
         boundary_kwargs = self._build_boundary_kwargs(solver, sbatch.tgt, training=False)
+
+        if not self._fm_use_ema_at_inference:
+            return solver.sample_one(
+                sbatch.input, latent_bounds=self._get_latent_bounds(), **boundary_kwargs
+            )
+
+        ema_net = self.ema_networks[solver_key]
 
         # Temporarily swap the solver's network with the EMA version for sampling
         orig_net = solver.network
