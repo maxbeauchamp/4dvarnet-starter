@@ -1,7 +1,0 @@
-Metric,Value,Description
-μ-score,0.8238,"1 - RMSE/std(GT), higher is better"
-RMSE,0.1786,"Root Mean Square Error, lower is better"
-CRPS,N/A (no ensemble),Not applicable — direct UNet produces a single deterministic output
-λx GT [km],710.40,Minimal resolved wavelength in ground truth
-λx Recon [km],inf,Minimal resolved wavelength in reconstruction
-Spectral Corr.,0.9727,"Correlation between GT and recon PSD, higher is better"

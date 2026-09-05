@@ -1,1 +1,0 @@
-{"channels": 1, "cond_channels": 9, "time_channels": 128, "time_scale": 16.0, "n_heads": 8, "top_blocks_channels": [64, 64], "top_blocks_n_blocks": [2, 2], "top_blocks_resampling": [true, true], "top_blocks_dropout": [0.0, 0.0], "mid_blocks_channels": [128, 256], "mid_blocks_n_blocks": [4, 4], "mid_blocks_resampling": [true, false], "mid_blocks_dropout": [0.0, 0.0]}
