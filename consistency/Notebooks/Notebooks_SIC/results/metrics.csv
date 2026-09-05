@@ -1,0 +1,2 @@
+Method,Score,RMSE,sigma_GT,sigma_pred,CRPS,lambda_x [px]
+"CM (ens. mean, MIZ, full test set)",-3.202 ± 5.162,0.5802 ± 0.5126,0.1631 ± 0.0499,0.4393 ± 0.4280,0.4598 ± 0.4196,279.27 ± 158.02

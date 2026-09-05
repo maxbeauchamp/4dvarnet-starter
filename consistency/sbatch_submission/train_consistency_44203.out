@@ -1,9 +1,0 @@
-[jeu. 23 juil. 2026 15:03:09 CEST] conda env: /Odyssey/private/m19beauc/conda_envs/4dvarnet-starter
-[jeu. 23 juil. 2026 15:03:09 CEST] python: /Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/bin/python (Python 3.11.5)
-[jeu. 23 juil. 2026 15:03:09 CEST] ===== Training UNet / SSH_GF =====
-[run_training] UNet / SSH_GF -> /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/UNet_train.ipynb
-[run_training] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 1, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/UNet_metrics_train.csv'}
-[run_training] done: /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/UNet_train.ipynb
-[jeu. 23 juil. 2026 20:06:17 CEST] ===== Training 4dvarnet_lstm / SSH_GF =====
-[run_training] 4dvarnet_lstm / SSH_GF -> /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/4dvarnet_lstm_train.ipynb
-[run_training] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 1, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/4dvarnet_lstm_metrics_train.csv', 'SOLVER_TYPE': 'lstm'}

@@ -1,0 +1,3 @@
+Method,RMSE,lambda_x
+DirectUNet (full test set),0.2489 $\pm$ 0.0092,50.4 $\pm$ 45.5
+OI baseline (full test set),0.2253 $\pm$ 0.0040,43.1 $\pm$ 35.9
