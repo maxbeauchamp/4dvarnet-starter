@@ -1,9 +1,0 @@
-entrypoints: ???
-hydra:
-  searchpath: 
-    - pkg://config
-    - pkg://contrib
-defaults:
-  - xp: ???
-  - _self_
-

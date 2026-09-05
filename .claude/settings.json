@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python3 -c ' *)",
-      "Bash(python3 /tmp/claude-1000/-home-marion-Bureau-4dvarnet-starter-devs/a733b137-64e8-4dee-b341-b4096adfbe11/scratchpad/patch_direct_unet_ssh_gf.py)"
-    ]
-  }
-}
