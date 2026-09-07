@@ -56,8 +56,16 @@ fm_config:
   lr_scheduler_start_factor: 1e-5
   lr_scheduler_iters: 10000
   ema_decay: 0.999
-  lower_bound: -0.693
+  # Diagnostic: disabled here (inference-only change, same checkpoint loads
+  # fine -- channel count depends on add_bounds, not on bound values). This
+  # bound is calibrated for the ABSOLUTE field (SIT>=0) but is applied
+  # unconditionally to whatever base_step's `x` is -- for x10 that's the
+  # ANOMALY (target - interpolated coarse), not the absolute field, so the
+  # inference-time sampler clamp (_get_latent_bounds) was floor-ing a signed
+  # residual at a threshold meant for an absolute physical quantity.
+  lower_bound: null
   upper_bound: null
+  use_ema_at_inference: false  # diagnostic: sample from the raw student network instead of EMA
 
 # ===== SWIN U-NET ARCHITECTURE (shared by both resolutions; grid_size set per solver) =====
 swin_config:
