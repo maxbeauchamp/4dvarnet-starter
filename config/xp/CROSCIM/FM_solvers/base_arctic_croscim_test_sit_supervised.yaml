@@ -53,8 +53,8 @@ fm_config:
   lr_scheduler_start_factor: 1e-5
   lr_scheduler_iters: 10000
   ema_decay: 0.999
-  lower_bound: null
-  upper_bound: null
+  lower_bound: {}
+  upper_bound: {}
 
 trainer:
   _target_: pytorch_lightning.Trainer

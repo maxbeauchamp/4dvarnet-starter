@@ -107,11 +107,18 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             EMA decay rate (applied after each training step).
         ``gradient_clip_val`` (float, 0.5)
             Gradient clipping (applied inside ``training_step``).
-        ``lower_bound`` (float or None)
-            Physical lower bound of the target variable in **normalised** space.
-            Used for censored FM loss when ``add_bounds=True``.
-        ``upper_bound`` (float or None)
-            Physical upper bound in normalised space.
+        ``lower_bound`` (dict[int, float], {})
+            Per-resolution physical lower bound in **normalised** space, e.g.
+            ``{50: -0.693}``. Used for censored FM loss and the inference-time
+            sampler clamp when ``add_bounds=True``. Only meaningful for a
+            resolution predicting the ABSOLUTE field -- finer resolutions
+            predict an ANOMALY relative to the coarser prediction (see
+            ``update_batch_as_anomaly`` in models.py), a signed residual
+            with no such physical floor, so omit them from this dict.
+            Missing resolutions default to no bound.
+        ``upper_bound`` (dict[int, float], {})
+            Per-resolution physical upper bound in normalised space, same
+            semantics as ``lower_bound``.
         ``use_ema_at_inference`` (bool, True)
             Use the EMA network at validation/test time (previous, default
             behaviour). Set False to sample from the raw student network
@@ -147,8 +154,14 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         self._fm_lr_start_factor      = cfg.get("lr_scheduler_start_factor", 1e-5)
         self._fm_lr_iters             = cfg.get("lr_scheduler_iters", 20_000)
         self._fm_ema_decay            = cfg.get("ema_decay", 0.999)
-        self._fm_lower_bound: Optional[float] = cfg.get("lower_bound", None)
-        self._fm_upper_bound: Optional[float] = cfg.get("upper_bound", None)
+        # Per-resolution: lower_bound=0 (SIT>=0) is only meaningful for a
+        # resolution predicting the ABSOLUTE field. Finer resolutions predict
+        # an ANOMALY (target - interpolated coarser prediction, see
+        # update_batch_as_anomaly in models.py) -- a signed residual with no
+        # such physical floor, so it must not inherit the same bound.
+        # Missing resolutions default to no bound (None).
+        self._fm_lower_bound: Dict[int, float] = dict(cfg.get("lower_bound", {}))
+        self._fm_upper_bound: Dict[int, float] = dict(cfg.get("upper_bound", {}))
         self._fm_tv_weight: Dict[int, float] = dict(cfg.get("tv_weight", {}))
         self._fm_use_ema_at_inference: bool = cfg.get("use_ema_at_inference", True)
 
@@ -224,16 +237,20 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             )
         return {"boundaries": bound, "mask_bound": mbound}
 
-    def _get_latent_bounds(self) -> Optional[Tuple[Optional[float], Optional[float]]]:
+    def _get_latent_bounds(self, res: int) -> Optional[Tuple[Optional[float], Optional[float]]]:
         """(lower, upper) for FlowMatchingSampler's inference-time hard clamp
-        (``_bound_grad``) — same guard as the training-time censored loss in
-        ``base_step``, so the physical bound is actually enforced at sampling
-        time, not just encouraged through the loss."""
+        (``_bound_grad``) for this resolution — same guard as the
+        training-time censored loss in ``base_step``, so the physical bound
+        is actually enforced at sampling time, not just encouraged through
+        the loss. Looked up per resolution: only meaningful for a resolution
+        predicting the absolute field, not an anomaly."""
         if not self.add_bounds:
             return None
-        if self._fm_lower_bound is None and self._fm_upper_bound is None:
+        lower_bound = self._fm_lower_bound.get(res)
+        upper_bound = self._fm_upper_bound.get(res)
+        if lower_bound is None and upper_bound is None:
             return None
-        return (self._fm_lower_bound, self._fm_upper_bound)
+        return (lower_bound, upper_bound)
 
     # ─────────────────────────────────────────────────────────────────────────
     # base_step — FM training / validation loss
@@ -304,19 +321,19 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             # both the censored-loss bound check below and the TV term.
             x_pred = x_t + (1.0 - pseudo_time) * v_pred
 
-            if self.add_bounds and (
-                self._fm_lower_bound is not None or self._fm_upper_bound is not None
-            ):
+            lower_bound = self._fm_lower_bound.get(res)
+            upper_bound = self._fm_upper_bound.get(res)
+            if self.add_bounds and (lower_bound is not None or upper_bound is not None):
                 # Censoring: add neglogcdf at the bounds
-                if self._fm_lower_bound is not None:
-                    lb = torch.full_like(x_pred, self._fm_lower_bound)
+                if lower_bound is not None:
+                    lb = torch.full_like(x_pred, lower_bound)
                     censor_lower = (x_pred <= lb).float()
                     loss_grid = (
                         loss_grid * (1.0 - censor_lower)
                         + censor_lower * neglogcdf(-residual)
                     )
-                if self._fm_upper_bound is not None:
-                    ub = torch.full_like(x_pred, self._fm_upper_bound)
+                if upper_bound is not None:
+                    ub = torch.full_like(x_pred, upper_bound)
                     censor_upper = (x_pred >= ub).float()
                     loss_grid = (
                         loss_grid * (1.0 - censor_upper)
@@ -390,13 +407,14 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         fully converges to that frozen/untrained state and then needs many
         steps to catch up once the student starts moving again)."""
         solver = self.solver.solvers[solver_key]
+        res = int(solver_key.split("_x")[-1])
 
         # Build boundary kwargs (zeros / mask if add_bounds=True)
         boundary_kwargs = self._build_boundary_kwargs(solver, sbatch.tgt, training=False)
 
         if not self._fm_use_ema_at_inference:
             return solver.sample_one(
-                sbatch.input, latent_bounds=self._get_latent_bounds(), **boundary_kwargs
+                sbatch.input, latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
             )
 
         ema_net = self.ema_networks[solver_key]
@@ -407,7 +425,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         solver.sampler.model = solver.network
         try:
             out = solver.sample_one(
-                sbatch.input, latent_bounds=self._get_latent_bounds(), **boundary_kwargs
+                sbatch.input, latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
             )
         finally:
             solver.network = orig_net
@@ -494,7 +512,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             )
             return solver.sample_one(
                 batch.input, boundaries=zeros, mask_bound=zeros,
-                latent_bounds=self._get_latent_bounds(),
+                latent_bounds=self._get_latent_bounds(res),
             )
         return solver(batch)
 
@@ -620,7 +638,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
 
             pred = solver.sample_one(
                 y_single, boundaries=bound, mask_bound=mbound,
-                latent_bounds=self._get_latent_bounds(),
+                latent_bounds=self._get_latent_bounds(res),
             )
 
             cache[(iy, ix)] = pred[0].cpu()

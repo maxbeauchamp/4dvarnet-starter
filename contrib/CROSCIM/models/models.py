@@ -48,6 +48,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             norm_stats=None,          # Already exists
             norm_stats_covs=None,
             training_strategy='progressive',  # NEW PARAMETER
+            progressive_start_res=None,  # in 'progressive' mode, start the curriculum at this resolution instead of the coarsest -- coarser resolutions are never trained (stay frozen throughout), e.g. progressive_start_res=10 with multires=[50,10,2] cycles [10,2] only, x50 untouched
             include_masks=False,
             normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
@@ -110,6 +111,11 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.frcst_lead = frcst_lead
         self.domain_limits = domain_limits
         self.multires = multires
+        if progressive_start_res is not None:
+            start_idx = self.multires.index(progressive_start_res)
+            self._progressive_resolutions = self.multires[start_idx:]
+        else:
+            self._progressive_resolutions = self.multires
         self.maxlen_daw = 15
         #self.maxlen_daw = self.trainer.datamodule.test_dataloader()[f"patch_x{self.multires[0]}"].dataset.patch_dims["time"]
         if len_daw is not None:
@@ -1227,8 +1233,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
     def on_train_epoch_start(self):
         epoch = self.current_epoch
-        res_idx = min(epoch // (self.trainer.max_epochs // len(self.multires)), len(self.multires) - 1)
-        train_res = self.multires[res_idx]
+        res_idx = min(epoch // (self.trainer.max_epochs // len(self._progressive_resolutions)),
+                      len(self._progressive_resolutions) - 1)
+        train_res = self._progressive_resolutions[res_idx]
 
         # When the training resolution switches, the loss magnitude changes
         # (more timesteps / higher resolution → different loss scale).
@@ -1245,7 +1252,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     cb.kth_best_model_path = ""
                     cb.kth_value = None
             if self.global_rank == 0:
-                print(f"  ↺  Resolution switch x{self.multires[prev_res_idx]} → x{train_res}: "
+                print(f"  ↺  Resolution switch x{self._progressive_resolutions[prev_res_idx]} → x{train_res}: "
                       f"ModelCheckpoint best scores reset.")
 
             # Restart the LR scheduler from its own beginning at each
@@ -1406,13 +1413,17 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         strategy = getattr(self, 'training_strategy', 'simultaneous')
         
         if strategy == 'progressive':
-            # Original curriculum learning approach
+            # Original curriculum learning approach. Cycles through
+            # self._progressive_resolutions (== self.multires unless
+            # progressive_start_res was set) -- resolutions coarser than
+            # progressive_start_res are never in train_resolutions, so they
+            # stay frozen for the whole run.
             epoch = self.current_epoch
-            n_res = len(self.multires)
+            n_res = len(self._progressive_resolutions)
             total_epochs = self.trainer.max_epochs
             steps_per_res = max(1, total_epochs // n_res)
             res_index = min(epoch // steps_per_res, n_res - 1)
-            train_resolutions = [self.multires[res_index]]
+            train_resolutions = [self._progressive_resolutions[res_index]]
             
         elif strategy == 'hybrid':
             # Progressive at first, then simultaneous
