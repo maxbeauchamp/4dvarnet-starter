@@ -1,3 +1,4 @@
+check_files.sh
 **/__pycache__
 outputs
 logs
