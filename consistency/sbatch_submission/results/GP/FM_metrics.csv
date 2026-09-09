@@ -1,3 +1,0 @@
-Method,RMSE,lambda_x,CRPS
-"FM (ens. mean, full test set)",0.1976 $\pm$ 0.0233,25.2 $\pm$ 27.1,0.0156 $\pm$ 0.0019
-OI baseline (full test set),0.2253 $\pm$ 0.0040,43.1 $\pm$ 35.9,--
