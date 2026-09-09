@@ -61,7 +61,9 @@ notebook.
 ```
 consistency/
 ├── consistency_models/          # CM / VarCM / DynCM / VarDynCM pairwise-consistency preconditioning + utils
-├── flowmatching_models_FM.py    # FM network + Lightning module (DynFM is defined inline in its notebooks)
+├── flowmatching_models/
+│   └── flowmatching_models_FM.py # FM network + Lightning module, shared by the FM and DynFM
+│                                  # notebooks (DynFM's own LitDynFM is defined inline)
 ├── spectral_utils.py            # shared PSD / resolved-scale (λx) metric
 ├── cartopy/                     # local cartopy shapefile cache (map backgrounds for SIC/SSH_GF plots)
 ├── Notebooks/
