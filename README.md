@@ -32,7 +32,7 @@ deterministic ones don't.
 - **`GP`** — synthetic Gaussian Process / SPDE field, used as the reference
   test-bed (all 8 methods first validated here).
 - **`SIC`** — Arctic sea-ice concentration, self-supervised on gappy ASIP
-  targets with OSISAF conditioning (`contrib/ASIP_OSISAF/`).
+  targets with OSISAF conditioning (`src/dataloader_SIC.py`).
 - **`SSH_GF`** — Gulf Stream sea surface height from along-track altimetry.
 
 ## A few results (GP)
@@ -72,15 +72,21 @@ consistency/
 └── figs/                          # misc standalone illustrations
 
 src/
-├── data_notebook.py              # SSH_GF datamodule
-└── data_notebook_spde.py         # GP/SPDE datamodule
-
-contrib/ASIP_OSISAF/               # SIC datamodule + UNet baseline used by the SIC notebooks
+├── dataloader_SSH.py             # SSH_GF datamodule (BaseDataModule)
+├── dataloader_SPDE.py            # GP/SPDE datamodule (SPDEDataModule)
+└── dataloader_SIC.py             # SIC datamodule (BaseDataModule, ASIP/OSISAF), trimmed from
+                                   # the former contrib/ASIP_OSISAF/data_simple.py to just the
+                                   # dataloader classes actually imported by the notebooks
 ```
 
 Everything above is the complete dependency closure of the notebooks
-(verified by grepping every `from src...` / `from contrib...` import across
-`consistency/`) — nothing in this branch is unused scaffolding.
+(verified by grepping every `from src...` import across `consistency/`) —
+nothing in this branch is unused scaffolding. There is no `contrib/` on this
+branch: the SIC dataloader used to live at `contrib/ASIP_OSISAF/data_simple.py`
+and pull in a whole (mostly unused) `contrib/ASIP_OSISAF/` package; only the
+two classes actually imported by the notebooks (`BaseDataModule`,
+`TrainingItem_4da`) were kept, moved to `src/dataloader_SIC.py` alongside the
+other two dataloaders.
 
 ## Install
 

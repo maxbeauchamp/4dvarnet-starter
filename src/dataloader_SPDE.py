@@ -39,7 +39,7 @@ import torch
 import torch.utils.data
 import xarray as xr
 
-# Shared named-tuple – same interface as data_notebook.py
+# Shared named-tuple – same interface as dataloader_SSH.py
 TrainingItem = namedtuple("TrainingItem", ["input", "tgt"])
 
 

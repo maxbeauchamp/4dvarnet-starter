@@ -10,9 +10,7 @@ from collections import namedtuple
 from torch.utils.data import  ConcatDataset
 import multiprocessing
 import gc
-from random import sample 
-import contrib
-from contrib.ASIP_OSISAF.load_data import *
+from random import sample
 import datetime
 import pyresample
 import pandas as pd
@@ -24,7 +22,7 @@ import os
 from torch.utils.data.sampler import Sampler
 
 TrainingItem = namedtuple(
-    'TrainingItem', ['asip', 'osisaf', 
+    'TrainingItem', ['asip', 'osisaf',
                      'lat', 'lon', 'land_mask',
                      't2m','istl1','sst','skt']
 )
@@ -38,7 +36,7 @@ TrainingItem_4da = namedtuple(
 ExtendedTrainingItem_4da = namedtuple(
     'ExtendedTrainingItem_4da', ['asip', 'osisaf',
                      'tgt', 'coarse', 'input',
-                     'lat', 'lon', 'latv', 'lonv', 
+                     'lat', 'lon', 'latv', 'lonv',
                      'land_mask',
                      't2m','istl1','sst','skt']
 )
@@ -61,7 +59,7 @@ class XrDataset(torch.utils.data.Dataset):
             yield self[i]
 
     def __getitem__(self, item):
-        
+
         item = self.db.isel(record=item,sample=0)
         if self.da:
             tr_item = TrainingItem_4da
@@ -101,7 +99,7 @@ class BaseDataModule(pl.LightningDataModule):
                  norm_stats_covs,
                  da=False,
                  **kwargs):
-        
+
         super().__init__()
         self.asip_paths = asip_paths
         self.split_train = split_train
