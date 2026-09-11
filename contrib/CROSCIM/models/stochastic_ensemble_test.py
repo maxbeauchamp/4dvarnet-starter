@@ -126,7 +126,7 @@ class StochasticEnsembleTestMixin:
                 tgt_vars_for_res = self._get_target_vars_for_resolution(res)
                 orig_tgt = {var: getattr(batch_m, var).clone() for var in tgt_vars_for_res}
                 if self.normalize_anomaly:
-                    batch_m, anom_scale = self.normalize_anomaly_batch(batch_m)
+                    batch_m, anom_scale = self.normalize_anomaly_batch(batch_m, res=res)
                 else:
                     anom_scale = {}
                 scale_channel = None

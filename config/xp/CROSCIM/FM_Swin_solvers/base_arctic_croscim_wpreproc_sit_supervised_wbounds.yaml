@@ -146,7 +146,8 @@ model:
   _target_: contrib.CROSCIM.models.models_flowmatching.Lit4dVarNet_CROSCIM_FlowMatching
   persist_rw: False
   multires: [50,10]
-  normalize_anomaly: true  # rescale the anomaly to std~=1 (per-patch) to match the FM noise prior's scale -- see models.py normalize_anomaly_batch
+  normalize_anomaly: true  # rescale the anomaly to std~=1 to match the FM noise prior's scale -- see models.py normalize_anomaly_batch
+  anomaly_scale: {10: 0.1084}  # fixed, precomputed scale for x10 (measured true-anomaly std) -- avoids deriving it per-patch from ground truth (leak + amplifies error in high-variance patches)
   # x10-only restart: with a single resolution left in the progressive cycle,
   # it's active for the whole run (epoch 0) -- x50 (loaded via
   # init_weights_ckpt below) is never in train_resolutions, stays frozen.

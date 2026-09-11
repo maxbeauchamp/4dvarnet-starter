@@ -52,6 +52,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             include_masks=False,
             normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
+            anomaly_scale=None,  # {res: fixed_std}: per-resolution FIXED anomaly scale, precomputed offline from training data. When set for a resolution, normalize_anomaly_batch uses this constant instead of deriving the scale from the batch's own (true) target -- avoids a train/test leak where the prediction's final amplitude is partly borrowed from the ground truth rather than learned from the observations, and avoids a single high-variance patch getting an outsized denormalisation factor. Resolutions absent from this dict keep the previous per-batch-derived behaviour.
             condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
             len_daw=None,  # optional override of the per-resolution crop_daw() window length ({res: n_timesteps}); defaults to the maxlen_daw/step-based schedule below
             save_obs_vars=False,  # also save raw satellite obs (asip_sic, cimr_*, cristal_*) in the test NetCDF, coarsest resolution only
@@ -65,6 +66,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.training_strategy = training_strategy
         self.normalize_anomaly = normalize_anomaly
         self.normalize_anomaly_patch_only = normalize_anomaly_patch_only
+        self.anomaly_scale = dict(anomaly_scale or {})
         self.condition_on_scale = condition_on_scale
         self.save_obs_vars = save_obs_vars
 
@@ -852,12 +854,24 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         return type(batch)(**batch_dict)
 
 
-    def normalize_anomaly_batch(self, batch, eps: float = 1e-3):
+    def normalize_anomaly_batch(self, batch, res=None, eps: float = 1e-3):
         """
         Instance-normalise the anomaly fields in *batch* so that each target
         variable has std ≈ 1 across the valid (non-NaN) pixels.
 
-        Controlled by ``self.normalize_anomaly_patch_only``:
+        If ``res`` has an entry in ``self.anomaly_scale``, that FIXED,
+        precomputed-offline constant is used for every sample instead of
+        deriving the scale from the batch's own (true) target. The
+        batch-derived scale is technically a leak (it uses ground truth,
+        available during backtesting but not in a genuine forecast) and, in
+        patch-wise mode, lets a single high-variance patch apply an outsized
+        denormalisation factor to whatever the solver predicts there,
+        amplifying its error disproportionately -- and weakens the incentive
+        to learn a real observations-to-amplitude mapping during training,
+        since the batch-derived scale can supply the right amplitude on its
+        own. A resolution absent from ``self.anomaly_scale`` (default: all of
+        them) keeps that previous per-batch-derived behaviour, controlled by
+        ``self.normalize_anomaly_patch_only``:
           - True  (default): std computed per sample (dim 0) — each patch gets
             its own scale. Avoids mixing patches with very different natural
             anomaly amplitude (e.g. ice edge vs. central pack) into a single
@@ -875,6 +889,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         ----------
         batch : namedtuple
             Batch after anomaly subtraction.
+        res : int, optional
+            Resolution being normalised, used to look up a fixed scale in
+            ``self.anomaly_scale``.
         eps : float
             Floor for the scale factor to avoid division by zero in nearly
             flat (e.g. ice-free summer) patches.
@@ -887,6 +904,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         """
         batch_dict = batch._asdict()
         scale_dict = {}
+        fixed_scale = self.anomaly_scale.get(res) if res is not None else None
 
         # Only rescale target variables (tgt_*, models_*) — leave obs and coords unchanged
         target_prefixes = tuple(
@@ -909,7 +927,9 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             if tensor.ndim < 2:
                 continue
 
-            if self.normalize_anomaly_patch_only:
+            if fixed_scale is not None:
+                scale = tensor.new_tensor(fixed_scale)
+            elif self.normalize_anomaly_patch_only:
                 # Std over the valid (finite) pixels of each sample separately
                 scale = tensor.new_ones(tensor.shape[0])
                 for b in range(tensor.shape[0]):
@@ -1511,7 +1531,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
                 # Instance-normalise the anomaly so the solver always sees std≈1
                 if self.normalize_anomaly:
-                    batch_res, anom_scale = self.normalize_anomaly_batch(batch_res)
+                    batch_res, anom_scale = self.normalize_anomaly_batch(batch_res, res=res)
                 else:
                     anom_scale = {}
 
@@ -2679,7 +2699,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             orig_tgt = {var: getattr(batch, var).clone() for var in tgt_vars_for_res}
             # Instance-normalise the anomaly so the solver always sees std≈1
             if self.normalize_anomaly:
-                batch, anom_scale = self.normalize_anomaly_batch(batch)
+                batch, anom_scale = self.normalize_anomaly_batch(batch, res=res)
             else:
                 anom_scale = {}
 
