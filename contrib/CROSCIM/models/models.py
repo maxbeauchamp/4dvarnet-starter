@@ -52,7 +52,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             include_masks=False,
             normalize_anomaly=True,  # instance-normalise anomaly before fine-res solver
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
-            anomaly_scale=None,  # {res: fixed_std}: per-resolution FIXED anomaly scale, precomputed offline from training data. When set for a resolution, normalize_anomaly_batch uses this constant instead of deriving the scale from the batch's own (true) target -- avoids a train/test leak where the prediction's final amplitude is partly borrowed from the ground truth rather than learned from the observations, and avoids a single high-variance patch getting an outsized denormalisation factor. Resolutions absent from this dict keep the previous per-batch-derived behaviour.
+            anomaly_scale=None,  # {res: fixed_std}: per-resolution FIXED anomaly scale, precomputed offline from training data. When set for a resolution, normalize_anomaly_batch uses this constant instead of deriving the scale from the batch's own (true) target. Resolutions absent from this dict keep the per-batch-derived behaviour below.
+            anomaly_scale_max=None,  # cap on the per-patch/per-batch DERIVED scale (ignored for resolutions using a fixed anomaly_scale) -- without it, a rare high-variance patch gets an outsized denormalisation factor at inference, amplifying the solver's error there disproportionately; None = uncapped (previous behaviour)
             condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
             len_daw=None,  # optional override of the per-resolution crop_daw() window length ({res: n_timesteps}); defaults to the maxlen_daw/step-based schedule below
             save_obs_vars=False,  # also save raw satellite obs (asip_sic, cimr_*, cristal_*) in the test NetCDF, coarsest resolution only
@@ -67,6 +68,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.normalize_anomaly = normalize_anomaly
         self.normalize_anomaly_patch_only = normalize_anomaly_patch_only
         self.anomaly_scale = dict(anomaly_scale or {})
+        self.anomaly_scale_max = anomaly_scale_max
         self.condition_on_scale = condition_on_scale
         self.save_obs_vars = save_obs_vars
 
@@ -861,24 +863,28 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
 
         If ``res`` has an entry in ``self.anomaly_scale``, that FIXED,
         precomputed-offline constant is used for every sample instead of
-        deriving the scale from the batch's own (true) target. The
-        batch-derived scale is technically a leak (it uses ground truth,
-        available during backtesting but not in a genuine forecast) and, in
-        patch-wise mode, lets a single high-variance patch apply an outsized
-        denormalisation factor to whatever the solver predicts there,
-        amplifying its error disproportionately -- and weakens the incentive
-        to learn a real observations-to-amplitude mapping during training,
-        since the batch-derived scale can supply the right amplitude on its
-        own. A resolution absent from ``self.anomaly_scale`` (default: all of
-        them) keeps that previous per-batch-derived behaviour, controlled by
-        ``self.normalize_anomaly_patch_only``:
+        deriving the scale from the batch's own (true) target. Caution: a
+        fixed scale re-decouples the FM noise prior (std=1) from the
+        per-patch target amplitude for any patch whose true anomaly std
+        differs a lot from that constant, which can make training unstable
+        -- prefer the per-batch-derived scale below (with
+        ``anomaly_scale_max`` to cap it) unless a specific resolution truly
+        needs a fixed value. A resolution absent from ``self.anomaly_scale``
+        (default: all of them) uses the per-batch-derived behaviour,
+        controlled by ``self.normalize_anomaly_patch_only``:
           - True  (default): std computed per sample (dim 0) — each patch gets
-            its own scale. Avoids mixing patches with very different natural
-            anomaly amplitude (e.g. ice edge vs. central pack) into a single
-            shared factor, which otherwise produces visible seams once
-            patches are stitched back together.
+            its own scale, well matched to the FM noise prior in every patch.
+            Avoids mixing patches with very different natural anomaly
+            amplitude (e.g. ice edge vs. central pack) into a single shared
+            factor, which otherwise produces visible seams once patches are
+            stitched back together. ``self.anomaly_scale_max`` caps this
+            per-patch scale so a single high-variance patch can't apply an
+            outsized denormalisation factor to whatever the solver predicts
+            there, amplifying its error disproportionately, while leaving
+            the (well-matched) scale of every other patch untouched.
           - False: std pooled over the whole batch (legacy behaviour, one
-            shared scalar for every sample).
+            shared scalar for every sample), also capped by
+            ``anomaly_scale_max`` if set.
 
         This is called right after ``update_batch_as_anomaly`` when training /
         running inference on a fine resolution.  The returned ``scale_dict``
@@ -936,6 +942,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     valid = tensor[b][tensor[b].isfinite()]
                     if valid.numel() >= 2:
                         scale[b] = valid.std().clamp(min=eps)
+                if self.anomaly_scale_max is not None:
+                    scale = scale.clamp(max=self.anomaly_scale_max)
                 scale = scale.view(-1, *([1] * (tensor.ndim - 1)))
             else:
                 # Std pooled over all valid (finite) pixels in the batch
@@ -944,6 +952,8 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
                     scale = tensor.new_tensor(1.0)
                 else:
                     scale = valid.std().clamp(min=eps)
+                    if self.anomaly_scale_max is not None:
+                        scale = scale.clamp(max=self.anomaly_scale_max)
 
             scale_dict[var_name] = scale
             batch_dict[var_name] = tensor / scale
