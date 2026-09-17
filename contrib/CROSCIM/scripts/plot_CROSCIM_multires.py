@@ -173,6 +173,41 @@ def denormalize_var(var, data):
         return denormalize_minmax(data, stats["min"], stats["max"])
     return data
 
+# ====================== DATA-AVAILABILITY CHECK ======================
+def _time_has_data(ds, var, time_index, min_valid_frac):
+    da = ds[var].isel(time=time_index).values if "time" in ds[var].dims else ds[var].values
+    return np.isfinite(da).mean() >= min_valid_frac
+
+def find_valid_time_index(ncfiles_by_res, multires, vars_to_plot, min_valid_frac=0.05,
+                          start=0):
+    """Return the first time index (from `start`) for which every variable in
+    `vars_to_plot` has at least `min_valid_frac` finite pixels at EVERY
+    resolution in `multires` -- satellite observations (SIC/SIT/SSH) have
+    naturally patchy coverage, unlike dense covariates (u10), so a fixed
+    time_index can land on a day/patch with no valid data for some rows.
+    Raises RuntimeError if no such index exists."""
+    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(sample=0) for res in multires}
+    try:
+        n_time = min(
+            dss[res][var].sizes["time"]
+            for res in multires for var in vars_to_plot
+            if "time" in dss[res][var].dims
+        )
+    except ValueError:
+        n_time = 1
+    try:
+        for t in range(start, n_time):
+            if all(_time_has_data(dss[res], var, t, min_valid_frac)
+                   for res in multires for var in vars_to_plot):
+                return t
+    finally:
+        for ds in dss.values():
+            ds.close()
+    raise RuntimeError(
+        f"No time index in [{start},{n_time}) has >= {min_valid_frac:.0%} valid "
+        f"data for all of {vars_to_plot} across resolutions {multires}."
+    )
+
 # ====================== MAIN PLOTTER ======================
 def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                         proj=ccrs.NorthPolarStereo()):
@@ -295,6 +330,9 @@ if __name__ == "__main__":
     }
     vars_to_plot = ["asip_sic", "cimr_SIT", "cristal_SSH", "u10"]
 
-    fig, axes = plot_multires_polar(ncfiles, multires, vars_to_plot, time_index=7,
+    time_index = find_valid_time_index(ncfiles, multires, vars_to_plot, min_valid_frac=0.05)
+    print(f"Using time_index={time_index} (first with >=5% valid data for all variables/resolutions)")
+
+    fig, axes = plot_multires_polar(ncfiles, multires, vars_to_plot, time_index=time_index,
                                     proj=ccrs.NorthPolarStereo())
     fig.savefig("multires_polar_insets.png", dpi=300, bbox_inches="tight")
