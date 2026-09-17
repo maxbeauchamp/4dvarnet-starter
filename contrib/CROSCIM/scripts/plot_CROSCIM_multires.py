@@ -78,6 +78,18 @@ def masked_pcolormesh(ax, lon2d, lat2d, data2d, **kwargs):
 
 # -------- util: extent serré d’un (lon,lat) 2D --------
 def tight_lonlat_extent(lon2d, lat2d, margin=0.0):
+    lon2d = np.asarray(lon2d)
+    lat2d = np.asarray(lat2d)
+    # Antimeridian-aware: a patch near the pole can span e.g. 179 deg to
+    # -179 deg (a narrow strip crossing +-180), which raw min/max would read
+    # as an almost-360-deg-wide extent -- a "rectangle" that wide becomes a
+    # full circle once projected in polar stereographic. Detect that case
+    # and unwrap by shifting negative longitudes by +360 before taking
+    # min/max, so the extent reflects the patch's true (narrow) width.
+    # Left unwrapped (may exceed 180) on purpose: both ax.set_extent and
+    # highres_rectangle accept dateline-crossing extents in that form.
+    if np.nanmax(lon2d) - np.nanmin(lon2d) > 180:
+        lon2d = np.where(lon2d < 0, lon2d + 360, lon2d)
     lon_min = np.nanmin(lon2d); lon_max = np.nanmax(lon2d)
     lat_min = np.nanmin(lat2d); lat_max = np.nanmax(lat2d)
     dl = (lon_max - lon_min) * margin
@@ -117,18 +129,16 @@ _sic_cmap = truncate_colormap(cmc.cm.oslo, minval=0.2, maxval=1.0, n=100)
 # ====================== PER-VARIABLE DISPLAY STYLE ======================
 # Normalisation stats sourced from
 # config/xp/CROSCIM/FM_Swin_solvers/base_arctic_croscim_wpreproc_sit_supervised_wbounds.yaml
-# (norm_stats / norm_stats_covs / norm_stats_models blocks). These describe the
-# shared CROSCIM preprocessing and are the same across experiments regardless
-# of which variable is the target.
+# (norm_stats / norm_stats_covs blocks). These describe the shared CROSCIM
+# preprocessing and are the same across experiments regardless of which
+# variable is the target.
 #
-# CAUTION on tgt_SIC: assumes the 0-1 fraction convention (models_SIC / cimr.SIC
-# -- same convention used for the "GT (model)" panel in
-# Notebook_Benchmark_CROSCIM_SIC.ipynb). If the preproc file being plotted built
-# tgt_SIC from asip_sic instead, that source is on a 0-100 percent scale --
-# change NORM_STATS["tgt_SIC"] to {"type": "minmax", "min": 0.0, "max": 100.0}.
+# These are the raw SATELLITE inputs (this script visualises observations,
+# not model/target fields): asip_sic (ASIP, 0-100 percent scale -- unlike
+# models_SIC/cimr.SIC which are 0-1 fractions), cimr_SIT.
 NORM_STATS = {
-    "tgt_SIC":     {"type": "minmax", "min": 0.0, "max": 1.0},
-    "tgt_SIT":     {"type": "zscore", "mean": 0.5695980677516013, "std": 0.8216149733058172},
+    "asip_sic":    {"type": "minmax", "min": 0.0, "max": 100.0},
+    "cimr_SIT":    {"type": "zscore", "mean": 0.5695980677516013, "std": 0.8216149733058172},
     "cristal_SSH": {"type": "zscore", "mean": 0.1912636630889516, "std": 0.41697635927509086},
     "u10":         {"type": "zscore", "mean": 0.6010106010949151, "std": 4.545559141871505},
 }
@@ -137,16 +147,16 @@ NORM_STATS = {
 # convention, SSH/u10 = diverging (signed quantities), distinct colormaps so
 # adjacent rows aren't visually confusable.
 VAR_STYLE = {
-    "tgt_SIC":     dict(cmap=_sic_cmap, vmin=0.0,  vmax=1.0,  label="Sea Ice Concentration"),
-    "tgt_SIT":     dict(cmap="plasma",  vmin=0.0,  vmax=4.0,  label="Sea Ice Thickness (m)"),
+    "asip_sic":    dict(cmap=_sic_cmap, vmin=0.0,  vmax=1.0,  label="Sea Ice Concentration"),
+    "cimr_SIT":    dict(cmap="plasma",  vmin=0.0,  vmax=4.0,  label="Sea Ice Thickness (m)"),
     "cristal_SSH": dict(cmap="RdBu_r",  vmin=-1.0, vmax=1.0,  label="Sea Surface Height anomaly (m)"),
     "u10":         dict(cmap="PuOr",    vmin=-15., vmax=15.,  label="10 m zonal wind speed (m/s)"),
 }
 
 # Row title prefix per variable, used as "{PREFIX} (x{res})".
 VAR_DISPLAY = {
-    "tgt_SIC": "SIC",
-    "tgt_SIT": "SIT",
+    "asip_sic": "SIC",
+    "cimr_SIT": "SIT",
     "cristal_SSH": "SSH",
     "u10": "u10",
 }
@@ -237,15 +247,13 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                 # emprise du fin pour zoom
                 zoom_extent_ll = tight_lonlat_extent(lon_f, lat_f, margin=0.00)
 
-                # rectangle indicateur (en lon/lat)
-                rect_lon = [zoom_extent_ll[0], zoom_extent_ll[1], zoom_extent_ll[1], zoom_extent_ll[0], zoom_extent_ll[0]]
-                rect_lat = [zoom_extent_ll[2], zoom_extent_ll[2], zoom_extent_ll[3], zoom_extent_ll[3], zoom_extent_ll[2]]
-                lon_min = float(lon_f.min())
-                lon_max = float(lon_f.max())
-                lat_min = float(lat_f.min())
-                lat_max = float(lat_f.max())
-                extent_zoom = [lon_min, lon_max, lat_min, lat_max]
-                rect_lon, rect_lat = highres_rectangle(extent_zoom, n_points_per_side=100)
+                # rectangle indicateur (en lon/lat) -- built from zoom_extent_ll
+                # (antimeridian-safe, see tight_lonlat_extent), NOT raw
+                # lon_f/lat_f min/max: those wrap incorrectly for a patch
+                # straddling +-180 deg near the pole, turning the "rectangle"
+                # into a near-360-deg band that renders as a full circle
+                # once projected in polar stereographic.
+                rect_lon, rect_lat = highres_rectangle(zoom_extent_ll, n_points_per_side=100)
                 ax.plot(rect_lon, rect_lat, transform=ccrs.PlateCarree(),
                         color="red", lw=1.0, zorder=4)
 
@@ -281,7 +289,7 @@ if __name__ == "__main__":
         10: "/Odyssey/public/CROSCIM_dataset/preproc_CROSCIM_x10.nc",
         2:  "/Odyssey/public/CROSCIM_dataset/preproc_CROSCIM_x2.nc",
     }
-    vars_to_plot = ["tgt_SIC", "tgt_SIT", "cristal_SSH", "u10"]
+    vars_to_plot = ["asip_sic", "cimr_SIT", "cristal_SSH", "u10"]
 
     fig, axes = plot_multires_polar(ncfiles, multires, vars_to_plot, time_index=7,
                                     proj=ccrs.NorthPolarStereo())
