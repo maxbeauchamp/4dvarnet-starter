@@ -417,11 +417,11 @@ class FMSolver(nn.Module):
 
     @torch.no_grad()
     def forward(self, batch) -> Tensor:
-        """Run ODE integration from an sBatch(input, tgt).
+        """Run ODE integration from an sBatch(input, tgt, mask).
 
-        Delegates to ``sample_one(batch.input)``.
+        Delegates to ``sample_one(batch.input, mask=batch.mask)``.
         """
-        return self.sample_one(batch.input)
+        return self.sample_one(batch.input, mask=getattr(batch, "mask", None))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

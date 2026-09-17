@@ -17,6 +17,7 @@ from contrib.CROSCIM.dataloaders.data import *
 from dataclasses import dataclass
 from collections import Counter
 from scipy.interpolate import RegularGridInterpolator
+from typing import Optional
 
 # test push
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -25,6 +26,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class sBatch:
     input: torch.Tensor
     tgt: torch.Tensor
+    mask: Optional[torch.Tensor] = None
 
 def freeze_model(model: nn.Module):
     for param in model.parameters():
@@ -819,9 +821,20 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         if scale_channel is not None:
             input_tensors.append(scale_channel)
 
+        # Spatial validity mask for the network (1 = ocean/valid, 0 = land).
+        # land_mask is 1 where the point falls on land (see build_land_mask),
+        # so it must be inverted to the "valid" convention expected by the
+        # solvers' `mask` parameter.
+        valid_mask = None
+        if hasattr(batch, 'land_mask'):
+            land_mask = getattr(batch, 'land_mask')
+            if torch.is_tensor(land_mask) and land_mask.numel() > 0:
+                valid_mask = (land_mask == 0).float()
+
         return sBatch(
             input=torch.cat(input_tensors, dim=1).float(),
-            tgt=torch.cat(tgt_tensors, dim=1).float()
+            tgt=torch.cat(tgt_tensors, dim=1).float(),
+            mask=valid_mask,
         )
 
     def update_batch_as_anomaly(self, batch, out):

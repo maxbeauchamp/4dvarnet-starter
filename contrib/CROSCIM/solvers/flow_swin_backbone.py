@@ -195,7 +195,7 @@ class WindowAttention(nn.Module):
             positions = torch.roll(positions, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
         return _window_partition(positions, self.window_size)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, valid_mask: Optional[Tensor] = None) -> Tensor:
         batch, height, width, _ = x.shape
         if self.pad_h or self.pad_w:
             x = F.pad(x, (0, 0, 0, self.pad_w, 0, self.pad_h))
@@ -204,6 +204,33 @@ class WindowAttention(nn.Module):
         windows = _window_partition(x, self.window_size)
         positions = self.window_positions.repeat(batch, 1, 1)
         attention_mask = self.attention_mask.repeat(batch, 1, 1, 1) if self.attention_mask is not None else None
+
+        if valid_mask is not None:
+            # valid_mask: (B, 1, H, W) at this stage's resolution, 1=real
+            # domain (ocean), 0=land/padding. Excludes invalid KEY positions
+            # from every window's softmax so a window straddling land can't
+            # attend to zero-filled land tokens -- rather than relying on the
+            # network to have learned to ignore them from the obs_mask input
+            # channel alone.
+            vm = valid_mask.permute(0, 2, 3, 1)  # (B, H, W, 1)
+            if self.pad_h or self.pad_w:
+                vm = F.pad(vm, (0, 0, 0, self.pad_w, 0, self.pad_h))
+            if self.shift_size:
+                vm = torch.roll(vm, shifts=(-self.shift_size, -self.shift_size), dims=(1, 2))
+            vm_windows = _window_partition(vm, self.window_size).squeeze(-1)  # (B*n_win, ws*ws)
+            key_invalid = (vm_windows < 0.5)[:, None, None, :]               # (B*n_win, 1, 1, ws*ws)
+            extra_mask = torch.zeros_like(key_invalid, dtype=torch.float32).masked_fill(
+                key_invalid, float("-inf"))
+            attention_mask = extra_mask if attention_mask is None else attention_mask + extra_mask
+            # A window with NO valid pixel at all (e.g. fully over land) would
+            # make every row -inf -> softmax NaN; fall back to unmasked
+            # attention for that window (its output is outside finite_mask
+            # anyway, but must stay finite so it can't poison neighbouring
+            # valid tokens through PatchMerging).
+            all_invalid = key_invalid.all(dim=-1, keepdim=True)
+            if all_invalid.any():
+                attention_mask = attention_mask.masked_fill(all_invalid.expand_as(attention_mask), 0.0)
+
         windows = self.attention(windows, positions, attention_mask)
         x = _window_reverse(windows, self.window_size, self.padded_h, self.padded_w, batch)
         if self.shift_size:
@@ -223,10 +250,22 @@ class GlobalAttention(nn.Module):
         yy, xx = torch.meshgrid(y, x, indexing="ij")
         self.register_buffer("positions", torch.stack((yy, xx), dim=-1).view(1, -1, 2), persistent=False)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, valid_mask: Optional[Tensor] = None) -> Tensor:
         batch, height, width, channels = x.shape
         flat = x.reshape(batch, height * width, channels)
-        flat = self.attention(flat, self.positions.repeat(batch, 1, 1))
+
+        attention_mask = None
+        if valid_mask is not None:
+            # valid_mask: (B, 1, H, W) at this (coarsest) stage's resolution.
+            vm_flat = valid_mask.reshape(batch, 1, 1, height * width)
+            key_invalid = vm_flat < 0.5
+            attention_mask = torch.zeros_like(vm_flat, dtype=torch.float32).masked_fill(
+                key_invalid, float("-inf"))
+            all_invalid = key_invalid.all(dim=-1, keepdim=True)
+            if all_invalid.any():
+                attention_mask = attention_mask.masked_fill(all_invalid.expand_as(attention_mask), 0.0)
+
+        flat = self.attention(flat, self.positions.repeat(batch, 1, 1), attention_mask)
         return flat.view(batch, height, width, channels)
 
 
@@ -299,9 +338,10 @@ class SwinBlock(nn.Module):
     def _modulate(x: Tensor, scale: Tensor, shift: Tensor) -> Tensor:
         return x * (1.0 + scale) + shift
 
-    def forward(self, x: Tensor, time_embedding: Tensor) -> Tensor:
+    def forward(self, x: Tensor, time_embedding: Tensor, valid_mask: Optional[Tensor] = None) -> Tensor:
         scale_a, shift_a, gate_a, scale_m, shift_m, gate_m = self.modulation(time_embedding)
-        x = x + self.drop_path(gate_a * self.attention(self._modulate(self.norm_attention(x), scale_a, shift_a)))
+        attention_input = self._modulate(self.norm_attention(x), scale_a, shift_a)
+        x = x + self.drop_path(gate_a * self.attention(attention_input, valid_mask))
         return x + self.drop_path(gate_m * self.mlp(self._modulate(self.norm_mlp(x), scale_m, shift_m)))
 
 
@@ -321,12 +361,12 @@ class SwinStage(nn.Module):
             for index in range(depth)
         ])
 
-    def forward(self, x: Tensor, time_embedding: Tensor) -> Tensor:
+    def forward(self, x: Tensor, time_embedding: Tensor, valid_mask: Optional[Tensor] = None) -> Tensor:
         for block in self.blocks:
             if self.activation_checkpointing and self.training and x.requires_grad:
-                x = checkpoint(block, x, time_embedding, use_reentrant=False)
+                x = checkpoint(block, x, time_embedding, valid_mask, use_reentrant=False)
             else:
-                x = block(x, time_embedding)
+                x = block(x, time_embedding, valid_mask)
         return x
 
 
@@ -483,13 +523,23 @@ class SwinUNetBackbone(nn.Module):
     def parameter_count(self) -> int:
         return sum(p.numel() for p in self.parameters())
 
-    def forward(self, noisy_state: Tensor, conditions: Tensor, pseudo_time: Tensor) -> Tensor:
+    def forward(self, noisy_state: Tensor, conditions: Tensor, pseudo_time: Tensor,
+                valid_mask: Optional[Tensor] = None) -> Tensor:
         """
         Parameters
         ----------
         noisy_state : (B, output_channels, H, W)
         conditions  : (B, condition_channels, H, W)
         pseudo_time : (B, 1)
+        valid_mask  : (B, 1, H, W), optional -- 1 where attention should treat
+            a pixel as real domain (ocean), 0 where it should be excluded
+            (land / padding). When given, every attention step (window and
+            global, at every resolution) excludes invalid positions from its
+            softmax instead of only receiving validity as an input feature
+            the network has to learn to interpret. Downsampled by max-pool
+            to match each stage's resolution (a coarse cell counts as valid
+            if any finer cell under it was valid); padding is treated as
+            invalid (constant 0), not reflected.
 
         Returns
         -------
@@ -501,19 +551,32 @@ class SwinUNetBackbone(nn.Module):
         time_embedding = self.time_embedding(pseudo_time)
         x = self.patch_embedding(x).permute(0, 2, 3, 1)
 
+        masks_at_level = [None, None, None, None]
+        if valid_mask is not None:
+            vm = valid_mask
+            if self.pad_h or self.pad_w:
+                vm = F.pad(vm, (0, self.pad_w, 0, self.pad_h), mode="constant", value=0.0)
+            patch_size = self.patch_embedding.stride[0]
+            vm = F.max_pool2d(vm, kernel_size=patch_size, stride=patch_size)
+            masks_at_level[0] = vm
+            for level in range(1, 4):
+                vm = F.max_pool2d(vm, kernel_size=2, stride=2)
+                masks_at_level[level] = vm
+
         skips = []
         for stage_index, stage in enumerate(self.encoder_stages):
-            x = stage(x, time_embedding)
+            x = stage(x, time_embedding, masks_at_level[stage_index])
             skips.append(x)
             if stage_index < len(self.patch_merges):
                 x = self.patch_merges[stage_index](x)
 
-        for expand, fusion, stage, skip in zip(
+        for decoder_index, (expand, fusion, stage, skip) in enumerate(zip(
             self.patch_expands, self.skip_fusions, self.decoder_stages, reversed(skips[:-1])
-        ):
+        )):
+            encoder_index = (2, 1, 0)[decoder_index]
             x = expand(x)
             x = fusion(torch.cat((x, skip), dim=-1))
-            x = stage(x, time_embedding)
+            x = stage(x, time_embedding, masks_at_level[encoder_index])
 
         x = self.final_expand(x)
         x = self.output_head(self.output_norm(x)).permute(0, 3, 1, 2)

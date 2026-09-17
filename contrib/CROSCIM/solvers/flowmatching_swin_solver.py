@@ -51,13 +51,14 @@ class FMSwinWrapper(nn.Module):
         model(cat(states, encoded), pseudo_time=t, mesh=..., mask=...,
               labels=..., resolution=...)
 
-    ``mesh``/``mask``/``labels``/``resolution`` are accepted for signature
+    ``mesh``/``labels``/``resolution`` are accepted for signature
     compatibility but ignored: the Swin backbone builds its own RoPE
-    positions internally from ``grid_size``, spatial validity is already
-    conveyed through the ``obs_mask`` channel baked into ``conditions`` by
-    ``FMSolver._encode_obs``, and ``labels``/``resolution`` are unused
-    (each CROSCIM resolution gets its own solver/network instance, and
-    ``labels`` is always zero in the existing pipeline).
+    positions internally from ``grid_size``, and ``labels``/``resolution``
+    are unused (each CROSCIM resolution gets its own solver/network
+    instance, and ``labels`` is always zero in the existing pipeline).
+    ``mask`` (1 = valid/ocean, 0 = land), when given, is forwarded to the
+    backbone's window/global attention to exclude land tokens from the
+    attention context -- see ``SwinUNetBackbone.forward(valid_mask=...)``.
     """
 
     def __init__(
@@ -112,7 +113,7 @@ class FMSwinWrapper(nn.Module):
     ) -> Tensor:
         noisy_state = in_tensor[:, :self.n_output]
         conditions = in_tensor[:, self.n_output:]
-        return self.backbone(noisy_state, conditions, pseudo_time)
+        return self.backbone(noisy_state, conditions, pseudo_time, valid_mask=mask)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

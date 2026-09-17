@@ -196,7 +196,7 @@ model:
   persist_rw: False
   multires: [50,10]
   normalize_anomaly: true  # rescale the anomaly to std~=1 to match the FM noise prior's scale -- see models.py normalize_anomaly_batch
-  anomaly_scale_max: 0.4  # cap on the per-patch derived scale (measured global true-anomaly std=0.1084 -- this allows ~4x that before capping) so a rare high-variance patch can't apply an outsized denormalisation factor; reverted from a fixed anomaly_scale, which destabilised training by mismatching the FM noise prior in every patch, not just the extreme ones
+  anomaly_scale_max: 0.25  # cap on the per-patch derived scale (measured global true-anomaly std=0.1084 -- this allows ~2.3x that before capping) so a rare high-variance (often coastal) patch can't apply an outsized denormalisation factor; tightened from 0.4 after coastal streaking was still visible in pred_SIT(x10); reverted from a fixed anomaly_scale before that, which destabilised training by mismatching the FM noise prior in every patch, not just the extreme ones
   opt_fn: null
 
   tgt_vars: ${var_config.target_vars}

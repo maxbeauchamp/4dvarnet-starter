@@ -302,7 +302,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             # Predicted velocity
             v_pred = network(
                 net_input, pseudo_time=t_flat,
-                labels=labels, resolution=resolution
+                mask=sbatch.mask, labels=labels, resolution=resolution
             )                                               # (B, C, H, W)
 
             # Log-scale model
@@ -414,7 +414,8 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
 
         if not self._fm_use_ema_at_inference:
             return solver.sample_one(
-                sbatch.input, latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
+                sbatch.input, mask=sbatch.mask,
+                latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
             )
 
         ema_net = self.ema_networks[solver_key]
@@ -425,7 +426,8 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
         solver.sampler.model = solver.network
         try:
             out = solver.sample_one(
-                sbatch.input, latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
+                sbatch.input, mask=sbatch.mask,
+                latent_bounds=self._get_latent_bounds(res), **boundary_kwargs
             )
         finally:
             solver.network = orig_net
@@ -512,6 +514,7 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             )
             return solver.sample_one(
                 batch.input, boundaries=zeros, mask_bound=zeros,
+                mask=getattr(batch, "mask", None),
                 latent_bounds=self._get_latent_bounds(res),
             )
         return solver(batch)
@@ -636,8 +639,13 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
             bound  = bound.unsqueeze(0).to(device)
             mbound = mbound.unsqueeze(0).to(device)
 
+            valid_mask = None
+            if domain_masks is not None and b_idx < len(domain_masks):
+                valid_mask = (~domain_masks[b_idx]).float().unsqueeze(0).to(device)
+
             pred = solver.sample_one(
                 y_single, boundaries=bound, mask_bound=mbound,
+                mask=valid_mask,
                 latent_bounds=self._get_latent_bounds(res),
             )
 
