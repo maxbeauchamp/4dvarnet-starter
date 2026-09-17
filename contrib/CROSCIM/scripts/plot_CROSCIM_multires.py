@@ -147,7 +147,7 @@ NORM_STATS = {
 # convention, SSH/u10 = diverging (signed quantities), distinct colormaps so
 # adjacent rows aren't visually confusable.
 VAR_STYLE = {
-    "asip_sic":    dict(cmap=_sic_cmap, vmin=0.0,  vmax=1.0,  label="Sea Ice Concentration"),
+    "asip_sic":    dict(cmap=_sic_cmap, vmin=0.0,  vmax=100.0, label="Sea Ice Concentration (%)"),
     "cimr_SIT":    dict(cmap="plasma",  vmin=0.0,  vmax=4.0,  label="Sea Ice Thickness (m)"),
     "cristal_SSH": dict(cmap="RdBu_r",  vmin=-1.0, vmax=1.0,  label="Sea Surface Height anomaly (m)"),
     "u10":         dict(cmap="PuOr",    vmin=-15., vmax=15.,  label="10 m zonal wind speed (m/s)"),
