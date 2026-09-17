@@ -178,47 +178,54 @@ def _time_has_data(ds, var, time_index, min_valid_frac):
     da = ds[var].isel(time=time_index).values if "time" in ds[var].dims else ds[var].values
     return np.isfinite(da).mean() >= min_valid_frac
 
-def find_valid_time_index(ncfiles_by_res, multires, vars_to_plot, min_valid_frac=0.05,
-                          start=0):
-    """Return the first time index (from `start`) for which every variable in
-    `vars_to_plot` has at least `min_valid_frac` finite pixels at EVERY
-    resolution in `multires` -- satellite observations (SIC/SIT/SSH) have
-    naturally patchy coverage, unlike dense covariates (u10), so a fixed
-    time_index can land on a day/patch with no valid data for some rows.
-    Raises RuntimeError if no such index exists."""
-    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(sample=0) for res in multires}
+def find_valid_sample_time(ncfiles_by_res, multires, vars_to_plot, min_valid_frac=0.05,
+                           max_samples=200):
+    """Return the first (sample_index, time_index) pair -- searched sample by
+    sample (0, 1, 2, ...), then time within each sample -- for which every
+    variable in `vars_to_plot` has at least `min_valid_frac` finite pixels at
+    EVERY resolution in `multires`. Satellite observations (SIC/SIT/SSH) have
+    naturally patchy coverage that varies a lot from one patch/date to the
+    next, unlike dense covariates (u10) -- a single fixed sample can have no
+    good time step at all even though other samples do, so this searches
+    across samples too, not just time within a fixed sample=0.
+    Checks at most `max_samples` samples before raising RuntimeError."""
+    dss = {res: xr.open_dataset(ncfiles_by_res[res]) for res in multires}
     try:
-        n_time = min(
-            dss[res][var].sizes["time"]
-            for res in multires for var in vars_to_plot
-            if "time" in dss[res][var].dims
-        )
-    except ValueError:
-        n_time = 1
-    try:
-        for t in range(start, n_time):
-            if all(_time_has_data(dss[res], var, t, min_valid_frac)
-                   for res in multires for var in vars_to_plot):
-                return t
+        n_sample = min(dss[res].sizes["sample"] for res in multires)
+        n_check = min(max_samples, n_sample)
+        for s in range(n_check):
+            ds_s = {res: dss[res].isel(sample=s) for res in multires}
+            time_sizes = [
+                ds_s[res][var].sizes["time"]
+                for res in multires for var in vars_to_plot
+                if "time" in ds_s[res][var].dims
+            ]
+            n_time = min(time_sizes) if time_sizes else 1
+            for t in range(n_time):
+                if all(_time_has_data(ds_s[res], var, t, min_valid_frac)
+                       for res in multires for var in vars_to_plot):
+                    return s, t
     finally:
         for ds in dss.values():
             ds.close()
     raise RuntimeError(
-        f"No time index in [{start},{n_time}) has >= {min_valid_frac:.0%} valid "
-        f"data for all of {vars_to_plot} across resolutions {multires}."
+        f"No (sample, time) among the first {n_check} sample(s) has >= "
+        f"{min_valid_frac:.0%} valid data for all of {vars_to_plot} across "
+        f"resolutions {multires}. Try increasing max_samples."
     )
 
 # ====================== MAIN PLOTTER ======================
 def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
-                        proj=ccrs.NorthPolarStereo()):
+                        sample_index=0, proj=ccrs.NorthPolarStereo()):
     """
     ncfiles_by_res: dict {res: path_to_nc}
     multires: list comme [50,10,2] (du plus large au plus fin)
     vars_to_plot: liste de variables à tracer (lignes)
     time_index: index temporel à tracer
+    sample_index: index du patch/sample à tracer (voir find_valid_sample_time)
     """
     # charge datasets
-    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(sample=0) for res in multires}
+    dss = {res: xr.open_dataset(ncfiles_by_res[res]).isel(sample=sample_index) for res in multires}
 
     nrows = len(vars_to_plot)
     ncols = len(multires)
@@ -330,9 +337,11 @@ if __name__ == "__main__":
     }
     vars_to_plot = ["asip_sic", "cimr_SIT", "cristal_SSH", "u10"]
 
-    time_index = find_valid_time_index(ncfiles, multires, vars_to_plot, min_valid_frac=0.05)
-    print(f"Using time_index={time_index} (first with >=5% valid data for all variables/resolutions)")
+    sample_index, time_index = find_valid_sample_time(ncfiles, multires, vars_to_plot,
+                                                       min_valid_frac=0.05)
+    print(f"Using sample_index={sample_index}, time_index={time_index} "
+          f"(first with >=5% valid data for all variables/resolutions)")
 
     fig, axes = plot_multires_polar(ncfiles, multires, vars_to_plot, time_index=time_index,
-                                    proj=ccrs.NorthPolarStereo())
+                                    sample_index=sample_index, proj=ccrs.NorthPolarStereo())
     fig.savefig("multires_polar_insets.png", dpi=300, bbox_inches="tight")
