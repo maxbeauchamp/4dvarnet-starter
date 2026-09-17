@@ -1,7 +1,20 @@
+import os
+
 import numpy as np
 import xarray as xr
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.path as mpath
+import cartopy
+import cmcrameri as cmc
+
+# Offline cartopy data (no internet access) -- same convention as
+# Notebooks/CROSCIM/Notebook_Benchmark_CROSCIM_SIT.ipynb. Resolved relative to
+# this file so it works regardless of the current working directory.
+_CARTOPY_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cartopy')
+cartopy.config['pre_existing_data_dir'] = _CARTOPY_DATA_DIR
+cartopy.config['data_dir'] = _CARTOPY_DATA_DIR
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
@@ -14,13 +27,13 @@ def highres_rectangle(extent, n_points_per_side=50):
     n_points_per_side : nombre de segments par côté
     """
     lon_min, lon_max, lat_min, lat_max = extent
-    
+
     # côtés
     top = np.column_stack([np.linspace(lon_min, lon_max, n_points_per_side), np.full(n_points_per_side, lat_max)])
     right = np.column_stack([np.full(n_points_per_side, lon_max), np.linspace(lat_max, lat_min, n_points_per_side)])
     bottom = np.column_stack([np.linspace(lon_max, lon_min, n_points_per_side), np.full(n_points_per_side, lat_min)])
     left = np.column_stack([np.full(n_points_per_side, lon_min), np.linspace(lat_min, lat_max, n_points_per_side)])
-    
+
     # concaténer et fermer le polygone
     coords = np.vstack([top, right, bottom, left, top[0:1]])
     return coords[:,0], coords[:,1]
@@ -87,6 +100,69 @@ def set_polar_circle(ax):
 def denormalize_minmax(norm_data, min_val, max_val):
     return norm_data * (max_val - min_val) + min_val
 
+def denormalize_zscore(norm_data, mean, std):
+    return norm_data * std + mean
+
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    new_cmap = matplotlib.colors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        cmap(np.linspace(minval, maxval, n)))
+    return new_cmap
+
+# SIC colormap: cmcrameri's perceptually-uniform "oslo" (dark-to-light blue),
+# truncated to its upper 80% so the darkest (near-black) end -- hard to read
+# against the land/coastline overlay -- is dropped.
+_sic_cmap = truncate_colormap(cmc.cm.oslo, minval=0.2, maxval=1.0, n=100)
+
+# ====================== PER-VARIABLE DISPLAY STYLE ======================
+# Normalisation stats sourced from
+# config/xp/CROSCIM/FM_Swin_solvers/base_arctic_croscim_wpreproc_sit_supervised_wbounds.yaml
+# (norm_stats / norm_stats_covs / norm_stats_models blocks). These describe the
+# shared CROSCIM preprocessing and are the same across experiments regardless
+# of which variable is the target.
+#
+# CAUTION on tgt_SIC: assumes the 0-1 fraction convention (models_SIC / cimr.SIC
+# -- same convention used for the "GT (model)" panel in
+# Notebook_Benchmark_CROSCIM_SIC.ipynb). If the preproc file being plotted built
+# tgt_SIC from asip_sic instead, that source is on a 0-100 percent scale --
+# change NORM_STATS["tgt_SIC"] to {"type": "minmax", "min": 0.0, "max": 100.0}.
+NORM_STATS = {
+    "tgt_SIC":     {"type": "minmax", "min": 0.0, "max": 1.0},
+    "tgt_SIT":     {"type": "zscore", "mean": 0.5695980677516013, "std": 0.8216149733058172},
+    "cristal_SSH": {"type": "zscore", "mean": 0.1912636630889516, "std": 0.41697635927509086},
+    "u10":         {"type": "zscore", "mean": 0.6010106010949151, "std": 4.545559141871505},
+}
+
+# Colour scale per variable: SIC = SIC-notebook convention, SIT = SIT-notebook
+# convention, SSH/u10 = diverging (signed quantities), distinct colormaps so
+# adjacent rows aren't visually confusable.
+VAR_STYLE = {
+    "tgt_SIC":     dict(cmap=_sic_cmap, vmin=0.0,  vmax=1.0,  label="Sea Ice Concentration"),
+    "tgt_SIT":     dict(cmap="plasma",  vmin=0.0,  vmax=4.0,  label="Sea Ice Thickness (m)"),
+    "cristal_SSH": dict(cmap="RdBu_r",  vmin=-1.0, vmax=1.0,  label="Sea Surface Height anomaly (m)"),
+    "u10":         dict(cmap="PuOr",    vmin=-15., vmax=15.,  label="10 m zonal wind speed (m/s)"),
+}
+
+# Row title prefix per variable, used as "{PREFIX} (x{res})".
+VAR_DISPLAY = {
+    "tgt_SIC": "SIC",
+    "tgt_SIT": "SIT",
+    "cristal_SSH": "SSH",
+    "u10": "u10",
+}
+
+def denormalize_var(var, data):
+    """Denormalise `data` for `var` using NORM_STATS; returns `data` unchanged
+    if `var` has no entry (e.g. an unrecognised variable passed by a caller)."""
+    stats = NORM_STATS.get(var)
+    if stats is None:
+        return data
+    if stats["type"] == "zscore":
+        return denormalize_zscore(data, stats["mean"], stats["std"])
+    if stats["type"] == "minmax":
+        return denormalize_minmax(data, stats["min"], stats["max"])
+    return data
+
 # ====================== MAIN PLOTTER ======================
 def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                         proj=ccrs.NorthPolarStereo()):
@@ -110,6 +186,9 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
 
     # boucle variables (lignes)
     for i, var in enumerate(vars_to_plot):
+        style = VAR_STYLE.get(var, dict(cmap="viridis", vmin=None, vmax=None, label=var))
+        var_label = VAR_DISPLAY.get(var, var)
+
         # boucle résolutions (colonnes)
         for j, res in enumerate(multires):
             ax = axes[i, j]
@@ -125,6 +204,7 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                 da = ds[var].isel(time=time_index).values
             else:
                 da = ds[var].values
+            da = denormalize_var(var, da)
 
             # fond carte & extent serré
             #ax.add_feature(cfeature.OCEAN, color='midnightblue', zorder=0)
@@ -133,12 +213,12 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
             ax.gridlines(draw_labels=False, x_inline=False, y_inline=False)
 
             # plot principal
-            im = masked_pcolormesh(ax, lon, lat, da)
-            ax.set_title(f"{var} - x{res}")
+            im = masked_pcolormesh(ax, lon, lat, da, cmap=style["cmap"], vmin=style["vmin"], vmax=style["vmax"])
+            ax.set_title(f"{var_label} (x{res})")
 
             # extent sur la zone couverte par cette résolution
             ax.set_extent(tight_lonlat_extent(lon, lat, margin=0.02), crs=ccrs.PlateCarree())
-            #set_polar_circle(ax) 
+            #set_polar_circle(ax)
 
             # inset: j -> j+1 (si existe)
             if j < ncols - 1:
@@ -152,6 +232,7 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                     da_f = ds_f[var].isel(time=time_index).values
                 else:
                     da_f = ds_f[var].values
+                da_f = denormalize_var(var, da_f)
 
                 # emprise du fin pour zoom
                 zoom_extent_ll = tight_lonlat_extent(lon_f, lat_f, margin=0.00)
@@ -178,16 +259,16 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                 #axins.add_feature(cfeature.OCEAN, color='midnightblue', zorder=0)
                 axins.add_feature(cfeature.LAND, color='silver', zorder=1)
                 axins.add_feature(cfeature.COASTLINE, zorder=3)
-                masked_pcolormesh(axins, lon_f, lat_f, da_f)
+                masked_pcolormesh(axins, lon_f, lat_f, da_f, cmap=style["cmap"], vmin=style["vmin"], vmax=style["vmax"])
                 axins.set_extent(zoom_extent_ll, crs=ccrs.PlateCarree())
                 #set_polar_circle(axins)
 
-        # une seule colorbar par ligne (colonne la plus à droite)
+        # une seule colorbar par ligne (colonne la plus à droite), avec légende
         cax = fig.add_axes([axes[i, -1].get_position().x1 + 0.01,
                             axes[i, -1].get_position().y0,
                             0.015,
                             axes[i, -1].get_position().height])
-        fig.colorbar(axes[i, -1].collections[0], cax=cax, orientation="vertical")
+        fig.colorbar(axes[i, -1].collections[0], cax=cax, orientation="vertical").set_label(style["label"], fontsize=10)
 
     #plt.tight_layout()
     return fig, axes
@@ -205,4 +286,3 @@ if __name__ == "__main__":
     fig, axes = plot_multires_polar(ncfiles, multires, vars_to_plot, time_index=7,
                                     proj=ccrs.NorthPolarStereo())
     fig.savefig("multires_polar_insets.png", dpi=300, bbox_inches="tight")
-
