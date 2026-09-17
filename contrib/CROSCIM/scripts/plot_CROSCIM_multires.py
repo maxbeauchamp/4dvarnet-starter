@@ -18,25 +18,20 @@ cartopy.config['data_dir'] = _CARTOPY_DATA_DIR
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-def highres_rectangle(extent, n_points_per_side=50):
-    """
-    Crée un rectangle en coordonnées géographiques avec plus de points par côté
-    pour éviter les déformations lors de la projection.
+# Native projection of the CROSCIM polar-stereographic grid (xc/yc, metres) --
+# EPSG:3411 / NSIDC Sea Ice Polar Stereographic North. Same definition as
+# DATA_CRS in Notebooks/CROSCIM/Notebook_Benchmark_CROSCIM_SI{C,T}.ipynb.
+DATA_CRS = ccrs.NorthPolarStereo(
+    central_longitude=-45, true_scale_latitude=70,
+    globe=ccrs.Globe(semimajor_axis=6378273.0, semiminor_axis=6356889.449))
 
-    extent : [lon_min, lon_max, lat_min, lat_max]
-    n_points_per_side : nombre de segments par côté
-    """
-    lon_min, lon_max, lat_min, lat_max = extent
-
-    # côtés
-    top = np.column_stack([np.linspace(lon_min, lon_max, n_points_per_side), np.full(n_points_per_side, lat_max)])
-    right = np.column_stack([np.full(n_points_per_side, lon_max), np.linspace(lat_max, lat_min, n_points_per_side)])
-    bottom = np.column_stack([np.linspace(lon_max, lon_min, n_points_per_side), np.full(n_points_per_side, lat_min)])
-    left = np.column_stack([np.full(n_points_per_side, lon_min), np.linspace(lat_min, lat_max, n_points_per_side)])
-
-    # concaténer et fermer le polygone
-    coords = np.vstack([top, right, bottom, left, top[0:1]])
-    return coords[:,0], coords[:,1]
+def native_rectangle(x_min, x_max, y_min, y_max):
+    """Closed rectangle in native (projected, Cartesian) xc/yc coordinates --
+    unlike a lon/lat rectangle, no densification needed: straight lines in a
+    projected CRS stay straight when reprojected for plotting."""
+    x = [x_min, x_max, x_max, x_min, x_min]
+    y = [y_min, y_min, y_max, y_max, y_min]
+    return x, y
 
 # -------- util: masque les cellules qui “wrap” (sauts de longitude) --------
 def z_masked_overlap(axe, X, Y, Z, source_projection=None):
@@ -86,8 +81,8 @@ def tight_lonlat_extent(lon2d, lat2d, margin=0.0):
     # full circle once projected in polar stereographic. Detect that case
     # and unwrap by shifting negative longitudes by +360 before taking
     # min/max, so the extent reflects the patch's true (narrow) width.
-    # Left unwrapped (may exceed 180) on purpose: both ax.set_extent and
-    # highres_rectangle accept dateline-crossing extents in that form.
+    # Left unwrapped (may exceed 180) on purpose: ax.set_extent accepts
+    # dateline-crossing extents in that form.
     if np.nanmax(lon2d) - np.nanmin(lon2d) > 180:
         lon2d = np.where(lon2d < 0, lon2d + 360, lon2d)
     lon_min = np.nanmin(lon2d); lon_max = np.nanmax(lon2d)
@@ -204,7 +199,10 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
             ax = axes[i, j]
             ds = dss[res]
 
-            # récup lon/lat (2D) + data au temps choisi
+            # récup lon/lat (2D) + data au temps choisi -- normalisés minmax
+            # dans le pipeline de preprocessing (contrib/CROSCIM/dataloaders/data.py,
+            # ~L1211-1212: normalize_var(lat, min=50,max=90) / normalize_var(lon,
+            # min=-180,max=180)), donc bien besoin de dénormaliser ici.
             lon = ds["lon"].values
             lat = ds["lat"].values
             lon = denormalize_minmax(lon, -180, 180)
@@ -244,17 +242,20 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                     da_f = ds_f[var].values
                 da_f = denormalize_var(var, da_f)
 
-                # emprise du fin pour zoom
-                zoom_extent_ll = tight_lonlat_extent(lon_f, lat_f, margin=0.00)
+                # emprise du fin pour zoom -- calculée en xc/yc NATIF (pas en
+                # lon/lat) : un patch de grille polaire stéréographique est un
+                # vrai rectangle dans son système de coordonnées natif, mais
+                # devient un LOSANGE tourné une fois exprimé en lon/lat --
+                # une boîte englobante alignée sur lon/lat autour de ce
+                # losange est donc nécessairement bien plus grande que le
+                # patch réel (d'où le rectangle-indicateur disproportionné).
+                xc_f, yc_f = ds_f.xc.values, ds_f.yc.values
+                x_min, x_max = float(xc_f.min()), float(xc_f.max())
+                y_min, y_max = float(yc_f.min()), float(yc_f.max())
 
-                # rectangle indicateur (en lon/lat) -- built from zoom_extent_ll
-                # (antimeridian-safe, see tight_lonlat_extent), NOT raw
-                # lon_f/lat_f min/max: those wrap incorrectly for a patch
-                # straddling +-180 deg near the pole, turning the "rectangle"
-                # into a near-360-deg band that renders as a full circle
-                # once projected in polar stereographic.
-                rect_lon, rect_lat = highres_rectangle(zoom_extent_ll, n_points_per_side=100)
-                ax.plot(rect_lon, rect_lat, transform=ccrs.PlateCarree(),
+                # rectangle indicateur, dans le système natif -> transform=DATA_CRS
+                rect_x, rect_y = native_rectangle(x_min, x_max, y_min, y_max)
+                ax.plot(rect_x, rect_y, transform=DATA_CRS,
                         color="red", lw=1.0, zorder=4)
 
                 # positionne un petit axes en haut-droite de ax
@@ -268,7 +269,7 @@ def plot_multires_polar(ncfiles_by_res, multires, vars_to_plot, time_index=0,
                 axins.add_feature(cfeature.LAND, color='silver', zorder=1)
                 axins.add_feature(cfeature.COASTLINE, zorder=3)
                 masked_pcolormesh(axins, lon_f, lat_f, da_f, cmap=style["cmap"], vmin=style["vmin"], vmax=style["vmax"])
-                axins.set_extent(zoom_extent_ll, crs=ccrs.PlateCarree())
+                axins.set_extent([x_min, x_max, y_min, y_max], crs=DATA_CRS)
                 #set_polar_circle(axins)
 
         # une seule colorbar par ligne (colonne la plus à droite), avec légende
