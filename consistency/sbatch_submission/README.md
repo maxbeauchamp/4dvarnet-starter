@@ -43,6 +43,20 @@ grid, no retraining. `4dvarnet_lstm`'s solver iteration count is fixed by
 training (unrolled end-to-end), so it contributes a single reference point
 instead of a curve.
 
+**NFE is measured empirically, not equated to `nsteps`/`n_steps`.** Each
+sweep cell monkey-patches a call counter onto the network's `forward` for
+the duration of the sampling loop. This matters because the CM family does
+one network call per step (`nsteps == NFE`), but FM/DynFM use Heun's method
+(2nd-order Runge-Kutta), which evaluates the velocity field *twice* per
+integration step — and DynFM's boundary-aware grid additionally inserts a
+variable number of extra steps (spin-up boundary + per-frame times) on top
+of `n_steps`. Plotting the raw step-count parameter directly against the CM
+family's `nsteps` would understate FM/DynFM's true inference cost by roughly
+2x (or more for DynFM at small `n_steps`, where boundary insertions
+dominate). The resulting `*_nfe_sweep.csv` files keep both columns: `N` (the
+control parameter passed to the sampler, for reproducibility) and `nfe` (the
+measured x-axis value used by the figure).
+
 ```bash
 sbatch submit_nfe_sweep.sbatch                 # all 6 generative methods + 4dvarnet_lstm, then the figure
 python run_nfe_sweep.py --method CM            # one method at a time, e.g. to iterate on the NFE grid

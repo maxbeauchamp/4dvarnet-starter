@@ -75,7 +75,7 @@ def load_sweeps(results_dir: Path) -> dict[str, pd.DataFrame]:
         if not f.exists():
             print(f"[plot_nfe_efficiency] WARNING: missing {f}, skipping {method}")
             continue
-        df = pd.read_csv(f).sort_values("N")
+        df = pd.read_csv(f).sort_values("nfe")
         data[method] = df
     return data
 
@@ -93,14 +93,14 @@ def make_figure(data: dict[str, pd.DataFrame], out_stem: Path, metric: str = "rm
         is_point = len(df) == 1   # 4DVarNet: single fixed-K reference point
 
         (h,) = ax_metric.plot(
-            df["N"], df[metric],
+            df["nfe"], df[metric],
             marker=style["marker"], ms=style["ms"], color=style["color"],
             ls="none" if is_point else style["ls"],
             markeredgecolor=style.get("markeredgecolor", "white"),
             zorder=style.get("zorder", 3),
         )
         ax_time.plot(
-            df["N"], df["wall_clock_s_per_sample"] * 1000.0,
+            df["nfe"], df["wall_clock_s_per_sample"] * 1000.0,
             marker=style["marker"], ms=style["ms"], color=style["color"],
             ls="none" if is_point else style["ls"],
             markeredgecolor=style.get("markeredgecolor", "white"),
@@ -109,15 +109,22 @@ def make_figure(data: dict[str, pd.DataFrame], out_stem: Path, metric: str = "rm
         handles.append(h)
         labels.append(style["label"])
 
+    # NFE = measured number of network forward calls per reconstructed sample
+    # (see run_nfe_sweep.py / the notebooks' sweep cells) -- NOT the raw
+    # `nsteps`/`n_steps` control parameter, since Heun-based samplers (FM,
+    # DynFM) evaluate the network twice per integration step and DynFM's
+    # boundary-aware grid adds a variable number of extra steps on top of
+    # that. Plotting the control parameter directly would understate their
+    # true inference cost relative to the CM family (1 call/step).
     ax_metric.set_xscale("log")
-    ax_metric.set_xlabel("NFE (solver / sampling steps $N$)")
+    ax_metric.set_xlabel("NFE (network forward calls per sample)")
     ax_metric.set_ylabel("RMSE" if metric == "rmse" else "CRPS")
     ax_metric.set_title("(a) Reconstruction error vs. NFE")
     _clean_axes(ax_metric)
 
     ax_time.set_xscale("log")
     ax_time.set_yscale("log")
-    ax_time.set_xlabel("NFE (solver / sampling steps $N$)")
+    ax_time.set_xlabel("NFE (network forward calls per sample)")
     ax_time.set_ylabel("Wall-clock [ms / sample]")
     ax_time.set_title("(b) Inference cost vs. NFE")
     _clean_axes(ax_time)
