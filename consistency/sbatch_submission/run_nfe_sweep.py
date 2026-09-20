@@ -90,11 +90,15 @@ def main():
 
     params = {
         "MAX_EPOCHS": cfg["max_epochs"],
-        # The notebook's pre-existing full-test-set metrics cell (computed
-        # before the NFE-sweep cell) is NOT gated -- papermill still runs it.
-        # N_SAMPLES=1 keeps that redundant pass cheap; the sweep itself uses
-        # its own NFE_N_SAMPLES_SWEEP, independently.
-        "N_SAMPLES": 1,
+        # The notebook's pre-existing full-test-set metrics cell -- AND the
+        # illustrative "Publication Figures" cell before it, which hardcodes
+        # ensemble[0]/ensemble[1] for a 2-member side-by-side comparison --
+        # are NOT gated by RUN_NFE_SWEEP, so papermill still runs them.
+        # N_SAMPLES=1 crashes the figures cell with IndexError on
+        # ensemble[1] (only one member generated); 2 is the minimum that
+        # keeps both pre-existing cells cheap without crashing. The sweep
+        # itself uses its own NFE_N_SAMPLES_SWEEP, independently.
+        "N_SAMPLES": 2,
         "RESET_TRAINING": False,
         "CUDA_VISIBLE_DEVICES": args.cuda_device,
         "METRICS_CSV": str(out_dir / f"{args.method}_metrics_nfe_placeholder.csv"),
