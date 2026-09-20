@@ -641,7 +641,13 @@ class Lit4dVarNet_CROSCIM_FlowMatching(StochasticEnsembleTestMixin, Lit4dVarNet_
 
             valid_mask = None
             if domain_masks is not None and b_idx < len(domain_masks):
-                valid_mask = (~domain_masks[b_idx]).float().unsqueeze(0).to(device)
+                vm = (~domain_masks[b_idx]).float()
+                if vm.dim() == 2:
+                    # Some dataloaders store land_mask without a channel dim
+                    # ((H, W) instead of (1, H, W)) -- see the analogous fix
+                    # in format_batch_for_solver.
+                    vm = vm.unsqueeze(0)
+                valid_mask = vm.unsqueeze(0).to(device)
 
             pred = solver.sample_one(
                 y_single, boundaries=bound, mask_bound=mbound,

@@ -830,6 +830,12 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             land_mask = getattr(batch, 'land_mask')
             if torch.is_tensor(land_mask) and land_mask.numel() > 0:
                 valid_mask = (land_mask == 0).float()
+                if valid_mask.dim() == 3:
+                    # Some resolutions collate land_mask without its channel
+                    # dim ((B, H, W) instead of (B, 1, H, W)) -- restore it so
+                    # downstream code (SwinUNetBackbone's valid_mask.permute)
+                    # can rely on a fixed (B, 1, H, W) shape.
+                    valid_mask = valid_mask.unsqueeze(1)
 
         return sBatch(
             input=torch.cat(input_tensors, dim=1).float(),
