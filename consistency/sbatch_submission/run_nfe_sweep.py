@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run the NFE (number of function evaluations) efficiency sweep for one
-method on GP -- substantiates the "efficient few-step inference" claim with
-an NFE-vs-RMSE/CRPS curve and NFE-vs-wall-clock timings, instead of relying
-only on the qualitative convergence picture.
+method on one xp (GP or SSH_GF) -- substantiates the "efficient few-step
+inference" claim with an NFE-vs-RMSE/CRPS curve, instead of relying only on
+the qualitative convergence picture.
 
 Reloads the checkpoint trained by run_training.py (SKIP_TRAINING=True, same
 mechanism as run_metrics.py) and re-runs inference at several step counts
@@ -10,21 +10,24 @@ mechanism as run_metrics.py) and re-runs inference at several step counts
 NFE_N_SAMPLES_SWEEP ensemble members per item) -- no retraining involved,
 since nsteps/n_steps only control the schedule discretisation at inference
 time for every generative method here (see the "NFE (few-step inference)
-efficiency sweep" cell added to each GP notebook, right after its existing
-full-test-set metrics cell).
+efficiency sweep" cell added to each instrumented notebook, right after its
+existing full-test-set metrics cell -- see INSTRUMENTED_XP_METHODS below for
+which (xp, method) combos actually have that cell).
 
 For the deterministic 4dvarnet_lstm baseline, the number of solver
 iterations is fixed by training (n_solver, unrolled at train time) and
 cannot be swept -- its notebook cell instead reports a single reference
-point (K, RMSE, wall-clock) on the same subset.
+point (K, RMSE, wall-clock) on the same subset. On SSH_GF specifically, that
+notebook has no SOLVER_TYPE switch (always the UNet gradient model, no LSTM
+variant) -- see the caveat printed by that cell.
 
-Writes results/GP/<method>_nfe_sweep.csv, later consumed by
-plot_nfe_efficiency.py to build the final NFE-vs-RMSE / NFE-vs-wall-clock
-figure.
+Writes results/<xp>/<method>_nfe_sweep.csv, later consumed by
+plot_nfe_efficiency.py to build the final NFE-vs-RMSE / NFE-vs-CRPS figure.
 
 Usage:
     python run_nfe_sweep.py --method CM
-    python run_nfe_sweep.py --method 4dvarnet_lstm
+    python run_nfe_sweep.py --xp SSH_GF --method FM
+    python run_nfe_sweep.py --xp SSH_GF --method 4dvarnet_lstm
     python run_nfe_sweep.py --method FM --n-test-batches 5 --n-samples-sweep 15
 """
 from __future__ import annotations
@@ -61,8 +64,22 @@ def load_methods():
         return yaml.safe_load(f)
 
 
+# Which (xp, method) combos actually have the "NFE (few-step inference)
+# efficiency sweep" cell inserted into their notebook (see the GP/SSH_GF
+# notebooks' sweep cells). Picking an un-instrumented combo would silently
+# produce no CSV (the notebook has nothing gated on RUN_NFE_SWEEP to run),
+# so this is checked explicitly instead of failing downstream in
+# plot_nfe_efficiency.py with a cryptic "missing file" warning.
+INSTRUMENTED_XP_METHODS = {
+    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm"},
+    "SSH_GF": {"CM", "FM", "4dvarnet_lstm"},
+    "SIC":    set(),
+}
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--xp", default="GP", choices=["GP", "SSH_GF", "SIC"])
     ap.add_argument("--method", required=True, choices=list(NFE_GRIDS))
     ap.add_argument("--n-test-batches", type=int, default=3,
                      help="Number of test_dataloader() batches used for the sweep (small subset -- this is a controlled ablation over NFE, not the headline metric)")
@@ -73,15 +90,21 @@ def main():
     ap.add_argument("--cuda-device", default="0")
     args = ap.parse_args()
 
+    if args.method not in INSTRUMENTED_XP_METHODS.get(args.xp, set()):
+        raise SystemExit(
+            f"No NFE sweep cell for method={args.method!r} on xp={args.xp!r}. "
+            f"Instrumented methods for {args.xp}: {sorted(INSTRUMENTED_XP_METHODS.get(args.xp, set())) or 'none'}."
+        )
+
     cfg = load_methods()
     method_cfg = cfg["methods"][args.method]
-    xp_cfg = method_cfg["xp"]["GP"]
+    xp_cfg = method_cfg["xp"][args.xp]
 
-    notebook_in = NOTEBOOKS_ROOT / cfg["xp_notebook_dir"]["GP"] / xp_cfg["notebook"]
+    notebook_in = NOTEBOOKS_ROOT / cfg["xp_notebook_dir"][args.xp] / xp_cfg["notebook"]
     if not notebook_in.exists():
         raise SystemExit(f"Notebook not found: {notebook_in}")
 
-    out_dir = RESULTS_ROOT / "GP"
+    out_dir = RESULTS_ROOT / args.xp
     out_dir.mkdir(parents=True, exist_ok=True)
     notebook_out = out_dir / f"{args.method}_nfe_sweep.ipynb"
     sweep_csv = out_dir / f"{args.method}_nfe_sweep.csv"
@@ -111,7 +134,7 @@ def main():
     }
     params.update(method_cfg.get("params") or {})
 
-    print(f"\n{'='*88}\n[run_nfe_sweep] STARTING {args.method} / GP\n{'='*88}", flush=True)
+    print(f"\n{'='*88}\n[run_nfe_sweep] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
     print(f"[run_nfe_sweep] {args.method} -> {notebook_out}", flush=True)
     print(f"[run_nfe_sweep] grid={grid}  n_test_batches={args.n_test_batches}  n_samples_sweep={args.n_samples_sweep}", flush=True)
     pm.execute_notebook(

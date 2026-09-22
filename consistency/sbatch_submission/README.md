@@ -18,9 +18,9 @@ it does not reimplement the methods.
 | `run_metrics.py` | `papermill`s the same notebook, checkpoint reloaded, `N_SAMPLES=50` (generative) / `1` (deterministic) |
 | `make_latex_table.py` | Reads the CSVs in `results/<xp>/` and writes `results/<xp>/comparison_table.tex` |
 | `submit_train.sbatch` / `submit_metrics.sbatch` | Sequential loop over the 8 methods (Odyssey convention) |
-| `run_nfe_sweep.py` | GP only: `papermill`s one method's notebook (checkpoint reloaded, no retraining) at several step counts (NFE), writes `results/GP/<method>_nfe_sweep.csv` |
-| `plot_nfe_efficiency.py` | Reads the `*_nfe_sweep.csv` files and builds `figures/GP/nfe_efficiency.{pdf,png}` |
-| `submit_nfe_sweep.sbatch` | Sequential NFE sweep over the 6 generative methods + the `4dvarnet_lstm` reference point, then the figure |
+| `run_nfe_sweep.py` | GP or SSH_GF: `papermill`s one method's notebook (checkpoint reloaded, no retraining) at several step counts (NFE), writes `results/<xp>/<method>_nfe_sweep.csv` |
+| `plot_nfe_efficiency.py` | Reads the `*_nfe_sweep.csv` files and builds `figures/<xp>/nfe_efficiency.{pdf,png}` |
+| `submit_nfe_sweep.sbatch <xp>` | Sequential NFE sweep (GP: 6 generative methods + `4dvarnet_lstm`; SSH_GF: `CM`/`FM`/`4dvarnet_lstm`), then the figure |
 
 ## Usage on the cluster
 
@@ -30,7 +30,7 @@ sbatch submit_metrics.sbatch GP        # 8 metrics passes (50 members for the 6 
 cat results/GP/comparison_table.tex
 ```
 
-### NFE (few-step inference) efficiency sweep — GP only
+### NFE (few-step inference) efficiency sweep — GP and SSH_GF
 
 Substantiates the "efficient few-step inference" claim (an NFE-vs-RMSE and
 NFE-vs-CRPS curve, side by side) instead of relying only on the qualitative
@@ -43,15 +43,27 @@ retraining. `4dvarnet_lstm`'s solver iteration count is fixed by training
 (unrolled end-to-end), so it contributes a single reference value instead
 of a curve.
 
-`run_nfe_sweep.py` can sweep any of the 6 generative methods (and produces
-a CSV for each), but `plot_nfe_efficiency.py` only plots **CM and FM** as
-curves, with `4dvarnet_lstm` drawn as a dashed horizontal reference line
-across the RMSE panel (fixed cost, no CRPS — deterministic, no ensemble).
-The Var*/Dyn* variants showed sweep-instability spikes at intermediate NFE
+On GP, `run_nfe_sweep.py` can sweep any of the 6 generative methods (and
+produces a CSV for each) — on SSH_GF only `CM`, `FM`, and `4dvarnet_lstm`
+have the sweep cell instrumented (see `INSTRUMENTED_XP_METHODS` in
+`run_nfe_sweep.py`; picking another method there raises a clear error
+instead of silently producing nothing). Either way,
+`plot_nfe_efficiency.py` only plots **CM and FM** as curves, with
+`4dvarnet_lstm` drawn as a dashed horizontal reference line across the RMSE
+panel (fixed cost, no CRPS — deterministic, no ensemble). On GP, the
+Var*/Dyn* variants showed sweep-instability spikes at intermediate NFE
 (likely undertrained at those specific step counts) that clutter the figure
 without changing the argument — CM/FM are the flagship pairwise-consistency
 / flow-matching instances and make the point on their own. Their CSVs are
-still written by `submit_nfe_sweep.sbatch` for inspection.
+still written by `submit_nfe_sweep.sbatch GP` for inspection.
+
+**SSH_GF caveat:** `Notebook_4dvarnet_unet.ipynb` (the notebook backing
+`4dvarnet_lstm` for this xp) has no `SOLVER_TYPE` switch — it always uses
+the UNet gradient model, there is no ConvLSTM variant wired up for SSH_GF
+(unlike GP). Its sweep cell still runs and reports a point under the
+`4dvarnet_lstm` method key (for `methods.yaml`/pipeline consistency), but
+prints a caveat — label it "4DVarNet" rather than "4DVarNet-LSTM" in any
+SSH_GF figure until an actual LSTM variant is trained for this xp.
 
 **NFE is measured empirically, not equated to `nsteps`/`n_steps`.** Each
 sweep cell monkey-patches a call counter onto the network's `forward` for
@@ -68,9 +80,12 @@ control parameter passed to the sampler, for reproducibility) and `nfe` (the
 measured x-axis value used by the figure).
 
 ```bash
-sbatch submit_nfe_sweep.sbatch                 # all 6 generative methods + 4dvarnet_lstm, then the figure
-python run_nfe_sweep.py --method CM            # one method at a time, e.g. to iterate on the NFE grid
-python plot_nfe_efficiency.py                  # rebuild the figure from existing results/GP/*_nfe_sweep.csv
+sbatch submit_nfe_sweep.sbatch GP               # GP: all 6 generative methods + 4dvarnet_lstm, then the figure
+sbatch submit_nfe_sweep.sbatch SSH_GF           # SSH_GF: CM, FM, 4dvarnet_lstm, then the figure
+python run_nfe_sweep.py --method CM             # GP by default, one method at a time (e.g. to iterate on the NFE grid)
+python run_nfe_sweep.py --xp SSH_GF --method FM # same, on SSH_GF
+python plot_nfe_efficiency.py                                           # rebuild the GP figure from results/GP/*_nfe_sweep.csv
+python plot_nfe_efficiency.py --results-dir results/SSH_GF --out figures/SSH_GF/nfe_efficiency
 ```
 
 For SIC/SSH_GF, the missing notebooks have already been generated by

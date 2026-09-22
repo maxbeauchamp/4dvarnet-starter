@@ -1,25 +1,32 @@
 #!/bin/bash
 # =============================================================================
-# NFE (few-step inference) efficiency sweep, GP only -- substantiates the
-# "efficient few-step inference" claim with an NFE-vs-RMSE/CRPS curve and
-# NFE-vs-wall-clock timings, rather than relying only on the qualitative
-# convergence picture. Reloads the checkpoints produced by
-# submit_train.sbatch (SKIP_TRAINING=True, same mechanism as
-# submit_metrics.sbatch) -- no retraining involved.
+# NFE (few-step inference) efficiency sweep -- substantiates the "efficient
+# few-step inference" claim with an NFE-vs-RMSE and NFE-vs-CRPS curve,
+# rather than relying only on the qualitative convergence picture. Reloads
+# the checkpoints produced by submit_train.sbatch (SKIP_TRAINING=True, same
+# mechanism as submit_metrics.sbatch) -- no retraining involved.
 #
-# Runs the 6 generative methods (CM, VarCM, DynCM, VarDynCM, FM, DynFM) over
-# their NFE grid (see NFE_GRIDS in run_nfe_sweep.py), plus a single
-# reference point for the 4dvarnet_lstm baseline (its solver iteration count
-# is fixed by training, not swept). Finishes by building the final
-# NFE-vs-RMSE / NFE-vs-wall-clock figure.
+# GP: sweeps the 6 generative methods (CM, VarCM, DynCM, VarDynCM, FM,
+# DynFM) over their NFE grid (see NFE_GRIDS in run_nfe_sweep.py), plus a
+# single reference point for 4dvarnet_lstm (its solver iteration count is
+# fixed by training, not swept).
+# SSH_GF: only CM, FM, and 4dvarnet_lstm have the sweep cell instrumented
+# (see INSTRUMENTED_XP_METHODS in run_nfe_sweep.py) -- note that SSH_GF's
+# 4dvarnet_lstm notebook has no SOLVER_TYPE switch (always the UNet
+# gradient model), see the caveat printed by that method's sweep cell.
+#
+# Either way, only plot_nfe_efficiency.py's flagship pair (CM, FM) plus the
+# 4dvarnet_lstm reference line end up in the final figure -- the Var*/Dyn*
+# CSVs (GP only) are written for inspection but not plotted by default
+# (they showed sweep-instability artifacts at intermediate NFE).
 #
 # Odyssey convention (cf. submit_metrics.sbatch).
 #
 # Usage:
-#   sbatch submit_nfe_sweep.sbatch
+#   sbatch submit_nfe_sweep.sbatch <GP|SSH_GF>
 # =============================================================================
 
-#SBATCH --job-name=nfe_sweep_GP
+#SBATCH --job-name=nfe_sweep
 #SBATCH --partition=Odyssey_GPU
 #SBATCH --account=odyssey
 #SBATCH --gres=gpu:a100:1
@@ -44,16 +51,25 @@ echo "[$(date)] python: $(which python) ($(python --version 2>&1))"
 
 set -eo pipefail
 
+XP="${1:?Usage: sbatch submit_nfe_sweep.sbatch <GP|SSH_GF>}"
+
 cd "$SLURM_SUBMIT_DIR"
 
-METHODS=(CM VarCM DynCM VarDynCM FM DynFM 4dvarnet_lstm)
+if [[ "$XP" == "GP" ]]; then
+    METHODS=(CM VarCM DynCM VarDynCM FM DynFM 4dvarnet_lstm)
+elif [[ "$XP" == "SSH_GF" ]]; then
+    METHODS=(CM FM 4dvarnet_lstm)
+else
+    echo "ERROR: no NFE sweep cells instrumented for xp=${XP}" >&2
+    exit 1
+fi
 
 for method in "${METHODS[@]}"; do
-    echo "[$(date)] ===== NFE sweep ${method} / GP ====="
-    python run_nfe_sweep.py --method "$method"
+    echo "[$(date)] ===== NFE sweep ${method} / ${XP} ====="
+    python run_nfe_sweep.py --xp "$XP" --method "$method"
 done
 
 echo "[$(date)] ===== Efficiency figure ====="
-python plot_nfe_efficiency.py --metric rmse
+python plot_nfe_efficiency.py --results-dir "results/${XP}" --out "figures/${XP}/nfe_efficiency"
 
-echo "[$(date)] Done — NFE sweep + figure generated: figures/GP/nfe_efficiency.{pdf,png}"
+echo "[$(date)] Done — NFE sweep + figure generated: figures/${XP}/nfe_efficiency.{pdf,png}"
