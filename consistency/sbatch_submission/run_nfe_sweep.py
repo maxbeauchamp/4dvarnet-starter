@@ -66,8 +66,8 @@ def main():
     ap.add_argument("--method", required=True, choices=list(NFE_GRIDS))
     ap.add_argument("--n-test-batches", type=int, default=3,
                      help="Number of test_dataloader() batches used for the sweep (small subset -- this is a controlled ablation over NFE, not the headline metric)")
-    ap.add_argument("--n-samples-sweep", type=int, default=10,
-                     help="Ensemble members per test item at each NFE (smaller than the full N_SAMPLES to keep the sweep affordable)")
+    ap.add_argument("--n-samples-sweep", type=int, default=20,
+                     help="Ensemble members per test item at each NFE (needed for a stable CRPS estimate; smaller than the full N_SAMPLES=50 to keep the sweep affordable)")
     ap.add_argument("--grid", default=None,
                      help="Comma-separated override of the NFE grid, e.g. '1,2,4,8,16'")
     ap.add_argument("--cuda-device", default="0")

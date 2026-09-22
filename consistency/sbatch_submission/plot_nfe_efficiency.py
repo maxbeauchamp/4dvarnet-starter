@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
-"""Build the NFE-vs-RMSE / NFE-vs-wall-clock efficiency figure (GP), from the
-CSVs produced by run_nfe_sweep.py -- substantiates the "efficient few-step
-inference" claim: an NFE-vs-RMSE curve, the K used per method, and wall-clock
-comparisons, in one publication-ready figure.
+"""Build the NFE-vs-RMSE / NFE-vs-CRPS efficiency figure (GP), from the CSVs
+produced by run_nfe_sweep.py -- substantiates the "efficient few-step
+inference" claim (an NFE-vs-RMSE/CRPS curve for the flagship CM/FM pair,
+4DVarNet-LSTM as a fixed-cost reference line) in one publication-ready
+figure.
+
+Only CM and FM are plotted as swept curves: the Var*/Dyn* variants showed
+sweep-artifacts (instability spikes at intermediate NFE, likely undertrained
+at those specific step counts) that clutter the figure without changing the
+argument -- CM/FM are the flagship pairwise-consistency / flow-matching
+instances and make the point on their own. 4DVarNet-LSTM has no swept NFE
+(its solver iteration count is fixed by training) and no CRPS (deterministic,
+no ensemble) -- it is drawn as a single dashed horizontal reference line
+across the RMSE panel only.
 
 Usage:
     python plot_nfe_efficiency.py
@@ -19,21 +29,15 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 
-# Display order + style: consistent across the whole method suite (matches
-# the paper's own ordering: deterministic baseline, then CM family, then FM
-# family). Colors are colorblind-safe (Okabe-Ito), one marker shape per
-# family so CM-family / FM-family / baseline are visually grouped even
-# before reading the legend.
-METHOD_STYLE = {
-    "4dvarnet_lstm": dict(label="4DVarNet-LSTM", color="#000000", marker="*", ms=14, ls="none", zorder=5),
-    "CM":            dict(label="CM",            color="#0072B2", marker="o", ms=6, ls="-"),
-    "VarCM":         dict(label="VarCM",         color="#56B4E9", marker="o", ms=6, ls="-"),
-    "DynCM":         dict(label="DynCM",         color="#009E73", marker="s", ms=6, ls="-"),
-    "VarDynCM":      dict(label="VarDynCM",      color="#D55E00", marker="s", ms=6, ls="-"),
-    "FM":            dict(label="FM",            color="#CC79A7", marker="^", ms=7, ls="-"),
-    "DynFM":         dict(label="DynFM",         color="#E69F00", marker="^", ms=7, ls="-"),
+# Colors are colorblind-safe (Okabe-Ito).
+CURVE_METHODS = ["CM", "FM"]
+CURVE_STYLE = {
+    "CM": dict(label="CM", color="#0072B2", marker="o", ms=6, ls="-"),
+    "FM": dict(label="FM", color="#CC79A7", marker="^", ms=7, ls="-"),
 }
-METHOD_ORDER = ["4dvarnet_lstm", "CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM"]
+BASELINE_METHOD = "4dvarnet_lstm"
+BASELINE_STYLE = dict(label="4DVarNet-LSTM", color="#000000", ls="--", lw=1.8)
+METHOD_ORDER = CURVE_METHODS + [BASELINE_METHOD]
 
 
 def _iclr_style():
@@ -80,63 +84,69 @@ def load_sweeps(results_dir: Path) -> dict[str, pd.DataFrame]:
     return data
 
 
-def make_figure(data: dict[str, pd.DataFrame], out_stem: Path, metric: str = "rmse"):
+def make_figure(data: dict[str, pd.DataFrame], out_stem: Path):
     _iclr_style()
-    fig, (ax_metric, ax_time) = plt.subplots(1, 2, figsize=(9.0, 3.15))
+    fig, (ax_rmse, ax_crps) = plt.subplots(1, 2, figsize=(9.0, 3.15))
 
     handles, labels = [], []
-    for method in METHOD_ORDER:
+    for method in CURVE_METHODS:
         if method not in data:
             continue
         df = data[method]
-        style = METHOD_STYLE[method]
-        is_point = len(df) == 1   # 4DVarNet: single fixed-K reference point
+        style = CURVE_STYLE[method]
 
-        (h,) = ax_metric.plot(
-            df["nfe"], df[metric],
-            marker=style["marker"], ms=style["ms"], color=style["color"],
-            ls="none" if is_point else style["ls"],
-            markeredgecolor=style.get("markeredgecolor", "white"),
-            zorder=style.get("zorder", 3),
+        (h,) = ax_rmse.plot(
+            df["nfe"], df["rmse"],
+            marker=style["marker"], ms=style["ms"], color=style["color"], ls=style["ls"],
+            markeredgecolor="white", zorder=3,
         )
-        ax_time.plot(
-            df["nfe"], df["wall_clock_s_per_sample"] * 1000.0,
-            marker=style["marker"], ms=style["ms"], color=style["color"],
-            ls="none" if is_point else style["ls"],
-            markeredgecolor=style.get("markeredgecolor", "white"),
-            zorder=style.get("zorder", 3),
+        ax_crps.plot(
+            df["nfe"], df["crps"],
+            marker=style["marker"], ms=style["ms"], color=style["color"], ls=style["ls"],
+            markeredgecolor="white", zorder=3,
         )
         handles.append(h)
         labels.append(style["label"])
 
+    # 4DVarNet-LSTM: fixed solver-iteration count, no NFE sweep possible (see
+    # run_nfe_sweep.py) and no CRPS (deterministic, no ensemble) -- drawn as
+    # a single dashed reference line spanning the RMSE panel only.
+    if BASELINE_METHOD in data:
+        _rmse_ref = float(data[BASELINE_METHOD]["rmse"].iloc[0])
+        (h_base,) = ax_rmse.plot(
+            [], [], color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"], lw=BASELINE_STYLE["lw"],
+        )
+        ax_rmse.axhline(_rmse_ref, color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"],
+                         lw=BASELINE_STYLE["lw"], zorder=2)
+        handles.append(h_base)
+        labels.append(BASELINE_STYLE["label"])
+
     # NFE = measured number of network forward calls per reconstructed sample
     # (see run_nfe_sweep.py / the notebooks' sweep cells) -- NOT the raw
-    # `nsteps`/`n_steps` control parameter, since Heun-based samplers (FM,
-    # DynFM) evaluate the network twice per integration step and DynFM's
-    # boundary-aware grid adds a variable number of extra steps on top of
-    # that. Plotting the control parameter directly would understate their
-    # true inference cost relative to the CM family (1 call/step).
-    ax_metric.set_xscale("log")
-    ax_metric.set_xlabel("NFE (network forward calls per sample)")
-    ax_metric.set_ylabel("RMSE" if metric == "rmse" else "CRPS")
-    ax_metric.set_title("(a) Reconstruction error vs. NFE")
-    _clean_axes(ax_metric)
+    # `nsteps`/`n_steps` control parameter, since Heun-based samplers (FM)
+    # evaluate the network twice per integration step. Plotting the control
+    # parameter directly would understate FM's true inference cost relative
+    # to CM (1 call/step).
+    ax_rmse.set_xscale("log")
+    ax_rmse.set_xlabel("NFE (network forward calls per sample)")
+    ax_rmse.set_ylabel("RMSE")
+    ax_rmse.set_title("(a) Reconstruction error vs. NFE")
+    _clean_axes(ax_rmse)
 
-    ax_time.set_xscale("log")
-    ax_time.set_yscale("log")
-    ax_time.set_xlabel("NFE (network forward calls per sample)")
-    ax_time.set_ylabel("Wall-clock [ms / sample]")
-    ax_time.set_title("(b) Inference cost vs. NFE")
-    _clean_axes(ax_time)
+    ax_crps.set_xscale("log")
+    ax_crps.set_xlabel("NFE (network forward calls per sample)")
+    ax_crps.set_ylabel("CRPS")
+    ax_crps.set_title("(b) Ensemble calibration vs. NFE")
+    _clean_axes(ax_crps)
 
-    # Legend below both panels, 3 entries per row (ncol=3), one shared legend
-    # rather than a per-axis one so the figure reads as a single unit.
+    # Legend below both panels: 3 entries, one row, one shared legend rather
+    # than a per-axis one so the figure reads as a single unit.
     fig.legend(
         handles, labels,
         loc="lower center", bbox_to_anchor=(0.5, 0.0),
         ncol=3, frameon=False, columnspacing=1.6, handletextpad=0.5,
     )
-    fig.tight_layout(rect=(0, 0.24, 1, 1))
+    fig.tight_layout(rect=(0, 0.16, 1, 1))
 
     out_stem.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_stem.with_suffix(".pdf"))
@@ -149,13 +159,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results-dir", default=str(HERE / "results" / "GP"))
     ap.add_argument("--out", default=str(HERE / "figures" / "GP" / "nfe_efficiency"))
-    ap.add_argument("--metric", default="rmse", choices=["rmse", "crps"])
     args = ap.parse_args()
 
     data = load_sweeps(Path(args.results_dir))
-    if not data:
-        raise SystemExit(f"No *_nfe_sweep.csv found under {args.results_dir} -- run run_nfe_sweep.py first.")
-    make_figure(data, Path(args.out), metric=args.metric)
+    if not any(m in data for m in CURVE_METHODS):
+        raise SystemExit(f"No CM/FM *_nfe_sweep.csv found under {args.results_dir} -- run run_nfe_sweep.py first.")
+    make_figure(data, Path(args.out))
 
 
 if __name__ == "__main__":

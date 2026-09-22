@@ -32,16 +32,26 @@ cat results/GP/comparison_table.tex
 
 ### NFE (few-step inference) efficiency sweep — GP only
 
-Substantiates the "efficient few-step inference" claim (an NFE-vs-RMSE/CRPS
-curve, the K used per method, wall-clock vs. 4DVarNet) instead of relying
-only on the qualitative convergence picture. For CM/VarCM/DynCM/VarDynCM/FM/
-DynFM, the number of sampling/solver steps (`nsteps`/`n_steps`) is an
-inference-time-only argument (see the "NFE (few-step inference) efficiency
-sweep" cell added right after each GP notebook's full-test-set metrics
-cell) — the SAME trained checkpoint is reused at every step count in the
-grid, no retraining. `4dvarnet_lstm`'s solver iteration count is fixed by
-training (unrolled end-to-end), so it contributes a single reference point
-instead of a curve.
+Substantiates the "efficient few-step inference" claim (an NFE-vs-RMSE and
+NFE-vs-CRPS curve, side by side) instead of relying only on the qualitative
+convergence picture. For CM/VarCM/DynCM/VarDynCM/FM/DynFM, the number of
+sampling/solver steps (`nsteps`/`n_steps`) is an inference-time-only
+argument (see the "NFE (few-step inference) efficiency sweep" cell added
+right after each GP notebook's full-test-set metrics cell) — the SAME
+trained checkpoint is reused at every step count in the grid, no
+retraining. `4dvarnet_lstm`'s solver iteration count is fixed by training
+(unrolled end-to-end), so it contributes a single reference value instead
+of a curve.
+
+`run_nfe_sweep.py` can sweep any of the 6 generative methods (and produces
+a CSV for each), but `plot_nfe_efficiency.py` only plots **CM and FM** as
+curves, with `4dvarnet_lstm` drawn as a dashed horizontal reference line
+across the RMSE panel (fixed cost, no CRPS — deterministic, no ensemble).
+The Var*/Dyn* variants showed sweep-instability spikes at intermediate NFE
+(likely undertrained at those specific step counts) that clutter the figure
+without changing the argument — CM/FM are the flagship pairwise-consistency
+/ flow-matching instances and make the point on their own. Their CSVs are
+still written by `submit_nfe_sweep.sbatch` for inspection.
 
 **NFE is measured empirically, not equated to `nsteps`/`n_steps`.** Each
 sweep cell monkey-patches a call counter onto the network's `forward` for
