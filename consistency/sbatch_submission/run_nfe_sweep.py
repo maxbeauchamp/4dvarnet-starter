@@ -48,12 +48,26 @@ METHODS_YAML = HERE / "methods.yaml"
 # count on both sides (see the "parameters" cell of each GP notebook for the
 # same defaults -- kept here too so a sweep can be re-run with a different
 # grid without touching the notebooks).
+#
+# CM and FM (the only two plotted as curves by plot_nfe_efficiency.py) are
+# deliberately built from a SHARED target-NFE list so their measured `nfe`
+# values land on the same x-axis points -- otherwise the two curves cover
+# different NFE ranges (FM does 2 network calls/step via Heun, CM does 1)
+# and are hard to compare directly. `n_steps` is solved for exactly from
+# each method's own NFE formula (verified by reading the sampler code, not
+# assumed): CM's consistency_sampling() loop runs `nsteps - 1` denoising
+# steps at 1 call each (NFE = nsteps - 1), FM's heun_sample() runs
+# `n_steps` Heun steps at 2 calls each (NFE = 2 * n_steps) -- so
+# nsteps_CM = target + 1 and nsteps_FM = target // 2 both hit `target`
+# exactly (targets chosen even so the FM division has no rounding error).
+_TARGET_NFE_CM_FM = [2, 4, 8, 16, 24, 32, 50, 76, 100]
+
 NFE_GRIDS = {
-    "CM":            [1, 2, 3, 5, 8, 12, 15, 20, 30],
+    "CM":            [n + 1 for n in _TARGET_NFE_CM_FM],
     "VarCM":         [1, 2, 3, 5, 8, 12, 15, 20, 30],
     "DynCM":         [2, 3, 4, 5, 6, 8, 10, 15, 20],
     "VarDynCM":      [2, 3, 4, 5, 6, 8, 10, 15, 20],
-    "FM":            [1, 2, 4, 6, 10, 15, 20, 30, 50],
+    "FM":            [n // 2 for n in _TARGET_NFE_CM_FM],
     "DynFM":         [5, 8, 12, 16, 21, 30, 42],
     "4dvarnet_lstm": [15],   # fixed by training (n_solver) -- single reference point
 }

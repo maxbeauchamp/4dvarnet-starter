@@ -36,7 +36,7 @@ CURVE_STYLE = {
     "FM": dict(label="FM", color="#CC79A7", marker="^", ms=7, ls="-"),
 }
 BASELINE_METHOD = "4dvarnet_lstm"
-BASELINE_STYLE = dict(label="4DVarNet-LSTM", color="#000000", ls="--", lw=1.8)
+BASELINE_STYLE = dict(label="4DVarNet-LSTM", color="#000000", ls="--", lw=2.2)
 METHOD_ORDER = CURVE_METHODS + [BASELINE_METHOD]
 
 
@@ -113,13 +113,21 @@ def make_figure(data: dict[str, pd.DataFrame], out_stem: Path):
     # a single dashed reference line spanning the RMSE panel only.
     if BASELINE_METHOD in data:
         _rmse_ref = float(data[BASELINE_METHOD]["rmse"].iloc[0])
-        (h_base,) = ax_rmse.plot(
-            [], [], color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"], lw=BASELINE_STYLE["lw"],
-        )
-        ax_rmse.axhline(_rmse_ref, color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"],
-                         lw=BASELINE_STYLE["lw"], zorder=2)
-        handles.append(h_base)
-        labels.append(BASELINE_STYLE["label"])
+        if np.isnan(_rmse_ref):
+            print(f"[plot_nfe_efficiency] WARNING: {BASELINE_METHOD} RMSE is NaN "
+                  f"(check results dir/{BASELINE_METHOD}_nfe_sweep.csv) -- reference line will not be drawn")
+        else:
+            (h_base,) = ax_rmse.plot(
+                [], [], color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"], lw=BASELINE_STYLE["lw"],
+            )
+            # zorder above the curves (5 > CM/FM's 3): otherwise, wherever the
+            # reference line's y-value happens to sit close to (or exactly on)
+            # the CM/FM plateau, their thicker solid/marker-heavy lines paint
+            # over the thinner dashed black line and make it look "missing".
+            ax_rmse.axhline(_rmse_ref, color=BASELINE_STYLE["color"], ls=BASELINE_STYLE["ls"],
+                             lw=BASELINE_STYLE["lw"], zorder=5)
+            handles.append(h_base)
+            labels.append(BASELINE_STYLE["label"])
 
     # NFE = measured number of network forward calls per reconstructed sample
     # (see run_nfe_sweep.py / the notebooks' sweep cells) -- NOT the raw
