@@ -56,6 +56,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             normalize_anomaly_patch_only=True,  # scale per-patch (batch sample) instead of pooled over the whole batch
             anomaly_scale=None,  # {res: fixed_std}: per-resolution FIXED anomaly scale, precomputed offline from training data. When set for a resolution, normalize_anomaly_batch uses this constant instead of deriving the scale from the batch's own (true) target. Resolutions absent from this dict keep the per-batch-derived behaviour below.
             anomaly_scale_max=None,  # cap on the per-patch/per-batch DERIVED scale (ignored for resolutions using a fixed anomaly_scale) -- without it, a rare high-variance patch gets an outsized denormalisation factor at inference, amplifying the solver's error there disproportionately; None = uncapped (previous behaviour)
+            anomaly_scale_min_valid=100,  # minimum finite-pixel count required to trust a per-patch std estimate (normalize_anomaly_patch_only=True). Below this, the std is computed from too few points (e.g. a patch with sparse cristal_SIT altimetry coverage that day) and can land near `eps` by chance, dividing the target by a near-zero scale and blowing it up ~100x -- fall back to the batch-pooled std for that patch instead.
             condition_on_scale=False,  # feed the coarse-field local scale as an extra input channel instead of hard-normalising the anomaly
             len_daw=None,  # optional override of the per-resolution crop_daw() window length ({res: n_timesteps}); defaults to the maxlen_daw/step-based schedule below
             save_obs_vars=False,  # also save raw satellite obs (asip_sic, cimr_*, cristal_*) in the test NetCDF, coarsest resolution only
@@ -71,6 +72,7 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
         self.normalize_anomaly_patch_only = normalize_anomaly_patch_only
         self.anomaly_scale = dict(anomaly_scale or {})
         self.anomaly_scale_max = anomaly_scale_max
+        self.anomaly_scale_min_valid = anomaly_scale_min_valid
         self.condition_on_scale = condition_on_scale
         self.save_obs_vars = save_obs_vars
 
@@ -901,6 +903,12 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             outsized denormalisation factor to whatever the solver predicts
             there, amplifying its error disproportionately, while leaving
             the (well-matched) scale of every other patch untouched.
+            ``self.anomaly_scale_min_valid`` protects the other end: a patch
+            with fewer valid (finite) pixels than this (e.g. a day with
+            sparse cristal_SIT altimetry coverage there) has its std
+            estimated from too few points to trust, and falls back to the
+            batch-pooled std instead of a possibly near-``eps`` per-patch
+            value that would blow up the normalised target.
           - False: std pooled over the whole batch (legacy behaviour, one
             shared scalar for every sample), also capped by
             ``anomaly_scale_max`` if set.
@@ -955,12 +963,23 @@ class Lit4dVarNet_CROSCIM(Lit4dVarNet):
             if fixed_scale is not None:
                 scale = tensor.new_tensor(fixed_scale)
             elif self.normalize_anomaly_patch_only:
-                # Std over the valid (finite) pixels of each sample separately
+                # Std over the valid (finite) pixels of each sample separately,
+                # falling back to the batch-pooled std when a patch has too
+                # few valid pixels to trust its own estimate (e.g. sparse
+                # cristal_SIT altimetry coverage that day) -- a std computed
+                # from a handful of points can land near `eps` by chance,
+                # dividing the target by a near-zero scale and blowing it up
+                # ~100x for that one patch.
+                pooled_valid = tensor[tensor.isfinite()]
+                pooled_scale = (pooled_valid.std().clamp(min=eps)
+                                 if pooled_valid.numel() >= 2 else tensor.new_tensor(1.0))
                 scale = tensor.new_ones(tensor.shape[0])
                 for b in range(tensor.shape[0]):
                     valid = tensor[b][tensor[b].isfinite()]
-                    if valid.numel() >= 2:
+                    if valid.numel() >= self.anomaly_scale_min_valid:
                         scale[b] = valid.std().clamp(min=eps)
+                    else:
+                        scale[b] = pooled_scale
                 if self.anomaly_scale_max is not None:
                     scale = scale.clamp(max=self.anomaly_scale_max)
                 scale = scale.view(-1, *([1] * (tensor.ndim - 1)))
