@@ -57,9 +57,15 @@ contrib/WGVarFM/
 - Copied verbatim: `src/weathergen/model/{attention,blocks,embeddings,encoder,engines,layers,model,norms,parametrised_prob_dist,positional_encoding,utils}.py`
   and `src/weathergen/datasets/{utils,tokenizer,tokenizer_utils}.py`.
 - Only change: `weathergen.*` imports rewritten to
-  `contrib.WGVarFM.weathergen_ext.*`. Symbols from WG packages that are not
-  vendored (`Config`, `IOReaderData`, `ModelBatch`, `get_dtype`, `is_root`, ...)
-  come from `weathergen_ext/_compat.py`.
+  `contrib.WGVarFM.weathergen_ext.*`, and `flash_attn` imported through `_compat`.
+  Symbols from WG packages that are not vendored (`Config`, `IOReaderData`,
+  `ModelBatch`, `get_dtype`, `is_root`, ...) come from `weathergen_ext/_compat.py`.
+- `flash_attn` is optional: when it is not installed, `_compat` provides
+  `flash_attn_func` / `flash_attn_varlen_func` on top of torch SDPA (jagged nested
+  tensors for the varlen case; on GPU torch dispatches them to its own
+  flash/efficient kernels). Wrapped in an autograd Function (recompute in
+  backward, same dropout mask) because `torch.utils.checkpoint`, used throughout
+  WG, does not support nested tensors. `softcap` is not supported (0 in our configs).
 - WG readers, anemoi, `multi_stream_data_sampler` and masking strategies are
   **not** vendored.
 
@@ -69,17 +75,17 @@ rewrite, update the commit hash above.
 ## Extra dependencies
 
 - `astropy_healpix`
-- `flash-attn` (CUDA only). WG's varlen attention asserts flash, so the model
-  does not run on CPU as is.
-- torch ≥ 2.5 (`flex_attention`).
+- torch ≥ 2.5 (`flex_attention`, jagged nested tensors)
+- optional: `flash-attn` (CUDA only; no prebuilt wheel for torch > 2.8)
 
 ## Tests
 
-Run from the repo root (GPU + flash-attn):
+Run from the repo root (GPU, or CPU with the SDPA fallback — slow):
 
 ```bash
-python contrib/WGVarFM/tests/smoke_wg_encoder.py    # encoder alone, random tokens
-python contrib/WGVarFM/tests/smoke_wg_pretrain.py   # full xp config on synthetic CROSCIM-like files
+python contrib/WGVarFM/tests/test_attention_fallback.py  # SDPA fallback vs reference (and flash_attn if installed)
+python contrib/WGVarFM/tests/smoke_wg_encoder.py         # encoder alone, random tokens
+python contrib/WGVarFM/tests/smoke_wg_pretrain.py        # full xp config on synthetic CROSCIM-like files
 ```
 
 ## Roadmap

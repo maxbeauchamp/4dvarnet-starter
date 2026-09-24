@@ -5,7 +5,7 @@ sensor per resolution) in a temporary directory, then instantiates the real xp c
 (config/xp/WGVarFM/wg_pretrain_croscim_sic.yaml) with paths, dates and HEALPix level
 overridden, and runs a Lightning fast_dev_run (train + val + test).
 
-Requires CUDA + flash-attn. Run from the repo root:
+Runs on GPU or CPU (slow). Run from the repo root:
     python contrib/WGVarFM/tests/smoke_wg_pretrain.py
 """
 

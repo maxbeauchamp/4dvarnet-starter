@@ -4,7 +4,7 @@ Builds a tiny EncoderModule (one 'linear' stream, HEALPix level 2), feeds it
 random sparse tokens through a duck-typed batch and checks the latent shape,
 finiteness and the backward pass.
 
-Requires CUDA + flash-attn (the vendored varlen attention asserts flash).
+Runs on GPU (flash-attn or torch SDPA fallback) or CPU (SDPA fallback, slow).
 Run from the repo root:
     python contrib/WGVarFM/tests/smoke_wg_encoder.py
 """
@@ -116,8 +116,7 @@ def make_batch(num_samples, device, obs_fraction=0.3, max_tok_per_cell=4):
 
 
 def main():
-    assert torch.cuda.is_available(), "flash-attn requires a CUDA device"
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
     num_samples = 2
@@ -127,7 +126,7 @@ def main():
     ).to(device)
     batch = make_batch(num_samples, device)
 
-    with torch.autocast("cuda", dtype=torch.bfloat16):
+    with torch.autocast(device.type, dtype=torch.bfloat16):
         tokens_global, _ = encoder(model_params, batch)
 
     expected = (num_samples, NUM_CELLS * cf.ae_local_num_queries, cf.ae_global_dim_embed)

@@ -10,7 +10,7 @@
 from functools import partial
 
 import torch
-from flash_attn import flash_attn_func, flash_attn_varlen_func
+from contrib.WGVarFM.weathergen_ext._compat import flash_attn_func, flash_attn_varlen_func
 from torch.nn.attention.flex_attention import create_block_mask, flex_attention
 
 from contrib.WGVarFM.weathergen_ext.model.norms import AdaLayerNorm, RMSNorm
