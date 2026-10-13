@@ -13,6 +13,7 @@ import zarr
 
 from croscim import data as D
 from croscim import grid as g
+from croscim import obs
 
 DAYS = list(range(19000 - D.W + 1, 19001))
 IY0, IX0 = 0, 68  # top row of the domain: partly beyond the 5 km stores (y > 2475 km)
@@ -170,3 +171,19 @@ def test_worker_asip_m_equals_restricted_h_gridding(item):
     # older days only exist at M, with their own coverage
     assert item["asip_m_w"][0].gt(0).any() and torch.allclose(item["asip_m"][0][item["asip_m_w"][0] > 0], torch.tensor(0.0))
     assert item["asip_m"][1][item["asip_m_w"][1] > 0].sub(0.03).abs().max() < 1e-6
+
+
+def test_asip_pass_crossing_a_bin_edge_is_one_unit():
+    acq = torch.full((40, 40), -32768, dtype=torch.int16)
+    acq[:, :10] = 295            # pass 1, scenes from 4:55 to 5:05 (crosses 5:00)
+    acq[:, 10:20] = 297
+    acq[:, 20:25] = 303
+    acq[:, 25:30] = 305
+    acq[:, 30:] = 410            # pass 2, 105 min later
+    valid = acq != -32768
+    unit = D.asip_passes(acq, valid)
+    assert len(unit[:, :30].unique()) == 1 and len(unit[:, 30:].unique()) == 1
+    assert unit[0, 0] != unit[0, 35]
+    for seed in range(20):
+        tgt = obs.unit_partition(unit, valid, 0.5, torch.Generator().manual_seed(seed))
+        assert tgt[:, :30].all() or not tgt[:, :30].any()

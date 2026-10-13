@@ -35,6 +35,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import zarr
+from torch import Tensor
 
 from . import grid as g
 from . import obs
@@ -48,7 +49,7 @@ N5 = 411          # 5 km cells read per tile side (2048 km / 5 km, rounded up + 
 MIN_TILE_OCEAN = 0.2
 P_TGT = 0.3       # probability that a partition unit is held out as target
 BLOCK_C = 8       # partition blocks of the 5 km sources: 8 x 8 C cells (256 km)
-ASIP_PASS_MIN = 10  # ASIP partition units: acquisitions binned by 10 min (one pass)
+ASIP_PASS_GAP_MIN = 10  # ASIP partition units: acquisitions less than 10 min apart form one pass
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
 ASIP_SIGMA_FLOOR = 0.05
 GAMMA = {"SIC": 0.5, "SIT": 0.1}  # min. observed ocean fraction of a parent for a detail target
@@ -188,8 +189,9 @@ def window(it: dict, k: int) -> dict:
 
 
 def partition(it: dict) -> dict:
-    """Y^in / Y^tgt partition at day t: ASIP by pass (acquisition time binned
-    by ASIP_PASS_MIN), 5 km sources by blocks of BLOCK_C x BLOCK_C C cells.
+    """Y^in / Y^tgt partition at day t: ASIP by pass (acquisition times
+    chained by gaps < ASIP_PASS_GAP_MIN), 5 km sources by blocks of
+    BLOCK_C x BLOCK_C C cells.
     Returns the target masks {"asip": [ny, nx] (500 m), "blk": [N5, N5]}."""
     dev = it["omega_h"].device
     gen = torch.Generator(dev).manual_seed(int(it["seed"]))
@@ -200,8 +202,20 @@ def partition(it: dict) -> dict:
     bx = torch.floor((it["x5"].double() - x_edges[0].item()) / (BLOCK_C * g.DX_M["C"])).long().clamp(0, nb - 1)
     acq = it["asip_acq"]
     ok_t = (it["asip_sic"][-1] != 255) & (acq != -32768)
-    unit = torch.div(acq.long(), ASIP_PASS_MIN, rounding_mode="floor")
-    return {"asip": obs.unit_partition(unit, ok_t, P_TGT, gen), "blk": tgt_blk[by[:, None] * nb + bx[None]]}
+    return {"asip": obs.unit_partition(asip_passes(acq, ok_t), ok_t, P_TGT, gen),
+            "blk": tgt_blk[by[:, None] * nb + bx[None]]}
+
+
+def asip_passes(acq: Tensor, valid: Tensor) -> Tensor:
+    """Pass id of each pixel: the distinct acquisition times (minutes) of the
+    tile, sorted, are split wherever two successive ones are more than
+    ASIP_PASS_GAP_MIN apart (scenes of one pass are ~1 min apart, passes
+    ~100 min). A fixed time binning would cut a pass in two at a bin edge."""
+    times = torch.unique(acq[valid].long())
+    if len(times) == 0:
+        return torch.zeros_like(acq, dtype=torch.long)
+    label = torch.cat([times.new_zeros(1), torch.cumsum(torch.diff(times) > ASIP_PASS_GAP_MIN, 0)])
+    return label[torch.searchsorted(times, acq.long()).clamp(max=len(times) - 1)]
 
 
 def build_sample(it: dict, part: dict | None = None) -> dict:
