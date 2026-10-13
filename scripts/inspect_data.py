@@ -11,8 +11,9 @@ Over --n-batches training batches (random tiles and days in [start, end]):
     day t (RMSE), the first baseline to beat in phase 3;
   * maps of the first --n-plots batches (targets, masks, partition).
 
-Results go to --out (summary.json, norm_N0.yaml, PNG maps); nothing is
-written in the repository.
+Results go to --out (summary.json, norm_N0.yaml, PNG maps), rewritten every
+10 batches so that a stopped job still leaves them; nothing is written in the
+repository.
 
 Usage:
     python scripts/inspect_data.py --start 2022-02-01 --end 2022-02-28 \
@@ -106,10 +107,48 @@ def main():
     t_item = time.perf_counter() - t0
 
     acc, t_wait, t_build = {}, [], []
+
+    def report(n_done):
+        """Write summary.json / norm_N0.yaml from the batches seen so far."""
+        def stats(key):
+            n = acc[f"{key}_n"].clamp_min(1)
+            mean = acc[f"{key}_s1"] / n
+            return mean, (acc[f"{key}_s2"] / n - mean ** 2).clamp_min(0).sqrt()
+
+        s_mean, s_std = stats("tgt_S")
+        dm_mean, dm_std = stats("tgt_dM")
+        dh_mean, dh_std = stats("tgt_dH")
+        x_mean, x_std = stats("tgt_C")
+        summary = {
+            "days": len(ds.days), "n_batches": n_done, "batch_size": args.batch_size,
+            "time_s": {"setup": t_setup, "item_read_single": t_item, "wait_median": float(np.median(t_wait[1:] or t_wait)),
+                       "build_median": float(np.median(t_build[1:] or t_build))},
+            "coverage": {key: dict(zip(names, torch.stack(acc[f"cov_{key}"]).mean(0).tolist()))
+                         for key, names in (("tgt_C_m", X_NAMES), ("tgt_S_m", obs.S_NAMES),
+                                            ("tgt_dM_m", ("dSIC_M", "dSIT_M")), ("tgt_dH_m", ("dSIC_H",)))},
+            "asip_cells_day_t": {"in": float(np.mean(acc["asip_in_cells"])), "tgt": float(np.mean(acc["asip_tgt_cells"]))},
+            "x_c_stats": {n: [float(m), float(s)] for n, m, s in zip(X_NAMES, x_mean, x_std)},
+            "persistence_rmse_cimr_t-1": {n: (acc[f"pers_{n}_se"] / max(acc[f"pers_{n}_n"], 1)) ** 0.5 for n in ("SIC", "SIT")},
+        }
+        norm = {n: [round(float(m), 4), round(float(max(s, 1e-3)), 4)] for n, m, s in zip(obs.S_NAMES, s_mean, s_std)}
+        norm.update({"dSIC_M": [0.0, round(float(dm_std[0]), 4)], "dSIT_M": [0.0, round(float(dm_std[1]), 4)],
+                     "dSIC_H": [0.0, round(float(dh_std[0]), 4)]})
+        summary["norm_proposal"] = norm
+        with open(os.path.join(args.out, "summary.json"), "w") as f:
+            json.dump(summary, f, indent=2)
+        with open(os.path.join(args.out, "norm_N0.yaml"), "w") as f:
+            f.write("# proposed entries of model.norm in config/xp/N0.yaml ([mean, std])\n")
+            f.writelines(f"{k}: {v}\n" for k, v in norm.items())
+        return summary
+
     loader = iter(dm.train_dataloader())
     for k in range(args.n_batches):
         t0 = time.perf_counter()
-        raw = next(loader)
+        try:
+            raw = next(loader)
+        except StopIteration:  # fewer items than --n-batches: new epoch (new random tiles)
+            loader = iter(dm.train_dataloader())
+            raw = next(loader)
         t_wait.append(time.perf_counter() - t0)
         raw = {key: v.to(dev, non_blocking=True) for key, v in raw.items()}
         sync()
@@ -138,36 +177,10 @@ def main():
         if k < args.n_plots:
             plot(b, 0, os.path.join(args.out, f"batch{k:03d}.png"))
         print(f"batch {k + 1}/{args.n_batches}: wait {t_wait[-1]:.2f} s, build {t_build[-1]:.2f} s", flush=True)
+        if (k + 1) % 10 == 0:
+            report(k + 1)  # partial results, usable if the job is stopped
 
-    def stats(key):
-        n = acc[f"{key}_n"].clamp_min(1)
-        mean = acc[f"{key}_s1"] / n
-        return mean, (acc[f"{key}_s2"] / n - mean ** 2).clamp_min(0).sqrt()
-
-    s_mean, s_std = stats("tgt_S")
-    dm_mean, dm_std = stats("tgt_dM")
-    dh_mean, dh_std = stats("tgt_dH")
-    x_mean, x_std = stats("tgt_C")
-    summary = {
-        "days": len(ds.days), "n_batches": args.n_batches, "batch_size": args.batch_size,
-        "time_s": {"setup": t_setup, "item_read_single": t_item, "wait_median": float(np.median(t_wait[1:] or t_wait)),
-                   "build_median": float(np.median(t_build[1:] or t_build))},
-        "coverage": {key: dict(zip(names, torch.stack(acc[f"cov_{key}"]).mean(0).tolist()))
-                     for key, names in (("tgt_C_m", X_NAMES), ("tgt_S_m", obs.S_NAMES),
-                                        ("tgt_dM_m", ("dSIC_M", "dSIT_M")), ("tgt_dH_m", ("dSIC_H",)))},
-        "asip_cells_day_t": {"in": float(np.mean(acc["asip_in_cells"])), "tgt": float(np.mean(acc["asip_tgt_cells"]))},
-        "x_c_stats": {n: [float(m), float(s)] for n, m, s in zip(X_NAMES, x_mean, x_std)},
-        "persistence_rmse_cimr_t-1": {n: (acc[f"pers_{n}_se"] / max(acc[f"pers_{n}_n"], 1)) ** 0.5 for n in ("SIC", "SIT")},
-    }
-    norm = {n: [round(float(m), 4), round(float(max(s, 1e-3)), 4)] for n, m, s in zip(obs.S_NAMES, s_mean, s_std)}
-    norm.update({"dSIC_M": [0.0, round(float(dm_std[0]), 4)], "dSIT_M": [0.0, round(float(dm_std[1]), 4)],
-                 "dSIC_H": [0.0, round(float(dh_std[0]), 4)]})
-    summary["norm_proposal"] = norm
-    with open(os.path.join(args.out, "summary.json"), "w") as f:
-        json.dump(summary, f, indent=2)
-    with open(os.path.join(args.out, "norm_N0.yaml"), "w") as f:
-        f.write("# proposed entries of model.norm in config/xp/N0.yaml ([mean, std])\n")
-        f.writelines(f"{k}: {v}\n" for k, v in norm.items())
+    summary = report(args.n_batches)
     print(json.dumps(summary, indent=2))
 
 
