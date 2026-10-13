@@ -29,13 +29,13 @@ import datetime as dt
 import os
 import re
 import sys
-import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from glob import glob
 
 import numpy as np
 import xarray as xr
 import zarr
+from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from croscim import grid as g
@@ -136,13 +136,8 @@ def main():
                 jobs = [pool.submit(convert_asip_day, path, k, d, p, win) for k, (d, p) in enumerate(files)]
             else:
                 jobs = [pool.submit(convert_5km_day, path, src, k, p, win) for k, (_, p) in enumerate(files)]
-            t0, step = time.perf_counter(), max(1, len(jobs) // 20)
-            for n, j in enumerate(as_completed(jobs), 1):
+            for j in tqdm(as_completed(jobs), total=len(jobs), desc=src, unit="day", mininterval=10):
                 j.result()
-                if n % step == 0 or n == len(jobs):
-                    dt = time.perf_counter() - t0
-                    print(f"{src}: {n}/{len(jobs)} days, {dt / n:.1f} s/day (wall), "
-                          f"ETA {(len(jobs) - n) * dt / n / 60:.0f} min", flush=True)
         print(f"{src}: {len(days)} days -> {path}")
 
 

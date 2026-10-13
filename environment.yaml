@@ -15,6 +15,7 @@ dependencies:
   - geopandas   # Natural Earth land mask (croscim/ocean.py)
   - pytest
   - matplotlib  # scripts/inspect_data.py maps
+  - tqdm
   - pip:
     - hydra-core
     - tensorboard
