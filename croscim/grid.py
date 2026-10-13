@@ -25,8 +25,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-PROJ4 = "+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +x_0=0 +y_0=0 +a=6378273 +b=6356889.449 +units=m +no_defs"
-HALF_EXTENT_M = 3_200_000
+from .layout import HALF_EXTENT_M, PROJ4  # noqa: F401  (re-exported)
+
 LEVELS = ("C", "M", "H")
 DX_M = {"C": 32_000, "M": 4_000, "H": 1_000}
 

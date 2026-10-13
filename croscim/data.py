@@ -38,6 +38,7 @@ import zarr
 
 from . import grid as g
 from . import obs
+from .layout import EPOCH, SOURCES, STORES  # noqa: F401  (re-exported)
 
 N_C = 64          # tile size in C cells
 W = 15            # N0 window (days)
@@ -48,12 +49,9 @@ MIN_TILE_OCEAN = 0.2
 P_TGT = 0.3       # probability that a partition unit is held out as target
 BLOCK_C = 8       # partition blocks of the 5 km sources: 8 x 8 C cells (256 km)
 ASIP_PASS_MIN = 10  # ASIP partition units: acquisitions binned by 10 min (one pass)
-STORES = {"asip": "ASIP_L3_zarr", "cimr": "data_noise_zarr", "cristal": "out_CRISTAL_zarr", "era5": "atm_data_zarr"}
-SOURCES = {"cimr": ("SIC", "SIT"), "cristal": ("SIT", "HS"), "era5": ("t2m", "msl", "u10", "v10")}
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
 ASIP_SIGMA_FLOOR = 0.05
 GAMMA = {"SIC": 0.5, "SIT": 0.1}  # min. observed ocean fraction of a parent for a detail target
-EPOCH = dt.date(1970, 1, 1)
 
 
 def to_day(date: str) -> int:

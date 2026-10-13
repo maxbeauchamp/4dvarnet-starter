@@ -8,7 +8,7 @@ are kept (ASIP 500 m bytes, 5 km floats), everything else is computed on the
 fly at training time.
 
 Each store is written next to the NetCDF directory of its source, under
---src-root (see STORES in cascade/data.py; an existing store is overwritten):
+--src-root (see STORES in croscim/layout.py; an existing store is overwritten):
 
     ASIP_L3_zarr/{sic,std,acq,days}                          (day, 12800, 12800)
     {data_noise,out_CRISTAL,atm_data}_zarr/{<var>,xc,yc,days} (day, ny5, nx5)
@@ -29,6 +29,7 @@ import datetime as dt
 import os
 import re
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from glob import glob
 
@@ -38,12 +39,11 @@ import zarr
 from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from croscim import grid as g
-from croscim.data import EPOCH, SOURCES, STORES
+from croscim.layout import EPOCH, HALF_EXTENT_M, PROJ4, SOURCES, STORES  # no torch: fast start
 
 FILES = {"asip": "ASIP_L3/*.nc", "cimr": "data_noise/CIMR5km_*.nc",
          "cristal": "out_CRISTAL/CRISTAL5km_*.nc", "era5": "atm_data/atm5km_*.nc"}
-H = g.HALF_EXTENT_M
+H = HALF_EXTENT_M
 
 
 def file_day(path):
@@ -72,7 +72,7 @@ def grid5_window(path):
     with xr.open_dataset(path) as ds:
         xc, yc = ds.xc.values, ds.yc.values
         lon, lat = ds.lon.values[::50, ::50], ds.lat.values[::50, ::50]
-    x, y = Transformer.from_crs("EPSG:4326", g.PROJ4, always_xy=True).transform(lon, lat)
+    x, y = Transformer.from_crs("EPSG:4326", PROJ4, always_xy=True).transform(lon, lat)
     err = np.nanmax(np.hypot(x - xc[None, ::50], y - yc[::50, None]))
     assert err < 500, f"{path}: 5 km grid not in the ASIP projection (max error {err:.0f} m)"
     assert np.allclose(np.diff(xc), 5000) and np.allclose(np.diff(yc), -5000)
@@ -100,6 +100,12 @@ def convert_5km_day(store, src, k, path, win):
             zarr.open_array(os.path.join(store, name), mode="r+")[k] = vals
 
 
+def log(msg, t0=None):
+    """Startup log on stdout, flushed (with the duration since t0 if given)."""
+    print(f"[{dt.datetime.now():%H:%M:%S}] {msg}" + ("" if t0 is None else f" ({time.perf_counter() - t0:.1f} s)"),
+          flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src-root", default="/Odyssey/public/CROSCIM_dataset")
@@ -111,11 +117,14 @@ def main():
     start, end = ((dt.date.fromisoformat(d) - EPOCH).days for d in (args.start, args.end))
 
     for src in args.sources:
+        t0 = time.perf_counter()
         files = list_files(args.src_root, src, start, end)
         if not files:
             raise FileNotFoundError(f"No {src} files in {args.src_root} between {args.start} and {args.end}")
         days = np.array([d for d, _ in files], np.int64)
+        log(f"{src}: {len(files)} files, {EPOCH + dt.timedelta(int(days[0]))} -> {EPOCH + dt.timedelta(int(days[-1]))}", t0)
         path = os.path.join(args.src_root, STORES[src])
+        t0 = time.perf_counter()
         if src == "asip":
             win = asip_window(files[0][1])
             n = 2 * H // 500
@@ -130,6 +139,7 @@ def main():
             zarr.open_array(os.path.join(path, "xc"), mode="w", shape=xc.shape, dtype="f8")[:] = xc
             zarr.open_array(os.path.join(path, "yc"), mode="w", shape=yc.shape, dtype="f8")[:] = yc
         zarr.open_array(os.path.join(path, "days"), mode="w", shape=days.shape, dtype="i8")[:] = days
+        log(f"{src}: grid checked, store created at {path}", t0)
 
         with ProcessPoolExecutor(args.workers) as pool:
             if src == "asip":
@@ -138,7 +148,7 @@ def main():
                 jobs = [pool.submit(convert_5km_day, path, src, k, p, win) for k, (_, p) in enumerate(files)]
             for j in tqdm(as_completed(jobs), total=len(jobs), desc=src, unit="day", mininterval=10):
                 j.result()
-        print(f"{src}: {len(days)} days -> {path}")
+        log(f"{src}: {len(days)} days written")
 
 
 if __name__ == "__main__":
