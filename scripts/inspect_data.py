@@ -49,6 +49,40 @@ def masked_moments(x: torch.Tensor, m: torch.Tensor, dims) -> tuple[torch.Tensor
     return (x * m).sum(dims), (x * x * m).sum(dims), m.sum(dims)
 
 
+def read_profile(ds) -> dict:
+    """Time the parts of one item read (first tile, last day of the split),
+    twice (cold / warm cache), with the number of chunks touched per array."""
+    import zarr
+    from croscim import data as D
+    iy0, ix0 = (int(v) for v in ds.origins[0])
+    t = ds.days[-1]
+    days = list(range(t - D.W + 1, t + 1))
+    a = ds._arr["asip"]["sic"]
+    out = {"zarr": zarr.__version__, "asip_chunks": list(a.chunks),
+           "asip_codec": str(getattr(a, "compressors", None) or getattr(a, "compressor", None))[:120],
+           "cimr_chunks": list(ds._arr["cimr"]["SIC"].chunks)}
+    for rep in ("cold", "warm"):
+        t0 = time.perf_counter()
+        _, _, _, m, _ = ds._read_asip(days, iy0, ix0)
+        out[f"asip_{rep}_s"] = round(time.perf_counter() - t0, 2)
+        for src in D.SOURCES:
+            t0 = time.perf_counter()
+            ds._read_5km(src, days, iy0, ix0)
+            out[f"{src}_{rep}_s"] = round(time.perf_counter() - t0, 2)
+    # split of the ASIP time: raw reads vs the 4 km aggregation
+    f = 64
+    sl = (slice(iy0 * f, (iy0 + 64) * f), slice(ix0 * f, (ix0 + 64) * f))
+    i = ds._arr["asip"]["day_index"].get(t)
+    if i is not None:
+        t0 = time.perf_counter()
+        s_, e_ = a[(i,) + sl], ds._arr["asip"]["std"][(i,) + sl]
+        out["asip_one_day_read_s"] = round(time.perf_counter() - t0, 3)
+        t0 = time.perf_counter()
+        D.asip_to_m(s_, e_)
+        out["asip_one_day_to_m_s"] = round(time.perf_counter() - t0, 3)
+    return out
+
+
 def plot(b: dict, i: int, path: str):
     import matplotlib
     matplotlib.use("Agg")
@@ -110,6 +144,8 @@ def main():
     t0 = time.perf_counter()
     ds[0]
     t_item = time.perf_counter() - t0
+    profile = read_profile(ds)
+    print("read profile of one tile:", json.dumps(profile), flush=True)
 
     acc, t_wait, t_build = {}, [], []
 
@@ -127,7 +163,9 @@ def main():
         summary = {
             "days": len(ds.days), "n_batches": n_done, "batch_size": args.batch_size,
             "time_s": {"setup": t_setup, "item_read_single": t_item, "wait_median": float(np.median(t_wait[1:] or t_wait)),
+                       "wait_mean": float(np.mean(t_wait[1:] or t_wait)),
                        "build_median": float(np.median(t_build[1:] or t_build))},
+            "read_profile": profile,
             "coverage": {key: dict(zip(names, torch.stack(acc[f"cov_{key}"]).mean(0).tolist()))
                          for key, names in (("tgt_C_m", X_NAMES), ("tgt_S_m", obs.S_NAMES),
                                             ("tgt_dM_m", ("dSIC_M", "dSIT_M")), ("tgt_dH_m", ("dSIC_H",)))},
