@@ -29,7 +29,8 @@ import datetime as dt
 import os
 import re
 import sys
-from concurrent.futures import ProcessPoolExecutor
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from glob import glob
 
 import numpy as np
@@ -135,8 +136,13 @@ def main():
                 jobs = [pool.submit(convert_asip_day, path, k, d, p, win) for k, (d, p) in enumerate(files)]
             else:
                 jobs = [pool.submit(convert_5km_day, path, src, k, p, win) for k, (_, p) in enumerate(files)]
-            for j in jobs:
+            t0, step = time.perf_counter(), max(1, len(jobs) // 20)
+            for n, j in enumerate(as_completed(jobs), 1):
                 j.result()
+                if n % step == 0 or n == len(jobs):
+                    dt = time.perf_counter() - t0
+                    print(f"{src}: {n}/{len(jobs)} days, {dt / n:.1f} s/day (wall), "
+                          f"ETA {(len(jobs) - n) * dt / n / 60:.0f} min", flush=True)
         print(f"{src}: {len(days)} days -> {path}")
 
 
