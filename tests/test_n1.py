@@ -1,0 +1,97 @@
+"""Phase 6-7 tests: the transition network N1 (LitCascadeN1), mode A / B
+rollouts, interventions and diagnostics, with tiny backbones on synthetic
+batches. Run from the repo root, e.g.:
+
+    pytest tests/test_n1.py
+"""
+import pytest
+import torch
+
+from croscim import rollout as R
+from croscim.cascade import N_X, N_Z, Z_NAMES
+from croscim.transition import LitCascadeN1, only_last_day
+from tests.test_n0 import TINY, make_batch, make_model
+
+
+@pytest.fixture(scope="module")
+def days():
+    return [make_batch(seed=k) for k in range(3)]
+
+
+@pytest.fixture(scope="module")
+def n1():
+    torch.manual_seed(0)
+    return LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2)
+
+
+def test_init_from_n0(n1):
+    assert n1.nets.n_loaded > 0  # G_C^0 weights reused wherever shapes match
+    assert not any(p.requires_grad for p in n1.nets.enc.parameters())
+    assert not any(p.requires_grad for p in n1.n0.parameters())
+
+
+def test_only_last_day_masks_the_window(days):
+    b = only_last_day(days[1])
+    assert b["in_C_cimr_w"][:, :-1].sum() == 0 and b["in_H_w"][:, :-1].sum() == 0
+    assert torch.all(b["pts"][..., 4][b["pts_valid"]] == 0)
+    assert torch.isnan(b["f_C"][:, :-2]).all() and torch.equal(b["f_C"][:, -1:].isnan(), days[1]["f_C"][:, -1:].isnan())
+
+
+def test_pushforward_loss_backward(n1, days, monkeypatch):
+    monkeypatch.setattr(n1, "k_now", lambda n: 2)
+    out = n1.losses(days)
+    assert {"X_k1", "S_k1", "psi_k1", "X_k2"} <= set(out) and torch.isfinite(out["loss"])
+    n1.zero_grad()
+    out["loss"].backward()
+    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in n1.nets.gen.parameters())
+    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in n1.nets.e_state.parameters())
+
+
+def test_rollout_mode_a_paired_noise_and_guidance(n1, days):
+    z1, psi = R.rollout(n1, days, 2, w=1.0, seed=4)
+    z2, _ = R.rollout(n1, days, 2, w=1.0, seed=4)
+    z0, _ = R.rollout(n1, days, 2, w=0.0, seed=4)
+    assert z1.shape == (1, 3, N_Z, 64, 64) and psi.shape == (1, 3, n1.d_psi, 64, 64)
+    assert torch.equal(z1, z2)
+    assert torch.equal(z1[:, 0], z0[:, 0]) and not torch.equal(z1[:, 1], z0[:, 1])
+    hist = z1[:, :, Z_NAMES.index("h_ow"):Z_NAMES.index("h_pack") + 1].sum(2)
+    assert torch.allclose(hist, torch.ones_like(hist), atol=1e-5)
+
+
+def test_prescription_holds(n1, days):
+    names = ["edge_density"]
+    s_star = torch.full((1, 1, 64, 64), 0.3)
+    z, _ = R.rollout(n1, days, 2, seed=1, intervention=R.prescribe(lambda k: s_star, names))
+    assert torch.allclose(z[:, 1:, Z_NAMES.index("edge_density")], torch.full((1, 2, 64, 64), 0.3))
+
+
+def test_mode_b_replaces_s_by_fine_statistics(n1, days):
+    za, _ = R.rollout(n1, days, 1, seed=2, mode="A")
+    zb, _ = R.rollout(n1, days, 1, seed=2, mode="B")
+    assert torch.equal(za[:, 1, :N_X], zb[:, 1, :N_X]) and not torch.equal(za[:, 1, N_X:], zb[:, 1, N_X:])
+
+
+def test_diagnostics_run(n1, days):
+    gaps = R.loss_gaps(n1, days)
+    assert set(gaps) == {"I_up", "I_down_f", "I_down_X"} and all(torch.isfinite(v) for v in gaps.values())
+    resp = R.response(n1, days, torch.tensor(0.1), ["edge_density"], 2, n_members=2)
+    assert resp.shape == (1, 3, N_X, 64, 64) and torch.all(resp[:, 0] == 0)
+    z, psi = R.rollout(n1, days, 0, seed=0)
+    slope = R.controllability(n1.n0, days[0], z[:, 0], psi[:, 0], "sic_std", 0.05)
+    assert torch.isfinite(slope)
+    cmp = R.compare_modes(n1, days, 1)
+    assert len(cmp) == 1 and cmp[0]["k"] == 1
+
+
+def test_forcing_scenario(days):
+    out = R.modify_forcing(days, d_t2m=2.0, rotate_deg=90.0)
+    f0, f1 = days[0]["f_C"], out[0]["f_C"]
+    ok = torch.isfinite(f0[:, :, 0])
+    assert torch.allclose((f1[:, :, 0] - f0[:, :, 0])[ok], torch.tensor(2.0))
+    assert torch.allclose(f1[:, :, 2][ok], -f0[:, :, 3][ok], atol=1e-6)
+
+
+def test_frozen_and_ema_copies_stay_in_eval_mode(n1):
+    n1.train()
+    assert n1.nets.training and not n1.ema.training and not n1.n0.training and not n1.n0.ema.training
+    assert not any(m.training for m in n1.n0.modules()) and not any(m.training for m in n1.ema.modules())

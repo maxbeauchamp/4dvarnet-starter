@@ -1,0 +1,74 @@
+# @package _global_
+#
+# CROSCIM flow-matching cascade, N1 (transition network, mode A): G_C^1
+# advances Z_C = (X_C, S_C, psi_C) by one day, initialised from a trained N0
+# (n0_ckpt). Batches are sequences of k_max + 1 analysis days (datamodule
+# horizon); pushforward with a curriculum of 1 .. k_max steps.
+# See CROSCIM_FM_cascade/formulation (section 5) and
+# croscim/transition.py.
+
+paths:
+  src: /Odyssey/private/m19beauc
+  data: /Odyssey/public/CROSCIM_dataset
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: [0]
+  limit_train_batches: 1000
+  limit_val_batches: 50
+  max_epochs: 300
+  precision: bf16-mixed
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_loss
+      save_top_k: 3
+      save_last: true
+      filename: 'FM-cascade-N1-{val_loss:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: croscim.data.CascadeDataModule
+  root: ${paths.data}
+  natural_earth_zip: ${hydra:runtime.cwd}/assets/ne_10m_land.zip
+  train_dates: ???
+  val_dates: ???
+  test_dates: ???
+  tiles_per_day: 8
+  horizon: ${model.k_max}
+  # single GPU: shuffle the days here; under DDP drop it (Lightning sets the sampler)
+  dl_kw: {batch_size: 1, num_workers: 16, shuffle: true, pin_memory: true}
+
+model:
+  _target_: croscim.transition.LitCascadeN1
+  n0_ckpt: ???          # trained N0 checkpoint
+  swin: null            # null: same architecture as G_C^0 (weights reused where shapes match)
+  k_max: 7              # rollout learned up to 7 days
+  curriculum_epochs: 10 # K = 1 + epoch // curriculum_epochs, capped at k_max
+  p_obs: 0.7            # mu ~ Bernoulli(p_obs): observations of the day available
+  p_null: 0.1           # dropout of the groups h, f, X, S, psi
+  gamma: 0.9            # weight gamma^(k-1) of step k
+  lambda_s: 1.0
+  lambda_psi: 1.0
+  freeze_encoders: true
+  push_steps: 4         # Heun steps of the pushforward samples
+  n_steps: 20
+  lr: 1e-4
+  betas: [0.9, 0.995]
+  lr_scheduler_start_factor: 1e-5
+  lr_scheduler_iters: 20000
+  ema_decay: 0.999
+  n_members: 8
+  score_every: 5
+  n_score_batches: 10
+
+entrypoints:
+  - _target_: croscim.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    ckpt: null
+    save_dir: ${paths.src}/results

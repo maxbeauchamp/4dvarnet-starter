@@ -1,0 +1,19 @@
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - pip
+  - pytorch::pytorch=2.0
+  - pytorch::pytorch-cuda=11.7
+  - pytorch-lightning=2.4.0
+  - numpy
+  - xarray      # scripts/convert_sources.py (reads the source NetCDF)
+  - netCDF4
+  - zarr        # data stores read by croscim/data.py
+  - pyproj      # projection checks, Natural Earth land mask
+  - geopandas   # Natural Earth land mask (croscim/ocean.py)
+  - pytest
+  - pip:
+    - hydra-core
+    - tensorboard

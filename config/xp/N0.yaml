@@ -1,0 +1,135 @@
+# @package _global_
+#
+# CROSCIM flow-matching cascade, N0 (initialisation / analysis network):
+# G_C -> G_M -> G_H on the nested 32 / 4 / 1 km grid, conditioned on contexts
+# built on the fly (local encoders + upward pyramid + ERA5).
+# See CROSCIM_FM_cascade/formulation and croscim/cascade.py.
+#
+# Phase 3 (G_C alone, no pyramid):
+#   python main.py xp=N0 model.levels=[C] model.pyramid=false
+# Full cascade (phases 4-5): defaults below. To train the fine levels on top
+# of a trained G_C, set model.levels=[M,H] and init_weights_ckpt.
+#
+# Data: Zarr stores written by scripts/convert_sources.py
+# next to the NetCDF directories under paths.data.
+
+paths:
+  src: /Odyssey/private/m19beauc
+  data: /Odyssey/public/CROSCIM_dataset
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: gpu
+  devices: [0]
+  limit_train_batches: 1000
+  limit_val_batches: 100
+  max_epochs: 500
+  precision: bf16-mixed
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+      logging_interval: step
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_loss
+      save_top_k: 3
+      save_last: true
+      filename: 'FM-cascade-N0-{val_loss:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: croscim.data.CascadeDataModule
+  root: ${paths.data}
+  natural_earth_zip: ${hydra:runtime.cwd}/assets/ne_10m_land.zip
+  train_dates: ???   # [first, last] analysis day, e.g. ["2021-01-15", "2022-09-30"]
+  val_dates: ???
+  test_dates: ???
+  tiles_per_day: 8
+  # single GPU: shuffle the days here; under DDP drop it (Lightning sets the sampler)
+  dl_kw: {batch_size: 2, num_workers: 16, shuffle: true, pin_memory: true}
+
+model:
+  _target_: croscim.cascade.LitCascadeN0
+  levels: [C, M, H]
+  pyramid: true
+  # [mean, std]. SIC / SIT / HS / forcing: same stats as the existing CROSCIM
+  # configs (SIC min-max [0, 1] = identity). S_C channels and detail scales
+  # (dSIC_M, dSIT_M, dSIC_H; mean ignored): PROVISIONAL guesses, to recompute
+  # on the data.
+  norm:
+    SIC: [0.0, 1.0]
+    SIT: [0.5695980677516013, 0.8216149733058172]
+    HS: [0.15517908473300512, 0.13962813089282153]
+    h_ow: [0.25, 0.4]
+    h_thin: [0.25, 0.4]
+    h_mid: [0.25, 0.4]
+    h_pack: [0.25, 0.4]
+    sic_std: [0.1, 0.1]
+    edge_density: [0.05, 0.1]
+    aniso_c: [0.0, 0.5]
+    aniso_s: [0.0, 0.5]
+    sit_std: [0.3, 0.3]
+    t2m: [-2.5985455071070955, 13.613745769755358]
+    msl: [101261.65922657882, 1112.7187312302365]
+    u10: [0.6010106010949151, 4.545559141871505]
+    v10: [-0.2104646166032582, 4.707062023219409]
+    dSIC_M: [0.0, 0.1]
+    dSIT_M: [0.0, 0.3]
+    dSIC_H: [0.0, 0.1]
+  # one Swin U-Net per generator; G_M / G_H run on 128^2 / 256^2 crops
+  swin:
+    C: ${swin_config}
+    M: ${swin_config_fine}
+    H: ${swin_config_fine}
+  d: 32            # encoder / pyramid feature size
+  d_psi: 4         # latent sub-grid residual psi_C
+  n_up_queries: 4  # K queries of Pi^up
+  p_null: 0.1      # context-group dropout (guidance)
+  eta: 0.05        # noise on the coarse conditioning (normalised units)
+  lambda_s: 1.0
+  lambda_c: 0.1
+  lambda_psi: 0.01
+  lambda_perp: 1.0
+  cyc_tau: 0.05    # width of the soft S_C indicators in L_cyc
+  cond_steps: 6    # Heun steps of the EMA coarse samples used as conditioning
+  lr: 1e-4
+  betas: [0.9, 0.995]
+  lr_scheduler_start_factor: 1e-5
+  lr_scheduler_iters: 20000
+  ema_decay: 0.999
+  n_steps: 20
+  n_members: 8
+  score_every: 5
+  n_score_batches: 20
+
+swin_config:
+  base_dim: 128
+  encoder_depths: [2, 2, 18, 2]
+  decoder_depths: [6, 2, 2]
+  num_heads: [2, 4, 8, 16]
+  window_size: 8
+  mlp_ratio: 2.0
+  time_dim: 512
+  modulation_rank: 128
+  drop_path_rate: 0.1
+  activation_checkpointing: True
+
+swin_config_fine:
+  base_dim: 64
+  encoder_depths: [2, 2, 6, 2]
+  decoder_depths: [2, 2, 2]
+  num_heads: [2, 4, 8, 16]
+  window_size: 8
+  mlp_ratio: 2.0
+  time_dim: 256
+  modulation_rank: 64
+  drop_path_rate: 0.1
+  activation_checkpointing: True
+
+entrypoints:
+  - _target_: croscim.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}
+    ckpt: null
+    init_weights_ckpt: null
+    save_dir: ${paths.src}/results

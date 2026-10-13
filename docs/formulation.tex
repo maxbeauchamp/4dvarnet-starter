@@ -1,0 +1,328 @@
+% CROSCIM -- formulation et notations (v2, notations unifiees)
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=13mm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem,booktabs,array,tabularx,multirow}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[hidelinks]{hyperref}
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlist{nosep,leftmargin=12pt}
+
+\definecolor{cC}{HTML}{1F5AA6}\definecolor{cM}{HTML}{1F8A5B}\definecolor{cH}{HTML}{D4561C}
+\definecolor{ink}{HTML}{1D2230}\definecolor{muted}{HTML}{5B6475}
+\definecolor{cS}{HTML}{7A4FA3}\definecolor{cP}{HTML}{B07A12}\definecolor{cO}{HTML}{2A7FB8}
+\newcommand{\Cc}{{\color{cC}\mathcal{C}}}
+\newcommand{\Mm}{{\color{cM}\mathcal{M}}}
+\newcommand{\Hh}{{\color{cH}\mathcal{H}}}
+\newcommand{\XC}{{\color{cC}X_{\mathcal{C}}}}
+\newcommand{\XM}{{\color{cM}X_{\mathcal{M}}}}
+\newcommand{\XH}{{\color{cH}X_{\mathcal{H}}}}
+\newcommand{\dXM}{{\color{cM}\delta X_{\mathcal{M}}}}
+\newcommand{\dXH}{{\color{cH}\delta X_{\mathcal{H}}}}
+\newcommand{\SC}{{\color{cS}S_{\mathcal{C}}}}
+\newcommand{\SM}{{\color{cS}S_{\mathcal{M}}}}
+\newcommand{\psiC}{{\color{cP}\psi_{\mathcal{C}}}}
+\newcommand{\psiM}{{\color{cP}\psi_{\mathcal{M}}}}
+\newcommand{\PhiC}{\Phi_{\mathcal{C}}}
+\newcommand{\PhiM}{\Phi_{\mathcal{M}}}
+\newcommand{\ZC}{Z_{\mathcal{C}}}
+\newcommand{\ZM}{Z_{\mathcal{M}}}
+\newcommand{\hh}[1]{{\color{cO}h_{#1}}}
+\newcommand{\Sop}{\mathcal{S}}
+\newcommand{\Pup}{\Pi^{\uparrow}}
+\newcommand{\Pdn}{\Pi^{\downarrow}}
+\newcommand{\ch}{\mathrm{ch}}
+\newcommand{\pa}{\mathrm{par}}
+\newcommand{\nul}{\varnothing}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\obs}[1]{\widehat{#1}}
+
+\newtcolorbox{bsec}[2][]{enhanced, breakable, colback=white, colframe=#2!70!white, boxrule=0.5pt, arc=2pt,
+  left=6pt, right=6pt, top=8pt, bottom=4pt, fonttitle=\bfseries, coltitle=ink,
+  colbacktitle=#2!10!white, title={#1}, attach boxed title to top left={xshift=5pt,yshift=-2.5pt},
+  boxed title style={boxrule=0pt, colframe=white, arc=1pt}, before skip=9pt, after skip=4pt}
+\newtcolorbox{note}{colback=black!3, colframe=black!3, boxrule=0pt, arc=1pt, left=4pt, right=4pt, top=2pt, bottom=2pt}
+
+\begin{document}
+\small\color{ink}
+{\Large\textbf{CROSCIM\;---\;formulation et notations}}\\[2pt]
+{\color{muted}Cascade de générateurs flow matching conditionnels sur une grille polaire stéréographique imbriquée, conditionnés par des contextes construits à la volée à partir d'observations hétérogènes et du forçage atmosphérique. Couleurs : niveaux {\color{cC}$\mathcal{C}$}, {\color{cM}$\mathcal{M}$}, {\color{cH}$\mathcal{H}$}\,; paramètres sous-maille explicites {\color{cS}$S$}\,; résidu latent {\color{cP}$\psi$}\,; information observationnelle {\color{cO}$h$}.}
+
+% ======================================================================
+\begin{bsec}[0 \;\; Glossaire (une notation = un objet)]{ink}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}l X l@{}}
+\toprule
+\textbf{Symbole} & \textbf{Objet} & \textbf{Statut}\\\midrule
+$\ell\in\{\Cc,\Mm,\Hh\}$, $\Omega_\ell$, $\Delta_\ell$ & niveaux, grilles, pas (32 / 4 / 1 km) ; $\ch(k)$ enfants, $\pa(i)$ parent & fixe\\
+$R$, $P$, $\Pi_0=I-PR$ & restriction (moyenne pondérée océan), prolongation (injection), projecteur « détail » ; $RP=I$ & fixe\\
+$\mathcal{V}_\ell$ & ensemble des variables d'état portées par le niveau $\ell$ ; $\mathcal{V}_\Hh\subseteq\mathcal{V}_\Mm\subseteq\mathcal{V}_\Cc$ & choix\\
+$X=(\XC,\dXM,\dXH)$ & état : grande échelle + détails ($R\,\delta X=0$) & \textbf{généré}\\
+$\SC,\ \SM$ & paramètres sous-maille \emph{explicites} (fractions, histogramme, anisotropie\dots) & \textbf{généré}, supervisé\\
+$\Sop_\ell$ & opérateur statistique fixe : champ fin $\mapsto$ statistiques par maille de $\Omega_\ell$ & fixe\\
+$\psiC,\ \psiM$ & résidu sous-maille \emph{latent} (petite dimension $d_\psi$) & appris\\
+$\Phi_\ell=(S_\ell,\psi_\ell)$ & paramétrisation sous-maille du niveau $\ell$ & --\\
+$Z_\Cc=(\XC,\SC[,\psiC])$, $Z_\Mm=(\dXM,\SM)$ & état augmenté par niveau (cible des générateurs) & \textbf{généré}\\
+$Y=(Y_\Cc,Y_\Mm,Y_\Hh)$ & observations, rangées par résolution native ; $Y^{\rm in}\cup Y^{\rm tgt}$ : partition entrée / cible & données\\
+$F$, $f$ & forçage ERA5 ($T_{2m},q_{2m},u_{10},v_{10}$ ; v1 : $T_{2m},\mathrm{MSL},u_{10},v_{10}$) ; $f=E_F(F)$ sur $\Omega_\Cc$ & données / appris\\
+$E_\ell$, $a_\ell$ & encodeur local du niveau $\ell$ et sa sortie (grille $d\times\Omega_\ell$ + masque) & appris\\
+$U_\ell$, $\hh{\ell}$ & bloc de fusion de la pyramide montante, information observationnelle du niveau $\ell$ & appris\\
+$\Pup$, $\Pdn$ & montée (cross-attention sur les enfants), descente (injection + position) & appris\\
+$\Psi_\ell$ & tête latente : $\psi_\ell=\Psi_\ell(\hh{\ell})$ & appris\\
+$c_\ell$ & contexte de conditionnement du générateur $G_\ell$ & construit\\
+$G_\ell$, $v_\theta^\ell$ & générateur FM du niveau $\ell$ et son champ de vitesse & appris\\
+$\obs{X}_\ell$, $\obs{S}_\ell$, $m_\ell$ & vérités terrain construites \emph{à la volée} depuis $Y^{\rm tgt}$, masques de couverture & calculé\\
+$\mathcal{N}_0$, $\mathcal{N}_1$ & réseau d'initialisation (Stage 1), réseau de transition (Stage 2) & appris\\
+$\mu$, $w$ & disponibilité des observations (0/1), poids de rappel (guidance) & choix\\\bottomrule
+\end{tabularx}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[1 \;\; Philosophie : un état multi-échelle et une chain rule grossier $\rightarrow$ fin]{ink}
+\textbf{Grilles et opérateurs fixes.} $\Omega_\Cc\subset\Omega_\Mm\subset\Omega_\Hh$ imbriquées ($\times8$ puis $\times4$), arêtes alignées :
+\[
+(Rx)(k)=\frac{\sum_{i\in\ch(k)}\omega_i\,x(i)}{\sum_{i\in\ch(k)}\omega_i},\qquad (Px)(i)=x(\pa(i)),\qquad RP=I,\qquad \Pi_0=I-PR .
+\]
+\textbf{État.} Chaque niveau ne porte que ses variables $\mathcal{V}_\ell$ (section 2). Pour $v\in\mathcal{V}_\ell$ :
+\[
+\dXM=\XM-P\,\XC,\qquad \dXH=\XH-P\,\XM,\qquad R\,\delta X=0,\qquad
+\XH^{v}=P_{\Cc\to\Hh}\XC^{v}+P_{\Mm\to\Hh}\dXM^{v}+\dXH^{v}\quad(v\in\mathcal{V}_\Hh).
+\]
+Une variable de $\mathcal{V}_\Mm\setminus\mathcal{V}_\Hh$ s'arrête à $\Mm$ ; de $\mathcal{V}_\Cc\setminus\mathcal{V}_\Mm$, à $\Cc$. Aucun décodeur appris : la recomposition est exacte.
+
+\textbf{Paramètres sous-maille.} Ce que la grille d'un niveau ne résout pas est résumé par $\Phi_\ell=(S_\ell,\psi_\ell)$ :
+\[
+\SC=\Sop_\Cc(\text{champ fin dans la maille}),\qquad \SM=\Sop_\Mm(\cdot),\qquad \psi_\ell\in\mathbb{R}^{d_\psi}\ \text{(résidu latent)}.
+\]
+$\Sop_\ell$ est fixe, comme $R$, mais non linéaire. Les composantes \emph{additives} de $S$ (fractions, histogramme) s'emboîtent : $S_\Cc^{\rm frac}=R\,S_\Mm^{\rm frac}$.
+
+\textbf{Loi cible et chain rule.} Avec les états augmentés $\ZC=(\XC,\SC)$, $\ZM=(\dXM,\SM)$ :
+\[
+p(Z\mid Y,F)=\underbrace{p(\ZC\mid Y,F)}_{G_\Cc}\;\cdot\;\underbrace{p(\ZM\mid \ZC,\,Y,F)}_{G_\Mm}\;\cdot\;\underbrace{p(\dXH\mid \ZC,\ZM,\,Y,F)}_{G_\Hh}.
+\]
+C'est une identité (aucune hypothèse). Le modèle remplace $(Y,F)$ par un contexte de taille fixe $c_\ell$ (section 3) :
+\[
+p_\theta(Z\mid Y,F)=p_\theta(\ZC\mid c_\Cc)\;p_\theta(\ZM\mid \ZC,\,c_\Mm)\;p_\theta(\dXH\mid \ZC,\ZM,\,c_\Hh).
+\]
+\begin{note}\footnotesize
+\textbf{Lecture.} \emph{Grand $\rightarrow$ petit} : chaque niveau est conditionné par l'état déjà généré des niveaux plus grossiers (et par $\Pdn\Phi$, $\Pdn f$). \emph{Petit $\rightarrow$ grand} : deux canaux seulement --- (i) l'information observationnelle fine remontée par $\Pup$ dans $\hh{\Cc}$, (ii) les paramètres $\SC,\psiC$, qui font partie de l'état de $\Cc$. \textbf{Suffisance} : si $c_\ell$ contient toute l'information de $(Y,F)$ utile à $Z_\ell$ sachant $Z_{<\ell}$, la factorisation est exacte. Asymptotiquement, l'excès de loss FM d'un contexte $c$ par rapport aux données brutes vaut $\E\|v^\star_{Y}-v^\star_{c}\|^2\ge0$, nul ssi les lois conditionnelles coïncident : la loss mesure l'information perdue.
+\end{note}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[2 \;\; Variables d'état et paramètres par niveau]{ink}
+\renewcommand{\arraystretch}{1.15}\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}l >{\raggedright}p{3.1cm} >{\raggedright}X >{\raggedright\arraybackslash}p{4.1cm}@{}}
+\toprule
+& \textbf{état} $\mathcal{V}_\ell$ & \textbf{paramètres} $\Phi_\ell=(S_\ell,\psi_\ell)$ & \textbf{observations} $Y_\ell$\\\midrule
+{\color{cC}$\mathcal{C}$ 32 km} & SIC$^\bullet$, $u^\bullet$, $v^\bullet$, SIT$^{\circ\!\bullet}$, neige$^{\circ}$ \newline {\color{muted}v1 : SIC, SIT, neige} &
+{\color{cS}$\SC$} : eau libre$^{L}$, histogramme SIC$^{L}$, fraction de leads$^{L}$, densité de leads$^{F}$, anisotropie$^{F}$, déformation$^{F,\circ\bullet}$, glace mince$^{L,\circ\bullet}$, variance SIT / fraction déformée$^{F,\circ\bullet}$ ;\; {\color{cP}$\psiC$} &
+SIC PMW (AMSR2, CIMR), dérive PMW, bouées, CS2SMOS / SMOS, neige \newline {\color{muted}v1 : CIMR (SIC, SIT mince), CRISTAL (neige)}\\[2pt]
+{\color{cM}$\mathcal{M}$ 4 km} & $\delta$SIC$^\bullet$, $\delta u^{\circ\bullet}$, $\delta v^{\circ\bullet}$, $\delta$SIT$^{\circ\bullet}$ \newline {\color{muted}v1 : $\delta$SIC, $\delta$SIT} &
+[{\color{cS}$\SM$} : eau libre, leads, variance SIC] (optionnel, depuis ASIP 500 m) &
+dérive SAR, traces altimétriques (CS2, IS2), SIC SAR agrégée \newline {\color{muted}v1 : CRISTAL (SIT, traité en L2), ASIP agrégé}\\[2pt]
+{\color{cH}$\mathcal{H}$ 1 km} & $\delta$SIC$^\bullet$ & --- (niveau le plus fin) & ASIP (SAR), dans les fauchées\\\bottomrule
+\end{tabularx}\\[3pt]
+{\footnotesize\color{muted}$^\bullet$ observé densément, $^{\circ\bullet}$ partiellement / clairsemé, $^{\circ}$ surtout inféré.\; $^{L}$ composante \emph{liée} à $\XC$ (la modifier modifie $\XC$ via $R$) ; $^{F}$ composante de \emph{forme} (modifiable à $\XC$ fixé). Le \emph{damage} n'est pas observé : il est remplacé par l'« état de fracturation » (densité de leads, anisotropie, déformation, texture). Le forçage $F$ n'est pas dans l'état : il entre par le contexte.}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[3 \;\; Le contexte $c_\ell$ : ce qu'il contient et comment on l'estime]{cO}
+Le contexte d'un niveau a trois parts, de nature différente :
+\[
+c_\Cc=\bigl(\,\hh{\Cc},\ f\,\bigr),\qquad
+c_\Mm=\bigl(\,\hh{\Mm},\ \Pdn f,\ \Pdn\PhiC\,\bigr),\qquad
+c_\Hh=\bigl(\,\hh{\Hh},\ \Pdn f,\ \Pdn\PhiM\ \text{(ou }\Pdn\PhiC)\,\bigr).
+\]
+\begin{itemize}
+\item {\color{cO}$\hh{\ell}$} : \textbf{information observationnelle} (latente, non interprétée). Disparaît quand il n'y a pas d'observation ($\hh{\ell}=\nul$). Rôle : rappel aux observations.
+\item $\Phi_\ell=(S_\ell,\psi_\ell)$ : \textbf{paramétrisation sous-maille}. {\color{cS}$S_\ell$} : part \emph{physique explicite}, supervisée par des statistiques calculées à la volée sur les observations ; {\color{cP}$\psi_\ell$} : part \emph{latente inconnue}, estimée pour le conditionnement. À $\Cc$, $\SC$ est généré avec $\XC$ ; aux niveaux fins, $\Phi$ arrive d'en haut par $\Pdn$.
+\item $f$ : \textbf{forçage}, connu, encodé une fois sur $\Omega_\Cc$ puis descendu.
+\end{itemize}
+
+\textbf{(a) Encodeurs locaux $a_\ell=E_\ell(Y_\ell^{\rm in})$ --- selon le type de donnée.} Chaque observation $n$ devient un token $e_n=\mathrm{MLP}\bigl[y_n,\ \sigma_n,\ \text{type}_n,\ x_n-x_{k(n)},\ t_n-t\bigr]$ (valeur, erreur, capteur, position dans la maille, décalage temporel).
+\begin{center}\footnotesize\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}lll@{}}\toprule
+\textbf{type de données} & \textbf{exemples} & \textbf{encodeur}\\\midrule
+points / traces / L2 irréguliers & altimétrie, bouées, dérive SAR & cross-attention par maille, requêtes apprises\\
+champs denses déjà grillés & ASIP, SIC PMW grillée & CNN à pas (patch-embed masqué)\\
+forçage régulier & ERA5 & CNN + regrillage $\rightarrow f\in\mathbb{R}^{d\times\Omega_\Cc}$\\\bottomrule
+\end{tabular}
+\end{center}
+Pour les tokens irréguliers (softmax segmentée par maille $k$ ; maille vide $\Rightarrow$ token $a_\nul$ et masque) :
+\[
+a_\ell(k)=\sum_{n:\,x_n\in k}\operatorname*{softmax}_{n\in k}\!\Bigl(\tfrac{q^{\top}W_K e_n}{\sqrt d}\Bigr)\,W_V e_n .
+\]
+\textbf{(b) Pyramide montante (petit $\rightarrow$ grand).}
+\[
+\hh{\Hh}=a_\Hh,\qquad \hh{\Mm}=U_\Mm\bigl(a_\Mm,\ \Pup\hh{\Hh}\bigr),\qquad \hh{\Cc}=U_\Cc\bigl(a_\Cc,\ \Pup\hh{\Mm},\ f\bigr),
+\]
+\[
+(\Pup h)(k)=W_O\Bigl[\sum_{i\in\ch(k)}\operatorname*{softmax}_{i\in\ch(k)}\Bigl(\tfrac{q_j^{\top}W_K\,(h(i)+p_i)}{\sqrt d}\Bigr)W_V\,(h(i)+p_i)\Bigr]_{j=1..K},\qquad (\Pdn g)(i)=W\,g(\pa(i))+p_i .
+\]
+$p_i$ : position de l'enfant dans le parent ; $q_j$ : $K$ requêtes apprises (« $K$ questions posées aux enfants ») ; enfants masqués exclus. Pour ASIP 500 m, $E_\Hh$ et $\Pup$ sont fusionnés par tuile $\Cc$ (CNN à pas $\rightarrow$ $\Pup$), uniquement sur les tuiles non vides : tout est calculé à la volée.
+
+\textbf{(c) Part physique explicite : vérité terrain à la volée.}
+\[
+\obs{S}_\Cc=\Sop_\Cc\bigl(\obs{X}_\Hh\bigr)\ \text{(ou }\Sop_\Cc(\obs X_\Mm)\text{ pour la dérive)},\qquad m^{S}_\Cc(k)=\mathbb{1}\bigl[\mathrm{cov}(k)\ge\gamma\bigr],\qquad
+\sigma_S^2(k)=\sigma_0^2+\frac{\sigma_{\rm samp}^2}{n_{\rm eff}(k)} .
+\]
+$\Sop$ est appliqué à une résolution effective commune ; les mailles partiellement couvertes ont une incertitude plus grande ($n_{\rm eff}$) ou sont masquées. Définitions v1 de $\Sop_\Cc$, $\gamma$ et $\sigma_S$ : section 8.
+
+\textbf{(d) Part latente.} $\psi_\ell=\Psi_\ell(\hh{\ell})\in\mathbb{R}^{d_\psi}$, $d_\psi$ petit (4--8), régularisé (section 6) et décorrélé de $S_\ell$ pour que l'interprétable reste dans $S$.
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[4 \;\; Flow matching en cascade : trois générateurs]{ink}
+Pour chaque niveau, cible $z_1$ (état augmenté), bruit $\varepsilon\sim\mathcal{N}(0,I)$ (projeté par $\Pi_0$ pour les détails), interpolation linéaire :
+\[
+z_s=s\,z_1+(1-s)\,\varepsilon,\qquad u=z_1-\varepsilon,\qquad
+\hat z_1=z_s+(1-s)\,v_\theta^{\ell}(z_s,s\mid\cdot)\ \ \text{(prédiction en un pas)}.
+\]
+\begin{center}\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}l l l@{}}\toprule
+\textbf{générateur} & \textbf{cible} $z_1$ & \textbf{conditionnement}\\\midrule
+$G_\Cc$ & $\ZC=(\XC,\ \SC)$ & $c_\Cc=(\hh{\Cc},f)$\ \ [+ $\psiC=\Psi_\Cc(\hh{\Cc})$]\\
+$G_\Mm$ & $\ZM=(\dXM,\ \SM)$ & $\XC^{\eta},\ \Pdn\PhiC,\ \hh{\Mm},\ \Pdn f$\\
+$G_\Hh$ & $\dXH$ & $\XC^{\eta},\ \dXM^{\eta},\ \Pdn\PhiM,\ \hh{\Hh},\ \Pdn f$\\\bottomrule
+\end{tabular}
+\end{center}
+$X^{\eta}=X+\eta$ : conditionnement grossier légèrement bruité (robustesse à ses erreurs). \textbf{À l'entraînement}, le conditionnement grossier provient d'un échantillon du niveau supérieur (modèle EMA, sans gradient), pas d'une vérité dense, qui n'existe pas. Avec probabilité $p_\nul$, chaque groupe de $c_\ell$ (en particulier $\hh{\ell}$, $\Phi$) est remplacé par $\nul$ : les deux têtes $v(\cdot\mid\dots,h)$ et $v(\cdot\mid\dots,\nul)$ sont apprises ensemble (guidance, section 7).
+
+\textbf{Vérités terrain à la volée} (à chaque batch, depuis $Y^{\rm tgt}$ seulement) :
+\[
+\obs{X}_\ell=\mathcal{G}_\ell\bigl(Y_\ell^{\rm tgt}\bigr)\ \ \text{(moyenne pondérée par } \sigma_n^{-2}\text{ dans chaque maille)},\qquad
+\obs{\delta X}_\ell=\obs{X}_\ell-P\,R\,\obs{X}_\ell\ \ \text{sur les parents couverts}\ (\ge\gamma).
+\]
+Le détail cible est défini \emph{par rapport à la moyenne des observations elles-mêmes} : il ne dépend pas de l'échantillon grossier et vérifie $R\,\obs{\delta X}=0$. Les masques $m_\ell^{v}$ (par variable $v$, niveau, pixel) valent 1 là où la cible existe.
+
+\textbf{Échantillonnage.} Heun sur $s\in[0,1]$, dans l'ordre $\Cc\rightarrow\Mm\rightarrow\Hh$ ; $N$ tirages de $\varepsilon$ $\Rightarrow$ ensemble.
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[5 \;\; Deux réseaux appris successivement]{cH}
+\textbf{$\mathcal{N}_0$ --- initialisation (analyse).} Paramètres $\theta_0=\{E_\ell,U_\ell,\Pup,\Pdn,E_F,\Psi_\ell,G^0_\Cc,G^0_\Mm,G^0_\Hh\}$. Sur une fenêtre $[t-W,t]$ :
+\[
+Z^{t}\sim p_{\theta_0}\bigl(Z^{t}\mid Y^{\rm in}_{t-W:t},\,F_{t-W:t}\bigr)=p_{\theta_0}(\ZC^t\mid c_\Cc)\,p_{\theta_0}(\ZM^t\mid\ZC^t,c_\Mm)\,p_{\theta_0}(\dXH^t\mid\ZC^t,\ZM^t,c_\Hh).
+\]
+\textbf{$\mathcal{N}_1$ --- transition (évolution temporelle).} Initialisé depuis $\theta_0$ (encodeurs d'observations partagés, d'abord gelés). L'état précédent entre comme un flux d'observation supplémentaire, encodé par $E^{s}_\ell$ :
+\[
+Z^{t+\Delta}\sim p_{\theta_1}\bigl(Z^{t+\Delta}\mid Z^{t},\ \mu\,Y_{(t,t+\Delta]},\ F_{t:t+\Delta}\bigr),\qquad
+a^{t+\Delta}_\ell=\bigl[E^{s}_\ell(Z^t_\ell),\ \mu\,E_\ell(Y_\ell)\bigr],\qquad \ZC=(\XC,\SC,\psiC).
+\]
+\begin{itemize}
+\item \textbf{État d'entrée} $Z^t$ : un échantillon de $\mathcal{N}_0$ (l'analyse), puisqu'aucun état vrai dense n'existe.
+\item \textbf{Cibles} à $t+\Delta$ : $\obs X$, $\obs S$ (section 4) et, pour le latent, $\obs\psi^{\,t+\Delta}=\bar\Psi\bigl(\hh{\Cc}^{t+\Delta}\bigr)$ (encodeur EMA, sans gradient), là où il y a des observations.
+\item \textbf{$\mu\sim$ Bernoulli} : apprend à prévoir avec et sans observations nouvelles ; \textbf{pushforward} sur 2--4 pas (l'entrée du pas $k$ est la sortie du pas $k-1$) pour la stabilité du rollout.
+\item \textbf{Mode A} (long terme) : seul $G^1_\Cc$ avance $(\XC,\SC,\psiC)$ ; les niveaux fins sont générés à la demande par $G^0_\Mm,G^0_\Hh$ avec $\hh{}=\nul$, conditionnés par $\Pdn\Phi$ et $\Pdn f$. \textbf{Mode B} (validation, régional) : la cascade complète à chaque pas, puis $\SC\leftarrow\Sop_\Cc(\XH)$.
+\end{itemize}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[6 \;\; Les losses]{ink}
+Notation : $\mathcal{L}_{\rm NLL}(u,v;\sigma,m)=\E\bigl[\sum m\odot\bigl(\tfrac12\bigl\|\tfrac{u-v}{\sigma}\bigr\|^2+\log\sigma\bigr)\bigr]$, avec $\sigma$ appris (tête log-échelle) et plancher connu pour $S$.
+\[
+\begin{aligned}
+\mathcal{L}_X^{\ell}&=\mathcal{L}_{\rm NLL}\bigl(u^{X},v_\theta^{\ell,X};\ \sigma_\ell,\ m^X_\ell\bigr) &&\text{état, cible }\obs X_\ell\text{ ou }\obs{\delta X}_\ell\\
+\mathcal{L}_S^{\ell}&=\mathcal{L}_{\rm NLL}\bigl(u^{S},v_\theta^{\ell,S};\ \sigma_S,\ m^S_\ell\bigr) &&\text{paramètres explicites, cible }\obs S_\ell=\Sop_\ell(\obs X_{\rm fin})\\
+\mathcal{L}_{\rm cyc}&=\E\bigl\|\,\Sop_\Cc\bigl(\hat x_1^{\Hh}\bigr)-\SC\,\bigr\|^2_{m} &&\text{cohérence descente/montée ($\Sop$ doux)}\\
+\mathcal{L}_\psi&=\E\|\psi\|^2+\lambda_\perp\bigl\|\mathrm{Cov}(\psi,S)\bigr\|_F^2 &&\text{goulot, décorrélation de }S\\
+\mathcal{L}_\psi^{\rm dyn}&=\mathcal{L}_{\rm NLL}\bigl(u^{\psi},v_\theta^{\Cc,\psi};\ \sigma_\psi,\ m^{\psi}\bigr),\ \ \text{cible }\obs\psi^{\,t+\Delta} &&\text{latent dans la transition ($\mathcal{N}_1$)}
+\end{aligned}
+\]
+\begin{center}\renewcommand{\arraystretch}{1.2}\footnotesize
+\begin{tabular}{@{}lll@{}}\toprule
+\textbf{réseau} & \textbf{loss totale} & \textbf{vérité terrain}\\\midrule
+$\mathcal{N}_0$ & $\sum_\ell\bigl(\mathcal{L}_X^{\ell}+\lambda_S\mathcal{L}_S^{\ell}\bigr)+\lambda_c\mathcal{L}_{\rm cyc}+\lambda_\psi\mathcal{L}_\psi$ & $Y^{\rm tgt}_{t}$ (et $Y^{\rm in}$ avec poids $\lambda_{\rm in}<1$)\\
+$\mathcal{N}_1$ & $\sum_{k=1}^{K}\gamma^{k-1}\Bigl[\sum_\ell\bigl(\mathcal{L}_X^{\ell}+\lambda_S\mathcal{L}_S^{\ell}\bigr)+\lambda_\psi\mathcal{L}_\psi^{\rm dyn}\Bigr]_{t+k\Delta}$ & $Y_{t+k\Delta}$, $\bar\Psi(\hh{}^{t+k\Delta})$\\\bottomrule
+\end{tabular}
+\end{center}
+{\footnotesize\color{muted}La partition $Y=Y^{\rm in}\cup Y^{\rm tgt}$ (fauchées, traces ou blocs retirés au hasard à chaque batch) empêche le modèle de recopier ses entrées ; les scores sont toujours rapportés sur $Y^{\rm tgt}$. Aucune vérité n'est précalculée : grillage $\mathcal{G}_\ell$, détails, statistiques $\Sop$ et masques sont recalculés à chaque batch.}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[7 \;\; Scénarisation avec ces notations]{cS}
+\textbf{Rollout (mode A).} À chaque pas, avec rappel optionnel aux observations ($w=0$ : simulation libre, $w=1$ : assimilation) :
+\[
+\ZC^{t+\Delta}\sim G^1_\Cc\bigl(\cdot\mid \ZC^{t},\,f^{t:t+\Delta}\bigr),\qquad
+v_w=v\bigl(\cdot\mid \ZC^t,f\bigr)+w(t)\bigl[v\bigl(\cdot\mid \ZC^t,f,\hh{\Cc}\bigr)-v\bigl(\cdot\mid \ZC^t,f\bigr)\bigr].
+\]
+Statistiques + forçage pilotent la simulation \emph{non conditionnelle} ; les observations ajoutent un terme de rappel. Détails à la demande : $\dXM\sim G^0_\Mm(\cdot\mid\XC,\Pdn\PhiC,\Pdn f,\nul)$, puis $\dXH$.
+
+\textbf{Interventions} (toujours suivies de la projection $\Pi_S$ : histogramme de moyenne $\mathrm{SIC}_\Cc$, fractions dans $[0,1]$) :
+\begin{center}\renewcommand{\arraystretch}{1.3}\footnotesize
+\begin{tabular}{@{}l l l@{}}\toprule
+\textbf{intervention} & \textbf{opération} & \textbf{question}\\\midrule
+(1) condition initiale & $\SC^{0}\leftarrow\Pi_S\bigl(\SC^0+\delta S^{F}\bigr)$, puis libre ; $\psiC^0$ regénéré sachant $\SC^0$ & mémoire sous-maille, relaxation\\
+(2) forçage & $F\rightarrow\tilde F$ (+$\Delta T$, vents tournés, scénario) ; $\tilde f=E_F(\tilde F)$ & réponse de $\XC$ \emph{et} de $\SC$\\
+(3) prescription & $\mathrm{do}(\SC^{t}=s^\star(t))$ après chaque pas & effet causal de $\SC$ sur $\XC$\\
+(4) rappel & $\SC\leftarrow\SC+\tfrac{\Delta t}{\tau}(s^\star-\SC)$, ou guidance vers $s^\star$ & pousser sans casser la dynamique\\
+(5) descente seule & $\dXH\sim G^0_\Hh(\cdot\mid\XC,\dXM,\Pdn\tilde\Phi,\Pdn f,\nul)$ & réalisations fines d'un $\tilde\Phi$ donné\\\bottomrule
+\end{tabular}
+\end{center}
+$\delta S^{F}$ : modification de \emph{forme} (à $\XC$ fixé) ; modifier une composante liée ($^{L}$) impose de modifier $\XC$ de façon cohérente.
+
+\textbf{Mesurer les rétroactions dans ce cadre.}
+\[
+I^{\uparrow}=\mathcal{L}_X^{\Cc}\bigl(\SC^{\perp}\!\rightarrow\nul\bigr)-\mathcal{L}_X^{\Cc},\qquad
+I^{\downarrow}=\mathcal{L}_S^{\Cc}\bigl(f\text{ ou }\XC\!\rightarrow\nul\bigr)-\mathcal{L}_S^{\Cc},\qquad
+R_{X\leftarrow S}(\tau)=\E_\varepsilon\bigl[\XC^{t+\tau}\mid\mathrm{do}(\SC^t+\delta S)\bigr]-\E_\varepsilon\bigl[\XC^{t+\tau}\mid\mathrm{do}(\SC^t)\bigr],
+\]
+avec $\SC^\perp=\SC-\E[\SC\mid\XC]$ et le \emph{même} $\varepsilon$ dans les deux rollouts (bruit apparié). Garde-fous : pente de contrôlabilité $\partial\,\Sop(\XH)/\partial S^\star\approx1$, modifications dans la gamme observée, placebo (permutation de $\SC$), cohérence mode A / mode B.
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[8 \;\; Choix v1 (implémentation)]{cS}
+\textbf{Sources v1} (\texttt{/Odyssey/public/CROSCIM\_dataset}) : ASIP (SIC 500 m, $\sigma$ = \texttt{standard\_deviation\_sic}, plancher 5\,\%) ; CIMR 5 km (SIC, SIT mince) ; CRISTAL 5 km (SIT, neige), \emph{traité comme du L2} : chaque maille 5 km valide est un point ; ERA5 sur la même grille 5 km. Pas de source de dérive en v1 : $u,v$ (et $\delta u,\delta v$) sont reportés en v2, ainsi que IST (non retenu) et la fraction de glace mince (demande le \texttt{sod} d'ASIP).
+
+\renewcommand{\arraystretch}{1.15}\footnotesize
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{niveau} & \textbf{état v1} & \textbf{vérité terrain $\obs X$ (à la volée, depuis $Y^{\rm tgt}$, moyenne pondérée par $\sigma^{-2}$)}\\\midrule
+{\color{cC}$\Cc$} & SIC, SIT, neige & SIC : CIMR ; SIT : CIMR + CRISTAL ; neige : CRISTAL\\
+{\color{cM}$\Mm$} & $\delta$SIC, $\delta$SIT & SIC : ASIP agrégé ($\mathcal{G}_\Mm=R\,\mathcal{G}_\Hh$) ; SIT : CRISTAL\\
+{\color{cH}$\Hh$} & $\delta$SIC & ASIP (blocs $2\times2$ exacts de la grille 500 m)\\\bottomrule
+\end{tabularx}\\[2pt]
+\textbf{Grillage $\mathcal{G}_\ell$ sans interpolation.} Champs alignés (ASIP $\to\Hh$) : moyenne par blocs ; champs denses non alignés (CIMR, ERA5 5 km $\to\Cc$) : remappage exact par recouvrement de surfaces (matrices 1D séparables $A_y\,X\,A_x^\top$) ; points (CRISTAL) : affectation à la maille contenant le point. Poids de $R$ : fraction d'océan $\omega_\Hh$ (Natural Earth 10 m, sur-échantillonnée $\times4$), sommée vers $\Mm$ et $\Cc$.
+
+\textbf{Partition $Y^{\rm in}\cup Y^{\rm tgt}$} (jour $t$ seulement, les jours précédents sont des entrées) : ASIP par passage (temps d'acquisition par tranches de 10 min) ; sources 5 km par blocs de $8\times8$ mailles $\Cc$ (256 km), communs à CIMR et CRISTAL ; chaque unité va dans $Y^{\rm tgt}$ avec probabilité 0{,}3.
+
+\textbf{Détails cibles.} $\obs{\delta X}=\obs X-PR\,\obs X$ avec $R$ pondéré par $\omega\cdot m$ (mailles observées), sur les parents dont la fraction d'océan observée est $\ge\gamma$ : $\gamma_{\rm SIC}=0{,}5$ (fauchées SAR larges), $\gamma_{\rm SIT}=0{,}1$ (une trace couvre $\approx$ 8 des 64 mailles $\Mm$ d'une maille $\Cc$).
+
+\textbf{$\SC$ v1 : 9 canaux}, calculés par $\Sop_\Cc$ sur $\obs X_\Hh^{\rm SIC}$ (résolution effective commune : 1 km) et sur $\obs X_\Mm^{\rm SIT}$ :
+\begin{center}\footnotesize\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\linewidth}{@{}l l X l@{}}\toprule
+\textbf{canal} & \textbf{type} & \textbf{définition (moyennes pondérées par $\omega$ sur les enfants observés)} & $(\sigma_0,\sigma_{\rm samp})$\\\midrule
+$h_0..h_3$ & $L$ & histogramme SIC, classes $[0,.15)$, $[.15,.5)$, $[.5,.85)$, $[.85,1]$ ; $h_0$ = eau libre ; en banquise compacte, $h_0+h_1$ = fraction de leads & $(0.02, 0.5)$\\
+sic\_std & $F$ & écart-type de la SIC à 1 km dans la maille & $(0.02, 0.3)$\\
+edge\_density & $F$ & fraction des paires de voisins (dans la maille) avec $|\Delta\mathrm{SIC}|>0{,}3$ : densité de bords de leads / floes & $(0.01, 0.5)$\\
+aniso\_c, aniso\_s & $F$ & $\bigl(\bar J_{xx}-\bar J_{yy},\ 2\bar J_{xy}\bigr)/(\bar J_{xx}+\bar J_{yy}+e_0)$, tenseur de structure des gradients, $e_0=0{,}01$ : anisotropie $\times$ orientation ($2\theta$) & $(0.05, 1.0)$\\
+sit\_std & $F$ & écart-type de la SIT CRISTAL sur les mailles $\Mm$ observées ($\ge4$) & $(0.05, 0.5)$ m\\\bottomrule
+\end{tabularx}
+\end{center}
+Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\ge4]$ (sit\_std) ; $n_{\rm eff}=\sum\omega\,m/4$ (décorrélation $\approx2$ km) ou $n_\Mm$ ; $\sigma_S^2=\sigma_0^2+\sigma_{\rm samp}^2/n_{\rm eff}$.
+
+\textbf{Échantillons et fenêtres.} Tuiles de $64\times64$ mailles $\Cc$ (2048 km : $512^2$ en $\Mm$, $2048^2$ en $\Hh$), à fraction d'océan $\ge0{,}2$ ; $\mathcal N_0$ : $W=15$ jours ; ASIP entre à $\Hh$ pour les 3 derniers jours et à $\Mm$ (une carte par jour, moyenne pondérée par $\sigma^{-2}$ et somme des poids) sur les 15 jours : le détail à 1 km des jours anciens est périmé par la dérive, leur couverture et leur état moyen restent utiles. Les cartes $\Mm$ des jours $<t$ sont agrégées dans les workers depuis le 500 m (à la volée), celle du jour $t$ sur GPU après la partition ; $\mathcal N_1$ : $\Delta=1$ jour, rollout appris jusqu'à 7 jours, avec un curriculum de 1 à 7 pas.
+
+\textbf{Stockage.} Conversion unique des NetCDF en Zarr chunké par jour (recadrage au domaine, valeurs natives, aucun regrillage). Les workers ne font que découper des tranches ; partition, $\mathcal{G}_\ell$, masques, $\obs{\delta X}$ et $\obs S$ sont calculés sur GPU après le transfert du batch.
+
+\textbf{Implémentation v1 (choix non fixés par les sections 1--7).}
+\begin{itemize}
+\item \emph{Encodeurs} : CRISTAL en tokens (SIT à $\Mm$, neige à $\Cc$, softmax segmentée par maille, fenêtre complète avec $t_n-t$) ; CIMR, ASIP agrégé à $\Mm$ et ERA5 par CNN masqués ; ASIP à $\Hh$ fusionné avec $\Pup_{\Hh\to\Mm}$ (CNN à pas par maille $\Cc$ non vide) ; $\Pup_{\Mm\to\Cc}$ à $K=4$ requêtes ; $d=32$, $d_\psi=4$.
+\item \emph{Générateurs fins sur crops} alignés sur les mailles $\Cc$ : $G_\Mm$ sur $128^2$ ($16\times16$ mailles $\Cc$), $G_\Hh$ sur $256^2$ ($8\times8$). Le bruit \emph{et la vitesse} sont projetés par $\Pi_0$ : $R\,\delta X=0$ exactement. Tuile entière = crops juxtaposés (raccords possibles aux bords des crops). Pas de bornes sur les $\delta$ : seuls les champs recomposés peuvent sortir légèrement de $[0,1]$.
+\item \emph{$\psi_\Cc=\Psi_\Cc(\hh\Cc)$} est déterministe dans $\mathcal N_0$ (il conditionne $G_\Mm$, $G_\Hh$ via $\Pdn$), généré par $G^1_\Cc$ dans $\mathcal N_1$.
+\item \emph{$\mathcal L_{\rm cyc}$} : $\Sop_\Cc$ doux (indicatrices sigmoïdes, $\tau=0{,}05$) appliqué à la prédiction en un pas de $\Hh$, comparé au $\SC^\eta$ qui l'a conditionnée, pondéré par $s$.
+\item \emph{Dropout de groupe} ($p_\nul=0{,}1$) : $(\hh{},\Phi,f)$ dans $\mathcal N_0$ ; $(\hh{},f,X,S,\psi)$ dans $\mathcal N_1$, où $\hh{}=\nul$ aussi si $\mu=0$. $I^\uparrow$ est estimé en remplaçant tout le groupe $S$ par $\nul$ : le modèle marginalise alors $S$ sachant $X$, ce qui retire $S^\perp$.
+\item \emph{$\Pi_S$} : bornes physiques et histogramme normalisé (histogramme vide $\Rightarrow$ classe de $\mathrm{SIC}_\Cc$). La cohérence entre la moyenne de l'histogramme et $\mathrm{SIC}_\Cc$ n'est pas imposée en v1.
+\item \emph{Non implémentés en v1} : poids $\lambda_{\rm in}$ des cibles issues de $Y^{\rm in}$, $\SM$, régénération de $\psi^0$ après une intervention sur la condition initiale.
+\end{itemize}
+\end{bsec}
+
+\end{document}
