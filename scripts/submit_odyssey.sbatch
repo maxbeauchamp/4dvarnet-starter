@@ -12,8 +12,13 @@
 #   sbatch scripts/submit_odyssey.sbatch main.py xp=N0 model.levels=[C] model.pyramid=false \
 #       'datamodule.train_dates=[2021-01-15,2021-12-31]' ...
 #
-# The conversion (scripts/convert_sources.py) needs no GPU; override the
-# request on the command line if a CPU partition is available.
+# The Zarr stores (*_zarr in /Odyssey/public/CROSCIM_dataset) are first
+# copied to the node-local /SCRATCH/$USER/$SLURM_JOB_ID (removed at the end of
+# the job) and the data root is redirected there: paths.data=... for main.py,
+# --root ... for the scripts. STAGE=0 sbatch ... reads /Odyssey/public
+# directly. No staging for scripts/convert_sources.py, which writes the
+# stores; it needs no GPU either (override the request if a CPU partition is
+# available).
 # =============================================================================
 
 #SBATCH --job-name=croscim
@@ -45,6 +50,31 @@ SCRIPT="${1:?Usage: sbatch scripts/submit_odyssey.sbatch <script.py> [args...]}"
 shift
 
 cd "$SLURM_SUBMIT_DIR"
-echo "[$(date)] Running: python ${SCRIPT} $*"
-HYDRA_FULL_ERROR=1 srun python "$SCRIPT" "$@"
+
+DATA_ROOT=/Odyssey/public/CROSCIM_dataset
+ZARR_STORES=(ASIP_L3_zarr data_noise_zarr out_CRISTAL_zarr atm_data_zarr)
+ROOT_OVERRIDE=()
+if [[ "${STAGE:-1}" == "1" && "$(basename "$SCRIPT")" != "convert_sources.py" ]]; then
+    scratch_dir=/SCRATCH/$USER/$SLURM_JOB_ID
+    mkdir -p "$scratch_dir"
+    cleanup() {
+        echo "[$(date)] Freeing SCRATCH dir: $scratch_dir"
+        rm -rf "$scratch_dir"
+    }
+    trap cleanup EXIT
+    t0=$SECONDS
+    for store in "${ZARR_STORES[@]}"; do
+        echo "[$(date)] Staging ${DATA_ROOT}/${store} -> ${scratch_dir}/"
+        rsync -a "${DATA_ROOT}/${store}" "$scratch_dir/"
+    done
+    echo "[$(date)] Staged $(du -sh "$scratch_dir" | cut -f1) in $((SECONDS - t0)) s"
+    if [[ "$(basename "$SCRIPT")" == "main.py" ]]; then
+        ROOT_OVERRIDE=("paths.data=${scratch_dir}")
+    else
+        ROOT_OVERRIDE=(--root "$scratch_dir")
+    fi
+fi
+
+echo "[$(date)] Running: python ${SCRIPT} $* ${ROOT_OVERRIDE[*]}"
+HYDRA_FULL_ERROR=1 srun python "$SCRIPT" "$@" "${ROOT_OVERRIDE[@]}"
 echo "[$(date)] Done."

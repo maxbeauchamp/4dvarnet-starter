@@ -82,7 +82,7 @@ Chaque phase est testable et validée avant la suivante.
 ## 3. Décisions (confirmées le 2026-10-13)
 
 1. **Variables** : 𝒱_C = {SIC, SIT, neige}, 𝒱_M = {δSIC, δSIT}, 𝒱_H = {δSIC}. Pas d'IST. u, v reportés en v2 (pas de source de dérive en v1).
-2. **S_C v1** : 9 canaux (histogramme SIC à 4 classes, sic_std, edge_density, anisotropie × 2, sit_std), γ_SIC = 0,5, γ_SIT = 0,1, résolution effective commune 1 km. Définitions complètes : section 8 de la formulation.
+2. **S_C v1** : 9 canaux (histogramme SIC à 4 classes, sic_std, edge_density, anisotropie × 2, sit_std), γ_SIC = 0,5, γ_SIT = 0,05, résolution effective commune 1 km. Définitions complètes : section 8 de la formulation.
 3. **Fenêtres** : W = 15 jours pour 𝒩₀ (ASIP : à H sur les 3 derniers jours, à M sur les 15 jours, agrégé à la volée dans les workers) ; Δ = 1 jour pour 𝒩₁, rollout appris jusqu'à 7 jours avec un curriculum de 1 à 7 pas. Tuiles de 64×64 mailles C.
 4. **Sources v1** (`/Odyssey/public/CROSCIM_dataset`) : ASIP (SIC), CIMR (SIC, SIT mince), CRISTAL (SIT, neige ; regrillé à 5 km mais traité comme du L2), ERA5 (`atm5km`). Grille : projection native d'ASIP (EPSG:3411). Masque terre/mer : Natural Earth 10 m.
 5. **Branche** : `croscim-fm-cascade`, créée depuis `croscim`. Code dans `croscim/`.

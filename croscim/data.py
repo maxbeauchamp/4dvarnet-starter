@@ -52,7 +52,7 @@ BLOCK_C = 8       # partition blocks of the 5 km sources: 8 x 8 C cells (256 km)
 ASIP_PASS_GAP_MIN = 10  # ASIP partition units: acquisitions less than 10 min apart form one pass
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
 ASIP_SIGMA_FLOOR = 0.05
-GAMMA = {"SIC": 0.5, "SIT": 0.1}  # min. observed ocean fraction of a parent for a detail target
+GAMMA = {"SIC": 0.5, "SIT": 0.05}  # min. observed ocean fraction of a parent for a detail target
 
 
 def to_day(date: str) -> int:

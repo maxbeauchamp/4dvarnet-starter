@@ -51,30 +51,31 @@ model:
   _target_: croscim.cascade.LitCascadeN0
   levels: [C, M, H]
   pyramid: true
-  # [mean, std]. SIC / SIT / HS / forcing: same stats as the existing CROSCIM
+  # [mean, std]. SIC / SIT / HS / forcing: same stats as the former CROSCIM
   # configs (SIC min-max [0, 1] = identity). S_C channels and detail scales
-  # (dSIC_M, dSIT_M, dSIC_H; mean ignored): PROVISIONAL guesses, to recompute
-  # on the data.
+  # (dSIC_M, dSIT_M, dSIC_H; mean ignored): measured by scripts/inspect_data.py
+  # on 2022-02 (200 batches of 2 tiles), std floored at 0.02 for the nearly
+  # constant channels sic_std, edge_density, aniso_c, aniso_s.
   norm:
     SIC: [0.0, 1.0]
     SIT: [0.5695980677516013, 0.8216149733058172]
     HS: [0.15517908473300512, 0.13962813089282153]
-    h_ow: [0.25, 0.4]
-    h_thin: [0.25, 0.4]
-    h_mid: [0.25, 0.4]
-    h_pack: [0.25, 0.4]
-    sic_std: [0.1, 0.1]
-    edge_density: [0.05, 0.1]
-    aniso_c: [0.0, 0.5]
-    aniso_s: [0.0, 0.5]
-    sit_std: [0.3, 0.3]
+    h_ow: [0.1721, 0.368]
+    h_thin: [0.0184, 0.0926]
+    h_mid: [0.0267, 0.1158]
+    h_pack: [0.7828, 0.4002]
+    sic_std: [0.0174, 0.0553]
+    edge_density: [0.0003, 0.02]
+    aniso_c: [0.0013, 0.036]
+    aniso_s: [0.0016, 0.0348]
+    sit_std: [0.0326, 0.0585]
     t2m: [-2.5985455071070955, 13.613745769755358]
     msl: [101261.65922657882, 1112.7187312302365]
     u10: [0.6010106010949151, 4.545559141871505]
     v10: [-0.2104646166032582, 4.707062023219409]
-    dSIC_M: [0.0, 0.1]
-    dSIT_M: [0.0, 0.3]
-    dSIC_H: [0.0, 0.1]
+    dSIC_M: [0.0, 0.0577]
+    dSIT_M: [0.0, 0.0685]
+    dSIC_H: [0.0, 0.0149]
   # one Swin U-Net per generator; G_M / G_H run on 128^2 / 256^2 crops
   swin:
     C: ${swin_config}

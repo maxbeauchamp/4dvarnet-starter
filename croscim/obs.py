@@ -118,7 +118,8 @@ def _step(x: Tensor, tau: float | None) -> Tensor:
     return (x > 0).to(x.dtype) if tau is None else torch.sigmoid(x / tau)
 
 
-def sic_stats(x: Tensor, w: Tensor, tau: float | None = None) -> Tensor:
+def sic_stats(x: Tensor, w: Tensor, tau: float | None = None,
+              edge_jump: float = EDGE_JUMP, e0: float = ANISO_E0) -> Tensor:
     """The 8 SIC channels of S_C (h_ow .. aniso_s) of a 1 km field x with
     weights w (ocean fraction x observed), [..., 8, ny/32, nx/32]. With tau,
     the indicators are sigmoids of width tau: the soft S used by L_cyc."""
@@ -144,13 +145,20 @@ def sic_stats(x: Tensor, w: Tensor, tau: float | None = None) -> Tensor:
     gy = pad(x[..., 1:, :] - x[..., :-1, :], (0, 0, 0, 1))
     wx = pad(w[..., :, 1:] * w[..., :, :-1], (0, 1)) * inner_x
     wy = pad(w[..., 1:, :] * w[..., :-1, :], (0, 0, 0, 1)) * inner_y[:, None]
-    sx, sy, sxy = g.block_sum(wx, f), g.block_sum(wy, f), g.block_sum(wx * wy, f)
-    edge = _div(g.block_sum(wx * _step(gx.abs() - EDGE_JUMP, tau), f)
-                + g.block_sum(wy * _step(gy.abs() - EDGE_JUMP, tau), f), sx + sy)
-    jxx, jyy = _div(g.block_sum(wx * gx * gx, f), sx), _div(g.block_sum(wy * gy * gy, f), sy)
-    jxy = _div(g.block_sum(wx * wy * gx * gy, f), sxy)
-    aniso_c = (jxx - jyy) / (jxx + jyy + ANISO_E0)
-    aniso_s = 2 * jxy / (jxx + jyy + ANISO_E0)
+    sx, sy = g.block_sum(wx, f), g.block_sum(wy, f)
+    edge = _div(g.block_sum(wx * _step(gx.abs() - edge_jump, tau), f)
+                + g.block_sum(wy * _step(gy.abs() - edge_jump, tau), f), sx + sy)
+    # structure tensor from the gradients at the corners of each 2 x 2 block:
+    # unlike forward differences sharing a pixel, unbiased (J_xy = 0) for
+    # uncorrelated noise
+    a, b, c, d = x[..., :-1, :-1], x[..., :-1, 1:], x[..., 1:, :-1], x[..., 1:, 1:]
+    cx, cy = pad(0.5 * (b - a + d - c), (0, 1, 0, 1)), pad(0.5 * (c - a + d - b), (0, 1, 0, 1))
+    wc = pad(w[..., :-1, :-1] * w[..., :-1, 1:] * w[..., 1:, :-1] * w[..., 1:, 1:], (0, 1, 0, 1))
+    wc = wc * inner_x * inner_y[:, None]
+    sc = g.block_sum(wc, f)
+    jxx, jyy, jxy = (_div(g.block_sum(wc * p, f), sc) for p in (cx * cx, cy * cy, cx * cy))
+    aniso_c = (jxx - jyy) / (jxx + jyy + e0)
+    aniso_s = 2 * jxy / (jxx + jyy + e0)
     return torch.stack(hist + [sic_std, edge, aniso_c, aniso_s], -3)
 
 

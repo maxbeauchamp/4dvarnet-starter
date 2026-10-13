@@ -9,6 +9,8 @@ Over --n-batches training batches (random tiles and days in [start, end]):
     (to replace the provisional values of config/xp/N0.yaml);
   * reference score: persistence of CIMR (day t-1) against the C targets of
     day t (RMSE), the first baseline to beat in phase 3;
+  * sensitivity of edge_density (jump threshold) and of the anisotropy
+    (energy floor e0) to their settings, from the 1 km targets X^_H;
   * maps of the first --n-plots batches (targets, masks, partition).
 
 Results go to --out (summary.json, norm_N0.yaml, PNG maps), rewritten every
@@ -32,9 +34,12 @@ import torch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from croscim import obs
+from croscim import grid as g
 from croscim.cascade import X_NAMES
 from croscim.data import CascadeDataModule
 
+EDGE_JUMPS = (0.1, 0.15, 0.3)
+ANISO_E0S = (1e-4, 1e-3, 1e-2)
 ASSET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "ne_10m_land.zip")
 
 
@@ -129,6 +134,9 @@ def main():
             "asip_cells_day_t": {"in": float(np.mean(acc["asip_in_cells"])), "tgt": float(np.mean(acc["asip_tgt_cells"]))},
             "x_c_stats": {n: [float(m), float(s)] for n, m, s in zip(X_NAMES, x_mean, x_std)},
             "persistence_rmse_cimr_t-1": {n: (acc[f"pers_{n}_se"] / max(acc[f"pers_{n}_n"], 1)) ** 0.5 for n in ("SIC", "SIT")},
+            # over the C cells where S^_C is defined: mean, std, fraction of cells > 0.01 (in absolute value)
+            "s_settings": {k: [round(v[0] / max(v[3], 1), 5), round(max(v[1] / max(v[3], 1) - (v[0] / max(v[3], 1)) ** 2, 0) ** 0.5, 5),
+                               round(v[2] / max(v[3], 1), 4)] for k, v in acc.get("s_settings", {}).items()},
         }
         norm = {n: [round(float(m), 4), round(float(max(s, 1e-3)), 4)] for n, m, s in zip(obs.S_NAMES, s_mean, s_std)}
         norm.update({"dSIC_M": [0.0, round(float(dm_std[0]), 4)], "dSIT_M": [0.0, round(float(dm_std[1]), 4)],
@@ -165,6 +173,20 @@ def main():
             s1, s2, n = masked_moments(b[key].double(), b[mkey], (0, 2, 3))
             for name, v in (("s1", s1), ("s2", s2), ("n", n)):
                 acc[f"{key}_{name}"] = acc.get(f"{key}_{name}", 0) + v.cpu()
+        # sensitivity of edge_density / anisotropy to their settings, from X^_H
+        w_h = b["omega_h"] * b["tgt_H_m"][:, 0]
+        cells = b["tgt_S_m"][:, 0]
+        variants = {f"edge_density@jump={j}": (obs.sic_stats(b["tgt_H"][:, 0], w_h, edge_jump=j)[:, 5],) for j in EDGE_JUMPS}
+        variants.update({f"aniso@e0={e}": tuple(obs.sic_stats(b["tgt_H"][:, 0], w_h, e0=e)[:, 6:8].unbind(1))
+                         for e in ANISO_E0S})
+        sv = acc.setdefault("s_settings", {})
+        for name, chans in variants.items():
+            for c, x in enumerate(chans):
+                x = x[cells].double()
+                key = name if len(chans) == 1 else name.replace("aniso", ("aniso_c", "aniso_s")[c])
+                old = sv.get(key, [0.0, 0.0, 0.0, 0])
+                sv[key] = [old[0] + float(x.sum()), old[1] + float((x * x).sum()),
+                           old[2] + float((x.abs() > 0.01).sum()), old[3] + int(x.numel())]
         # partition of ASIP at day t (H cells): Y^in vs Y^tgt
         acc.setdefault("asip_in_cells", []).append(float((b["in_H_w"][:, -1] > 0).sum()))
         acc.setdefault("asip_tgt_cells", []).append(float(b["tgt_H_m"].sum()))

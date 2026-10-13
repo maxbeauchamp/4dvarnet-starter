@@ -151,3 +151,10 @@ def test_land_fraction_of_a_square_with_a_hole():
     assert land.sum() == 100 - 4 + 6 / 16
     iy, ix, _ = g.cell_index(torch.tensor([5e3, 3e3]), torch.tensor([5e3, 3e3]), "H")
     assert land[iy[0], ix[0]] == 1.0 and land[iy[1], ix[1]] == 0.0
+
+
+def test_anisotropy_is_unbiased_for_uncorrelated_noise():
+    gen = torch.Generator().manual_seed(5)
+    x = torch.rand(256, 256, generator=gen, **f64)
+    s = obs.sic_stats(x, torch.ones_like(x), e0=1e-4)
+    assert s[6].abs().mean() < 0.05 and s[7].abs().mean() < 0.05
