@@ -1,0 +1,273 @@
+% CROSCIM -- mathematical formulation box (standalone; \input-able body below the preamble)
+\documentclass[10pt]{article}
+\usepackage[paperwidth=180mm,paperheight=214mm,margin=4mm]{geometry}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% ---- scale colours (identical to the figures)
+\definecolor{cC}{HTML}{1F5AA6}\definecolor{cM}{HTML}{1F8A5B}\definecolor{cH}{HTML}{D4561C}
+\definecolor{ink}{HTML}{1D2230}\definecolor{muted}{HTML}{5B6475}\definecolor{bg}{HTML}{F6F7F9}
+\definecolor{up}{HTML}{FBE7DC}
+\newcommand{\Cc}{{\color{cC}\mathcal{C}}}
+\newcommand{\Mm}{{\color{cM}\mathcal{M}}}
+\newcommand{\Hh}{{\color{cH}\mathcal{H}}}
+\newcommand{\XC}{{\color{cC}X_{\mathcal{C}}}}
+\newcommand{\dXM}{{\color{cM}\delta X_{\mathcal{M}}}}
+\newcommand{\dXH}{{\color{cH}\delta X_{\mathcal{H}}}}
+\newcommand{\XM}{{\color{cM}X_{\mathcal{M}}}}
+\newcommand{\XH}{{\color{cH}X_{\mathcal{H}}}}
+\newcommand{\zC}{{\color{cC}z_{\mathcal{C}}}}
+\newcommand{\zM}{{\color{cM}z_{\mathcal{M}}}}
+\newcommand{\zH}{{\color{cH}z_{\mathcal{H}}}}
+\newcommand{\sC}{{\color{cC}s_{\mathcal{C}}}}
+\newcommand{\sM}{{\color{cM}s_{\mathcal{M}}}}
+\newcommand{\sH}{{\color{cH}s_{\mathcal{H}}}}
+\newcommand{\Pup}{\Pi_{\uparrow}}
+\newcommand{\Pdn}{\Pi_{\downarrow}}
+\newcommand{\UP}[1]{\colorbox{up}{$\displaystyle #1$}}
+\newcommand{\ch}{\mathrm{ch}}
+\newcommand{\pa}{\mathrm{par}}
+\newcommand{\nul}{\varnothing}
+
+\newtcolorbox{bsec}[2][]{enhanced, colback=white, colframe=#2!70!white, boxrule=0.5pt, arc=2pt,
+  left=5pt, right=5pt, top=7pt, bottom=3pt, fonttitle=\bfseries\small, coltitle=ink,
+  colbacktitle=#2!10!white, title={#1}, attach boxed title to top left={xshift=4pt,yshift=-2pt},
+  boxed title style={boxrule=0pt, colframe=white, arc=1pt}}
+
+\begin{document}
+\footnotesize\color{ink}
+{\normalsize\textbf{Box 1 \,|\, CROSCIM as a cascade of conditional flow-matching generators}}\\[1pt]
+{\color{muted}Levels $\Cc,\Mm,\Hh$ with spacing $\Delta_{\Cc}=32$, $\Delta_{\Mm}=4$, $\Delta_{\Hh}=1$\,km; $\ch(k)$: children of cell $k$, $\pa(i)$: parent of cell $i$. \colorbox{up}{Highlighted} terms carry information from small to large scales.}
+\vspace{2pt}
+
+% ======================================================================
+\begin{bsec}[1 \;\; Multiscale state: fixed operators, scale-specific degrees of freedom]{ink}
+\vspace{-6pt}
+\[
+(R\,x)(k)=\frac{\sum_{i\in\ch(k)}\omega_i\,x(i)}{\sum_{i\in\ch(k)}\omega_i},\qquad (P\,x)(i)=x(\pa(i)),\qquad RP=I
+\qquad\qquad
+\XH=P_{\Cc\to\Hh}\,\XC+P_{\Mm\to\Hh}\,\dXM+\dXH
+\]
+\vspace{-2pt}
+\[
+Y=(\XC,\dXM,\dXH),\qquad \dXM=\XM-P\,\XC,\qquad \dXH=\XH-P\,\XM,\qquad R\,\dXM=0,\;\; R\,\dXH=0
+\]
+{\color{muted}$R$, $P$: geometric, not learned. $\omega_i$: ocean fraction of the equal-area cell $i$; $R$ is applied to extensive quantities (SIC, SIC$\times$SIT, \dots), hence conservative. $R\,\delta X=0$ makes $Y$ non-redundant.}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[2 \;\; Observations $\rightarrow$ level latents, shared across levels]{ink}
+\vspace{-6pt}
+\[
+\begin{gathered}
+\ell(n)=\arg\min_{\ell}\,\bigl|\log r_n-\log\Delta_\ell\bigr|,\qquad z_\ell=E_\ell\bigl(\{o_n:\ell(n)=\ell\}\bigr)\\
+(\Pdn z)(i)=z(\pa(i)),\qquad
+(\Pup z)(k)=\sum_{i\in\ch(k)}\alpha_{ki}\,V z(i),\quad \alpha_{ki}=\operatorname*{softmax}_{i\in\ch(k)}\bigl(q_k^{\top}Kz(i)\bigr)
+\end{gathered}
+\]
+\begin{minipage}[c]{0.46\linewidth}
+\[
+\begin{aligned}
+c_{\Cc}&=\bigl[\;\zC,\;\;\UP{\Pup\zM},\;\;\UP{\Pup\zH},\;\;F\;\bigr]\\
+c_{\Mm}&=\bigl[\;\Pdn\zC,\;\;\zM,\;\;\UP{\Pup\zH},\;\;\Pdn F\;\bigr]\\
+c_{\Hh}&=\bigl[\;\Pdn\zC,\;\;\Pdn\zM,\;\;\zH,\;\;\Pdn F\;\bigr]
+\end{aligned}
+\]
+\end{minipage}\hfill
+\begin{minipage}[c]{0.52\linewidth}
+\begin{itemize}[leftmargin=9pt,itemsep=1pt,topsep=0pt]
+\item $o_n$: native observation with footprint $r_n$; $E_\ell$: strided CNN (gridded) or set encoder (irregular); empty cells get a learned token $\nul$.
+\item $c_\ell$: separate channel groups, never summed, so each can be dropped ($\nul$) or replaced.
+\item $\Pup$ has a fixed fan-in (16 or 64 children): cost linear in the number of observations; $\Pup\zH$ is a fixed-size summary per coarse cell, computed once per sample.
+\item $F$: ERA5 forcing on the $\Cc$ grid.
+\end{itemize}
+\end{minipage}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[3 \;\; Stage 1 -- analysis as a posterior: chain rule, then latent conditioning]{cC}
+\textbf{(a) Target.} As in data assimilation, the analysis is the posterior of the multiscale state given the observation window. The chain rule is exact in observation space:
+\[
+p\bigl(Y\,|\,O\bigr)=p\bigl(\XC\,|\,O\bigr)\;p\bigl(\dXM\,|\,\XC,O\bigr)\;p\bigl(\dXH\,|\,\XC,\dXM,O\bigr),\qquad O=O_{t_0-L:t_0},\ F\text{ implicit.}
+\]
+\textbf{(b) Learned information operator.} $O$ is replaced by level-wise summaries $c_\ell=g_\ell(O)$ (section 2), giving the model
+\[
+p_\theta(Y\,|\,O)=\underbrace{p_\theta\bigl(\XC\,|\,c_{\Cc}\bigr)}_{\text{large scale}}\;
+\underbrace{p_\theta\bigl(\dXM\,|\,\XC,\,c_{\Mm}\bigr)}_{\text{top-down context}}\;
+\underbrace{p_\theta\bigl(\dXH\,|\,\XC,\dXM,\,c_{\Hh}\bigr)}_{\text{fine scale}} .
+\]
+\textbf{(c) Sufficiency.} The cascade is the exact posterior iff every summary is sufficient for its level:
+\[
+p\bigl(Y_\ell\,|\,Y_{<\ell},O\bigr)=p\bigl(Y_\ell\,|\,Y_{<\ell},g_\ell(O)\bigr)\ \ \forall\ell
+\quad\Longleftrightarrow\quad
+Y_\ell\perp O\;\big|\;\bigl(Y_{<\ell},\,g_\ell(O)\bigr) .
+\]
+The coarse factor needs the fine observations: $g_{\Cc}$ must contain the \UP{\Pup} terms, otherwise $p(\XC|O)\neq p(\XC|g_{\Cc}(O))$ whenever fine observations are informative about $\XC$.\\[3pt]
+\textbf{(d) Asymptotic equivalence under flow matching.} For a conditioning $c$, the optimal velocity is $v^\star_c(x,s)=\mathbb E\,[\,x_1-\epsilon\,|\,x_s=x,\,c\,]$. Because $v^\star_{g}=\mathbb E\,[\,v^\star_{O}\,|\,x_s,s,g(O)\,]$ (tower property),
+\[
+\mathcal L^\star_{\rm FM}(g)-\mathcal L^\star_{\rm FM}(O)=\mathbb E\,\bigl\|\,v^\star_{O}-v^\star_{g}\,\bigr\|^2\;\geq\;0,
+\]
+with equality iff $v^\star_g=v^\star_O$ for all $s$, i.e.\ (same base noise, same continuity equation) iff $p(Y_\ell|Y_{<\ell},g(O))=p(Y_\ell|Y_{<\ell},O)$. With infinite data and capacity, jointly minimizing the FM loss over the encoders $g$ and the velocity $v$ therefore recovers the observation-conditioned law, \emph{if} a sufficient fixed-size summary exists. It does exactly in the linear-Gaussian case (section 7: information vector and precision); otherwise $K$ is a truncation of the sub-grid statistics, and the excess loss above measures the information lost.\\[2pt]
+{\color{muted}Each ensemble member is sampled $\Cc\to\Mm\to\Hh$ and carries its own coarse sample.}
+\end{bsec}
+
+\newpage
+\global\pdfpageheight=200mm
+{\normalsize\textbf{Box 1 (continued) \,|\, Rollout and learning}}
+\vspace{2pt}
+
+% ======================================================================
+\begin{bsec}[4 \;\; Stage 2 -- transition: rollout with forcing and optional re-conditioning]{cH}
+\vspace{-6pt}
+\[
+p\bigl(Y^{t+\Delta}\,|\,Y^{t},F_{t:t+\Delta},O_{(t,t+\Delta]}\bigr)=
+p_\theta\bigl(X^{t+\Delta}_{\Cc}\,|\,c^{t+\Delta}_{\Cc}\bigr)\;
+p_\theta\bigl(\delta X^{t+\Delta}_{\Mm}\,|\,X^{t+\Delta}_{\Cc},c^{t+\Delta}_{\Mm}\bigr)\;
+p_\theta\bigl(\delta X^{t+\Delta}_{\Hh}\,|\,X^{t+\Delta}_{\Cc},\delta X^{t+\Delta}_{\Mm},c^{t+\Delta}_{\Hh}\bigr)
+\]
+\begin{minipage}[c]{0.575\linewidth}
+\[
+\begin{aligned}
+c^{t+\Delta}_{\Cc}&=\bigl[\;\sC^{t},\;\UP{\Pup\sM^{t}},\;\UP{\Pup\sH^{t}},\;\mu\,\zC,\;\UP{\mu\,\Pup\zM},\;\UP{\mu\,\Pup\zH},\;F_{t:t+\Delta}\bigr]\\
+c^{t+\Delta}_{\Mm}&=\bigl[\;\Pdn\sC^{t},\;\sM^{t},\;\UP{\Pup\sH^{t}},\;\mu\,\Pdn\zC,\;\mu\,\zM,\;\UP{\mu\,\Pup\zH},\;\Pdn F_{t:t+\Delta}\bigr]\\
+c^{t+\Delta}_{\Hh}&=\bigl[\;\Pdn\sC^{t},\;\Pdn\sM^{t},\;\sH^{t},\;\mu\,\Pdn\zC,\;\mu\,\Pdn\zM,\;\mu\,\zH,\;\Pdn F_{t:t+\Delta}\bigr]
+\end{aligned}
+\]
+\end{minipage}\hfill
+\begin{minipage}[c]{0.405\linewidth}
+\begin{itemize}[leftmargin=9pt,itemsep=1pt,topsep=0pt]
+\item $s^{t}_\ell=E^{s}_\ell(Y^{t}_\ell)$: the physical state at $t$, encoded as a dense, error-free observation stream.
+\item $\mu\in\{0,1\}$: observations available in $(t,t+\Delta]$; $\mu=0$ uses $\nul$ (learned by group dropout).
+\item Two bottom-up pathways reach $X^{t+\Delta}_{\Cc}$: \textbf{dynamical}, $\Pup\sH^{t}$ (a learned stochastic sub-grid closure), and \textbf{observational}, $\Pup\zH$.
+\item $Y$ stays physical at every step ($R$, $P$, projection, bounds); latents are re-encoded.
+\end{itemize}
+\end{minipage}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[4b \;\; Rollout without observations ($\mu=0$): memory, parametrization, closure]{cH}
+\begin{minipage}[t]{0.50\linewidth}
+\textbf{What conditions each level when $\mu=0$:}\\[2pt]
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}[t]{@{}l@{\;\;}l@{\;\;}l@{\;\;}l@{}}
+ & own memory ($t$) & top-down ($t{+}\Delta$) & bottom-up ($t$)\\ \hline
+$\Cc$ & $\sC^{t}$ & -- & \UP{\Pup\sM^{t},\,\Pup\sH^{t}}\\
+$\Mm$ & $\sM^{t}$ & $X^{t+\Delta}_{\Cc}$ & \UP{\Pup\sH^{t}}\\
+$\Hh$ & $\sH^{t}$ & $X^{t+\Delta}_{\Cc},\delta X^{t+\Delta}_{\Mm}$ & --\\ \hline
+\end{tabular}\\[3pt]
+(+ forcing $F_{t:t+\Delta}$ for every level). The fine state is \emph{carried} from step to step, not diagnosed.\\[4pt]
+\textbf{Two regimes per level.} Before its predictability time $\tau_\ell$, $Y^{t+\Delta}_\ell$ depends on $s^t_\ell$ (prognostic: leads advected, persistent). Beyond $\tau_\ell$ the generator samples the conditional climatology
+\[
+\dXH^{t+\Delta}\sim p\bigl(\dXH\,|\,\XC,\dXM,F\bigr)
+\]
+(stochastic parametrization). Diagnostic: $\mathrm{spread}^2_\ell(\tau)/\mathrm{Var}(Y_\ell\,|\,Y_{<\ell})\to1$ defines $\tau_\ell$.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.47\linewidth}
+\textbf{Explicit memory per level} (flow started from the noised previous state, stochastic-interpolant style):
+\[
+x^\ell_0=Y^{t}_\ell+\sigma_\ell\,\epsilon^\ell,\qquad x^\ell_1=Y^{t+\Delta}_\ell ,
+\]
+small $\sigma_{\Cc}$: persistence; large $\sigma_{\Hh}$: stochastic refresh. $\sigma_\ell$ is set from $\tau_\ell$ or learned.\\[4pt]
+\textbf{Two modes, one model.}
+\begin{itemize}[leftmargin=9pt,itemsep=1pt,topsep=1pt]
+\item \emph{Short range, inside the $\Hh$ region}: $\Hh$ generated at every step; closure $\Pup\sH^{t}$ from the simulated fine state.
+\item \emph{Long range or outside it}: $\Cc$ also predicts sub-grid moments $\phi_{\Cc}$ (its $K$ summary vectors, or lead fraction, SIT variance), used in place of $\Pup\sH^{t}$, an ITD-like learned sub-grid state. Targets come from analyses where $\Hh$ exists; the loss is masked elsewhere. Consistency check: $\phi_{\Cc}\approx\Pup\,E_{\Hh}(\dXH)$.
+\end{itemize}
+\textbf{Training:} pushforward (states at $t$ often generated), masked losses, and a check that $p(\dXH|\XC)$ in rollouts matches the analyses.
+\end{minipage}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[5 \;\; Conditional flow matching, one generator per level]{ink}
+\begin{minipage}[c]{0.58\linewidth}
+For level $\ell$ with target $x_1^\ell\in\{\XC,\dXM,\dXH\}$ and coarser state $X_{<\ell}$:
+\[
+\begin{aligned}
+&x^\ell_s=s\,x^\ell_1+(1-s)\,\epsilon^\ell,\qquad s\sim\mathcal U[0,1]\\
+&\epsilon^\ell\sim\mathcal N(0,I),\qquad \epsilon^\ell\leftarrow\epsilon^\ell-PR\,\epsilon^\ell\ \ (\ell\neq\Cc)\\
+&r^\ell=\bigl(x^\ell_1-\epsilon^\ell-v^\ell_\theta(x^\ell_s,\,s,\,\tilde X_{<\ell},\,c_\ell)\bigr)/\sigma_\ell\\
+&\mathcal L=\textstyle\sum_\ell\mathbb E\bigl[\,m_\ell\odot\bigl(\tfrac12\,(r^\ell)^2+\log\sigma_\ell\bigr)\bigr]
+\end{aligned}
+\]
+\end{minipage}\hfill
+\begin{minipage}[c]{0.39\linewidth}
+\begin{itemize}[leftmargin=9pt,itemsep=1pt,topsep=0pt]
+\item $m_\ell$: observed target cells (self-supervised, observations only).
+\item $\tilde X_{<\ell}=X_{<\ell}+\eta$: noisy coarse conditioning (train on truth, infer on samples).
+\item $\sigma_\ell$: learned log-scale per level and variable (balances $\Cc,\Mm,\Hh$).
+\item Bounds (SIC, SIT $\geq0$): censoring on the \emph{recomposed} field.
+\item Sampling: $\mathrm dx/\mathrm ds=v^\ell_\theta$ from $x_0=\epsilon$, with $v\leftarrow v-PRv$ for $\delta$ levels.
+\end{itemize}
+\end{minipage}
+\end{bsec}
+
+\newpage
+\global\pdfpageheight=176mm
+{\normalsize\textbf{Box 1 (continued) \,|\, Scale-interaction experiments and data-assimilation interpretation}}
+\vspace{2pt}
+
+% ======================================================================
+\begin{bsec}[6 \;\; Scale-interaction experiments: interventions on the conditioning, paired noise]{cH}
+\begin{minipage}[t]{0.51\linewidth}
+\textbf{Small $\rightarrow$ large.} Modify the fine scales, leaving $\XM$ and $\XC$ \emph{exactly} unchanged:
+\[
+\dXH'=\Pi_0\,T(\dXH),\qquad \Pi_0\,\delta=\delta-PR\,\delta\;\Rightarrow\;R\,\dXH'=0,
+\]
+$T\in\{0$ (smooth), $\alpha\,\cdot$ (intensity), swap (other details), regional mask$\}$, applied to $Y^{t}$ (dynamical pathway) or to $O_{\Hh}$ (observational pathway), then re-encoded. Control and intervened rollouts share the noise $\{\epsilon^{(n)}\}$:
+\[
+I_{\uparrow}(\tau)=\bigl\|\,\overline{X^{\mathrm{int}}_{\Cc}-X^{\mathrm{ctrl}}_{\Cc}}\,(t+\tau)\bigr\|\,/\,\sigma_{\Cc}(t+\tau),\quad \overline{\,\cdot\,}=\tfrac1N\textstyle\sum_n
+\]
+\end{minipage}\hfill
+\begin{minipage}[t]{0.46\linewidth}
+\textbf{Closure off.} Replace $\Pup\sH^{t}$ and $\Pup\zH$ by $\nul$ in $c_{\Cc}$ at every step: the divergence from the control is the cumulative small-to-large feedback.\\[4pt]
+\textbf{Large $\rightarrow$ small.} Perturb $\XC'=\XC+\Delta\XC$ (e.g.\ a displaced ice edge), regenerate $\dXM,\dXH$ with the same noise, and measure the response of fine-scale statistics $S$ (lead fraction, spectra):
+\[
+I_{\downarrow}(\tau)=\bigl\|\,\mathbb E\,S(\dXH^{\mathrm{int}})-\mathbb E\,S(\dXH^{\mathrm{ctrl}})\bigr\|/\sigma_S
+\]
+{\color{muted}Controls: placebo swaps with identical statistics; group dropout at training so that $\nul$ is in-distribution.}
+\end{minipage}
+\end{bsec}
+
+% ======================================================================
+\begin{bsec}[7 \;\; Data-assimilation interpretation: the encoder as a learned, reduced $H^{\top}R^{-1}$]{cC}
+\begin{minipage}[t]{0.50\linewidth}
+\textbf{Information form.} For $y=HX+\varepsilon$, $\varepsilon\sim\mathcal N(0,R)$,
+\[
+p(X\,|\,y)\;\propto\;p(X)\,\exp\!\Bigl(X^{\top}\underbrace{H^{\top}R^{-1}y}_{i(y)}-\tfrac12X^{\top}\underbrace{H^{\top}R^{-1}H}_{I}\,X\Bigr),
+\]
+so $(i,I)$ is a sufficient statistic, living in \emph{state} space. The encoder plays this role, not that of $H$: $z_\ell=E_\ell(y)$ is a learned, non-linear, reduced analogue of $i(y)$ on the grid of level $\ell$, and the coverage, count and $\sigma$ channels approximate $\mathrm{diag}(I)$. Since $\sigma_n$, $r_n$ and $s_n$ enter $\varphi$, the weighting by $R$, representativeness included, is learned.\\[4pt]
+\textbf{Coarse aggregation.} With fine observations $y_i=\XH(i)+\varepsilon_i$ and $\XH=P\,\XC+\delta$, $\delta_i\sim\mathcal N(0,\sigma_\delta^2)$ independent within the cell (flat prior on $\XC$):
+\[
+\begin{gathered}
+p\bigl(\XC(k)\,|\,y\bigr)=\mathcal N\bigl(\hat x_k,\;\textstyle(\sum_{i}w_i)^{-1}\bigr),\\
+\hat x_k=\dfrac{\sum_{i\in\ch(k)}w_i\,y_i}{\sum_{i\in\ch(k)}w_i},\qquad w_i=\dfrac{1}{\sigma_i^2+\sigma_\delta^2}
+\end{gathered}
+\]
+$\Pup$ has exactly this form ($\alpha_{ki}\propto w_i$), with representativeness error. With $K>1$ vectors it carries higher moments of the sub-grid distribution: the non-Gaussian, sub-grid closure regime.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.47\linewidth}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}[t]{@{}p{0.46\linewidth}p{0.50\linewidth}@{}}
+\textbf{DA} & \textbf{CROSCIM}\\ \hline
+$H$: state $\to$ obs & explicit only in the loss (mask $m_\ell$, binning $R$)\\
+$H^{\top}R^{-1}y$, $H^{\top}R^{-1}H$ & $z_\ell=E_\ell(y)$; coverage, count, $\sigma$\\
+cross-scale information & $\Pup$: precision-weighted pooling, generalized\\
+analysis (3D/4D-Var, EnKF) & Stage 1: amortized posterior sampler\\
+forecast + update & Stage 2: fused, $\mu\in\{0,1\}$\\
+OSE, observation impact & group dropout, one stream at a time\\ \hline
+\end{tabular}\\[4pt]
+\textbf{Diagnostics} from one network: prior $p(\cdot|\mu{=}0)$ vs posterior $p(\cdot|\mu{=}1)$; increment $\mathbb E[Y|\mu{=}1]-\mathbb E[Y|\mu{=}0]$; spread reduction; per-stream impact. Consistency on withheld observations: Desroziers statistics, rank histograms, $(y-H\hat X)/\sigma$.\\[4pt]
+\textbf{Explicit $H$ when needed} (new sensor, point data): guidance during sampling,
+\[
+v\leftarrow v+\lambda_s\,\nabla_{x_s}\log p\bigl(y\,|\,H(\hat x_1)\bigr),\quad \hat x_1=x_s+(1-s)\,v_\theta ,
+\]
+which links the generative model back to the variational (4DVarNet) formulation.
+\end{minipage}
+\end{bsec}
+\end{document}
