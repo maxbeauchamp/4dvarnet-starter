@@ -48,6 +48,9 @@ croscim/
   rollout.py            modes A / B, interventions, diagnostics
   train.py              base_training (fit + test)
 scripts/convert_sources.py   NetCDF -> Zarr stores (crop + format change only)
+scripts/inspect_data.py      dataloader on real data: maps, coverage, timings, normalisation
+scripts/overfit.py           overfit N0 on one fixed batch (loss, memory, time per step)
+scripts/submit_odyssey.sbatch  sbatch wrapper: sbatch scripts/submit_odyssey.sbatch <script.py> [args]
 tests/                  pytest suite (synthetic data, CPU)
 ```
 

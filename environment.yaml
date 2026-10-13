@@ -14,6 +14,7 @@ dependencies:
   - pyproj      # projection checks, Natural Earth land mask
   - geopandas   # Natural Earth land mask (croscim/ocean.py)
   - pytest
+  - matplotlib  # scripts/inspect_data.py maps
   - pip:
     - hydra-core
     - tensorboard
