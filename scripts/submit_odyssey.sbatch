@@ -62,11 +62,23 @@ if [[ "${STAGE:-1}" == "1" && "$(basename "$SCRIPT")" != "convert_sources.py" ]]
         rm -rf "$scratch_dir"
     }
     trap cleanup EXIT
+    # parallel copy: the cost is the per-file latency of the network file
+    # system, so NPAR rsync processes each copy a share of the file list
     t0=$SECONDS
-    for store in "${ZARR_STORES[@]}"; do
-        echo "[$(date)] Staging ${DATA_ROOT}/${store} -> ${scratch_dir}/"
-        rsync -a "${DATA_ROOT}/${store}" "$scratch_dir/"
+    NPAR=${SLURM_CPUS_PER_TASK:-8}
+    list="$scratch_dir/.files"
+    (cd "$DATA_ROOT" && find "${ZARR_STORES[@]}" -type f) > "$list"
+    awk -v n="$NPAR" -v f="$list" '{ print > (f ".part." (NR % n)) }' "$list"
+    echo "[$(date)] Staging $(wc -l < "$list") files of ${ZARR_STORES[*]} with ${NPAR} rsync -> ${scratch_dir}/"
+    pids=()
+    for part in "$list".part.*; do
+        rsync -a --files-from="$part" "$DATA_ROOT/" "$scratch_dir/" &
+        pids+=($!)
     done
+    for pid in "${pids[@]}"; do
+        wait "$pid"
+    done
+    rm -f "$list" "$list".part.*
     echo "[$(date)] Staged $(du -sh "$scratch_dir" | cut -f1) in $((SECONDS - t0)) s"
     if [[ "$(basename "$SCRIPT")" == "main.py" ]]; then
         ROOT_OVERRIDE=("paths.data=${scratch_dir}")

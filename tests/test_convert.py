@@ -68,6 +68,7 @@ def test_convert_5km_sources(tmp_path):
         assert np.array_equal(zarr.open_array(os.path.join(store, "yc"), mode="r")[:], yc[keep_y])
         for name in SOURCES[src]:
             arr = zarr.open_array(os.path.join(store, name), mode="r")
+            assert arr.chunks == (8, 512, 512)  # several days per chunk: few files to stage
             for k, date in enumerate(DATES):
                 ref = truth[(src, name, date)][np.ix_(keep_y, keep_x)].astype(np.float32)
                 assert np.array_equal(arr[k], ref, equal_nan=True), (src, name, date)

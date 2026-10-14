@@ -44,6 +44,14 @@ from croscim.layout import EPOCH, HALF_EXTENT_M, PROJ4, SOURCES, STORES  # no to
 FILES = {"asip": "ASIP_L3/*.nc", "cimr": "data_noise/CIMR5km_*.nc",
          "cristal": "out_CRISTAL/CRISTAL5km_*.nc", "era5": "atm_data/atm5km_*.nc"}
 H = HALF_EXTENT_M
+# Few, large files (copying many small files to /SCRATCH is what costs):
+# ASIP one day x 2048^2 per chunk, chunks that are entirely missing not
+# written; 5 km sources 8 days x 512^2 per chunk (the dataloader reads 15
+# consecutive days at once), written by groups of 8 days so that two workers
+# never write the same chunk.
+ASIP_CHUNKS = (1, 2048, 2048)
+DAYS_PER_CHUNK_5KM = 8
+CHUNKS_5KM = (DAYS_PER_CHUNK_5KM, 512, 512)
 
 
 def file_day(path):
@@ -90,14 +98,20 @@ def convert_asip_day(store, k, day, path, win):
     acq = np.round((acq_s - day * 86400.0) / 60.0)
     acq = np.where(acq_s == 0, -32768, acq).astype(np.int16)
     for name, vals in (("sic", sic), ("std", std), ("acq", acq)):
-        zarr.open_array(os.path.join(store, name), mode="r+")[k] = vals
+        zarr.open_array(os.path.join(store, name), mode="r+", write_empty_chunks=False)[k] = vals
+    return 1
 
 
-def convert_5km_day(store, src, k, path, win):
-    with xr.open_dataset(path) as ds:
-        for name in SOURCES[src]:
-            vals = ds[name].squeeze().values[win[0], win[1]].astype(np.float32)
-            zarr.open_array(os.path.join(store, name), mode="r+")[k] = vals
+def convert_5km_days(store, src, k0, paths, win):
+    """Days k0 .. k0 + len(paths) - 1 (one chunk along time), written at once."""
+    vals = {name: [] for name in SOURCES[src]}
+    for path in paths:
+        with xr.open_dataset(path) as ds:
+            for name in SOURCES[src]:
+                vals[name].append(ds[name].squeeze().values[win[0], win[1]].astype(np.float32))
+    for name in SOURCES[src]:
+        zarr.open_array(os.path.join(store, name), mode="r+")[k0:k0 + len(paths)] = np.stack(vals[name])
+    return len(paths)
 
 
 def log(msg, t0=None):
@@ -130,12 +144,12 @@ def main():
             n = 2 * H // 500
             for name, dtype, fill in (("sic", "u1", 255), ("std", "u1", 255), ("acq", "i2", -32768)):
                 zarr.open_array(os.path.join(path, name), mode="w", shape=(len(days), n, n),
-                                chunks=(1, 1024, 1024), dtype=dtype, fill_value=fill)
+                                chunks=ASIP_CHUNKS, dtype=dtype, fill_value=fill)
         else:
             *win, xc, yc = grid5_window(files[0][1])
             for name in SOURCES[src]:
                 zarr.open_array(os.path.join(path, name), mode="w", shape=(len(days), len(yc), len(xc)),
-                                chunks=(1, 320, 320), dtype="f4", fill_value=np.nan)
+                                chunks=CHUNKS_5KM, dtype="f4", fill_value=np.nan)
             zarr.open_array(os.path.join(path, "xc"), mode="w", shape=xc.shape, dtype="f8")[:] = xc
             zarr.open_array(os.path.join(path, "yc"), mode="w", shape=yc.shape, dtype="f8")[:] = yc
         zarr.open_array(os.path.join(path, "days"), mode="w", shape=days.shape, dtype="i8")[:] = days
@@ -145,9 +159,12 @@ def main():
             if src == "asip":
                 jobs = [pool.submit(convert_asip_day, path, k, d, p, win) for k, (d, p) in enumerate(files)]
             else:
-                jobs = [pool.submit(convert_5km_day, path, src, k, p, win) for k, (_, p) in enumerate(files)]
-            for j in tqdm(as_completed(jobs), total=len(jobs), desc=src, unit="day", mininterval=10):
-                j.result()
+                n = DAYS_PER_CHUNK_5KM
+                jobs = [pool.submit(convert_5km_days, path, src, k0, [p for _, p in files[k0:k0 + n]], win)
+                        for k0 in range(0, len(files), n)]
+            with tqdm(total=len(files), desc=src, unit="day", mininterval=10) as bar:
+                for j in as_completed(jobs):
+                    bar.update(j.result())
         log(f"{src}: {len(days)} days written")
 
 

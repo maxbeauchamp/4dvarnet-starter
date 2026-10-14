@@ -144,11 +144,14 @@ class CascadeDataset(torch.utils.data.Dataset):
         ri, rj = slice(max(i0, 0), min(i0 + N5, len(yc))), slice(max(j0, 0), min(j0 + N5, len(xc)))
         oi, oj = slice(ri.start - i0, ri.stop - i0), slice(rj.start - j0, rj.stop - j0)
         out = np.full((len(days), len(SOURCES[src]), N5, N5), np.nan, np.float32)
-        for k, d in enumerate(days):
-            i = a["day_index"].get(d)
-            if i is not None:
-                for v, name in enumerate(SOURCES[src]):
-                    out[k, v, oi, oj] = a[name][i, ri, rj]
+        have = [(k, a["day_index"][d]) for k, d in enumerate(days) if d in a["day_index"]]
+        if have:
+            # one read of the whole window per variable: chunks span several days
+            i0, i1 = have[0][1], have[-1][1] + 1
+            for v, name in enumerate(SOURCES[src]):
+                block = a[name][i0:i1, ri, rj]
+                for k, i in have:
+                    out[k, v, oi, oj] = block[i - i0]
         return out, x5, y5
 
     def __getitem__(self, idx):

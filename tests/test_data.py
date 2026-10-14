@@ -51,7 +51,7 @@ def _write_stores(root):
         path = os.path.join(root, D.STORES[src])
         for name in names:
             a = zarr.open_array(os.path.join(path, name), mode="w", shape=(nd, 1475, 1520),
-                                chunks=(1, 512, 512), dtype="f4", fill_value=np.nan)
+                                chunks=(8, 512, 512), dtype="f4", fill_value=np.nan)  # as convert_sources.py
             vals = rng.random((nd, 420, 420)).astype(np.float32)  # covers the tile window
             if src == "cristal":
                 vals[:, :, ::7] = np.nan  # sparse "tracks"
