@@ -56,7 +56,7 @@ def test_convert_5km_sources(tmp_path):
            "--start", DATES[0], "--end", DATES[-1], "--sources", *SOURCES, "--workers", "2"]
     out = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO)
     assert out.returncode == 0, out.stderr
-    assert "cimr: 3 files" in out.stdout and "era5: 3 days written" in out.stdout
+    assert "cimr: 3 files" in out.stdout and "era5: 3 days converted" in out.stdout and "published to" in out.stdout
 
     keep_x = (xc > -3_202_500) & (xc < 3_202_500)
     keep_y = (yc > -3_202_500) & (yc < 3_202_500)

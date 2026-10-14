@@ -16,9 +16,9 @@
 # copied to the node-local /SCRATCH/$USER/$SLURM_JOB_ID (removed at the end of
 # the job) and the data root is redirected there: paths.data=... for main.py,
 # --root ... for the scripts. STAGE=0 sbatch ... reads /Odyssey/public
-# directly. No staging for scripts/convert_sources.py, which writes the
-# stores; it needs no GPU either (override the request if a CPU partition is
-# available).
+# directly. scripts/convert_sources.py is not staged (it writes the stores):
+# it gets --work-dir on /SCRATCH for its local copies and stores; it needs no
+# GPU (override the request if a CPU partition is available).
 # =============================================================================
 
 #SBATCH --job-name=croscim
@@ -54,13 +54,17 @@ cd "$SLURM_SUBMIT_DIR"
 DATA_ROOT=/Odyssey/public/CROSCIM_dataset
 ZARR_STORES=(ASIP_L3_zarr data_noise_zarr out_CRISTAL_zarr atm_data_zarr)
 ROOT_OVERRIDE=()
-if [[ "${STAGE:-1}" == "1" && "$(basename "$SCRIPT")" != "convert_sources.py" ]]; then
-    scratch_dir=/SCRATCH/$USER/$SLURM_JOB_ID
+scratch_dir=/SCRATCH/$USER/$SLURM_JOB_ID
+cleanup() {
+    echo "[$(date)] Freeing SCRATCH dir: $scratch_dir"
+    rm -rf "$scratch_dir"
+}
+if [[ "$(basename "$SCRIPT")" == "convert_sources.py" ]]; then
     mkdir -p "$scratch_dir"
-    cleanup() {
-        echo "[$(date)] Freeing SCRATCH dir: $scratch_dir"
-        rm -rf "$scratch_dir"
-    }
+    trap cleanup EXIT
+    ROOT_OVERRIDE=(--work-dir "$scratch_dir")
+elif [[ "${STAGE:-1}" == "1" ]]; then
+    mkdir -p "$scratch_dir"
     trap cleanup EXIT
     # parallel copy: the cost is the per-file latency of the network file
     # system, so NPAR rsync processes each copy a share of the file list
