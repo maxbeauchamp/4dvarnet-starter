@@ -102,5 +102,6 @@ class Generator(nn.Module):
 
 
 def channel_mean(per_ch: Tensor, has: Tensor) -> Tensor:
-    """Mean of the per-channel losses over channels with data (0 if none)."""
-    return per_ch[has].mean() if has.any() else per_ch.new_zeros(())
+    """Mean of the per-channel losses over channels with data; 0 if none, kept
+    in the graph (a batch without any target must still backpropagate)."""
+    return per_ch[has].mean() if has.any() else per_ch.sum() * 0.0

@@ -110,3 +110,17 @@ def test_mixed_precision_bf16(days):
         assert torch.isfinite(n1.losses(days)["loss"])
         z, _ = R.rollout(n1, days, 1, seed=0)
         assert torch.isfinite(z).all()
+
+
+def test_batch_without_any_target_still_backpropagates(n1, days, monkeypatch):
+    monkeypatch.setattr(n1, "k_now", lambda n: 1)
+    empty = [dict(d) for d in days]
+    for d in empty:
+        for k in ("tgt_C_m", "tgt_S_m", "tgt_dM_m", "tgt_dH_m", "tgt_M_m", "tgt_H_m"):
+            d[k] = torch.zeros_like(d[k])
+        d["in_C_cimr_w"], d["in_M_asip_w"], d["in_H_w"] = (torch.zeros_like(d[k]) for k in
+                                                           ("in_C_cimr_w", "in_M_asip_w", "in_H_w"))
+        d["pts_valid"] = torch.zeros_like(d["pts_valid"])
+    out = n1.losses(empty)
+    assert out["loss"] == 0 and out["loss"].requires_grad
+    out["loss"].backward()
