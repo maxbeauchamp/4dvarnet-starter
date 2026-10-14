@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import multiprocessing as mp
 import os
 import re
 import sys
@@ -132,7 +133,8 @@ def main():
     ap.add_argument("--start", required=True)
     ap.add_argument("--end", required=True)
     ap.add_argument("--sources", nargs="+", default=["asip", *SOURCES])
-    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=8,
+                    help="parallel processes (1: everything in this process, to see the real error of a crash)")
     args = ap.parse_args()
     start, end = ((dt.date.fromisoformat(d) - EPOCH).days for d in (args.start, args.end))
 
@@ -161,16 +163,22 @@ def main():
         zarr.open_array(os.path.join(path, "days"), mode="w", shape=days.shape, dtype="i8")[:] = days
         log(f"{src}: grid checked, store created at {path}", t0)
 
-        with ProcessPoolExecutor(args.workers) as pool:
-            if src == "asip":
-                jobs = [pool.submit(convert_asip_day, path, k, d, p, win) for k, (d, p) in enumerate(files)]
+        if src == "asip":
+            tasks = [(convert_asip_day, (path, k, d, p, win)) for k, (d, p) in enumerate(files)]
+        else:
+            n = DAYS_PER_CHUNK_5KM
+            tasks = [(convert_5km_days, (path, src, k0, [p for _, p in files[k0:k0 + n]], win))
+                     for k0 in range(0, len(files), n)]
+        with tqdm(total=len(files), desc=src, unit="day", mininterval=10) as bar:
+            if args.workers <= 1:
+                for fn, a in tasks:
+                    bar.update(fn(*a))
             else:
-                n = DAYS_PER_CHUNK_5KM
-                jobs = [pool.submit(convert_5km_days, path, src, k0, [p for _, p in files[k0:k0 + n]], win)
-                        for k0 in range(0, len(files), n)]
-            with tqdm(total=len(files), desc=src, unit="day", mininterval=10) as bar:
-                for j in as_completed(jobs):
-                    bar.update(j.result())
+                # "spawn": fresh worker processes, not forks of a parent in which
+                # HDF5 / netCDF and Blosc are already initialised
+                with ProcessPoolExecutor(args.workers, mp_context=mp.get_context("spawn")) as pool:
+                    for j in as_completed([pool.submit(fn, *a) for fn, a in tasks]):
+                        bar.update(j.result())
         log(f"{src}: {len(days)} days written")
 
 
