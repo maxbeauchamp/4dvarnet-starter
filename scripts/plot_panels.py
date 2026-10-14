@@ -56,8 +56,10 @@ def best_tile(root, day, omega_c):
 
 def best_crops(b):
     """M crop (16 C cells) then H crop (8 C cells) inside it with the most ASIP
-    observations over the ocean at day t."""
-    obs = (((b["in_H_w"][0, -1] > 0) | b["tgt_H_m"][0, 0]) & (b["omega_h"][0] > 0)).float()
+    targets over the ocean at day t (inputs count for 10 %: there must be
+    targets at M / H for the metrics)."""
+    ocean = b["omega_h"][0] > 0
+    obs = (b["tgt_H_m"][0, 0] & ocean).float() + 0.1 * ((b["in_H_w"][0, -1] > 0) & ocean).float()
     cov = g.block_sum(obs, FM * FH)
     nm, nh = CROP_C["M"], CROP_C["H"]
     cand = [(y, x) for y in range(0, D.N_C - nm + 1, 4) for x in range(0, D.N_C - nm + 1, 4)]
@@ -93,7 +95,7 @@ def extent(iy0, ix0, n_c, oy=0, ox=0):
 
 
 def panel(path, title, rows):
-    """rows: list of (row label, list of (title, field, extent, kwargs, box or None))."""
+    """rows: list of (row label, list of (title, field, extent, kwargs, box or None, land mask))."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -106,7 +108,10 @@ def panel(path, title, rows):
             if j >= len(cells):
                 ax.axis("off")
                 continue
-            name, field, ext, kw, box = cells[j]
+            name, field, ext, kw, box, land = cells[j]
+            ax.set_facecolor("white")  # no data
+            ax.imshow(np.where(land, 1.0, np.nan), extent=ext, cmap="Greys", vmin=0, vmax=2.5,
+                      interpolation="nearest")  # land in grey
             im = ax.imshow(field, extent=ext, interpolation="nearest", **kw)
             ax.set_title(name, fontsize=8)
             ax.tick_params(labelsize=6)
@@ -188,35 +193,35 @@ def main():
         zi = {n: i for i, n in enumerate(Z_NAMES)}
         aniso = np.hypot(mean_c[zi["aniso_c"]], mean_c[zi["aniso_s"]])
         rows = [
-            ("C 32 km", [("SIC ens. mean", masked(mean_c[0], land_c), e_c, sic, e_m),
-                         ("SIC ens. spread", masked(std_c[0], land_c), e_c, spread, e_m),
-                         ("SIT ens. mean (m)", masked(mean_c[1], land_c), e_c, dict(cmap="viridis"), None),
-                         ("snow ens. mean (m)", masked(mean_c[2], land_c), e_c, dict(cmap="viridis"), None),
-                         ("X^_C SIC (Y^tgt)", masked(cpu["tgt_C"][0].numpy(), cpu["tgt_C_m"][0].numpy()), e_c, sic, None),
+            ("C 32 km", [("SIC ens. mean", masked(mean_c[0], land_c), e_c, sic, e_m, ~land_c),
+                         ("SIC ens. spread", masked(std_c[0], land_c), e_c, spread, e_m, ~land_c),
+                         ("SIT ens. mean (m)", masked(mean_c[1], land_c), e_c, dict(cmap="viridis"), None, ~land_c),
+                         ("snow ens. mean (m)", masked(mean_c[2], land_c), e_c, dict(cmap="viridis"), None, ~land_c),
+                         ("X^_C SIC (Y^tgt)", masked(cpu["tgt_C"][0].numpy(), cpu["tgt_C_m"][0].numpy()), e_c, sic, None, ~land_c),
                          ("CIMR SIC (Y^in, day t)", masked(cpu["in_C_cimr"][-1, 0].numpy(),
-                                                          cpu["in_C_cimr_w"][-1, 0].numpy() > 0), e_c, sic, None)]),
-            ("S_C, psi_C", [("open water h_ow", masked(mean_c[zi["h_ow"]], land_c), e_c, dict(cmap="cividis", vmin=0, vmax=1), None),
-                            ("pack h_pack", masked(mean_c[zi["h_pack"]], land_c), e_c, dict(cmap="cividis", vmin=0, vmax=1), None),
-                            ("sic_std", masked(mean_c[zi["sic_std"]], land_c), e_c, dict(cmap="plasma"), None),
-                            ("edge_density", masked(mean_c[zi["edge_density"]], land_c), e_c, dict(cmap="plasma"), None),
-                            ("anisotropy |a|", masked(aniso, land_c), e_c, dict(cmap="plasma"), None),
-                            ("sit_std (m)", masked(mean_c[zi["sit_std"]], land_c), e_c, dict(cmap="plasma"), None),
-                            ("psi_C[0]", masked(psi[0].numpy(), land_c), e_c, dict(cmap="RdBu_r"), None),
-                            ("psi_C[1]", masked(psi[1].numpy(), land_c), e_c, dict(cmap="RdBu_r"), None)]),
-            ("M 4 km (512 km)", [("SIC member 1", masked(xm[0, 0].numpy(), land_m), e_m, sic, e_h),
-                                 ("SIC member 2", masked(xm[1 % len(xm), 0].numpy(), land_m), e_m, sic, e_h),
-                                 ("SIC ens. mean", masked(xm.mean(0)[0].numpy(), land_m), e_m, sic, e_h),
-                                 ("SIC ens. spread", masked(xm.std(0)[0].numpy(), land_m), e_m, spread, e_h),
+                                                          cpu["in_C_cimr_w"][-1, 0].numpy() > 0), e_c, sic, None, ~land_c)]),
+            ("S_C, psi_C", [("open water h_ow", masked(mean_c[zi["h_ow"]], land_c), e_c, dict(cmap="cividis", vmin=0, vmax=1), None, ~land_c),
+                            ("pack h_pack", masked(mean_c[zi["h_pack"]], land_c), e_c, dict(cmap="cividis", vmin=0, vmax=1), None, ~land_c),
+                            ("sic_std", masked(mean_c[zi["sic_std"]], land_c), e_c, dict(cmap="plasma"), None, ~land_c),
+                            ("edge_density", masked(mean_c[zi["edge_density"]], land_c), e_c, dict(cmap="plasma"), None, ~land_c),
+                            ("anisotropy |a|", masked(aniso, land_c), e_c, dict(cmap="plasma"), None, ~land_c),
+                            ("sit_std (m)", masked(mean_c[zi["sit_std"]], land_c), e_c, dict(cmap="plasma"), None, ~land_c),
+                            ("psi_C[0]", masked(psi[0].numpy(), land_c), e_c, dict(cmap="RdBu_r"), None, ~land_c),
+                            ("psi_C[1]", masked(psi[1].numpy(), land_c), e_c, dict(cmap="RdBu_r"), None, ~land_c)]),
+            ("M 4 km (512 km)", [("SIC member 1", masked(xm[0, 0].numpy(), land_m), e_m, sic, e_h, ~land_m),
+                                 ("SIC member 2", masked(xm[1 % len(xm), 0].numpy(), land_m), e_m, sic, e_h, ~land_m),
+                                 ("SIC ens. mean", masked(xm.mean(0)[0].numpy(), land_m), e_m, sic, e_h, ~land_m),
+                                 ("SIC ens. spread", masked(xm.std(0)[0].numpy(), land_m), e_m, spread, e_h, ~land_m),
                                  ("ASIP SIC at M (Y^tgt)", masked(crop(cpu["tgt_M"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy(),
-                                                                  crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy()), e_m, sic, None),
-                                 ("dSIT_M ens. mean (m)", masked(dmm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="RdBu_r"), None)]),
-            ("H 1 km (256 km)", [(f"SIC member {k + 1}", masked(xh[k % len(xh), 0].numpy(), land_h), e_h, sic, None) for k in range(3)]
-             + [("SIC ens. mean", masked(xh.mean(0)[0].numpy(), land_h), e_h, sic, None),
-                ("SIC ens. spread", masked(xh.std(0)[0].numpy(), land_h), e_h, spread, None),
+                                                                  crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy()), e_m, sic, None, ~land_m),
+                                 ("dSIT_M ens. mean (m)", masked(dmm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="RdBu_r"), None, ~land_m)]),
+            ("H 1 km (256 km)", [(f"SIC member {k + 1}", masked(xh[k % len(xh), 0].numpy(), land_h), e_h, sic, None, ~land_h) for k in range(3)]
+             + [("SIC ens. mean", masked(xh.mean(0)[0].numpy(), land_h), e_h, sic, None, ~land_h),
+                ("SIC ens. spread", masked(xh.std(0)[0].numpy(), land_h), e_h, spread, None, ~land_h),
                 ("ASIP SIC (Y^tgt)", masked(crop(cpu["tgt_H"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, 0].numpy(),
-                                           crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, 0].numpy()), e_h, sic, None),
+                                           crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, 0].numpy()), e_h, sic, None, ~land_h),
                 ("ASIP SIC (Y^in, day t)", masked(crop(cpu["in_H"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, -1].numpy(),
-                                                 crop(cpu["in_H_w"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, -1].numpy() > 0), e_h, sic, None)]),
+                                                 crop(cpu["in_H_w"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0, -1].numpy() > 0), e_h, sic, None, ~land_h)]),
         ]
         panel(os.path.join(args.out, f"panel_{date}.png"),
               f"{date}  tile (iy0, ix0) = ({iy0}, {ix0})  {args.members} members, {n_steps} Heun steps", rows)
