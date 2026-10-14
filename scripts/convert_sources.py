@@ -91,21 +91,23 @@ def grid5_window(path):
 
 
 def convert_asip_day(store, k, day, path, win):
-    """One ASIP day, by bands of chunk rows: the whole 12800^2 day with its
-    float64 temporaries (acquisition time) needs ~5 GB per worker."""
+    """One ASIP day. Each variable is read once for the cropped domain (each
+    NetCDF chunk decompressed once, whatever the file chunking); the
+    acquisition-time conversion (float64 temporaries) and the writes go by
+    bands of zarr chunk rows. Peak ~1.3 GB per process."""
     arrs = {name: zarr.open_array(os.path.join(store, name), mode="r+", write_empty_chunks=False)
             for name in ("sic", "std", "acq")}
-    rows = ASIP_CHUNKS[1]
     with xr.open_dataset(path, mask_and_scale=False, decode_times=False) as ds:
         ds = ds.isel(time=0, yc=win[0], xc=win[1])
-        for r0 in range(0, ds.sizes["yc"], rows):
-            band = ds.isel(yc=slice(r0, r0 + rows))
-            sic = band.sic.values.astype(np.int8).view(np.uint8)  # fill -1 -> 255
-            std = band.standard_deviation_sic.values.astype(np.int8).view(np.uint8)
-            acq_s = band.acq_time.values
-            acq = np.where(acq_s == 0, -32768, np.round((acq_s - day * 86400.0) / 60.0)).astype(np.int16)
-            for name, vals in (("sic", sic), ("std", std), ("acq", acq)):
-                arrs[name][k, r0:r0 + rows] = vals
+        sic = ds.sic.values.astype(np.int8).view(np.uint8)  # fill -1 -> 255
+        std = ds.standard_deviation_sic.values.astype(np.int8).view(np.uint8)
+        acq_s = ds.acq_time.values  # float32
+    rows = ASIP_CHUNKS[1]
+    for r0 in range(0, sic.shape[0], rows):
+        a = acq_s[r0:r0 + rows]
+        acq = np.where(a == 0, -32768, np.round((a - day * 86400.0) / 60.0)).astype(np.int16)
+        for name, vals in (("sic", sic[r0:r0 + rows]), ("std", std[r0:r0 + rows]), ("acq", acq)):
+            arrs[name][k, r0:r0 + rows] = vals
     return 1
 
 
