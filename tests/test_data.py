@@ -14,6 +14,7 @@ import zarr
 from croscim import data as D
 from croscim import grid as g
 from croscim import obs
+from croscim.asip import asip_to_m
 
 DAYS = list(range(19000 - D.W + 1, 19001))
 IY0, IX0 = 0, 68  # top row of the domain: partly beyond the 5 km stores (y > 2475 km)
@@ -42,6 +43,14 @@ def _write_stores(root):
                 vals = np.full((4096, 4096), 3 * k + (name == "std"), np.uint8)
                 vals[:, 2000 + 50 * k:] = 255
             a[(k,) + sl] = vals
+    # stored 4 km maps, as written by scripts/convert_sources.py
+    sic_a, std_a = (zarr.open_array(os.path.join(asip, n), mode="r") for n in ("sic", "std"))
+    fm = D.N_C * 8
+    sl_m = (slice(IY0 * 8, IY0 * 8 + fm), slice(IX0 * 8, IX0 * 8 + fm))
+    m_arr = {n: zarr.open_array(os.path.join(asip, n), mode="w", shape=(nd, n5 // 8, n5 // 8),
+                                chunks=(1, 800, 800), dtype="f4", fill_value=0.0) for n in ("m_mean", "m_w")}
+    for k in range(nd):
+        m_arr["m_mean"][(k,) + sl_m], m_arr["m_w"][(k,) + sl_m] = asip_to_m(sic_a[(k,) + sl], std_a[(k,) + sl])
     zarr.open_array(os.path.join(asip, "days"), mode="w", shape=(nd,), dtype="i8")[:] = DAYS
 
     # 5 km grid like the CIMR / CRISTAL / atm files (x: -3847500.., y: 2472500..)

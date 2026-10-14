@@ -11,6 +11,7 @@ Each store is written next to the NetCDF directory of its source, under
 --src-root (see STORES in croscim/layout.py; an existing store is overwritten):
 
     ASIP_L3_zarr/{sic,std,acq,days}                          (day, 12800, 12800)
+    ASIP_L3_zarr/{m_mean,m_w}  4 km maps of each day         (day, 1600, 1600)
     {data_noise,out_CRISTAL,atm_data}_zarr/{<var>,xc,yc,days} (day, ny5, nx5)
 
 ASIP `acq` = acquisition time in minutes since 00:00 of the file day (int16,
@@ -48,6 +49,7 @@ import zarr
 from tqdm import tqdm
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from croscim.asip import M_PER_500M, asip_to_m
 from croscim.layout import EPOCH, HALF_EXTENT_M, PROJ4, SOURCES, STORES  # no torch: fast start
 
 FILES = {"asip": "ASIP_L3/*.nc", "cimr": "data_noise/CIMR5km_*.nc",
@@ -59,6 +61,7 @@ H = HALF_EXTENT_M
 # consecutive days at once), written by groups of 8 days so that two workers
 # never write the same chunk.
 ASIP_CHUNKS = (1, 2048, 2048)
+ASIP_M_CHUNKS = (1, 800, 800)  # stored 4 km maps (1600^2 per day)
 DAYS_PER_CHUNK_5KM = 8
 CHUNKS_5KM = (DAYS_PER_CHUNK_5KM, 512, 512)
 
@@ -123,10 +126,10 @@ def grid5_window(path):
 def convert_asip_day(store, k, day, path, win, work_dir):
     """One ASIP day. Each variable is read once for the cropped domain (each
     NetCDF chunk decompressed once, whatever the file chunking); the
-    acquisition-time conversion (float64 temporaries) and the writes go by
-    bands of zarr chunk rows. Peak ~1.3 GB per process."""
+    acquisition-time conversion (float64 temporaries), the 4 km maps and the
+    writes go by bands of zarr chunk rows. Peak ~1.5 GB per process."""
     arrs = {name: zarr.open_array(os.path.join(store, name), mode="r+", write_empty_chunks=False)
-            for name in ("sic", "std", "acq")}
+            for name in ("sic", "std", "acq", "m_mean", "m_w")}
     src = local_copy(path, work_dir)
     with xr.open_dataset(src, mask_and_scale=False, decode_times=False) as ds:
         ds = ds.isel(time=0, yc=win[0], xc=win[1])
@@ -140,6 +143,9 @@ def convert_asip_day(store, k, day, path, win, work_dir):
         acq = np.where(a == 0, -32768, np.round((a - day * 86400.0) / 60.0)).astype(np.int16)
         for name, vals in (("sic", sic[r0:r0 + rows]), ("std", std[r0:r0 + rows]), ("acq", acq)):
             arrs[name][k, r0:r0 + rows] = vals
+        m_mean, m_w = asip_to_m(sic[r0:r0 + rows], std[r0:r0 + rows])
+        rm = slice(r0 // M_PER_500M, (r0 + rows) // M_PER_500M)
+        arrs["m_mean"][k, rm], arrs["m_w"][k, rm] = m_mean, m_w
     return 1
 
 
@@ -196,6 +202,10 @@ def main():
             for name, dtype, fill in (("sic", "u1", 255), ("std", "u1", 255), ("acq", "i2", -32768)):
                 zarr.open_array(os.path.join(path, name), mode="w", shape=(len(days), n, n),
                                 chunks=ASIP_CHUNKS, dtype=dtype, fill_value=fill)
+            for name in ("m_mean", "m_w"):
+                nm = n // M_PER_500M
+                zarr.open_array(os.path.join(path, name), mode="w", shape=(len(days), nm, nm),
+                                chunks=ASIP_M_CHUNKS, dtype="f4", fill_value=0.0)
         else:
             *win, xc, yc = grid5_window(first)
             for name in SOURCES[src]:

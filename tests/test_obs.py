@@ -158,3 +158,15 @@ def test_anisotropy_is_unbiased_for_uncorrelated_noise():
     x = torch.rand(256, 256, generator=gen, **f64)
     s = obs.sic_stats(x, torch.ones_like(x), e0=1e-4)
     assert s[6].abs().mean() < 0.05 and s[7].abs().mean() < 0.05
+
+
+def test_sigma_s_floor_follows_the_value():
+    # uniform cell: histogram one-hot, std 0 -> sampling term 0, sigma_S = sigma_0
+    s = torch.zeros(9, 1, 1, **f64)
+    s[2] = 1.0
+    se = obs.sampling_std(s)
+    assert torch.all(se[[0, 1, 2, 3, 4, 5, 8]] == 0)
+    assert torch.allclose(se[6:8], torch.ones(2, 1, 1, **f64))  # no anisotropy: largest error
+    s[5], s[6] = 0.5, 0.6
+    se = obs.sampling_std(s)
+    assert torch.isclose(se[5, 0, 0], torch.tensor(0.5, **f64)) and torch.isclose(se[6, 0, 0], torch.tensor(0.64, **f64))

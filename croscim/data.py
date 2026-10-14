@@ -10,6 +10,7 @@ next to the NetCDF directories of each source under <root>
 
     ASIP_L3_zarr/{sic,std,acq,days}     500 m, uint8 % (255 = missing), acq in
                                          minutes since 00:00 (int16, -32768 = missing)
+    ASIP_L3_zarr/{m_mean,m_w}           4 km sigma^-2-weighted means / weights of each day
     {data_noise,out_CRISTAL,atm_data}_zarr/{<var>,xc,yc,days}
                                          CIMR / CRISTAL / ERA5, 5 km, float32, NaN = missing
 
@@ -19,11 +20,13 @@ targets, statistics S^_C) is computed per batch on the GPU, in
 
 A sample is a 64 x 64 C tile (2048 km) at analysis day t, with a window of
 W days [t-W+1, t] (N0); for the transition N1 the item spans [t-W+1, t+K]
-and `build_batch` returns one sample per analysis day t, ..., t+K. ASIP enters at H (1 km) for the last W_H days and at M
-(4 km) for all W days; the M maps of days < t are aggregated in the worker
-(sigma^-2-weighted 8 x 8 sums of the 500 m pixels), the one of day t on the
-GPU after the partition. The partition only applies to day t; earlier days
-are inputs.
+and `build_batch` returns one sample per analysis day t, ..., t+K.
+
+ASIP enters at H (1 km) for the last W_H days and at M (4 km) for all W days:
+the M maps of days < t are stored by the conversion (sigma^-2-weighted 8 x 8
+sums of the 500 m pixels, croscim/asip.py; no partition applies to them),
+the one of day t is computed on the GPU after the partition. The partition
+only applies to day t; earlier days are inputs.
 """
 
 from __future__ import annotations
@@ -39,6 +42,7 @@ from torch import Tensor
 
 from . import grid as g
 from . import obs
+from .asip import ASIP_SIGMA_FLOOR, asip_to_m  # noqa: F401  (re-exported)
 from .layout import EPOCH, SOURCES, STORES  # noqa: F401  (re-exported)
 
 N_C = 64          # tile size in C cells
@@ -51,28 +55,11 @@ P_TGT = 0.3       # probability that a partition unit is held out as target
 BLOCK_C = 8       # partition blocks of the 5 km sources: 8 x 8 C cells (256 km)
 ASIP_PASS_GAP_MIN = 10  # ASIP partition units: acquisitions less than 10 min apart form one pass
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
-ASIP_SIGMA_FLOOR = 0.05
 GAMMA = {"SIC": 0.5, "SIT": 0.05}  # min. observed ocean fraction of a parent for a detail target
 
 
 def to_day(date: str) -> int:
     return (dt.date.fromisoformat(date) - EPOCH).days
-
-
-_ASIP_V_LUT = np.where(np.arange(256) == 255, 0, np.arange(256) / 100).astype(np.float32)
-_ASIP_W_LUT = (np.maximum(np.arange(256) / 100, ASIP_SIGMA_FLOOR) ** -2).astype(np.float32)
-
-
-def asip_to_m(sic: np.ndarray, std: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """ASIP 500 m (uint8 %, 255 = missing) -> M (4 km): sigma^-2-weighted
-    8 x 8 means and summed weights, in numpy (worker side). Same weighting as
-    obs.grid_asip, so it equals R_{M<-H} of the H gridding."""
-    f = int(g.DX_M["M"] // 500)
-    w = _ASIP_W_LUT[std] * (sic != 255)  # byte lookups: much cheaper than float ops on 16 M pixels
-    n = sic.shape[-1] // f
-    num = (w * _ASIP_V_LUT[sic]).reshape(n, f, n, f).sum((1, 3))
-    den = w.reshape(n, f, n, f).sum((1, 3))
-    return np.where(den > 0, num / np.where(den > 0, den, 1), 0).astype(np.float32), den
 
 
 def valid_tile_origins(omega_c: np.ndarray, stride: int) -> np.ndarray:
@@ -95,7 +82,7 @@ class CascadeDataset(torch.utils.data.Dataset):
 
     def _open(self):
         arr = {}
-        for src, names in {"asip": ("sic", "std", "acq"), **SOURCES}.items():
+        for src, names in {"asip": ("sic", "std", "acq", "m_mean", "m_w"), **SOURCES}.items():
             path = os.path.join(self.root, STORES[src])
             arr[src] = {k: zarr.open_array(os.path.join(path, k), mode="r") for k in names}
             arr[src]["day_index"] = {int(d): i for i, d in enumerate(zarr.open_array(os.path.join(path, "days"), mode="r")[:])}
@@ -109,8 +96,8 @@ class CascadeDataset(torch.utils.data.Dataset):
 
     def _read_asip(self, days, iy0, ix0):
         """500 m sic / std of the last W_H + K days, acq of the analysis days
-        t..t+K, and the M (mean, weight) maps of all days but the last, read
-        one day at a time."""
+        t..t+K, and the stored 4 km (mean, weight) maps of all days but the
+        last (no partition applies to them, see croscim/asip.py)."""
         a = self._arr["asip"]
         f = int(g.DX_M["C"] // 500)
         sl = (slice(iy0 * f, (iy0 + N_C) * f), slice(ix0 * f, (ix0 + N_C) * f))
@@ -124,13 +111,18 @@ class CascadeDataset(torch.utils.data.Dataset):
             i = a["day_index"].get(d)
             if i is None:
                 continue
-            s_k, e_k = a["sic"][(i,) + sl], a["std"][(i,) + sl]
             if k >= nd - nh:
-                sic[k - nd + nh], std[k - nd + nh] = s_k, e_k
+                sic[k - nd + nh], std[k - nd + nh] = a["sic"][(i,) + sl], a["std"][(i,) + sl]
             if k >= nd - 1 - self.horizon:
                 acq[k - nd + 1 + self.horizon] = a["acq"][(i,) + sl]
-            if k < nd - 1:
-                m_mean[k], m_w[k] = asip_to_m(s_k, e_k)
+        fm = g.factor("M", "C")
+        sl_m = (slice(iy0 * fm, (iy0 + N_C) * fm), slice(ix0 * fm, (ix0 + N_C) * fm))
+        have = [(k, a["day_index"][d]) for k, d in enumerate(days[:-1]) if d in a["day_index"]]
+        if have:
+            i0, i1 = have[0][1], have[-1][1] + 1
+            block_mean, block_w = a["m_mean"][(slice(i0, i1),) + sl_m], a["m_w"][(slice(i0, i1),) + sl_m]
+            for k, i in have:
+                m_mean[k], m_w[k] = block_mean[i - i0], block_w[i - i0]
         return sic, std, acq, m_mean, m_w
 
     def _read_5km(self, src, days, iy0, ix0):

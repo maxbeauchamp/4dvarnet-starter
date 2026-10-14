@@ -27,8 +27,14 @@ EDGE_JUMP = 0.1                    # |SIC difference| between 1 km neighbours ma
                                    # (0.3: non-zero in 1 % of the cells on 2022-02 ASIP, 0.1: 7 %)
 ANISO_E0 = 1e-3                    # gradient-energy floor of the anisotropy (no structure -> 0):
                                    # ~ (3 % SIC per km)^2, the retrieval noise level (1e-2 flattened it)
-# (sigma_0, sigma_samp) per channel: sigma_S^2 = sigma_0^2 + sigma_samp^2 / n_eff
-S_SIGMA = ((0.02, 0.5),) * 4 + ((0.02, 0.3), (0.01, 0.5), (0.05, 1.0), (0.05, 1.0), (0.05, 0.5))
+# Uncertainty of the targets S^: sigma_S^2 = sigma_0^2 + sigma_samp(S^)^2 / n_eff, with
+# sigma_samp the standard error of the statistic for one independent sample:
+# sqrt(p (1 - p)) for the fractions (histogram, edge_density), S / sqrt(2) for
+# the standard deviations (sic_std, sit_std), 1 - a^2 for the anisotropy
+# (as for a correlation coefficient, a = magnitude). sigma_0 = 10 % of the
+# channel std measured on 2022-02 (worst-case constants drowned the signal of
+# edge_density / sit_std: floor 2-4 x their std).
+S_SIGMA0 = (0.037, 0.0093, 0.0116, 0.040, 0.0055, 0.0015, 0.0098, 0.0090, 0.0059)
 GAMMA_S = 0.5           # min. observed ocean fraction of a C cell for the ASIP-based channels
 ASIP_PIX_PER_SAMPLE = 4  # 1 km pixels per independent sample (n_eff)
 MIN_SIT_OBS = 4          # min. observed M cells of a C cell for sit_std
@@ -174,6 +180,16 @@ def sit_std_stat(sit_m: Tensor, w_m: Tensor) -> tuple[Tensor, Tensor]:
     return (g.restrict(sm * sm, vm, fm)[0] - mean ** 2).clamp_min(0).sqrt(), g.block_sum(vm, fm)
 
 
+def sampling_std(s: Tensor) -> Tensor:
+    """Standard error of each S_C channel for one independent sample, from
+    its value s [..., 9, ny, nx] (see S_SIGMA0)."""
+    p = s[..., :4, :, :].clamp(0, 1)
+    e = s[..., 5:6, :, :].clamp(0, 1)
+    a2 = (s[..., 6:7, :, :] ** 2 + s[..., 7:8, :, :] ** 2).clamp(max=1)
+    return torch.cat([(p * (1 - p)).sqrt(), s[..., 4:5, :, :] / 2 ** 0.5, (e * (1 - e)).sqrt(),
+                      1 - a2, 1 - a2, s[..., 8:9, :, :] / 2 ** 0.5], -3)
+
+
 def subgrid_stats(sic_h: Tensor, w_h: Tensor, omega_h: Tensor,
                   sit_m: Tensor, w_m: Tensor, omega_m: Tensor) -> tuple[Tensor, Tensor, Tensor]:
     """S^_C = S_C(X^_H) from the target SIC at H (and the target SIT at M for
@@ -189,7 +205,7 @@ def subgrid_stats(sic_h: Tensor, w_h: Tensor, omega_h: Tensor,
     s = torch.cat([sic_stats(x, w), sit_std[..., None, :, :]], -3)
     n_eff = torch.stack([w_sum / ASIP_PIX_PER_SAMPLE] * 8 + [n_m], -3)
     mask = torch.stack([cov >= GAMMA_S] * 8 + [n_m >= MIN_SIT_OBS], -3)
-    s0, ss = (torch.tensor(c, dtype=x.dtype, device=x.device)[:, None, None] for c in zip(*S_SIGMA))
-    sigma = (s0 ** 2 + ss ** 2 / n_eff.clamp_min(1e-6)).sqrt()
+    s0 = torch.tensor(S_SIGMA0, dtype=x.dtype, device=x.device)[:, None, None]
+    sigma = (s0 ** 2 + sampling_std(s) ** 2 / n_eff.clamp_min(1e-6)).sqrt()
     zero = torch.zeros_like(s)
     return torch.where(mask, s, zero), mask, torch.where(mask, sigma, zero)

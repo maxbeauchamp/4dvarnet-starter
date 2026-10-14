@@ -299,17 +299,17 @@ avec $\SC^\perp=\SC-\E[\SC\mid\XC]$ et le \emph{même} $\varepsilon$ dans les de
 \textbf{$\SC$ v1 : 9 canaux}, calculés par $\Sop_\Cc$ sur $\obs X_\Hh^{\rm SIC}$ (résolution effective commune : 1 km) et sur $\obs X_\Mm^{\rm SIT}$ :
 \begin{center}\footnotesize\renewcommand{\arraystretch}{1.2}
 \begin{tabularx}{\linewidth}{@{}l l X l@{}}\toprule
-\textbf{canal} & \textbf{type} & \textbf{définition (moyennes pondérées par $\omega$ sur les enfants observés)} & $(\sigma_0,\sigma_{\rm samp})$\\\midrule
-$h_0..h_3$ & $L$ & histogramme SIC, classes $[0,.15)$, $[.15,.5)$, $[.5,.85)$, $[.85,1]$ ; $h_0$ = eau libre ; en banquise compacte, $h_0+h_1$ = fraction de leads & $(0.02, 0.5)$\\
-sic\_std & $F$ & écart-type de la SIC à 1 km dans la maille & $(0.02, 0.3)$\\
-edge\_density & $F$ & fraction des paires de voisins (dans la maille) avec $|\Delta\mathrm{SIC}|>0{,}1$ : densité de bords de leads / floes & $(0.01, 0.5)$\\
-aniso\_c, aniso\_s & $F$ & $\bigl(\bar J_{xx}-\bar J_{yy},\ 2\bar J_{xy}\bigr)/(\bar J_{xx}+\bar J_{yy}+e_0)$, tenseur de structure des gradients aux coins des blocs $2\times2$ (non biaisé pour un bruit non corrélé), $e_0=10^{-3}$ (niveau du bruit de restitution) : anisotropie $\times$ orientation ($2\theta$) & $(0.05, 1.0)$\\
-sit\_std & $F$ & écart-type de la SIT CRISTAL sur les mailles $\Mm$ observées ($\ge4$) & $(0.05, 0.5)$ m\\\bottomrule
+\textbf{canal} & \textbf{type} & \textbf{définition (moyennes pondérées par $\omega$ sur les enfants observés)} & $\sigma_{\rm samp}(\obs S)$\\\midrule
+$h_0..h_3$ & $L$ & histogramme SIC, classes $[0,.15)$, $[.15,.5)$, $[.5,.85)$, $[.85,1]$ ; $h_0$ = eau libre ; en banquise compacte, $h_0+h_1$ = fraction de leads & $\sqrt{h(1-h)}$\\
+sic\_std & $F$ & écart-type de la SIC à 1 km dans la maille & $\obs S/\sqrt2$\\
+edge\_density & $F$ & fraction des paires de voisins (dans la maille) avec $|\Delta\mathrm{SIC}|>0{,}1$ : densité de bords de leads / floes & $\sqrt{e(1-e)}$\\
+aniso\_c, aniso\_s & $F$ & $\bigl(\bar J_{xx}-\bar J_{yy},\ 2\bar J_{xy}\bigr)/(\bar J_{xx}+\bar J_{yy}+e_0)$, tenseur de structure des gradients aux coins des blocs $2\times2$ (non biaisé pour un bruit non corrélé), $e_0=10^{-3}$ (niveau du bruit de restitution) : anisotropie $\times$ orientation ($2\theta$) & $1-a^2$\\
+sit\_std & $F$ & écart-type de la SIT CRISTAL sur les mailles $\Mm$ observées ($\ge4$) & $\obs S/\sqrt2$\\\bottomrule
 \end{tabularx}
 \end{center}
-Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\ge4]$ (sit\_std) ; $n_{\rm eff}=\sum\omega\,m/4$ (décorrélation $\approx2$ km) ou $n_\Mm$ ; $\sigma_S^2=\sigma_0^2+\sigma_{\rm samp}^2/n_{\rm eff}$.
+Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\ge4]$ (sit\_std) ; $n_{\rm eff}=\sum\omega\,m/4$ (décorrélation $\approx2$ km) ou $n_\Mm$ ; $\sigma_S^2=\sigma_0^2+\sigma_{\rm samp}(\obs S)^2/n_{\rm eff}$, $\sigma_{\rm samp}$ = erreur-type d'un échantillon indépendant (proportion, écart-type, coefficient de type corrélation, $a$ = module de l'anisotropie), $\sigma_0$ = 10\,\% de l'écart-type mesuré du canal. Des constantes « pire cas » ($\sigma_{\rm samp}=0{,}5$) donnaient à edge\_density et sit\_std un plancher 2 à 4 fois plus grand que leur variabilité : ces canaux n'étaient pas appris.
 
-\textbf{Échantillons et fenêtres.} Tuiles de $64\times64$ mailles $\Cc$ (2048 km : $512^2$ en $\Mm$, $2048^2$ en $\Hh$), à fraction d'océan $\ge0{,}2$ ; $\mathcal N_0$ : $W=15$ jours ; ASIP entre à $\Hh$ pour les 3 derniers jours et à $\Mm$ (une carte par jour, moyenne pondérée par $\sigma^{-2}$ et somme des poids) sur les 15 jours : le détail à 1 km des jours anciens est périmé par la dérive, leur couverture et leur état moyen restent utiles. Les cartes $\Mm$ des jours $<t$ sont agrégées dans les workers depuis le 500 m (à la volée), celle du jour $t$ sur GPU après la partition ; $\mathcal N_1$ : $\Delta=1$ jour, rollout appris jusqu'à 7 jours, avec un curriculum de 1 à 7 pas.
+\textbf{Échantillons et fenêtres.} Tuiles de $64\times64$ mailles $\Cc$ (2048 km : $512^2$ en $\Mm$, $2048^2$ en $\Hh$), à fraction d'océan $\ge0{,}2$ ; $\mathcal N_0$ : $W=15$ jours ; ASIP entre à $\Hh$ pour les 3 derniers jours et à $\Mm$ (une carte par jour, moyenne pondérée par $\sigma^{-2}$ et somme des poids) sur les 15 jours : le détail à 1 km des jours anciens est périmé par la dérive, leur couverture et leur état moyen restent utiles. Les cartes $\Mm$ des jours $<t$ sont stockées à la conversion (aucune partition ne s'applique à ces jours : l'agrégat est le même à chaque batch ; l'agréger dans les workers limitait le débit à 0,5 s par batch), celle du jour $t$ est calculée sur GPU après la partition ; $\mathcal N_1$ : $\Delta=1$ jour, rollout appris jusqu'à 7 jours, avec un curriculum de 1 à 7 pas.
 
 \textbf{Stockage.} Conversion unique des NetCDF en Zarr chunké par jour (recadrage au domaine, valeurs natives, aucun regrillage). Les workers ne font que découper des tranches ; partition, $\mathcal{G}_\ell$, masques, $\obs{\delta X}$ et $\obs S$ sont calculés sur GPU après le transfert du batch.
 
