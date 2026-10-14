@@ -95,3 +95,18 @@ def test_frozen_and_ema_copies_stay_in_eval_mode(n1):
     n1.train()
     assert n1.nets.training and not n1.ema.training and not n1.n0.training and not n1.n0.ema.training
     assert not any(m.training for m in n1.n0.modules()) and not any(m.training for m in n1.ema.modules())
+
+
+def test_mixed_precision_bf16(days):
+    # trainer precision bf16-mixed / overfit.py: everything under autocast
+    torch.manual_seed(0)
+    n0 = make_model()
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        out = n0.losses(days[0])
+        out["loss"].backward()
+        assert torch.isfinite(out["loss"])
+        assert all(torch.isfinite(v) for v in n0.scores(days[0]).values())
+        n1 = LitCascadeN1(n0=n0, swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2)
+        assert torch.isfinite(n1.losses(days)["loss"])
+        z, _ = R.rollout(n1, days, 1, seed=0)
+        assert torch.isfinite(z).all()

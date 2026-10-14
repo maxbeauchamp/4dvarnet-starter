@@ -69,11 +69,14 @@ class PointCellEncoder(nn.Module):
         feat = torch.cat([p[:, 2:3], F.one_hot(p[:, 3].long(), self.n_types).to(p),
                           (cx - ix)[ok][:, None] - 0.5, (cy - iy)[ok][:, None] - 0.5, p[:, 4:5] / self.window], -1)
         e = self.mlp(feat)
-        s = self.wk(e) @ self.q / math.sqrt(d)
+        # segmented softmax accumulated in float32 (under bf16 autocast the
+        # projections come out in bf16 and exp in float32)
+        s = (self.wk(e) @ self.q).float() / math.sqrt(d)
+        v = self.wv(e).float()
         smax = s.new_full((bsz * n * n,), -float("inf")).scatter_reduce(0, seg, s, "amax", include_self=True)
         ex = torch.exp(s - smax[seg])
         den = s.new_zeros(bsz * n * n).index_add(0, seg, ex)
-        num = s.new_zeros(bsz * n * n, d).index_add(0, seg, ex[:, None] * self.wv(e))
+        num = s.new_zeros(bsz * n * n, d).index_add(0, seg, ex[:, None] * v)
         mask = den > 0
         a = torch.where(mask[:, None], num / den.clamp_min(1e-30)[:, None], 0.0)
         return a.view(bsz, n, n, d).permute(0, 3, 1, 2), mask.view(bsz, n, n)
@@ -112,7 +115,8 @@ class AsipHEncoder(nn.Module):
         out = x.new_zeros(bsz * nc * nc, d, k, k)
         if nonempty.any():
             sel = patches[nonempty]
-            out[nonempty] = checkpoint(self.net, sel, use_reentrant=False) if torch.is_grad_enabled() else self.net(sel)
+            res = checkpoint(self.net, sel, use_reentrant=False) if torch.is_grad_enabled() else self.net(sel)
+            out[nonempty] = res.to(out.dtype)  # bf16 under autocast
         out = out.view(bsz, nc, nc, d, k, k).permute(0, 3, 1, 4, 2, 5).reshape(bsz, d, nc * k, nc * k)
         mask_m = mask.view(bsz, nc * k, fm, nc * k, fm).any(4).any(2)
         return out * mask_m[:, None], mask_m
