@@ -54,8 +54,9 @@ model:
   # [mean, std]. SIC / SIT / HS / forcing: same stats as the former CROSCIM
   # configs (SIC min-max [0, 1] = identity). S_C channels and detail scales
   # (dSIC_M, dSIT_M, dSIC_H; mean ignored): measured by scripts/inspect_data.py
-  # on 2022-02 (200 batches of 2 tiles), std floored at 0.02 for the nearly
-  # constant channels sic_std, edge_density, aniso_c, aniso_s.
+  # on 2022-02 (200 batches of 2 tiles); edge_density (jump 0.1) and
+  # aniso_c / aniso_s (2 x 2 corner gradients, e0 = 1e-3) from a second run of
+  # 30 batches.
   norm:
     SIC: [0.0, 1.0]
     SIT: [0.5695980677516013, 0.8216149733058172]
@@ -65,9 +66,9 @@ model:
     h_mid: [0.0267, 0.1158]
     h_pack: [0.7828, 0.4002]
     sic_std: [0.0174, 0.0553]
-    edge_density: [0.0003, 0.02]
-    aniso_c: [0.0013, 0.036]
-    aniso_s: [0.0016, 0.0348]
+    edge_density: [0.0032, 0.0145]
+    aniso_c: [0.0044, 0.0981]
+    aniso_s: [-0.0048, 0.0899]
     sit_std: [0.0326, 0.0585]
     t2m: [-2.5985455071070955, 13.613745769755358]
     msl: [101261.65922657882, 1112.7187312302365]

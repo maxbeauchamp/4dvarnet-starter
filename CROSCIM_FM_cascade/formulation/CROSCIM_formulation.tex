@@ -302,8 +302,8 @@ avec $\SC^\perp=\SC-\E[\SC\mid\XC]$ et le \emph{même} $\varepsilon$ dans les de
 \textbf{canal} & \textbf{type} & \textbf{définition (moyennes pondérées par $\omega$ sur les enfants observés)} & $(\sigma_0,\sigma_{\rm samp})$\\\midrule
 $h_0..h_3$ & $L$ & histogramme SIC, classes $[0,.15)$, $[.15,.5)$, $[.5,.85)$, $[.85,1]$ ; $h_0$ = eau libre ; en banquise compacte, $h_0+h_1$ = fraction de leads & $(0.02, 0.5)$\\
 sic\_std & $F$ & écart-type de la SIC à 1 km dans la maille & $(0.02, 0.3)$\\
-edge\_density & $F$ & fraction des paires de voisins (dans la maille) avec $|\Delta\mathrm{SIC}|>0{,}3$ : densité de bords de leads / floes & $(0.01, 0.5)$\\
-aniso\_c, aniso\_s & $F$ & $\bigl(\bar J_{xx}-\bar J_{yy},\ 2\bar J_{xy}\bigr)/(\bar J_{xx}+\bar J_{yy}+e_0)$, tenseur de structure des gradients, $e_0=0{,}01$ : anisotropie $\times$ orientation ($2\theta$) & $(0.05, 1.0)$\\
+edge\_density & $F$ & fraction des paires de voisins (dans la maille) avec $|\Delta\mathrm{SIC}|>0{,}1$ : densité de bords de leads / floes & $(0.01, 0.5)$\\
+aniso\_c, aniso\_s & $F$ & $\bigl(\bar J_{xx}-\bar J_{yy},\ 2\bar J_{xy}\bigr)/(\bar J_{xx}+\bar J_{yy}+e_0)$, tenseur de structure des gradients aux coins des blocs $2\times2$ (non biaisé pour un bruit non corrélé), $e_0=10^{-3}$ (niveau du bruit de restitution) : anisotropie $\times$ orientation ($2\theta$) & $(0.05, 1.0)$\\
 sit\_std & $F$ & écart-type de la SIT CRISTAL sur les mailles $\Mm$ observées ($\ge4$) & $(0.05, 0.5)$ m\\\bottomrule
 \end{tabularx}
 \end{center}

@@ -23,8 +23,10 @@ from . import grid as g
 # ---- sub-grid statistics S_C (formulation section 8) ----------------------
 S_NAMES = ("h_ow", "h_thin", "h_mid", "h_pack", "sic_std", "edge_density", "aniso_c", "aniso_s", "sit_std")
 SIC_BIN_EDGES = (0.15, 0.5, 0.85)  # histogram classes [0,.15) [.15,.5) [.5,.85) [.85,1]
-EDGE_JUMP = 0.3                    # |SIC difference| between 1 km neighbours marking a lead / floe edge
-ANISO_E0 = 0.01                    # gradient-energy floor of the anisotropy (no structure -> 0)
+EDGE_JUMP = 0.1                    # |SIC difference| between 1 km neighbours marking a lead / floe edge
+                                   # (0.3: non-zero in 1 % of the cells on 2022-02 ASIP, 0.1: 7 %)
+ANISO_E0 = 1e-3                    # gradient-energy floor of the anisotropy (no structure -> 0):
+                                   # ~ (3 % SIC per km)^2, the retrieval noise level (1e-2 flattened it)
 # (sigma_0, sigma_samp) per channel: sigma_S^2 = sigma_0^2 + sigma_samp^2 / n_eff
 S_SIGMA = ((0.02, 0.5),) * 4 + ((0.02, 0.3), (0.01, 0.5), (0.05, 1.0), (0.05, 1.0), (0.05, 0.5))
 GAMMA_S = 0.5           # min. observed ocean fraction of a C cell for the ASIP-based channels
