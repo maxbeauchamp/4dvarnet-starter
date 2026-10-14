@@ -52,6 +52,7 @@ scripts/inspect_data.py      dataloader on real data: maps, coverage, timings, n
 scripts/overfit.py           overfit N0 on one fixed batch (loss, memory, time per step)
 scripts/smoke_pipeline.py    phases 3-7 chained on a short period (configs, checkpoints, diagnostics)
 scripts/plot_panels.py       inference panels (C / M / H, ensembles, S_C, psi) and metrics of an N0
+scripts/plot_forecast.py     forecast panels (mode A rollouts, fine levels on demand) and lead-time scores of an N1
 scripts/submit_odyssey.sbatch  sbatch wrapper: sbatch scripts/submit_odyssey.sbatch <script.py> [args]
 tests/                  pytest suite (synthetic data, CPU)
 ```

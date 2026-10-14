@@ -71,6 +71,19 @@ def load_n0(path: str) -> LitCascadeN0:
     return n0
 
 
+def load_n1(path: str, n0_ckpt: str | None = None) -> "LitCascadeN1":
+    """N1 from one of our own checkpoints. The N0 it was built from is rebuilt
+    from its checkpoint (hparam n0_ckpt, or `n0_ckpt` if that file moved),
+    then every weight, N0 included, is restored from the N1 checkpoint."""
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    hp = dict(ckpt["hyper_parameters"])
+    if n0_ckpt is not None:
+        hp["n0_ckpt"] = n0_ckpt
+    n1 = LitCascadeN1(**hp)
+    n1.load_state_dict(ckpt["state_dict"])
+    return n1
+
+
 class N1Nets(nn.Module):
 
     def __init__(self, n0: LitCascadeN0, swin: dict):
