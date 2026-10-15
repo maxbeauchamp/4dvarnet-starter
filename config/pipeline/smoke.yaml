@@ -1,0 +1,37 @@
+# End-to-end test of the whole pipeline on one month (2 short epochs per
+# phase, few sampler steps): configs, checkpoints, resumption, evaluation.
+#   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/smoke.yaml
+
+out: /Odyssey/private/m19beauc/results/smoke
+
+dates:
+  train: [2022-02-15, 2022-02-23]
+  val: [2022-02-24, 2022-02-26]
+  test: [2022-02-24, 2022-02-26]
+
+common: ["model.n_steps=4", "model.n_members=2", "model.score_every=1", "model.n_score_batches=1"]
+phases:
+  - name: phase3_C
+    xp: N0
+    overrides: ["model.levels=[C]", "model.pyramid=false", "model.cond_steps=2"]
+    trainer: {max_epochs: 2, limit_train_batches: 30, limit_val_batches: 2, limit_test_batches: 2}
+  - name: phase4_MH
+    xp: N0
+    init: phase3_C
+    overrides: ["model.levels=[M,H]", "model.pyramid=false", "model.cond_steps=2"]
+    trainer: {max_epochs: 2, limit_train_batches: 30, limit_val_batches: 2, limit_test_batches: 2}
+  - name: phase5_full
+    xp: N0
+    init: phase4_MH
+    overrides: ["model.levels=[C,M,H]", "model.pyramid=true", "model.cond_steps=2"]
+    trainer: {max_epochs: 2, limit_train_batches: 30, limit_val_batches: 2, limit_test_batches: 2}
+  - name: phase6_N1
+    xp: N1
+    n0: phase5_full
+    overrides: ["model.k_max=2", "model.curriculum_epochs=1", "model.push_steps=2"]
+    trainer: {max_epochs: 2, limit_train_batches: 30, limit_val_batches: 2, limit_test_batches: 2}
+
+evaluation:
+  plot_panels: {ckpt_of: phase5_full, n: 2, members: 2, n_steps: 4}
+  plot_forecast: {ckpt_of: phase6_N1, lead: 2, n: 1, members: 2, n_steps: 4}
+  scenarios: {ckpt_of: phase6_N1, lead: 2, n: 1, members: 2, n_steps: 4}

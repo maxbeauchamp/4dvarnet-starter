@@ -50,7 +50,8 @@ croscim/
 scripts/convert_sources.py   NetCDF -> Zarr stores (crop + format change only)
 scripts/inspect_data.py      dataloader on real data: maps, coverage, timings, normalisation
 scripts/overfit.py           overfit N0 on one fixed batch (loss, memory, time per step)
-scripts/smoke_pipeline.py    phases 3-7 chained on a short period (configs, checkpoints, diagnostics)
+scripts/convert_all.sh       one conversion job per source over a period
+scripts/run_pipeline.py      whole pipeline from config/pipeline/*.yaml: phases 3-6, then evaluation (resumable)
 scripts/plot_panels.py       inference panels (C / M / H, ensembles, S_C, psi) and metrics of an N0
 scripts/plot_forecast.py     forecast panels (mode A rollouts, fine levels on demand) and lead-time scores of an N1
 scripts/scenarios.py         scenario experiments with an N1 (perturbed S, forcing, do(S), nudging, downscaling, I^up / I^down)
@@ -60,19 +61,21 @@ tests/                  pytest suite (synthetic data, CPU)
 
 ## Workflow
 
-1. Convert the sources once (stores written next to the NetCDF directories,
-   e.g. `ASIP_L3_zarr/`):
+1. Convert the sources (one job per source; stores written next to the NetCDF
+   directories, e.g. `ASIP_L3_zarr/`):
    ```bash
-   python scripts/convert_sources.py --src-root /Odyssey/public/CROSCIM_dataset \
-       --start 2021-01-01 --end 2023-12-31 --workers 16
+   scripts/convert_all.sh 2022-01-01 2022-12-31
    ```
-2. Train N0, first G_C alone, then the full cascade:
+2. Run the whole pipeline described by a config of `config/pipeline/`
+   (N0: G_C alone, G_M + G_H, full cascade with pyramid; N1; then the
+   evaluation scripts on the test period). Resumable: submit the same command
+   again after the job time limit.
    ```bash
-   python main.py xp=N0 model.levels=[C] model.pyramid=false \
-       datamodule.train_dates=[...] datamodule.val_dates=[...] datamodule.test_dates=[...]
-   python main.py xp=N0 ...
+   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022.yaml
    ```
-3. Train N1 from the N0 checkpoint: `python main.py xp=N1 model.n0_ckpt=... ...`
-4. Scenarios and diagnostics: `croscim/rollout.py`.
+   `config/pipeline/smoke.yaml` runs the same chain on one month in a few
+   minutes per phase (end-to-end check).
+3. Single phases can also be run with `main.py`, e.g.
+   `python main.py xp=N0 model.levels=[C] model.pyramid=false datamodule.train_dates=[...] ...`
 
 Tests: `pytest tests` (about 1 min on CPU).
