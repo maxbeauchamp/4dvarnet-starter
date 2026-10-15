@@ -41,6 +41,33 @@ def load_cfg(xp: str, overrides: list[str]):
         return compose("main", overrides=[f"xp={xp}", *overrides])
 
 
+class Progress(pl.Callback):
+    """One line every `every` steps and one per epoch in the job log (the
+    Lightning progress bar is off: it floods the log files)."""
+
+    def __init__(self, name: str, every: int = 100):
+        self.name, self.every = name, every
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        self.t_epoch = self.t_step = time.perf_counter()
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if (batch_idx + 1) % self.every == 0:
+            dt = (time.perf_counter() - self.t_step) / self.every
+            self.t_step = time.perf_counter()
+            loss = trainer.callback_metrics.get("train_loss")
+            print(f"{self.name} epoch {trainer.current_epoch} step {batch_idx + 1}: "
+                  f"train_loss {float(loss) if loss is not None else float('nan'):.4f}, {dt:.2f} s/step", flush=True)
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        if trainer.sanity_checking:
+            return
+        m = {k: float(v) for k, v in trainer.callback_metrics.items()
+             if k in ("train_loss", "val_loss") or k.startswith(("val_C_rmse_SIC", "val_rmse_SIC_k"))}
+        print(f"{self.name} epoch {trainer.current_epoch} end ({(time.perf_counter() - self.t_epoch) / 60:.1f} min): "
+              + ", ".join(f"{k} {v:.4f}" for k, v in sorted(m.items())), flush=True)
+
+
 def floats(metrics: dict) -> dict:
     return {k: round(float(v), 5) for k, v in metrics.items()}
 
@@ -106,6 +133,7 @@ def main():
         if not cuda:
             kw.update(accelerator="cpu", devices=1, precision="32")
         trainer = hydra.utils.instantiate(cfg.trainer, **kw)
+        trainer.callbacks.append(Progress(name))
         trainer.checkpoint_callback.dirpath = ckpt_dir
         if cuda:
             torch.cuda.reset_peak_memory_stats()
