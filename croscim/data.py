@@ -332,14 +332,20 @@ class CascadeDataModule(pl.LightningDataModule):
             self.ds[split] = CascadeDataset(self.root, self._days(split), omega_h,
                                             valid_tile_origins(omega_c, N_C), train=False, horizon=self.horizon)
 
+    def _loader(self, split, **kw):
+        kw = {**self.dl_kw, **kw}
+        if not kw.get("num_workers"):
+            kw.pop("prefetch_factor", None)  # only valid with worker processes
+        return torch.utils.data.DataLoader(self.ds[split], **kw)
+
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.ds["train"], **self.dl_kw)
+        return self._loader("train")
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.ds["val"], **{**self.dl_kw, "shuffle": False})
+        return self._loader("val", shuffle=False)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.ds["test"], **{**self.dl_kw, "shuffle": False})
+        return self._loader("test", shuffle=False)
 
     def on_after_batch_transfer(self, batch, dataloader_idx):
         days = build_batch(batch)

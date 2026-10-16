@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gc
 import inspect
 import json
 import os
@@ -152,6 +153,12 @@ def main():
                         "best": cb.best_model_path, "last": cb.last_model_path, "log_dir": trainer.logger.log_dir}
         save()
         print(f"{name}: done in {t_fit / 3600:.2f} h, best {cb.best_model_path}", flush=True)
+        # free this phase (model on GPU, loaders) before the next one: phase 6
+        # loads two N0 copies and larger items
+        del trainer, model, dm, cb
+        gc.collect()
+        if cuda:
+            torch.cuda.empty_cache()
 
     # ---- evaluation on the test period ----
     ev = pcfg.get("evaluation", {})

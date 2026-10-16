@@ -40,7 +40,9 @@ datamodule:
   tiles_per_day: 8
   horizon: ${model.k_max}
   # single GPU: shuffle the days here; under DDP drop it (Lightning sets the sampler)
-  dl_kw: {batch_size: 1, num_workers: 10, shuffle: true, pin_memory: true}  # 12 CPUs per Odyssey job
+  # an item spans [t-14, t+7] (~0.8 GB with 10 days of 500 m ASIP): few
+  # items in flight (10 workers x 2 prefetched ran the 64 GB job out of memory)
+  dl_kw: {batch_size: 1, num_workers: 4, prefetch_factor: 1, shuffle: true, pin_memory: true}
 
 model:
   _target_: croscim.transition.LitCascadeN1
