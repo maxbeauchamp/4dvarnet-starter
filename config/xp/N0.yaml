@@ -74,9 +74,12 @@ model:
     msl: [101261.65922657882, 1112.7187312302365]
     u10: [0.6010106010949151, 4.545559141871505]
     v10: [-0.2104646166032582, 4.707062023219409]
-    dSIC_M: [0.0, 0.0577]
-    dSIT_M: [0.0, 0.0685]
-    dSIC_H: [0.0, 0.0149]
+    # detail scales relative to the smooth prolongation P' (inspect_data on
+    # 2022-01-15 .. 2022-10-31); the S_C channels above keep the stats the
+    # first-run G_C was trained with (the 2022 retraining reuses it)
+    dSIC_M: [0.0, 0.0806]
+    dSIT_M: [0.0, 0.0667]
+    dSIC_H: [0.0, 0.0225]
   # one Swin U-Net per generator; G_M / G_H run on 128^2 / 256^2 crops
   swin:
     C: ${swin_config}
