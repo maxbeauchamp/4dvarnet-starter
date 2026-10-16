@@ -88,12 +88,13 @@ $\mu$, $w$ & disponibilité des observations (0/1), poids de rappel (guidance) &
 \begin{bsec}[1 \;\; Philosophie : un état multi-échelle et une chain rule grossier $\rightarrow$ fin]{ink}
 \textbf{Grilles et opérateurs fixes.} $\Omega_\Cc\subset\Omega_\Mm\subset\Omega_\Hh$ imbriquées ($\times8$ puis $\times4$), arêtes alignées :
 \[
-(Rx)(k)=\frac{\sum_{i\in\ch(k)}\omega_i\,x(i)}{\sum_{i\in\ch(k)}\omega_i},\qquad (Px)(i)=x(\pa(i)),\qquad RP=I,\qquad \Pi_0=I-PR .
+(Rx)(k)=\frac{\sum_{i\in\ch(k)}\omega_i\,x(i)}{\sum_{i\in\ch(k)}\omega_i},\qquad P x=Sx+P_0(x-RSx),\qquad RP=I,\qquad \Pi_0=I-PR .
 \]
+$P_0$ : injection $(P_0x)(i)=x(\pa(i))$ ; $S$ : interpolation bilinéaire des parents (mailles terrestres ignorées). $RP=I$ reste exact puisque $RP_0=I$, mais $P\XC$ n'a plus de marches aux bords des mailles parentes : avec l'injection seule, les détails devaient effacer ces marches de 32 km et 4 km, et les champs générés restaient en blocs là où les détails ne sont pas supervisés.
 \textbf{État.} Chaque niveau ne porte que ses variables $\mathcal{V}_\ell$ (section 2). Pour $v\in\mathcal{V}_\ell$ :
 \[
 \dXM=\XM-P\,\XC,\qquad \dXH=\XH-P\,\XM,\qquad R\,\delta X=0,\qquad
-\XH^{v}=P_{\Cc\to\Hh}\XC^{v}+P_{\Mm\to\Hh}\dXM^{v}+\dXH^{v}\quad(v\in\mathcal{V}_\Hh).
+\XH^{v}=P\bigl(P\,\XC^{v}+\dXM^{v}\bigr)+\dXH^{v}\quad(v\in\mathcal{V}_\Hh).
 \]
 Une variable de $\mathcal{V}_\Mm\setminus\mathcal{V}_\Hh$ s'arrête à $\Mm$ ; de $\mathcal{V}_\Cc\setminus\mathcal{V}_\Mm$, à $\Cc$. Aucun décodeur appris : la recomposition est exacte.
 
@@ -316,6 +317,7 @@ Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\g
 \textbf{Implémentation v1 (choix non fixés par les sections 1--7).}
 \begin{itemize}
 \item \emph{Encodeurs} : CRISTAL en tokens (SIT à $\Mm$, neige à $\Cc$, softmax segmentée par maille, fenêtre complète avec $t_n-t$) ; CIMR, ASIP agrégé à $\Mm$ et ERA5 par CNN masqués ; ASIP à $\Hh$ fusionné avec $\Pup_{\Hh\to\Mm}$ (CNN à pas par maille $\Cc$ non vide) ; $\Pup_{\Mm\to\Cc}$ à $K=4$ requêtes ; $d=32$, $d_\psi=4$.
+\item \emph{Prolongation lisse} $P=S+P_0(I-RS)$ (section 1), calculée sur la tuile entière (resp. le crop $\Mm$) avant de découper, pour que les crops aient leurs vrais voisins ; elle remplace l'injection depuis la deuxième passe 2022 (G$_\Mm$, G$_\Hh$, pyramide et $\mathcal N_1$ réentraînés ; G$_\Cc$ en est indépendant).
 \item \emph{Générateurs fins sur crops} alignés sur les mailles $\Cc$ : $G_\Mm$ sur $128^2$ ($16\times16$ mailles $\Cc$), $G_\Hh$ sur $256^2$ ($8\times8$). Le bruit \emph{et la vitesse} sont projetés par $\Pi_0$ : $R\,\delta X=0$ exactement. Tuile entière = crops juxtaposés (raccords possibles aux bords des crops). Pas de bornes sur les $\delta$ : seuls les champs recomposés peuvent sortir légèrement de $[0,1]$.
 \item \emph{$\psi_\Cc=\Psi_\Cc(\hh\Cc)$} est déterministe dans $\mathcal N_0$ (il conditionne $G_\Mm$, $G_\Hh$ via $\Pdn$), généré par $G^1_\Cc$ dans $\mathcal N_1$.
 \item \emph{$\mathcal L_{\rm cyc}$} : $\Sop_\Cc$ doux (indicatrices sigmoïdes, $\tau=0{,}05$) appliqué à la prédiction en un pas de $\Hh$, comparé au $\SC^\eta$ qui l'a conditionnée, pondéré par $s$.

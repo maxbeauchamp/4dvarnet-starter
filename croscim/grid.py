@@ -14,8 +14,13 @@ Operators act on the last two (spatial) dims of a tensor, with ocean-fraction
 weights w broadcastable against it:
 
     (R x)(k) = sum_{i in ch(k)} w_i x_i / sum_{i in ch(k)} w_i
-    (P x)(i) = x(par(i))
-    RP = I,   Pi0 = I - PR,   R Pi0 = 0
+    (P x)(i) = x(par(i))                         injection
+    P' x = S x + P (x - R S x)                   smooth prolongation (S: bilinear
+                                                 interpolation of the parents)
+    R P = R P' = I,   Pi0 = I - P'R,   R Pi0 = 0
+
+The state is recomposed with P' (piecewise-constant P left 32 km / 4 km
+steps that the details had to undo).
 
 and the state decomposition X = (X_C, dX_M, dX_H) with exact recomposition.
 """
@@ -23,6 +28,7 @@ and the state decomposition X = (X_C, dX_M, dX_H) with exact recomposition.
 from __future__ import annotations
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 from .layout import HALF_EXTENT_M, PROJ4  # noqa: F401  (re-exported)
@@ -107,19 +113,41 @@ def prolong(x: Tensor, f: int) -> Tensor:
     return x[..., :, None, :, None].expand(*lead, ny, f, nx, f).reshape(*lead, ny * f, nx * f)
 
 
+def interp(x: Tensor, f: int, valid: Tensor) -> Tensor:
+    """S: bilinear interpolation of the parents x[..., n, n] to the f x f
+    finer grid (cell centres, edges clamped), ignoring the parents where
+    `valid` (broadcastable) is False (land, unobserved)."""
+    *lead, ny, nx = x.shape
+    m = valid.to(x.dtype).expand_as(x)
+    up = lambda a: F.interpolate(a.reshape(-1, 1, ny, nx), scale_factor=f, mode="bilinear",  # noqa: E731
+                                 align_corners=False).reshape(*lead, ny * f, nx * f)
+    num, den = up(x * m), up(m)
+    return torch.where(den > 0, num / torch.where(den > 0, den, torch.ones_like(den)), torch.zeros_like(num))
+
+
+def prolong_s(x: Tensor, w: Tensor, f: int) -> Tensor:
+    """P' x = S x + P (x - R S x): smooth prolongation with R P' = I exactly
+    (R with the child weights w), so that P'R and Pi0 = I - P'R keep the
+    exact decomposition while P' x has no steps at the parent edges."""
+    sx = interp(x, f, block_sum(w, f) > 0)
+    return sx + prolong(x - restrict(sx, w, f)[0], f)
+
+
 def pi0(x: Tensor, w: Tensor, f: int) -> Tensor:
-    """Pi0 = I - PR: detail projector (R Pi0 x = 0 on parents with w > 0)."""
-    return x - prolong(restrict(x, w, f)[0], f)
+    """Pi0 = I - P'R: detail projector (R Pi0 x = 0 on parents with w > 0)."""
+    return x - prolong_s(restrict(x, w, f)[0], w, f)
 
 
 def decompose(x_h: Tensor, w_h: Tensor) -> tuple[Tensor, Tensor, Tensor]:
     """X_H -> (X_C, dX_M, dX_H) with R dX = 0, using ocean weights w_h at H."""
-    x_m, w_m = restrict(x_h, w_h, factor("H", "M"))
-    x_c, _ = restrict(x_m, w_m, factor("M", "C"))
-    return x_c, x_m - prolong(x_c, factor("M", "C")), x_h - prolong(x_m, factor("H", "M"))
+    fm, fh = factor("M", "C"), factor("H", "M")
+    x_m, w_m = restrict(x_h, w_h, fh)
+    x_c, _ = restrict(x_m, w_m, fm)
+    return x_c, x_m - prolong_s(x_c, w_m, fm), x_h - prolong_s(x_m, w_h, fh)
 
 
-def recompose(x_c: Tensor, dx_m: Tensor, dx_h: Tensor) -> Tensor:
-    """X_H = P_{C->H} X_C + P_{M->H} dX_M + dX_H (exact, no learned decoder)."""
-    x_m = prolong(x_c, factor("M", "C")) + dx_m
-    return prolong(x_m, factor("H", "M")) + dx_h
+def recompose(x_c: Tensor, dx_m: Tensor, dx_h: Tensor, w_h: Tensor) -> Tensor:
+    """X_H = P'(P' X_C + dX_M) + dX_H (exact, no learned decoder)."""
+    fm, fh = factor("M", "C"), factor("H", "M")
+    w_m = block_sum(w_h, fh)
+    return prolong_s(prolong_s(x_c, w_m, fm) + dx_m, w_h, fh) + dx_h

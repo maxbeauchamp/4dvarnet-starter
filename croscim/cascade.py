@@ -233,20 +233,20 @@ class LitCascadeN0(pl.LightningModule):
     def cond_m(self, nets: Nets, ctx: dict, b: dict, z_c: Tensor, psi: Tensor, oy, ox, keep: dict):
         """c_M on the M crop (origin oy, ox in C cells; z_c physical)."""
         n, f = CROP_C["M"], g.factor("M", "C")
-        x_c = crop(self.nrm.z(z_c)[:, :N_X], oy, ox, n, 1)
+        x_c = crop(self.nrm(self.coarse_m(z_c, b), X_NAMES, 1), oy, ox, n, f)  # P' X_C at M
         phi = crop(self._phi(ctx, z_c, psi, keep), oy, ox, n, 1)
         h = crop(ctx["h_M"], oy, ox, n, f) * keep["h"].to(z_c).view(-1, 1, 1, 1)
         omega = crop(b["omega_m"], oy, ox, n, f)[:, None]
         flags = self._flags(keep, omega)
-        cond = torch.cat([g.prolong(x_c, f), nets.down_m(phi), h, *flags, omega], 1)
+        cond = torch.cat([x_c, nets.down_m(phi), h, *flags, omega], 1)
         return cond, (omega > 0).to(cond), omega[:, 0]
 
-    def cond_h(self, nets: Nets, ctx: dict, b: dict, z_c: Tensor, x_m: Tensor, psi: Tensor, oy, ox, keep: dict):
-        """c_H on the H crop (origin in C cells); x_m = (SIC, SIT) at M on the
-        same crop (physical)."""
-        n, fh, fm = CROP_C["H"], g.factor("H", "C"), g.factor("H", "M")
+    def cond_h(self, nets: Nets, ctx: dict, b: dict, z_c: Tensor, x_mh: Tensor, psi: Tensor, oy, ox, keep: dict):
+        """c_H on the H crop (origin in C cells); x_mh = P' X_M = (SIC, SIT)
+        brought to H on the same crop (physical, see coarse_h)."""
+        n, fh = CROP_C["H"], g.factor("H", "C")
         nrm = self.nrm
-        xm = g.prolong(nrm(x_m, ("SIC", "SIT"), 1), fm)
+        xm = nrm(x_mh, ("SIC", "SIT"), 1)
         hs = g.prolong(crop(nrm.z(z_c)[:, 2:3], oy, ox, n, 1), fh)
         phi = crop(self._phi(ctx, z_c, psi, keep), oy, ox, n, 1)
         m = crop(b["in_H_w"], oy, ox, n, fh) > 0
@@ -317,9 +317,22 @@ class LitCascadeN0(pl.LightningModule):
         return d * self.nrm.dH_std
 
     @staticmethod
-    def x_m(z_c_crop: Tensor, d_m: Tensor) -> Tensor:
-        """(SIC, SIT) at M = P X_C + dX_M."""
-        return g.prolong(z_c_crop[:, :2], g.factor("M", "C")) + d_m
+    def coarse_m(z_c: Tensor, b: dict) -> Tensor:
+        """P' X_C = (SIC, SIT, HS) brought to M on the whole tile (smooth
+        prolongation, computed before any crop so that crops have their true
+        neighbours)."""
+        return g.prolong_s(z_c[:, :N_X], b["omega_m"][:, None], g.factor("M", "C"))
+
+    def x_m(self, z_c: Tensor, d_m: Tensor, b: dict, oy, ox) -> Tensor:
+        """(SIC, SIT) at M on the M crop: P' X_C + dX_M."""
+        return crop(self.coarse_m(z_c, b)[:, :2], oy, ox, CROP_C["M"], g.factor("M", "C")) + d_m
+
+    @staticmethod
+    def coarse_h(x_m: Tensor, b: dict, oy, ox) -> Tensor:
+        """P' X_M brought to H on the M crop (origin oy, ox) that x_m covers."""
+        fh = g.factor("H", "M")
+        w = crop(b["omega_h"], oy, ox, CROP_C["M"], g.factor("H", "C"))[:, None]
+        return g.prolong_s(x_m, w, fh)
 
     @torch.no_grad()
     def sample_cascade(self, b: dict, keep: dict | None = None, n_steps: int | None = None, use_ema=True,
@@ -343,15 +356,16 @@ class LitCascadeN0(pl.LightningModule):
                 o = torch.full((bsz,), cy, device=dev), torch.full((bsz,), cx, device=dev)
                 sl = (slice(cy * fm, (cy + CROP_C["M"]) * fm), slice(cx * fm, (cx + CROP_C["M"]) * fm))
                 d_m[..., sl[0], sl[1]] = self.sample_m(nets, ctx, b, z_c, psi, *o, keep, n_steps, generator)
-        x_m = self.x_m(z_c, d_m)
+        x_m = self.coarse_m(z_c, b)[:, :2] + d_m
+        x_mh = g.prolong_s(x_m, b["omega_h"][:, None], fh)  # P' X_M on the whole tile
         for cy in range(0, N_C, CROP_C["H"]):
             for cx in range(0, N_C, CROP_C["H"]):
                 o = torch.full((bsz,), cy, device=dev), torch.full((bsz,), cx, device=dev)
                 n = CROP_C["H"]
-                xm = crop(x_m, *o, n, fm)
                 sl = (slice(cy * fm * fh, (cy + n) * fm * fh), slice(cx * fm * fh, (cx + n) * fm * fh))
-                d_h[..., sl[0], sl[1]] = self.sample_h(nets, ctx, b, z_c, xm, psi, *o, keep, n_steps, generator)
-        x_h = g.prolong(x_m[:, :1], fh) + d_h
+                d_h[..., sl[0], sl[1]] = self.sample_h(nets, ctx, b, z_c, crop(x_mh, *o, n, fm * fh), psi, *o,
+                                                       keep, n_steps, generator)
+        x_h = x_mh[:, :1] + d_h
         return {"z_c": z_c, "psi": psi, "d_m": d_m, "d_h": d_h, "x_m": x_m, "x_h": x_h}
 
     # --------------------------------------------------------------- loss
@@ -386,17 +400,17 @@ class LitCascadeN0(pl.LightningModule):
             if "H" in self.levels:
                 with torch.no_grad():
                     d_m = self.sample_m(ema, ctx_e, b, z_c, ctx_e["psi"], oy, ox, all_in, hp.cond_steps)
-                    x_m = self.x_m(crop(z_c, oy, ox, CROP_C["M"], 1), d_m)
+                    x_m = self.x_m(z_c, d_m, b, oy, ox)
                     x_m = x_m + hp.eta * torch.randn_like(x_m) * nrm.dM_std
                 n = CROP_C["H"]
-                x_m_h = crop(x_m, hy - oy, hx - ox, n, fm)
-                cond, valid, omega = self.cond_h(self.nets, ctx, b, z_c, x_m_h, ctx["psi"], hy, hx, keep)
+                x_mh = crop(self.coarse_h(x_m, b, oy, ox), hy - oy, hx - ox, n, fm * fh)
+                cond, valid, omega = self.cond_h(self.nets, ctx, b, z_c, x_mh, ctx["psi"], hy, hx, keep)
                 z1 = crop(b["tgt_dH"], hy, hx, n, fm * fh) / nrm.dH_std
                 m = crop(b["tgt_dH_m"], hy, hx, n, fm * fh)
                 per_ch, has, z_pred, t = self.nets.gen["H"].loss(z1, m, cond, valid, proj=self.pi0(omega, fh))
                 out["X_H"] = channel_mean(per_ch, has)
                 # L_cyc: soft S_C of the one-step fine prediction vs the S_C it was conditioned on
-                x_h = g.prolong(x_m_h[:, :1], fh) + z_pred * nrm.dH_std
+                x_h = x_mh[:, :1] + z_pred * nrm.dH_std
                 s_pred = obs.sic_stats(x_h[:, 0], omega, hp.cyc_tau)
                 s_cond = crop(z_c, hy, hx, n, 1)[:, N_X:N_X + 8]
                 ok = (crop(b["omega_c"], hy, hx, n, 1) > 0.5)[:, None]
@@ -408,7 +422,8 @@ class LitCascadeN0(pl.LightningModule):
             p = psi.permute(0, 2, 3, 1).reshape(-1, psi.shape[1])
             s = nrm.z(z_c)[:, N_X:].permute(0, 2, 3, 1).reshape(-1, N_S)
             cov = (p - p.mean(0)).T @ (s - s.mean(0)) / len(p)
-            l_psi = l_psi + hp.lambda_perp * cov.pow(2).sum()
+            out["psi_cov"] = cov.pow(2).sum()  # ||Cov(psi, S)||_F^2, logged to check the decorrelation
+            l_psi = l_psi + hp.lambda_perp * out["psi_cov"]
         out["psi"] = l_psi
         total = sum(out.get(k, 0) for k in ("X_C", "X_M", "X_H")) + hp.lambda_s * out.get("S_C", 0) \
             + hp.lambda_c * out.get("cyc", 0) + hp.lambda_psi * out["psi"]
@@ -447,7 +462,7 @@ class LitCascadeN0(pl.LightningModule):
     @torch.no_grad()
     def scores(self, b: dict) -> dict:
         """Ensemble scores on Y^tgt: Z_C on the tile; X_M = (SIC, SIT) and
-        X_H = SIC on one crop per sample (absolute fields, P X_C + dX)."""
+        X_H = SIC on one crop per sample (absolute fields, P' X_C + dX)."""
         nets, hp = self.ema.module, self.hparams
         bsz, dev = b["omega_c"].shape[0], b["omega_c"].device
         keep = self.keep_groups(bsz, dev, drop=False)
@@ -459,12 +474,12 @@ class LitCascadeN0(pl.LightningModule):
             z_c = self.sample_c(nets, ctx, b, keep, hp.n_steps)
             zs.append(z_c)
             if "M" in self.levels or "H" in self.levels:
-                x_m = self.x_m(crop(z_c, oy, ox, CROP_C["M"], 1),
-                               self.sample_m(nets, ctx, b, z_c, ctx["psi"], oy, ox, keep, hp.n_steps))
+                x_m = self.x_m(z_c, self.sample_m(nets, ctx, b, z_c, ctx["psi"], oy, ox, keep, hp.n_steps),
+                               b, oy, ox)
                 xms.append(x_m)
-                x_m_h = crop(x_m, hy - oy, hx - ox, CROP_C["H"], fm)
-                d_h = self.sample_h(nets, ctx, b, z_c, x_m_h, ctx["psi"], hy, hx, keep, hp.n_steps)
-                xhs.append(g.prolong(x_m_h[:, :1], fh) + d_h)
+                x_mh = crop(self.coarse_h(x_m, b, oy, ox), hy - oy, hx - ox, CROP_C["H"], fm * fh)
+                d_h = self.sample_h(nets, ctx, b, z_c, x_mh, ctx["psi"], hy, hx, keep, hp.n_steps)
+                xhs.append(x_mh[:, :1] + d_h)
         out = {f"C_{k}": v for k, v in self._accumulate(
             "C", torch.stack(zs, 1), torch.cat([b["tgt_C"], b["tgt_S"]], 1),
             torch.cat([b["tgt_C_m"], b["tgt_S_m"]], 1), Z_NAMES).items()}

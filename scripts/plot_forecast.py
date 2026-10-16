@@ -66,10 +66,10 @@ def downscale_zoom(n0, b, z_c, psi, oy, ox, hy, hx, n_steps, seed):
     t = lambda v: torch.tensor([v], device=dev)  # noqa: E731
     gen = torch.Generator(dev).manual_seed(seed)
     d_m = n0.sample_m(nets, ctx, b, z_c, psi, t(oy), t(ox), keep, n_steps, generator=gen)
-    x_m = n0.x_m(crop(z_c, t(oy), t(ox), CROP_C["M"], 1), d_m)
-    x_m_h = crop(x_m, t(hy - oy), t(hx - ox), CROP_C["H"], FM)
+    x_m = n0.x_m(z_c, d_m, b, t(oy), t(ox))
+    x_m_h = crop(n0.coarse_h(x_m, b, t(oy), t(ox)), t(hy - oy), t(hx - ox), CROP_C["H"], FM * FH)  # P' X_M at H
     d_h = n0.sample_h(nets, ctx, b, z_c, x_m_h, psi, t(hy), t(hx), keep, n_steps, generator=gen)
-    return (g.prolong(x_m_h[:, :1], FH) + d_h)[0, 0].float().cpu()
+    return (x_m_h[:, :1] + d_h)[0, 0].float().cpu()
 
 
 def main():

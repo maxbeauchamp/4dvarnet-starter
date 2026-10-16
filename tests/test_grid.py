@@ -10,6 +10,7 @@ import torch
 from croscim import grid as g
 
 TOL = 1e-15
+_F64 = dict(dtype=torch.float64)
 
 
 def _ocean_weights(shape, seed=0):
@@ -134,7 +135,7 @@ def test_decompose_recompose_is_exact():
     x = _field((2, 128, 128))
     x_c, dx_m, dx_h = g.decompose(x, w)
     assert x_c.shape == (2, 4, 4) and dx_m.shape == (2, 32, 32) and dx_h.shape == (2, 128, 128)
-    assert torch.allclose(g.recompose(x_c, dx_m, dx_h), x, rtol=0, atol=TOL * x.abs().max())
+    assert torch.allclose(g.recompose(x_c, dx_m, dx_h, w), x, rtol=0, atol=TOL * x.abs().max())
     _, w_m = g.restrict(x, w, 4)
     assert g.restrict(dx_h, w, 4)[0].abs().max() < TOL * x.abs().max()
     assert g.restrict(dx_m, w_m, 8)[0].abs().max() < TOL * x.abs().max()
@@ -155,3 +156,21 @@ def test_weights_broadcast_over_leading_dims_float32():
     x_c, wp = g.restrict(x, w, 32)
     assert x_c.shape == (2, 3, 5, 2, 2) and wp.shape == (2, 2)
     assert g.restrict(g.pi0(x, w, 32), w, 32)[0].abs().max() < 1e-5 * x.abs().max()
+
+
+@pytest.mark.parametrize("f", [4, 8])
+def test_smooth_prolongation_is_exact_and_smooth(f):
+    w = _ocean_weights((128, 128))
+    n = 128 // f
+    yy, xx = torch.meshgrid(torch.arange(n, **_F64), torch.arange(n, **_F64), indexing="ij")
+    ramp = 0.5 * xx + 0.2 * yy
+    p_s, p_0 = g.prolong_s(ramp, w, f), g.prolong(ramp, f)
+    ocean = g.block_sum(w, f) > 0
+    # R P' = I on ocean parents, whatever the land
+    assert torch.allclose(g.restrict(p_s, w, f)[0][ocean], ramp[ocean], rtol=0, atol=TOL * ramp.abs().max())
+    # no step at parent edges: along a row of open ocean, P' of a ramp is much
+    # smoother than the injection
+    sea = torch.ones_like(w)
+    jump = lambda z: (z[..., :, 1:] - z[..., :, :-1]).abs().max()  # noqa: E731
+    assert jump(g.prolong_s(ramp, sea, f)) < 0.5 * jump(g.prolong(ramp, f))
+    assert torch.equal(p_0, g.prolong(ramp, f))

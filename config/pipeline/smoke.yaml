@@ -32,6 +32,6 @@ phases:
     trainer: {max_epochs: 2, limit_train_batches: 30, limit_val_batches: 2, limit_test_batches: 2}
 
 evaluation:
-  plot_panels: {ckpt_of: phase5_full, n: 2, members: 2, n_steps: 4}
+  plot_panels: {ckpt_of: phase5_full, n: 2, members: 2, n_steps: 4, holdout_asip: true}
   plot_forecast: {ckpt_of: phase6_N1, lead: 2, n: 1, members: 2, n_steps: 4}
   scenarios: {ckpt_of: phase6_N1, lead: 2, n: 1, members: 2, n_steps: 4}

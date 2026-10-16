@@ -120,10 +120,14 @@ def main():
         resume = os.path.join(ckpt_dir, "last.ckpt")
         if not os.path.exists(resume):
             resume = None
-            if ph.get("init"):
-                sd = torch.load(ckpt_of(ph.init), map_location="cpu", weights_only=False)["state_dict"]
+            init = ckpt_of(ph.init) if ph.get("init") else None
+            if ph.get("init_from"):  # a phase of another pipeline run, e.g. a G_C that stays valid
+                old = json.load(open(ph.init_from.report))[ph.init_from.phase]
+                init = old["best"] or old["last"]
+            if init:
+                sd = torch.load(init, map_location="cpu", weights_only=False)["state_dict"]
                 missing, _ = model.load_state_dict(sd, strict=False)
-                print(f"{name}: initialised from {ph.init} ({len(missing)} tensors left at random init)", flush=True)
+                print(f"{name}: initialised from {init} ({len(missing)} tensors left at random init)", flush=True)
         kw = dict(OmegaConf.to_container(ph.trainer), enable_progress_bar=False, num_sanity_val_steps=0)
         try:
             from pytorch_lightning.loggers import TensorBoardLogger
@@ -172,7 +176,11 @@ def main():
         cmd = [sys.executable, os.path.join(REPO, "scripts", f"{script}.py"), "--ckpt", ckpt, "--root", args.root,
                "--start", d.test[0], "--end", d.test[1], "--out", dest]
         for k, v in cfg_ev.items():
-            cmd += [f"--{k.replace('_', '-')}", *([str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)])]
+            flag = f"--{k.replace('_', '-')}"
+            if isinstance(v, bool):
+                cmd += [flag] if v else []
+            else:
+                cmd += [flag, *([str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)])]
         print(f"{key}: {' '.join(cmd)}", flush=True)
         t0 = time.perf_counter()
         res = subprocess.run(cmd)

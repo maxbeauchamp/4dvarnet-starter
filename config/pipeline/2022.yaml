@@ -39,6 +39,6 @@ phases:
 
 # evaluation scripts, on the test period (options of each script)
 evaluation:
-  plot_panels: {ckpt_of: phase5_full, n: 4, members: 8}
+  plot_panels: {ckpt_of: phase5_full, n: 4, members: 8, holdout_asip: true}
   plot_forecast: {ckpt_of: phase6_N1, lead: 7, n: 4, members: 8}
   scenarios: {ckpt_of: phase6_N1, lead: 7, n: 3, members: 8}

@@ -54,6 +54,19 @@ def best_tile(root, day, omega_c):
     return tuple(int(v) for v in origins[int(np.argmax(score))])
 
 
+def build(raw, holdout_asip):
+    """Batch of one sample; with holdout_asip, every ASIP pixel of day t is a
+    target (the 5 km sources keep the usual block partition)."""
+    if not holdout_asip:
+        return D.build_batch(raw)[0]
+    it = D.window({k: v[0] for k, v in raw.items()}, 0)
+    part = D.partition(it)
+    part["asip"] = it["asip_sic"][-1] != 255
+    b = D._stack([D.build_sample(it, part)])
+    b.update({k: raw[k] for k in ("day", "iy0", "ix0")})
+    return b
+
+
 def best_crops(b):
     """M crop (16 C cells) then H crop (8 C cells) inside it with the most ASIP
     targets over the ocean at day t (inputs count for 10 %: there must be
@@ -80,10 +93,10 @@ def ensemble(model, b, n_members, n_steps, oy, ox, hy, hx):
         gen = torch.Generator(dev).manual_seed(m)
         z_c = model.sample_c(nets, ctx, b, keep, n_steps, generator=gen)
         d_m = model.sample_m(nets, ctx, b, z_c, ctx["psi"], t(oy), t(ox), keep, n_steps, generator=gen)
-        x_m = model.x_m(crop(z_c, t(oy), t(ox), CROP_C["M"], 1), d_m)
-        x_m_h = crop(x_m, t(hy - oy), t(hx - ox), CROP_C["H"], FM)
+        x_m = model.x_m(z_c, d_m, b, t(oy), t(ox))
+        x_m_h = crop(model.coarse_h(x_m, b, t(oy), t(ox)), t(hy - oy), t(hx - ox), CROP_C["H"], FM * FH)  # P' X_M at H
         d_h = model.sample_h(nets, ctx, b, z_c, x_m_h, ctx["psi"], t(hy), t(hx), keep, n_steps, generator=gen)
-        zc.append(z_c[0]), xm.append(x_m[0]), dm.append(d_m[0]), xh.append((g.prolong(x_m_h[:, :1], FH) + d_h)[0])
+        zc.append(z_c[0]), xm.append(x_m[0]), dm.append(d_m[0]), xh.append((x_m_h[:, :1] + d_h)[0])
     stack = lambda v: torch.stack(v).float().cpu()  # noqa: E731
     return stack(zc), stack(xm), stack(dm), stack(xh), ctx["psi"][0].float().cpu()
 
@@ -139,6 +152,9 @@ def main():
     ap.add_argument("--members", type=int, default=8)
     ap.add_argument("--n-steps", type=int, default=None, help="Heun steps (default: the model's)")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--holdout-asip", action="store_true",
+                    help="every ASIP pass of day t is a target (none as input): evaluates M / H and the "
+                         "ASIP-based S_C channels against a SAR scene the model has not seen")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -160,7 +176,7 @@ def main():
         iy0, ix0 = best_tile(args.root, day, omega_c)
         ds = D.CascadeDataset(args.root, [day], omega_h, np.array([[iy0, ix0]]), train=False)
         raw = {k: v.to(dev) for k, v in torch.utils.data.default_collate([ds[0]]).items()}
-        b = D.build_batch(raw)[0]
+        b = build(raw, args.holdout_asip)
         oy, ox, hy, hx = best_crops(b)
         with amp:
             zc, xm, dmm, xh, psi = ensemble(model, b, args.members, n_steps, oy, ox, hy, hx)
@@ -178,7 +194,17 @@ def main():
                  crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0], ("SIC",))):
             sc.update({f"{key}_{k}": round(float(v), 5) for k, v in
                        model._accumulate(key, ens[None], tgt[None], m[None], names).items()})
-        metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx], **sc}
+        # reference: persistence of CIMR (day t-1, all obs), on the cells where it exists, next to the
+        # model on the same cells
+        mean_c = zc.mean(0)
+        for c, name in enumerate(("SIC", "SIT")):
+            m = cpu["tgt_C_m"][c] & (cpu["in_C_cimr_w"][-2, c] > 0)
+            if m.any():
+                tgt = cpu["tgt_C"][c][m]
+                sc[f"C_pers_rmse_{name}"] = round(float(((cpu["in_C_cimr"][-2, c][m] - tgt) ** 2).mean().sqrt()), 5)
+                sc[f"C_model_on_pers_cells_rmse_{name}"] = round(float(((mean_c[c][m] - tgt) ** 2).mean().sqrt()), 5)
+        metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx],
+                         "holdout_asip": args.holdout_asip, **sc}
 
         # ---- figure ----
         e_c = extent(iy0, ix0, D.N_C)
