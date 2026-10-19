@@ -5,9 +5,9 @@ heterogeneous satellite observations (ASIP SAR, CIMR, CRISTAL) and ERA5
 forcing, with a cascade of three conditional flow-matching generators on a
 nested polar-stereographic grid (EPSG:3411):
 
-| level | grid | state | observations (v1) |
+| level | grid | state | targets (v1) |
 |---|---|---|---|
-| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | CIMR (SIC, thin SIT), CRISTAL snow |
+| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | ASIP aggregated (SIC), CRISTAL (SIT, snow); CIMR is an input (prior) only |
 | M | 4 km | δSIC, δSIT | CRISTAL SIT (as L2 points), ASIP aggregated |
 | H | 1 km | δSIC | ASIP |
 
@@ -71,7 +71,7 @@ tests/                  pytest suite (synthetic data, CPU)
    evaluation scripts on the test period). Resumable: submit the same command
    again after the job time limit.
    ```bash
-   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022.yaml
+   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v4.yaml
    ```
    `config/pipeline/smoke.yaml` runs the same chain on one month in a few
    minutes per phase (end-to-end check).

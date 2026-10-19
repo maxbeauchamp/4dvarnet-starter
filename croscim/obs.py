@@ -89,13 +89,6 @@ def grid_asip(sic: Tensor, std: Tensor, keep: Tensor, sigma_floor: float) -> tup
     return g.restrict(v, keep * sigma ** -2, 2)
 
 
-def combine(*fields: tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
-    """sigma^-2 combination of several (mean, weight) estimates of one field."""
-    num = sum(m * w for m, w in fields)
-    den = sum(w for _, w in fields)
-    return _div(num, den), den
-
-
 # ---- partition Y = Y^in u Y^tgt ------------------------------------------
 
 def unit_partition(unit: Tensor, valid: Tensor, p_tgt: float, gen: torch.Generator) -> Tensor:

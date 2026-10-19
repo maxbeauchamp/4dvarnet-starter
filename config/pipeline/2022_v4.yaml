@@ -1,10 +1,12 @@
-# 2022 pipeline v3, retrained from phase 3 (formulation section 8):
+# 2022 pipeline v4, retrained from phase 3 (formulation section 8):
+# one target per variable (SIC: ASIP, restricted to 32 km on the C cells it
+# covers over >= 50 %; SIT, HS: CRISTAL), CIMR only as a prior in Y^in;
 # raw CIMR of the last 3 days in the G_C conditioning (model.raw_days),
 # smooth Pi^down and HS conditioning (model.smooth_cond), new sigma_0 floors
 # and S_C normalisation, tiles drawn by ASIP coverage for G_M / G_H, more epochs.
-#   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v3.yaml
+#   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v4.yaml
 
-out: /Odyssey/private/m19beauc/results/pipeline_2022_v3
+out: /Odyssey/private/m19beauc/results/pipeline_2022_v4
 
 dates:
   train: [2022-01-15, 2022-10-31]

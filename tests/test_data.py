@@ -138,10 +138,10 @@ def test_build_sample_shapes_and_detail_constraint(item):
     assert not out["tgt_H_m"][0][:, 1500:].any()  # beyond the ASIP swaths
 
 
-def _perturb(item, where_asip, where_5km):
+def _perturb(item, where_asip, where_5km, sources=("cristal",)):
     it = {k: v.clone() for k, v in item.items()}
     it["asip_sic"][-1][where_asip & (it["asip_sic"][-1] != 255)] = 50
-    for src in ("cimr", "cristal"):
+    for src in sources:
         it[src][-1] = torch.where(where_5km, it[src][-1] + 1.0, it[src][-1])
     return it
 
@@ -162,6 +162,29 @@ def test_targets_come_from_y_tgt_only(item):
         if k.startswith("in_") or k == "f_C":
             assert torch.equal(out[k], ref[k]), k
     assert not torch.equal(out["tgt_C"], ref["tgt_C"])
+    # CIMR is a prior only: all of day t enters Y^in, none of it is a target
+    out = D.build_sample(_perturb(item, torch.zeros_like(part["asip"]), torch.ones_like(part["blk"]), ("cimr",)), part)
+    assert not torch.equal(out["in_C_cimr"], ref["in_C_cimr"])
+    for k in ref:
+        if k.startswith("tgt_"):
+            assert torch.equal(out[k], ref[k]), k
+
+
+def test_sic_target_at_c_is_restricted_asip(item):
+    part = D.partition(item)
+    out = D.build_sample(item, part)
+    m = out["tgt_C_m"][0]
+    assert m.any() and (~m).any()
+    # sigma^-2-weighted mean of the ASIP targets of the cell: between their min and max
+    h, mh = out["tgt_H"][0], out["tgt_H_m"][0]
+    blocks = lambda x: x.reshape(64, 32, 64, 32).permute(0, 2, 1, 3).reshape(64, 64, -1)  # noqa: E731
+    lo = blocks(torch.where(mh, h, torch.inf)).min(-1).values
+    hi = blocks(torch.where(mh, h, -torch.inf)).max(-1).values
+    sic = out["tgt_C"][0]
+    assert (sic[m] >= lo[m] - 1e-5).all() and (sic[m] <= hi[m] + 1e-5).all()
+    # cells mostly unobserved by ASIP get no SIC target
+    cov = blocks(mh.float() * out["omega_h"]).sum(-1) / blocks(out["omega_h"]).sum(-1).clamp(min=1e-9)
+    assert not m[cov < 0.5 - 1e-4].any()
 
 
 def test_build_batch_stacks_samples(raw):

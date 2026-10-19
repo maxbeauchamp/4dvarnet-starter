@@ -263,8 +263,8 @@ def build_sample(it: dict, part: dict | None = None) -> dict:
     out["in_M_asip"] = torch.cat([it["asip_m"], m_t[None].float()])
     out["in_M_asip_w"] = torch.cat([it["asip_m_w"], w_t[None].float()])
     cimr_sigma = torch.tensor(OBS_SIGMA["cimr"], **f64)[:, None, None]
-    out["in_C_cimr"], out["in_C_cimr_w"] = obs.grid_dense(
-        torch.where(keep_in, it["cimr"].double(), torch.nan), cimr_sigma, ay, ax)
+    # CIMR is a prior, never a target: all of it enters Y^in, day t included
+    out["in_C_cimr"], out["in_C_cimr_w"] = obs.grid_dense(it["cimr"].double(), cimr_sigma, ay, ax)
     cr_sigma = torch.tensor(OBS_SIGMA["cristal"], **f64)
     # CRISTAL Y^in as a point table (x, y, value, variable 0 = SIT / 1 = HS, day offset <= 0)
     px, py, pv, pg = _points(it["cristal"].double(), keep_in, x5, y5)
@@ -274,15 +274,16 @@ def build_sample(it: dict, part: dict | None = None) -> dict:
     # ---- targets: G_l(Y^tgt) at day t ----
     sic_h, w_h = obs.grid_asip(sic[-1], std[-1], tgt_asip, ASIP_SIGMA_FLOOR)
     sic_m, w_m_sic = g.restrict(sic_h, w_h, 4)
-    cimr_c, cimr_w = obs.grid_dense(torch.where(keep_tgt[-1], it["cimr"][-1].double(), torch.nan), cimr_sigma, ay, ax)
     px, py, pv, pg = _points(it["cristal"][-1:].double(), keep_tgt[-1:], x5, y5)
     pw = cr_sigma[pg % 2] ** -2
     cr_c, cr_cw = obs.grid_points(px, py, pv, pw, pg, 2, *edges["C"])
     cr_m, cr_mw = obs.grid_points(px, py, pv, pw, pg, 2, *edges["M"])
-    sit_c = obs.combine((cimr_c[1], cimr_w[1]), (cr_c[0], cr_cw[0]))
-    tgt_c = [(cimr_c[0], cimr_w[0]), sit_c, (cr_c[1], cr_cw[1])]  # SIC, SIT, HS
-    out["tgt_C"] = torch.stack([m for m, _ in tgt_c])
-    out["tgt_C_m"] = torch.stack([(w > 0) & (omega_c > 0) for _, w in tgt_c])
+    # one target per variable: SIC from ASIP (C cells observed over >= GAMMA_S of
+    # their ocean), SIT and HS from CRISTAL
+    sic_c, _ = g.restrict(sic_m, w_m_sic, g.factor("M", "C"))
+    cov_c = g.restrict((w_h > 0).double(), omega_h, g.factor("H", "C"))[0]
+    out["tgt_C"] = torch.stack([sic_c, cr_c[0], cr_c[1]])  # SIC, SIT, HS
+    out["tgt_C_m"] = torch.stack([cov_c >= obs.GAMMA_S, cr_cw[0] > 0, cr_cw[1] > 0]) & (omega_c > 0)
     out["tgt_M"] = torch.stack([sic_m, cr_m[0]])
     out["tgt_M_m"] = torch.stack([(w_m_sic > 0) & (omega_m > 0), (cr_mw[0] > 0) & (omega_m > 0)])
     out["tgt_H"], out["tgt_H_m"] = sic_h[None], ((w_h > 0) & (omega_h > 0))[None]

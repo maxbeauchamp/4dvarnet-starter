@@ -207,28 +207,19 @@ def main():
                     sc[f"{key}_detail_rmse_{name}"] = round(float(((ens.mean(0)[c][m[c]] - t_c) ** 2).mean().sqrt()), 5)
                     sc[f"{key}_detail_zero_rmse_{name}"] = round(float((t_c ** 2).mean().sqrt()), 5)
                     sc[f"{key}_detail_spread_{name}"] = round(float(ens[:, c].std(0)[m[c]].mean()), 5)
-        # sensor disagreement at 32 km: ASIP of day t (restricted, cells covered >= 50 %) vs CIMR of
-        # day t: the part of the M / H errors (absolute fields vs ASIP) that is not the generators'
-        w_a = (cpu["tgt_H_m"][0] * cpu["omega_h"]).double()
-        asip_c, _ = g.restrict(cpu["tgt_H"][0].double(), w_a, g.factor("H", "C"))
-        cov_a = g.restrict(cpu["tgt_H_m"][0].double(), cpu["omega_h"].double(), g.factor("H", "C"))[0]
-        cimr_m = cpu["tgt_C_m"][0] | (cpu["in_C_cimr_w"][-1, 0] > 0)
-        cimr_c = torch.where(cpu["tgt_C_m"][0], cpu["tgt_C"][0], cpu["in_C_cimr"][-1, 0]).double()
-        both = (cov_a >= 0.5) & cimr_m
-        if both.any():
-            dif = (asip_c - cimr_c)[both]
-            sc["C_asip_minus_cimr_bias_SIC"] = round(float(dif.mean()), 5)
-            sc["C_asip_vs_cimr_rmse_SIC"] = round(float((dif ** 2).mean().sqrt()), 5)
-            sc["C_asip_vs_cimr_n_cells"] = int(both.sum())
-        # reference: persistence of CIMR (day t-1, all obs), on the cells where it exists, next to the
-        # model on the same cells
+        # references on the C targets (SIC: ASIP, SIT: CRISTAL): CIMR of day t (the prior, all of it
+        # in Y^in; its gap to ASIP bounds the M / H errors of absolute fields from a CIMR-like X_C)
+        # and of day t-1 (persistence), next to the model on the same cells
         mean_c = zc.mean(0)
         for c, name in enumerate(("SIC", "SIT")):
-            m = cpu["tgt_C_m"][c] & (cpu["in_C_cimr_w"][-2, c] > 0)
-            if m.any():
-                tgt = cpu["tgt_C"][c][m]
-                sc[f"C_pers_rmse_{name}"] = round(float(((cpu["in_C_cimr"][-2, c][m] - tgt) ** 2).mean().sqrt()), 5)
-                sc[f"C_model_on_pers_cells_rmse_{name}"] = round(float(((mean_c[c][m] - tgt) ** 2).mean().sqrt()), 5)
+            for ref, d in (("cimr", -1), ("pers", -2)):
+                m = cpu["tgt_C_m"][c] & (cpu["in_C_cimr_w"][d, c] > 0)
+                if m.any():
+                    tgt, dif = cpu["tgt_C"][c][m], cpu["in_C_cimr"][d, c][m] - cpu["tgt_C"][c][m]
+                    sc[f"C_{ref}_rmse_{name}"] = round(float((dif ** 2).mean().sqrt()), 5)
+                    sc[f"C_{ref}_bias_{name}"] = round(float(dif.mean()), 5)
+                    sc[f"C_model_on_{ref}_cells_rmse_{name}"] = round(float(((mean_c[c][m] - tgt) ** 2).mean().sqrt()), 5)
+                    sc[f"C_{ref}_n_cells_{name}"] = int(m.sum())
         metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx],
                          "holdout_asip": args.holdout_asip, **sc}
 

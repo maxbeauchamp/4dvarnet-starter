@@ -47,8 +47,6 @@ def test_grid_dense_constant_and_sigma_weighting():
     v[::3] = float("nan")
     m, w = obs.grid_dense(v, torch.tensor(0.5, **f64), ay, ax)
     assert torch.allclose(m, torch.full_like(m, 3.0)) and torch.all(w > 0)
-    m2, _ = obs.combine((m, w), (torch.full_like(m, 6.0), 3 * w))
-    assert torch.allclose(m2, torch.full_like(m, 5.25))
 
 
 def test_grid_points_mean_per_cell_and_group():
