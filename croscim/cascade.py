@@ -461,7 +461,16 @@ class LitCascadeN0(pl.LightningModule):
         n = ens.shape[1]
         mean = ens.mean(1)
         crps = (ens - tgt[:, None]).abs().mean(1) - (ens[:, :, None] - ens[:, None]).abs().sum((1, 2)) / (2 * n * (n - 1))
-        rank = (ens < tgt[:, None]).sum(1)
+        # ranks on the members clipped to the physical bounds (the recomposed M / H
+        # fields are not bounded), ties broken at random: targets at a bound
+        # (SIC 0 or 1, edge_density 0, ...) otherwise all fall in an end bin
+        lo = torch.tensor([Z_BOUNDS[k][0] for k in names], dtype=ens.dtype, device=ens.device)
+        hi = torch.tensor([1e30 if Z_BOUNDS[k][1] is None else Z_BOUNDS[k][1] for k in names],
+                          dtype=ens.dtype, device=ens.device)
+        shape = (1, 1, -1) + (1,) * (ens.ndim - 3)
+        ens_b = torch.maximum(torch.minimum(ens, hi.view(shape)), lo.view(shape))
+        below, equal = (ens_b < tgt[:, None]).sum(1), (ens_b == tgt[:, None]).sum(1)
+        rank = below + (torch.rand(below.shape, device=ens.device) * (equal + 1)).long()
         ranks = self._ranks.setdefault(key, torch.zeros(len(names), n + 1, device=ens.device))
         out = {}
         for c, name in enumerate(names):
