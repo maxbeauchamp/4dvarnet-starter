@@ -10,6 +10,7 @@ skipped, an interrupted phase resumes from its last.ckpt.
 
 Usage:
     sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022.yaml
+    sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022.yaml --redo-eval
     python scripts/run_pipeline.py --config config/pipeline/smoke.yaml --root <stores> --tiny \\
         --set out=/tmp/smoke dates.train=[2022-01-05,2022-01-06]      # local test
 """
@@ -79,6 +80,7 @@ def main():
     ap.add_argument("--root", default="/Odyssey/public/CROSCIM_dataset")
     ap.add_argument("--set", nargs="*", default=[], help="overrides of the pipeline config (key=value)")
     ap.add_argument("--tiny", action="store_true", help="tiny networks on CPU (local test of this script)")
+    ap.add_argument("--redo-eval", action="store_true", help="run the evaluation scripts again (phases done are skipped)")
     args = ap.parse_args()
     pcfg = OmegaConf.merge(OmegaConf.load(args.config), OmegaConf.from_dotlist(args.set))
     out = pcfg.out
@@ -86,6 +88,8 @@ def main():
     cuda = torch.cuda.is_available() and not args.tiny
     path = os.path.join(out, "report.json")
     report = json.load(open(path)) if os.path.exists(path) else {}
+    if args.redo_eval:
+        report = {k: v for k, v in report.items() if not k.startswith("eval_")}
 
     def save():
         with open(path, "w") as f:
