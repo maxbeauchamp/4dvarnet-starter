@@ -150,18 +150,22 @@ class Up(nn.Module):
 
 
 class Down(nn.Module):
-    """(Pi^down g)(i) = W g(par(i)) + p_i, from a parent grid to its f x f children."""
+    """(Pi^down g)(i) = W g(par(i)) + p_i, from a parent grid to its f x f
+    children; with smooth, W g is interpolated (bilinear) instead of injected,
+    so that the conditioning of the fine generators has no step at the
+    parent edges."""
 
-    def __init__(self, n_in: int, d: int, f: int):
+    def __init__(self, n_in: int, d: int, f: int, smooth: bool = False):
         super().__init__()
-        self.f = f
+        self.f, self.smooth = f, smooth
         self.lin = nn.Conv2d(n_in, d, 1)
         self.pos = _pos_mlp(d)
 
     def forward(self, gp: Tensor) -> Tensor:
         f = self.f
         p = self.pos(child_offsets(f, gp.device).to(gp)).T.reshape(-1, f, f)  # [d, f, f]
-        out = g.prolong(self.lin(gp), f)
+        out = (F.interpolate(self.lin(gp), scale_factor=f, mode="bilinear", align_corners=False)
+               if self.smooth else g.prolong(self.lin(gp), f))
         n = out.shape[-1] // f
         return out + p.repeat(1, out.shape[-2] // f, n)[None]
 

@@ -44,6 +44,7 @@ datamodule:
   val_dates: ???
   test_dates: ???
   tiles_per_day: 8
+  asip_weighted_tiles: false   # true for G_M / G_H: 80 % of the tiles drawn by ASIP coverage
   # single GPU: shuffle the days here; under DDP drop it (Lightning sets the sampler)
   dl_kw: {batch_size: 2, num_workers: 10, shuffle: true, pin_memory: true}  # 12 CPUs per Odyssey job
 
@@ -53,30 +54,26 @@ model:
   pyramid: true
   # [mean, std]. SIC / SIT / HS / forcing: same stats as the former CROSCIM
   # configs (SIC min-max [0, 1] = identity). S_C channels and detail scales
-  # (dSIC_M, dSIT_M, dSIC_H; mean ignored): measured by scripts/inspect_data.py
-  # on 2022-02 (200 batches of 2 tiles); edge_density (jump 0.1) and
-  # aniso_c / aniso_s (2 x 2 corner gradients, e0 = 1e-3) from a second run of
-  # 30 batches.
+  # (dSIC_M, dSIT_M, dSIC_H; mean ignored, relative to the smooth
+  # prolongation P'): measured by scripts/inspect_data.py on
+  # 2022-01-15 .. 2022-10-31 (40 batches of 2 tiles).
   norm:
     SIC: [0.0, 1.0]
     SIT: [0.5695980677516013, 0.8216149733058172]
     HS: [0.15517908473300512, 0.13962813089282153]
-    h_ow: [0.1721, 0.368]
-    h_thin: [0.0184, 0.0926]
-    h_mid: [0.0267, 0.1158]
-    h_pack: [0.7828, 0.4002]
-    sic_std: [0.0174, 0.0553]
-    edge_density: [0.0032, 0.0145]
-    aniso_c: [0.0044, 0.0981]
-    aniso_s: [-0.0048, 0.0899]
-    sit_std: [0.0326, 0.0585]
+    h_ow: [0.2885, 0.4434]
+    h_thin: [0.0233, 0.1034]
+    h_mid: [0.0376, 0.1431]
+    h_pack: [0.6503, 0.4635]
+    sic_std: [0.0215, 0.0599]
+    edge_density: [0.0056, 0.0322]
+    aniso_c: [0.0053, 0.098]
+    aniso_s: [-0.0043, 0.0935]
+    sit_std: [0.0333, 0.0615]
     t2m: [-2.5985455071070955, 13.613745769755358]
     msl: [101261.65922657882, 1112.7187312302365]
     u10: [0.6010106010949151, 4.545559141871505]
     v10: [-0.2104646166032582, 4.707062023219409]
-    # detail scales relative to the smooth prolongation P' (inspect_data on
-    # 2022-01-15 .. 2022-10-31); the S_C channels above keep the stats the
-    # first-run G_C was trained with (the 2022 retraining reuses it)
     dSIC_M: [0.0, 0.052]
     dSIT_M: [0.0, 0.0491]
     dSIC_H: [0.0, 0.012]
@@ -88,6 +85,8 @@ model:
   d: 32            # encoder / pyramid feature size
   d_psi: 4         # latent sub-grid residual psi_C
   n_up_queries: 4  # K queries of Pi^up
+  raw_days: 3      # last days of gridded CIMR given uncompressed to G_C (0: none)
+  smooth_cond: true  # Pi^down and the snow channel of G_H interpolated, not injected
   p_null: 0.1      # context-group dropout (guidance)
   eta: 0.05        # noise on the coarse conditioning (normalised units)
   lambda_s: 1.0

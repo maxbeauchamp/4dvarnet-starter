@@ -29,6 +29,7 @@ import os
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 from torch.optim.swa_utils import AveragedModel
 
@@ -114,9 +115,10 @@ class Norm(nn.Module):
 class Nets(nn.Module):
     """All N0 networks (one EMA copy for the whole set)."""
 
-    def __init__(self, d: int, d_psi: int, swin: dict, n_up_queries: int = 4):
+    def __init__(self, d: int, d_psi: int, swin: dict, n_up_queries: int = 4, raw_days: int = 0,
+                 smooth_cond: bool = False):
         super().__init__()
-        self.d, self.d_psi = d, d_psi
+        self.d, self.d_psi, self.raw_days = d, d_psi, raw_days
         self.e_cimr = DenseEncoder(W * 4, d)
         self.e_pts_c = PointCellEncoder(d, 2, "C", W)   # CRISTAL HS (Y_C)
         self.e_pts_m = PointCellEncoder(d, 2, "M", W)   # CRISTAL SIT (Y_M)
@@ -128,8 +130,8 @@ class Nets(nn.Module):
         self.fuse_c = Fuse(4 * d + 3, d)
         self.psi = nn.Conv2d(d, d_psi, 1)
         n_phi = d + N_S + d_psi
-        self.down_m = Down(n_phi, d, g.factor("M", "C"))
-        self.down_h = Down(n_phi, d, g.factor("H", "C"))
+        self.down_m = Down(n_phi, d, g.factor("M", "C"), smooth_cond)
+        self.down_h = Down(n_phi, d, g.factor("H", "C"), smooth_cond)
         self.gen = nn.ModuleDict({
             "C": Generator(N_Z, self.n_cond("C"), (N_C, N_C), 32., swin["C"]),
             "M": Generator(2, self.n_cond("M"), (128, 128), 4., swin["M"]),
@@ -138,7 +140,8 @@ class Nets(nn.Module):
 
     def n_cond(self, level: str) -> int:
         d = self.d
-        return {"C": 2 * d + 2 + 3, "M": N_X + 2 * d + 3 + 1, "H": N_X + d + 2 * W_H + 3 + 1}[level]
+        return {"C": 2 * d + 2 + 3 + 4 * self.raw_days, "M": N_X + 2 * d + 3 + 1,
+                "H": N_X + d + 2 * W_H + 3 + 1}[level]
 
 
 class LitCascadeN0(pl.LightningModule):
@@ -153,7 +156,7 @@ class LitCascadeN0(pl.LightningModule):
     """
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
-                 n_up_queries=4, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
+                 n_up_queries=4, raw_days=0, smooth_cond=False, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
                  score_every=5, n_score_batches=20):
@@ -161,7 +164,7 @@ class LitCascadeN0(pl.LightningModule):
         self.save_hyperparameters()
         self.levels, self.pyramid = tuple(levels), pyramid
         self.nrm = Norm(norm)
-        self.nets = Nets(d, d_psi, swin, n_up_queries)
+        self.nets = Nets(d, d_psi, swin, n_up_queries, raw_days, smooth_cond)
         self.ema = make_ema(self.nets, ema_decay)
         self._ranks = {}
 
@@ -222,7 +225,15 @@ class LitCascadeN0(pl.LightningModule):
     def cond_c(self, ctx: dict, b: dict, keep: dict) -> tuple[Tensor, Tensor]:
         kh, kf = (keep[k].to(ctx["f"]).view(-1, 1, 1, 1) for k in ("h", "f"))
         flags = self._flags(keep, ctx["f"])
-        cond = torch.cat([ctx["h_C"] * kh, ctx["f"] * kf, flags[0], flags[2], b["omega_c"][:, None], tile_pos(b)], 1)
+        parts = [ctx["h_C"] * kh, ctx["f"] * kf, flags[0], flags[2], b["omega_c"][:, None], tile_pos(b)]
+        r = self.hparams.raw_days
+        if r:
+            # the last r days of gridded CIMR (Y^in), uncompressed: the encoder squeezes the 15 days
+            # into d channels, and G_C did not even reach the persistence of CIMR
+            m = b["in_C_cimr_w"][:, -r:] > 0
+            raw = torch.cat([torch.where(m, self.nrm(b["in_C_cimr"][:, -r:], ("SIC", "SIT"), 2), 0.0), m.to(kh)], 2)
+            parts.append(raw.flatten(1, 2) * kh)
+        cond = torch.cat(parts, 1)
         return cond, (b["omega_c"] > 0)[:, None].to(cond)
 
     def _phi(self, ctx: dict, z_c: Tensor, psi: Tensor, keep: dict) -> Tensor:
@@ -247,7 +258,11 @@ class LitCascadeN0(pl.LightningModule):
         n, fh = CROP_C["H"], g.factor("H", "C")
         nrm = self.nrm
         xm = nrm(x_mh, ("SIC", "SIT"), 1)
-        hs = g.prolong(crop(nrm.z(z_c)[:, 2:3], oy, ox, n, 1), fh)
+        if self.hparams.smooth_cond:  # snow brought to H without steps (P' at M, then bilinear)
+            hs_m = crop(nrm(self.coarse_m(z_c, b)[:, 2:3], ("HS",), 1), oy, ox, n, g.factor("M", "C"))
+            hs = F.interpolate(hs_m, scale_factor=g.factor("H", "M"), mode="bilinear", align_corners=False)
+        else:
+            hs = g.prolong(crop(nrm.z(z_c)[:, 2:3], oy, ox, n, 1), fh)
         phi = crop(self._phi(ctx, z_c, psi, keep), oy, ox, n, 1)
         m = crop(b["in_H_w"], oy, ox, n, fh) > 0
         hh = torch.cat([torch.where(m, nrm(crop(b["in_H"], oy, ox, n, fh), ("SIC",), 1), 0.0), m.to(xm)], 1)

@@ -74,9 +74,10 @@ def valid_tile_origins(omega_c: np.ndarray, stride: int) -> np.ndarray:
 
 class CascadeDataset(torch.utils.data.Dataset):
 
-    def __init__(self, root, days, omega_h, origins, tiles_per_day=None, train=True, horizon=0):
+    def __init__(self, root, days, omega_h, origins, tiles_per_day=None, train=True, horizon=0,
+                 asip_weighted=False):
         self.root, self.days, self.omega_h, self.origins = root, list(days), omega_h, origins
-        self.train, self.horizon = train, horizon
+        self.train, self.horizon, self.asip_weighted = train, horizon, asip_weighted
         self.tiles_per_day = tiles_per_day if train else len(origins)
         self._arr = None
 
@@ -93,6 +94,25 @@ class CascadeDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.days) * self.tiles_per_day
+
+    def _draw_origin(self, t: int) -> int:
+        """Training tile: uniform over the ocean tiles, or (asip_weighted) 80 % of
+        the draws in proportion to the ASIP coverage of day t (the fine levels
+        learn only where ASIP observes: most uniform tiles carry no M / H
+        target), 20 % uniform."""
+        n = len(self.origins)
+        i = self._arr["asip"]["day_index"].get(t)
+        if not self.asip_weighted or i is None or torch.rand(()) < 0.2:
+            return int(torch.randint(n, ()))
+        fm = g.factor("M", "C")
+        nc = g.shape("C")[0]
+        cov = (self._arr["asip"]["m_w"][i] > 0).reshape(nc, fm, nc, fm).mean((1, 3))
+        integ = np.pad(cov.cumsum(0).cumsum(1), ((1, 0), (1, 0)))
+        y, x = self.origins[:, 0], self.origins[:, 1]
+        score = integ[y + N_C, x + N_C] - integ[y, x + N_C] - integ[y + N_C, x] + integ[y, x]
+        if score.sum() <= 0:
+            return int(torch.randint(n, ()))
+        return int(torch.multinomial(torch.as_tensor(score, dtype=torch.float64), 1))
 
     def _read_asip(self, days, iy0, ix0):
         """500 m sic / std of the last W_H + K days, acq of the analysis days
@@ -152,7 +172,7 @@ class CascadeDataset(torch.utils.data.Dataset):
         t = self.days[idx // self.tiles_per_day]
         if self.train:
             # torch RNG: reseeded per worker by the DataLoader (numpy is not)
-            iy0, ix0 = self.origins[torch.randint(len(self.origins), ()).item()]
+            iy0, ix0 = self.origins[self._draw_origin(t)]
             seed = torch.randint(2 ** 31, ()).item()
         else:
             iy0, ix0 = self.origins[idx % self.tiles_per_day]
@@ -302,8 +322,9 @@ def build_batch(batch: dict) -> list[dict]:
 class CascadeDataModule(pl.LightningDataModule):
 
     def __init__(self, root, natural_earth_zip, train_dates, val_dates, test_dates,
-                 tiles_per_day=8, dl_kw=None, horizon=0):
+                 tiles_per_day=8, dl_kw=None, horizon=0, asip_weighted_tiles=False):
         super().__init__()
+        self.asip_weighted_tiles = asip_weighted_tiles  # training tiles drawn by ASIP coverage (fine levels)
         self.horizon = horizon  # 0: N0 batches; K: N1 sequences of K + 1 analysis days
         self.root, self.natural_earth_zip = root, natural_earth_zip
         self.dates = {"train": train_dates, "val": val_dates, "test": test_dates}
@@ -327,7 +348,7 @@ class CascadeDataModule(pl.LightningDataModule):
         omega_c = g.restrict(omega_t, torch.ones_like(omega_t), g.factor("H", "C"))[0].numpy()
         self.ds["train"] = CascadeDataset(self.root, self._days("train"), omega_h,
                                           valid_tile_origins(omega_c, 1), self.tiles_per_day, train=True,
-                                          horizon=self.horizon)
+                                          horizon=self.horizon, asip_weighted=self.asip_weighted_tiles)
         for split in ("val", "test"):
             self.ds[split] = CascadeDataset(self.root, self._days(split), omega_h,
                                             valid_tile_origins(omega_c, N_C), train=False, horizon=self.horizon)

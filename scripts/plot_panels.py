@@ -88,7 +88,7 @@ def ensemble(model, b, n_members, n_steps, oy, ox, hy, hx):
     keep = model.keep_groups(1, dev, drop=False)
     ctx = model.encode(nets, b)
     t = lambda v: torch.tensor([v], device=dev)  # noqa: E731
-    zc, xm, xh, dm = [], [], [], []
+    zc, xm, xh, dm, dh = [], [], [], [], []
     for m in range(n_members):
         gen = torch.Generator(dev).manual_seed(m)
         z_c = model.sample_c(nets, ctx, b, keep, n_steps, generator=gen)
@@ -96,9 +96,9 @@ def ensemble(model, b, n_members, n_steps, oy, ox, hy, hx):
         x_m = model.x_m(z_c, d_m, b, t(oy), t(ox))
         x_m_h = crop(model.coarse_h(x_m, b, t(oy), t(ox)), t(hy - oy), t(hx - ox), CROP_C["H"], FM * FH)  # P' X_M at H
         d_h = model.sample_h(nets, ctx, b, z_c, x_m_h, ctx["psi"], t(hy), t(hx), keep, n_steps, generator=gen)
-        zc.append(z_c[0]), xm.append(x_m[0]), dm.append(d_m[0]), xh.append((x_m_h[:, :1] + d_h)[0])
+        zc.append(z_c[0]), xm.append(x_m[0]), dm.append(d_m[0]), xh.append((x_m_h[:, :1] + d_h)[0]), dh.append(d_h[0])
     stack = lambda v: torch.stack(v).float().cpu()  # noqa: E731
-    return stack(zc), stack(xm), stack(dm), stack(xh), ctx["psi"][0].float().cpu()
+    return stack(zc), stack(xm), stack(dm), stack(xh), stack(dh), ctx["psi"][0].float().cpu()
 
 
 def extent(iy0, ix0, n_c, oy=0, ox=0):
@@ -179,7 +179,7 @@ def main():
         b = build(raw, args.holdout_asip)
         oy, ox, hy, hx = best_crops(b)
         with amp:
-            zc, xm, dmm, xh, psi = ensemble(model, b, args.members, n_steps, oy, ox, hy, hx)
+            zc, xm, dmm, xh, dhh, psi = ensemble(model, b, args.members, n_steps, oy, ox, hy, hx)
 
         # ---- metrics on Y^tgt ----
         cpu = {k: v[0].float().cpu() if v.is_floating_point() else v[0].cpu() for k, v in b.items()
@@ -194,6 +194,32 @@ def main():
                  crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0], ("SIC",))):
             sc.update({f"{key}_{k}": round(float(v), 5) for k, v in
                        model._accumulate(key, ens[None], tgt[None], m[None], names).items()})
+        # details alone: generated dX vs the ASIP detail targets, against the "no detail" reference
+        # dX = 0 (P' X_C only): do G_M / G_H add anything?
+        for key, ens, tgt, m, names in (
+                ("M", dmm, crop(cpu["tgt_dM"][None], o(oy), o(ox), CROP_C["M"], FM)[0],
+                 crop(cpu["tgt_dM_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0], ("dSIC_M", "dSIT_M")),
+                ("H", dhh, crop(cpu["tgt_dH"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0],
+                 crop(cpu["tgt_dH_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0], ("dSIC_H",))):
+            for c, name in enumerate(names):
+                if m[c].any():
+                    t_c = tgt[c][m[c]]
+                    sc[f"{key}_detail_rmse_{name}"] = round(float(((ens.mean(0)[c][m[c]] - t_c) ** 2).mean().sqrt()), 5)
+                    sc[f"{key}_detail_zero_rmse_{name}"] = round(float((t_c ** 2).mean().sqrt()), 5)
+                    sc[f"{key}_detail_spread_{name}"] = round(float(ens[:, c].std(0)[m[c]].mean()), 5)
+        # sensor disagreement at 32 km: ASIP of day t (restricted, cells covered >= 50 %) vs CIMR of
+        # day t: the part of the M / H errors (absolute fields vs ASIP) that is not the generators'
+        w_a = (cpu["tgt_H_m"][0] * cpu["omega_h"]).double()
+        asip_c, _ = g.restrict(cpu["tgt_H"][0].double(), w_a, g.factor("H", "C"))
+        cov_a = g.restrict(cpu["tgt_H_m"][0].double(), cpu["omega_h"].double(), g.factor("H", "C"))[0]
+        cimr_m = cpu["tgt_C_m"][0] | (cpu["in_C_cimr_w"][-1, 0] > 0)
+        cimr_c = torch.where(cpu["tgt_C_m"][0], cpu["tgt_C"][0], cpu["in_C_cimr"][-1, 0]).double()
+        both = (cov_a >= 0.5) & cimr_m
+        if both.any():
+            dif = (asip_c - cimr_c)[both]
+            sc["C_asip_minus_cimr_bias_SIC"] = round(float(dif.mean()), 5)
+            sc["C_asip_vs_cimr_rmse_SIC"] = round(float((dif ** 2).mean().sqrt()), 5)
+            sc["C_asip_vs_cimr_n_cells"] = int(both.sum())
         # reference: persistence of CIMR (day t-1, all obs), on the cells where it exists, next to the
         # model on the same cells
         mean_c = zc.mean(0)
@@ -257,6 +283,30 @@ def main():
         print(f"{date}: panel and metrics in {metrics[date]['time_s']} s", flush=True)
 
     summary(metrics, os.path.join(args.out, "metrics_summary.png"))
+    rank_histograms(model._ranks, args.out)
+
+
+def rank_histograms(ranks: dict, out: str):
+    """Rank of the targets among the members, accumulated over the dates
+    (flat: calibrated; U: under-dispersed; dome: over-dispersed)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    torch.save({k: v.cpu() for k, v in ranks.items()}, os.path.join(out, "ranks.pt"))
+    show = [("C", c, n) for c, n in enumerate(Z_NAMES) if n in ("SIC", "SIT", "HS", "h_ow", "sic_std", "edge_density", "aniso_c")]
+    show += [("M", 0, "SIC"), ("M", 1, "SIT"), ("H", 0, "SIC")]
+    show = [s for s in show if s[0] in ranks]
+    fig, axes = plt.subplots(1, len(show), figsize=(2.2 * len(show), 2.4), squeeze=False)
+    for ax, (key, c, name) in zip(axes[0], show):
+        h = ranks[key][c].cpu().numpy()
+        ax.bar(np.arange(len(h)), h / max(h.sum(), 1), color="tab:blue")
+        ax.axhline(1 / len(h), color="k", lw=0.8, ls="--")
+        ax.set_title(f"{key} {name}", fontsize=8)
+        ax.tick_params(labelsize=6)
+    fig.suptitle("rank histograms of the Y^tgt targets (dashed: calibrated)", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "rank_histograms.png"), dpi=110)
+    plt.close(fig)
 
 
 def summary(metrics, path):

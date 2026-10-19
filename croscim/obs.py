@@ -31,10 +31,11 @@ ANISO_E0 = 1e-3                    # gradient-energy floor of the anisotropy (no
 # sigma_samp the standard error of the statistic for one independent sample:
 # sqrt(p (1 - p)) for the fractions (histogram, edge_density), S / sqrt(2) for
 # the standard deviations (sic_std, sit_std), 1 - a^2 for the anisotropy
-# (as for a correlation coefficient, a = magnitude). sigma_0 = 10 % of the
-# channel std measured on 2022-02 (worst-case constants drowned the signal of
-# edge_density / sit_std: floor 2-4 x their std).
-S_SIGMA0 = (0.037, 0.0093, 0.0116, 0.040, 0.0055, 0.0015, 0.0098, 0.0090, 0.0059)
+# (as for a correlation coefficient, a = magnitude). sigma_0: 10 % of the
+# channel std measured on 2022-01-15 .. 2022-10-31, 20 % for the texture
+# channels (sic_std, edge_density, anisotropy): with 10 % (and worst-case
+# constants before that) their ensemble spread was 2-10 x below the error.
+S_SIGMA0 = (0.044, 0.0103, 0.0143, 0.046, 0.012, 0.0064, 0.0196, 0.0187, 0.0062)
 GAMMA_S = 0.5           # min. observed ocean fraction of a C cell for the ASIP-based channels
 ASIP_PIX_PER_SAMPLE = 4  # 1 km pixels per independent sample (n_eff)
 MIN_SIT_OBS = 4          # min. observed M cells of a C cell for sit_std
