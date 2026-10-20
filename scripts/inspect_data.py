@@ -230,7 +230,7 @@ def main():
         acc.setdefault("asip_tgt_cells", []).append(float(b["tgt_H_m"].sum()))
         # persistence of CIMR (day t-1, all obs) against the C targets of day t
         for c, name in enumerate(("SIC", "SIT")):
-            m = b["tgt_C_m"][:, c] & (b["in_C_cimr_w"][:, -2, c] > 0)
+            m = b["tgt_C_m"][:, c] & (b["tgt_C_sigma"][:, c] == 0) & (b["in_C_cimr_w"][:, -2, c] > 0)
             err = (b["in_C_cimr"][:, -2, c] - b["tgt_C"][:, c])[m]
             acc[f"pers_{name}_se"] = acc.get(f"pers_{name}_se", 0.0) + float((err ** 2).sum())
             acc[f"pers_{name}_n"] = acc.get(f"pers_{name}_n", 0) + int(m.sum())

@@ -56,6 +56,7 @@ BLOCK_C = 8       # partition blocks of the 5 km sources: 8 x 8 C cells (256 km)
 ASIP_PASS_GAP_MIN = 10  # ASIP partition units: acquisitions less than 10 min apart form one pass
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
 GAMMA = {"SIC": 0.5, "SIT": 0.05}  # min. observed ocean fraction of a parent for a detail target
+CIMR_TGT_SIGMA = 0.15  # SIC: scale floor of the weak CIMR target, outside the ASIP coverage only
 
 
 def to_day(date: str) -> int:
@@ -279,11 +280,16 @@ def build_sample(it: dict, part: dict | None = None) -> dict:
     cr_c, cr_cw = obs.grid_points(px, py, pv, pw, pg, 2, *edges["C"])
     cr_m, cr_mw = obs.grid_points(px, py, pv, pw, pg, 2, *edges["M"])
     # one target per variable: SIC from ASIP (C cells observed over >= GAMMA_S of
-    # their ocean), SIT and HS from CRISTAL
+    # their ocean), SIT and HS from CRISTAL. Outside the ASIP coverage, CIMR of day t
+    # (the prior, also in Y^in) is a weak SIC target: scale floor CIMR_TGT_SIGMA in
+    # tgt_C_sigma (0 for the ASIP / CRISTAL targets), as sigma_S for S_C
     sic_c, _ = g.restrict(sic_m, w_m_sic, g.factor("M", "C"))
     cov_c = g.restrict((w_h > 0).double(), omega_h, g.factor("H", "C"))[0]
-    out["tgt_C"] = torch.stack([sic_c, cr_c[0], cr_c[1]])  # SIC, SIT, HS
-    out["tgt_C_m"] = torch.stack([cov_c >= obs.GAMMA_S, cr_cw[0] > 0, cr_cw[1] > 0]) & (omega_c > 0)
+    asip_c, cimr_c = cov_c >= obs.GAMMA_S, out["in_C_cimr_w"][-1, 0] > 0
+    out["tgt_C"] = torch.stack([torch.where(asip_c, sic_c, out["in_C_cimr"][-1, 0]), cr_c[0], cr_c[1]])  # SIC, SIT, HS
+    out["tgt_C_m"] = torch.stack([asip_c | cimr_c, cr_cw[0] > 0, cr_cw[1] > 0]) & (omega_c > 0)
+    out["tgt_C_sigma"] = torch.zeros_like(out["tgt_C"])
+    out["tgt_C_sigma"][0] = torch.where(asip_c, 0.0, CIMR_TGT_SIGMA)
     out["tgt_M"] = torch.stack([sic_m, cr_m[0]])
     out["tgt_M_m"] = torch.stack([(w_m_sic > 0) & (omega_m > 0), (cr_mw[0] > 0) & (omega_m > 0)])
     out["tgt_H"], out["tgt_H_m"] = sic_h[None], ((w_h > 0) & (omega_h > 0))[None]

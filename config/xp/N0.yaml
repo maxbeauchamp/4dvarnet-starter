@@ -54,9 +54,11 @@ model:
   pyramid: true
   # [mean, std]. SIC / SIT / HS / forcing: same stats as the former CROSCIM
   # configs (SIC min-max [0, 1] = identity). S_C channels and detail scales
-  # (dSIC_M, dSIT_M, dSIC_H; mean ignored, relative to the smooth
-  # prolongation P'): measured by scripts/inspect_data.py on
-  # 2022-01-15 .. 2022-10-31 (40 batches of 2 tiles).
+  # (dSIC_M, dSIT_M, dSIC_H; mean ignored): S_C measured by
+  # scripts/inspect_data.py on 2022-01-15 .. 2022-10-31 (40 batches of 2
+  # tiles). The scales of the corrections (corrector: true) are first
+  # guesses from the M / H errors of the prolonged coarse fields
+  # (exact details relative to P': 0.052, 0.0491, 0.012).
   norm:
     SIC: [0.0, 1.0]
     SIT: [0.5695980677516013, 0.8216149733058172]
@@ -74,9 +76,9 @@ model:
     msl: [101261.65922657882, 1112.7187312302365]
     u10: [0.6010106010949151, 4.545559141871505]
     v10: [-0.2104646166032582, 4.707062023219409]
-    dSIC_M: [0.0, 0.052]
-    dSIT_M: [0.0, 0.0491]
-    dSIC_H: [0.0, 0.012]
+    dSIC_M: [0.0, 0.1]
+    dSIT_M: [0.0, 0.08]
+    dSIC_H: [0.0, 0.05]
   # one Swin U-Net per generator; G_M / G_H run on 128^2 / 256^2 crops
   swin:
     C: ${swin_config}
@@ -87,6 +89,7 @@ model:
   n_up_queries: 4  # K queries of Pi^up
   raw_days: 3      # last days of gridded CIMR given uncompressed to G_C (0: none)
   smooth_cond: true  # Pi^down and the snow channel of G_H interpolated, not injected
+  corrector: true    # G_M / G_H correct the prolonged coarser sample (no R dX = 0)
   p_null: 0.1      # context-group dropout (guidance)
   eta: 0.05        # noise on the coarse conditioning (normalised units)
   lambda_s: 1.0

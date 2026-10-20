@@ -7,12 +7,14 @@ nested polar-stereographic grid (EPSG:3411):
 
 | level | grid | state | targets (v1) |
 |---|---|---|---|
-| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | ASIP aggregated (SIC), CRISTAL (SIT, snow); CIMR is an input (prior) only |
-| M | 4 km | δSIC, δSIT | CRISTAL SIT (as L2 points), ASIP aggregated |
-| H | 1 km | δSIC | ASIP |
+| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | ASIP aggregated (SIC; CIMR as a weak target outside ASIP), CRISTAL (SIT, snow); CIMR is otherwise an input (prior) |
+| M | 4 km | δSIC, δSIT (corrections of P′X_C) | CRISTAL SIT (as L2 points), ASIP aggregated |
+| H | 1 km | δSIC (correction of P′X_M) | ASIP |
 
-The state is decomposed exactly, `X = (X_C, δX_M, δX_H)` with `R δX = 0`
-(no learned decoder). Two networks are trained in turn: N0 (analysis, the
+The state is `X = (X_C, δX_M, δX_H)` with `X_M = P′X_C + δX_M`,
+`X_H = P′X_M + δX_H` (no learned decoder): G_M and G_H correct the prolonged
+coarser sample (`model.corrector=true`; the former exact details with
+`R δX = 0` remain available with `corrector=false`). Two networks are trained in turn: N0 (analysis, the
 cascade G_C → G_M → G_H) and N1 (one-day transition of `Z_C = (X_C, S_C, ψ_C)`,
 rolled out in mode A). Notation and choices: [docs/formulation.tex](docs/formulation.tex).
 
@@ -71,7 +73,7 @@ tests/                  pytest suite (synthetic data, CPU)
    evaluation scripts on the test period). Resumable: submit the same command
    again after the job time limit.
    ```bash
-   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v4.yaml
+   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v5.yaml
    ```
    `config/pipeline/smoke.yaml` runs the same chain on one month in a few
    minutes per phase (end-to-end check).

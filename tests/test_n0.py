@@ -43,6 +43,7 @@ def make_batch(bsz=1, seed=0):
          "in_C_cimr": r(bsz, D.W, 2, 64, 64), "in_C_cimr_w": (r(bsz, D.W, 2, 64, 64) > 0.3).float(),
          "pts": pts, "pts_valid": r(bsz, n_pts) > 0.1, "f_C": r(bsz, D.W, 4, 64, 64),
          "tgt_C": r(bsz, 3, 64, 64), "tgt_C_m": r(bsz, 3, 64, 64) > 0.7,
+         "tgt_C_sigma": torch.cat([0.15 * (r(bsz, 1, 64, 64) > 0.5), torch.zeros(bsz, 2, 64, 64)], 1),
          "tgt_S": r(bsz, 9, 64, 64), "tgt_S_m": r(bsz, 9, 64, 64) > 0.5, "tgt_S_sigma": 0.05 + 0.1 * r(bsz, 9, 64, 64),
          "tgt_M": r(bsz, 2, nm, nm), "tgt_M_m": r(bsz, 2, nm, nm) > 0.5,
          "tgt_H": r(bsz, 1, nh, nh), "tgt_H_m": r(bsz, 1, nh, nh) > 0.5}
@@ -164,6 +165,26 @@ def test_sample_cascade_details_are_exact(model, batch):
     assert ((rm - s["x_m"][:, :1]).abs() * (wm > 0)).max() < 1e-5
     rc, wc = g.restrict(s["x_m"], w_m, 8)
     assert ((rc - s["z_c"][:, :2]).abs() * (wc > 0)).max() < 1e-5
+
+
+def test_corrector_losses_and_bounded_samples(batch):
+    m = make_model(corrector=True)
+    out = m.losses(batch)
+    for k in ("X_C", "X_M", "X_H", "cyc", "loss"):
+        assert torch.isfinite(out[k]), k
+    out["loss"].backward()
+    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in m.nets.gen["M"].parameters())
+    s = m.sample_cascade(batch)
+    # corrections censored at the physical bounds of the corrected fields
+    assert s["x_m"][:, 0].min() >= -1e-5 and s["x_m"][:, 0].max() <= 1 + 1e-5 and s["x_m"][:, 1].min() >= -1e-5
+    assert s["x_h"].min() >= -1e-5 and s["x_h"].max() <= 1 + 1e-5
+    # no R dX = 0 constraint: the corrections may change the coarse means
+    assert g.restrict(s["d_m"], batch["omega_m"][:, None], 8)[0].abs().max() > 1e-3
+
+
+def test_weak_cimr_targets_are_not_scored(batch):
+    m = C.strict_mask(batch)
+    assert not (m[:, 0] & (batch["tgt_C_sigma"][:, 0] > 0)).any() and m[:, 0].any()
 
 
 def test_paired_noise_is_reproducible(model, batch):

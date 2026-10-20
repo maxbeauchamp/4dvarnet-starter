@@ -35,7 +35,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 sys.path.append(REPO)
 from croscim import data as D  # noqa: E402
 from croscim import grid as g  # noqa: E402
-from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop  # noqa: E402
+from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask  # noqa: E402
 from croscim.ocean import ocean_fraction_h  # noqa: E402
 from croscim.transition import load_n0  # noqa: E402
 
@@ -186,34 +186,30 @@ def main():
                if torch.is_tensor(v) and v.ndim > 1}
         o = lambda v: torch.tensor([v])  # noqa: E731
         sc = {}
+        m_c = strict_mask(b)[0].cpu()  # without the weak CIMR SIC targets
+        tgt_m = crop(cpu["tgt_M"][None], o(oy), o(ox), CROP_C["M"], FM)[0]
+        msk_m = crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0]
+        tgt_h = crop(cpu["tgt_H"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0]
+        msk_h = crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0]
         for key, ens, tgt, m, names in (
-                ("C", zc, torch.cat([cpu["tgt_C"], cpu["tgt_S"]]), torch.cat([cpu["tgt_C_m"], cpu["tgt_S_m"]]), Z_NAMES),
-                ("M", xm, crop(cpu["tgt_M"][None], o(oy), o(ox), CROP_C["M"], FM)[0],
-                 crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0], ("SIC", "SIT")),
-                ("H", xh, crop(cpu["tgt_H"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0],
-                 crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0], ("SIC",))):
+                ("C", zc, torch.cat([cpu["tgt_C"], cpu["tgt_S"]]), m_c, Z_NAMES),
+                ("M", xm, tgt_m, msk_m, ("SIC", "SIT")), ("H", xh, tgt_h, msk_h, ("SIC",))):
             sc.update({f"{key}_{k}": round(float(v), 5) for k, v in
                        model._accumulate(key, ens[None], tgt[None], m[None], names).items()})
-        # details alone: generated dX vs the ASIP detail targets, against the "no detail" reference
-        # dX = 0 (P' X_C only): do G_M / G_H add anything?
-        for key, ens, tgt, m, names in (
-                ("M", dmm, crop(cpu["tgt_dM"][None], o(oy), o(ox), CROP_C["M"], FM)[0],
-                 crop(cpu["tgt_dM_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0], ("dSIC_M", "dSIT_M")),
-                ("H", dhh, crop(cpu["tgt_dH"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0],
-                 crop(cpu["tgt_dH_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0], ("dSIC_H",))):
+        # what G_M / G_H add: the same scores for the prolonged coarser field alone (P' X_C at M,
+        # P' X_M at H, ensemble mean), and the spread of the generated part dX
+        for key, coarse, d, tgt, m, names in (("M", xm - dmm, dmm, tgt_m, msk_m, ("SIC", "SIT")),
+                                              ("H", xh - dhh, dhh, tgt_h, msk_h, ("SIC",))):
             for c, name in enumerate(names):
                 if m[c].any():
-                    t_c = tgt[c][m[c]]
-                    sc[f"{key}_detail_rmse_{name}"] = round(float(((ens.mean(0)[c][m[c]] - t_c) ** 2).mean().sqrt()), 5)
-                    sc[f"{key}_detail_zero_rmse_{name}"] = round(float((t_c ** 2).mean().sqrt()), 5)
-                    sc[f"{key}_detail_spread_{name}"] = round(float(ens[:, c].std(0)[m[c]].mean()), 5)
-        # references on the C targets (SIC: ASIP, SIT: CRISTAL): CIMR of day t (the prior, all of it
-        # in Y^in; its gap to ASIP bounds the M / H errors of absolute fields from a CIMR-like X_C)
-        # and of day t-1 (persistence), next to the model on the same cells
+                    sc[f"{key}_coarse_rmse_{name}"] = round(float(((coarse.mean(0)[c] - tgt[c])[m[c]] ** 2).mean().sqrt()), 5)
+                    sc[f"{key}_dX_spread_{name}"] = round(float(d[:, c].std(0)[m[c]].mean()), 5)
+        # references on the strict C targets (SIC: ASIP, SIT: CRISTAL): CIMR of day t (the prior,
+        # all of it in Y^in) and of day t-1 (persistence), next to the model on the same cells
         mean_c = zc.mean(0)
         for c, name in enumerate(("SIC", "SIT")):
             for ref, d in (("cimr", -1), ("pers", -2)):
-                m = cpu["tgt_C_m"][c] & (cpu["in_C_cimr_w"][d, c] > 0)
+                m = m_c[c] & (cpu["in_C_cimr_w"][d, c] > 0)
                 if m.any():
                     tgt, dif = cpu["tgt_C"][c][m], cpu["in_C_cimr"][d, c][m] - cpu["tgt_C"][c][m]
                     sc[f"C_{ref}_rmse_{name}"] = round(float((dif ** 2).mean().sqrt()), 5)
@@ -240,7 +236,7 @@ def main():
                          ("SIC ens. spread", masked(std_c[0], land_c), e_c, spread, e_m, ~land_c),
                          ("SIT ens. mean (m)", masked(mean_c[1], land_c), e_c, dict(cmap="viridis"), None, ~land_c),
                          ("snow ens. mean (m)", masked(mean_c[2], land_c), e_c, dict(cmap="viridis"), None, ~land_c),
-                         ("X^_C SIC (Y^tgt)", masked(cpu["tgt_C"][0].numpy(), cpu["tgt_C_m"][0].numpy()), e_c, sic, None, ~land_c),
+                         ("X^_C SIC (Y^tgt, ASIP)", masked(cpu["tgt_C"][0].numpy(), m_c[0].numpy()), e_c, sic, None, ~land_c),
                          ("CIMR SIC (Y^in, day t)", masked(cpu["in_C_cimr"][-1, 0].numpy(),
                                                           cpu["in_C_cimr_w"][-1, 0].numpy() > 0), e_c, sic, None, ~land_c)]),
             ("S_C, psi_C", [("open water h_ow", masked(mean_c[zi["h_ow"]], land_c), e_c, dict(cmap="cividis", vmin=0, vmax=1), None, ~land_c),

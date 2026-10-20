@@ -162,18 +162,23 @@ def test_targets_come_from_y_tgt_only(item):
         if k.startswith("in_") or k == "f_C":
             assert torch.equal(out[k], ref[k]), k
     assert not torch.equal(out["tgt_C"], ref["tgt_C"])
-    # CIMR is a prior only: all of day t enters Y^in, none of it is a target
+    # CIMR is a prior: all of day t enters Y^in; it is only the weak SIC target
+    # outside the ASIP coverage (tgt_C_sigma > 0)
     out = D.build_sample(_perturb(item, torch.zeros_like(part["asip"]), torch.ones_like(part["blk"]), ("cimr",)), part)
     assert not torch.equal(out["in_C_cimr"], ref["in_C_cimr"])
+    weak = ref["tgt_C_sigma"] > 0
+    assert weak[0].any() and not weak[1:].any()
+    assert torch.equal(out["tgt_C"][~weak], ref["tgt_C"][~weak])
+    assert torch.equal(out["tgt_C"][0][weak[0]], out["in_C_cimr"][-1, 0][weak[0]])
     for k in ref:
-        if k.startswith("tgt_"):
+        if k.startswith("tgt_") and k != "tgt_C":
             assert torch.equal(out[k], ref[k]), k
 
 
 def test_sic_target_at_c_is_restricted_asip(item):
     part = D.partition(item)
     out = D.build_sample(item, part)
-    m = out["tgt_C_m"][0]
+    m = out["tgt_C_m"][0] & (out["tgt_C_sigma"][0] == 0)  # ASIP targets (the others: weak CIMR)
     assert m.any() and (~m).any()
     # sigma^-2-weighted mean of the ASIP targets of the cell: between their min and max
     h, mh = out["tgt_H"][0], out["tgt_H_m"][0]
@@ -182,7 +187,7 @@ def test_sic_target_at_c_is_restricted_asip(item):
     hi = blocks(torch.where(mh, h, -torch.inf)).max(-1).values
     sic = out["tgt_C"][0]
     assert (sic[m] >= lo[m] - 1e-5).all() and (sic[m] <= hi[m] + 1e-5).all()
-    # cells mostly unobserved by ASIP get no SIC target
+    # cells mostly unobserved by ASIP get no ASIP SIC target
     cov = blocks(mh.float() * out["omega_h"]).sum(-1) / blocks(out["omega_h"]).sum(-1).clamp(min=1e-9)
     assert not m[cov < 0.5 - 1e-4].any()
 

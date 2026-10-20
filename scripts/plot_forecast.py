@@ -39,7 +39,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from croscim import data as D  # noqa: E402
 from croscim import grid as g  # noqa: E402
 from croscim import rollout as R  # noqa: E402
-from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop  # noqa: E402
+from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask  # noqa: E402
 from croscim.ocean import ocean_fraction_h  # noqa: E402
 from croscim.transition import load_n1  # noqa: E402
 from plot_panels import best_crops, best_tile, extent, masked, panel  # noqa: E402
@@ -49,10 +49,8 @@ I_PACK = Z_NAMES.index("h_pack")
 
 
 def day_obs(b):
-    """CIMR SIC of the day at C, all of it (Y^tgt where held out, Y^in elsewhere)."""
-    tgt, m_tgt = b["tgt_C"][0, 0], b["tgt_C_m"][0, 0]
-    inp, m_in = b["in_C_cimr"][0, -1, 0], b["in_C_cimr_w"][0, -1, 0] > 0
-    return torch.where(m_tgt, tgt, inp).float().cpu(), (m_tgt | m_in).cpu()
+    """CIMR SIC of the day at C (all of it is in Y^in)."""
+    return b["in_C_cimr"][0, -1, 0].float().cpu(), (b["in_C_cimr_w"][0, -1, 0] > 0).cpu()
 
 
 @torch.no_grad()
@@ -127,7 +125,7 @@ def main():
         for k in range(K + 1):
             b = days[k]
             tgt = torch.cat([b["tgt_C"], b["tgt_S"]], 1).float().cpu()
-            msk = torch.cat([b["tgt_C_m"], b["tgt_S_m"]], 1).cpu()
+            msk = strict_mask(b).cpu()
             fc = n0._accumulate(f"lead{k}", traj[None, :, k], tgt, msk, Z_NAMES)
             an = n0._accumulate(f"ana{k}", ana[None, :, k], tgt, msk, Z_NAMES)
             row = {f"fc_{n}": round(float(v), 5) for n, v in fc.items()}

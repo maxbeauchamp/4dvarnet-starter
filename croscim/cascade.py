@@ -20,6 +20,14 @@ psi_C = Psi_C(h_C) a small latent field.
     L = sum_l (L_X^l + lambda_S L_S^l) + lambda_c L_cyc + lambda_psi L_psi
 
 `levels` selects the trained generators (phase 3: ["C"] with pyramid=False).
+
+corrector=True (formulation section 8): G_M and G_H generate corrections of
+the prolonged coarser sample, dX_M = X_M - P' X_C, dX_H = X_H - P' X_M, with
+targets Y - P' X^sample and without the constraint R dX = 0 (no Pi0
+projection), censored at the physical bounds of X. They can then correct the
+coarse errors (level, ice edge) and remove the C-cell steps; X_C stays the G_C
+sample (R X_M is the consistent coarse field). corrector=False: exact
+details (R dX = 0) with the targets Y - P' R Y, for the former checkpoints.
 """
 
 from __future__ import annotations
@@ -60,6 +68,11 @@ def make_ema(module: nn.Module, decay: float) -> AveragedModel:
     for p in ema.parameters():
         p.requires_grad_(False)
     return ema
+
+
+def strict_mask(b: dict) -> Tensor:
+    """Mask of the strict Z_C targets (scores): without the weak CIMR SIC targets."""
+    return torch.cat([b["tgt_C_m"] & (b["tgt_C_sigma"] == 0), b["tgt_S_m"]], 1)
 
 
 def crop(x: Tensor, oy: Tensor, ox: Tensor, size: int, f: int) -> Tensor:
@@ -156,7 +169,7 @@ class LitCascadeN0(pl.LightningModule):
     """
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
-                 n_up_queries=4, raw_days=0, smooth_cond=False, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
+                 n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
                  score_every=5, n_score_batches=20):
@@ -281,7 +294,7 @@ class LitCascadeN0(pl.LightningModule):
     def target_c(self, b: dict):
         z = torch.cat([b["tgt_C"], b["tgt_S"]], 1)
         m = torch.cat([b["tgt_C_m"], b["tgt_S_m"]], 1)
-        floor = torch.cat([torch.zeros_like(b["tgt_C"]), b["tgt_S_sigma"]], 1) / self.nrm.z_std
+        floor = torch.cat([b["tgt_C_sigma"], b["tgt_S_sigma"]], 1) / self.nrm.z_std
         return torch.where(m, self.nrm.z(z), 0.0), m, floor
 
     def choose_crops(self, b: dict) -> tuple[Tensor, Tensor, Tensor, Tensor]:
@@ -289,8 +302,9 @@ class LitCascadeN0(pl.LightningModule):
         candidates; H crop (8 C cells) inside it with the most dX_H targets."""
         bsz, dev = b["omega_c"].shape[0], b["omega_c"].device
         nm, nh = CROP_C["M"], CROP_C["H"]
-        cov_m = g.block_sum(b["tgt_dM_m"].any(1).float(), g.factor("M", "C"))
-        cov_h = g.block_sum(b["tgt_dH_m"][:, 0].float(), g.factor("H", "C"))
+        km, kh = ("tgt_M_m", "tgt_H_m") if self.hparams.corrector else ("tgt_dM_m", "tgt_dH_m")
+        cov_m = g.block_sum(b[km].any(1).float(), g.factor("M", "C"))
+        cov_h = g.block_sum(b[kh][:, 0].float(), g.factor("H", "C"))
         oy = torch.zeros(bsz, dtype=torch.long, device=dev)
         ox, hy, hx = oy.clone(), oy.clone(), oy.clone()
         for i in range(bsz):
@@ -308,6 +322,15 @@ class LitCascadeN0(pl.LightningModule):
         w = omega[:, None]
         return lambda x: g.pi0(x, w, f)
 
+    def fine_kw(self, coarse: Tensor, omega: Tensor, f: int, std: Tensor) -> dict:
+        """Projection (exact details) or bounds of the correction (corrector):
+        coarse + dX in [0, 1] for SIC, >= 0 for SIT; coarse = (SIC, SIT) or SIC."""
+        if not self.hparams.corrector:
+            return {"proj": self.pi0(omega, f)}
+        lo = -coarse / std
+        hi = torch.cat([(1 - coarse[:, :1]) / std[:, :1], torch.full_like(coarse[:, 1:], float("inf"))], 1)
+        return {"lo": lo, "hi": hi}
+
     @torch.no_grad()
     def sample_c(self, nets, ctx, b, keep, n_steps, generator=None, w=1.0):
         cond, valid = self.cond_c(ctx, b, keep)
@@ -322,13 +345,16 @@ class LitCascadeN0(pl.LightningModule):
     @torch.no_grad()
     def sample_m(self, nets, ctx, b, z_c, psi, oy, ox, keep, n_steps, generator=None):
         cond, valid, omega = self.cond_m(nets, ctx, b, z_c, psi, oy, ox, keep)
-        d = nets.gen["M"].sample(cond, valid, n_steps, proj=self.pi0(omega, g.factor("M", "C")), generator=generator)
+        coarse = crop(self.coarse_m(z_c, b)[:, :2], oy, ox, CROP_C["M"], g.factor("M", "C"))
+        kw = self.fine_kw(coarse, omega, g.factor("M", "C"), self.nrm.dM_std)
+        d = nets.gen["M"].sample(cond, valid, n_steps, generator=generator, **kw)
         return d * self.nrm.dM_std
 
     @torch.no_grad()
     def sample_h(self, nets, ctx, b, z_c, x_m, psi, oy, ox, keep, n_steps, generator=None):
         cond, valid, omega = self.cond_h(nets, ctx, b, z_c, x_m, psi, oy, ox, keep)
-        d = nets.gen["H"].sample(cond, valid, n_steps, proj=self.pi0(omega, g.factor("H", "M")), generator=generator)
+        kw = self.fine_kw(x_m[:, :1], omega, g.factor("H", "M"), self.nrm.dH_std)
+        d = nets.gen["H"].sample(cond, valid, n_steps, generator=generator, **kw)
         return d * self.nrm.dH_std
 
     @staticmethod
@@ -408,9 +434,15 @@ class LitCascadeN0(pl.LightningModule):
             fm, fh = g.factor("M", "C"), g.factor("H", "M")
             if "M" in self.levels:
                 cond, valid, omega = self.cond_m(self.nets, ctx, b, z_c, ctx["psi"], oy, ox, keep)
-                z1 = crop(b["tgt_dM"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
-                m = crop(b["tgt_dM_m"], oy, ox, CROP_C["M"], fm)
-                per_ch, has, _, _ = self.nets.gen["M"].loss(z1, m, cond, valid, proj=self.pi0(omega, fm))
+                coarse = crop(self.coarse_m(z_c, b)[:, :2], oy, ox, CROP_C["M"], fm)
+                kw = self.fine_kw(coarse, omega, fm, nrm.dM_std)
+                if hp.corrector:  # correction of the prolonged sample: Y_M - P' X_C
+                    z1 = (crop(b["tgt_M"], oy, ox, CROP_C["M"], fm) - coarse) / nrm.dM_std
+                    m = crop(b["tgt_M_m"], oy, ox, CROP_C["M"], fm)
+                else:
+                    z1 = crop(b["tgt_dM"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
+                    m = crop(b["tgt_dM_m"], oy, ox, CROP_C["M"], fm)
+                per_ch, has, _, _ = self.nets.gen["M"].loss(torch.where(m, z1, 0.0), m, cond, valid, **kw)
                 out["X_M"] = channel_mean(per_ch, has)
             if "H" in self.levels:
                 with torch.no_grad():
@@ -420,9 +452,14 @@ class LitCascadeN0(pl.LightningModule):
                 n = CROP_C["H"]
                 x_mh = crop(self.coarse_h(x_m, b, oy, ox), hy - oy, hx - ox, n, fm * fh)
                 cond, valid, omega = self.cond_h(self.nets, ctx, b, z_c, x_mh, ctx["psi"], hy, hx, keep)
-                z1 = crop(b["tgt_dH"], hy, hx, n, fm * fh) / nrm.dH_std
-                m = crop(b["tgt_dH_m"], hy, hx, n, fm * fh)
-                per_ch, has, z_pred, t = self.nets.gen["H"].loss(z1, m, cond, valid, proj=self.pi0(omega, fh))
+                kw = self.fine_kw(x_mh[:, :1], omega, fh, nrm.dH_std)
+                if hp.corrector:  # Y_H - P' X_M
+                    z1 = (crop(b["tgt_H"], hy, hx, n, fm * fh) - x_mh[:, :1]) / nrm.dH_std
+                    m = crop(b["tgt_H_m"], hy, hx, n, fm * fh)
+                else:
+                    z1 = crop(b["tgt_dH"], hy, hx, n, fm * fh) / nrm.dH_std
+                    m = crop(b["tgt_dH_m"], hy, hx, n, fm * fh)
+                per_ch, has, z_pred, t = self.nets.gen["H"].loss(torch.where(m, z1, 0.0), m, cond, valid, **kw)
                 out["X_H"] = channel_mean(per_ch, has)
                 # L_cyc: soft S_C of the one-step fine prediction vs the S_C it was conditioned on
                 x_h = x_mh[:, :1] + z_pred * nrm.dH_std
@@ -505,8 +542,7 @@ class LitCascadeN0(pl.LightningModule):
                 d_h = self.sample_h(nets, ctx, b, z_c, x_mh, ctx["psi"], hy, hx, keep, hp.n_steps)
                 xhs.append(x_mh[:, :1] + d_h)
         out = {f"C_{k}": v for k, v in self._accumulate(
-            "C", torch.stack(zs, 1), torch.cat([b["tgt_C"], b["tgt_S"]], 1),
-            torch.cat([b["tgt_C_m"], b["tgt_S_m"]], 1), Z_NAMES).items()}
+            "C", torch.stack(zs, 1), torch.cat([b["tgt_C"], b["tgt_S"]], 1), strict_mask(b), Z_NAMES).items()}
         if xms:
             out.update({f"M_{k}": v for k, v in self._accumulate(
                 "M", torch.stack(xms, 1), crop(b["tgt_M"], oy, ox, CROP_C["M"], fm),

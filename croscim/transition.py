@@ -30,7 +30,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from .cascade import N_S, N_X, N_Z, LitCascadeN0, make_ema, tile_pos
+from .cascade import N_S, N_X, N_Z, LitCascadeN0, make_ema, strict_mask, tile_pos
 from .data import N_C
 from .encoders import DenseEncoder
 from .generators import Generator, channel_mean
@@ -228,7 +228,7 @@ class LitCascadeN1(pl.LightningModule):
         ens = torch.stack([rollout(self, days, len(days) - 1, w=1.0, seed=s)[0] for s in range(hp.n_members)], 1)
         n = hp.n_members
         for k in range(1, len(days)):
-            tgt, m = days[k]["tgt_C"], days[k]["tgt_C_m"]
+            tgt, m = days[k]["tgt_C"], strict_mask(days[k])[:, :N_X]
             e = ens[:, :, k, :N_X]
             crps = (e - tgt[:, None]).abs().mean(1) - (e[:, :, None] - e[:, None]).abs().sum((1, 2)) / (2 * n * (n - 1))
             for c, name in enumerate(("SIC", "SIT", "HS")):
