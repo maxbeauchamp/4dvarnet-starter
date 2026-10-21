@@ -416,6 +416,10 @@ class LitCascadeN0(pl.LightningModule):
         bsz, dev = b["omega_c"].shape[0], b["omega_c"].device
         keep = self.keep_groups(bsz, dev, drop)
         ctx = self.encode(self.nets, b)
+        if "C" not in self.levels:
+            # G_C frozen (phase 4): the fine levels must not train the C side of the encoder
+            # (h_C, f, psi), which conditions G_C; without pyramid h_M does not reach h_C
+            ctx = {k: v.detach() if k in ("h_C", "f", "psi") else v for k, v in ctx.items()}
         out = {}
         if "C" in self.levels:
             z1, m, floor = self.target_c(b)

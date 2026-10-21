@@ -153,6 +153,15 @@ def test_phase3_configuration_c_only_without_pyramid(batch):
     assert set(out) == {"X_C", "S_C", "psi", "loss"} and torch.isfinite(out["loss"])
 
 
+def test_phase4_does_not_train_the_c_side(batch):
+    m = make_model(levels=["M", "H"], pyramid=False, corrector=True)
+    m.losses(batch)["loss"].backward()
+    mods = dict(m.nets.named_modules())
+    for name in ("gen.C", "e_cimr", "e_pts_c", "e_f", "fuse_c", "psi"):
+        assert all(p.grad is None or p.grad.abs().sum() == 0 for p in mods[name].parameters()), name
+    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in mods["gen.M"].parameters())
+
+
 def test_sample_cascade_details_are_exact(model, batch):
     s = model.sample_cascade(batch)
     assert s["z_c"].shape == (1, 12, 64, 64) and s["d_m"].shape == (1, 2, 512, 512)
