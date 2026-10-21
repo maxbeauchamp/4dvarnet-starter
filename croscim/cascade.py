@@ -418,8 +418,10 @@ class LitCascadeN0(pl.LightningModule):
         ctx = self.encode(self.nets, b)
         if "C" not in self.levels:
             # G_C frozen (phase 4): the fine levels must not train the C side of the encoder
-            # (h_C, f, psi), which conditions G_C; without pyramid h_M does not reach h_C
-            ctx = {k: v.detach() if k in ("h_C", "f", "psi") else v for k, v in ctx.items()}
+            # (h_C, f), which conditions G_C; without pyramid h_M does not reach h_C. The psi head
+            # (not used by G_C) is trained on the frozen h_C
+            h_c = ctx["h_C"].detach()
+            ctx = {**ctx, "h_C": h_c, "f": ctx["f"].detach(), "psi": self.nets.psi(h_c)}
         out = {}
         if "C" in self.levels:
             z1, m, floor = self.target_c(b)

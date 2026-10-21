@@ -157,9 +157,10 @@ def test_phase4_does_not_train_the_c_side(batch):
     m = make_model(levels=["M", "H"], pyramid=False, corrector=True)
     m.losses(batch)["loss"].backward()
     mods = dict(m.nets.named_modules())
-    for name in ("gen.C", "e_cimr", "e_pts_c", "e_f", "fuse_c", "psi"):
+    for name in ("gen.C", "e_cimr", "e_pts_c", "e_f", "fuse_c"):
         assert all(p.grad is None or p.grad.abs().sum() == 0 for p in mods[name].parameters()), name
-    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in mods["gen.M"].parameters())
+    for name in ("gen.M", "psi"):  # the psi head is trained on the frozen h_C
+        assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in mods[name].parameters()), name
 
 
 def test_sample_cascade_details_are_exact(model, batch):
