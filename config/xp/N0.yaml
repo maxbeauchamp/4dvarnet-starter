@@ -91,6 +91,8 @@ model:
   smooth_cond: true  # Pi^down and the snow channel of G_H interpolated, not injected
   corrector: true    # G_M / G_H correct the prolonged coarser sample (no R dX = 0)
   lambda_in: 0.3     # weight of the day-t ASIP of Y^in as fine targets (corrector only)
+  advect_window: false  # move the observation window to day t along a learned free drift (v7)
+  drift_init: [0.015, 15.0]  # free drift: alpha (ice / wind speed), theta (deg to the right)
   p_null: 0.1      # context-group dropout (guidance)
   eta: 0.05        # noise on the coarse conditioning (normalised units)
   lambda_s: 1.0

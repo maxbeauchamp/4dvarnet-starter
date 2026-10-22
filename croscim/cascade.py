@@ -34,10 +34,18 @@ also a target of G_M / G_H, with weight lambda_in (the Y^tgt passes have
 weight 1). Without it the generators never get a loss where they see an
 observation (the partition makes Y^in and Y^tgt pixels disjoint) and learn
 to ignore what they see.
+
+advect_window=True (formulation section 9, step "N0"): the observations of
+the window (CIMR, ASIP at M and H, CRISTAL points) are moved to day t along
+the free drift u = alpha R(-theta) u10 (ERA5 u10 / v10 of the stores are
+along the grid axes), cumulated back from t, before any encoder; alpha and
+theta are learned end to end (bilinear sampling is differentiable), frozen
+when G_C is (phase 4).
 """
 
 from __future__ import annotations
 
+import math
 import os
 
 import pytorch_lightning as pl
@@ -105,6 +113,47 @@ def tile_pos(b: dict, oy=None, ox=None, size=N_C) -> Tensor:
         xx = x_c[ix0:ix0 + size][None, :].expand(size, size)
         out.append(torch.stack([xx, yy]) / g.HALF_EXTENT_M)
     return torch.stack(out).to(b["omega_c"])
+
+
+def drift_displacement(f_c: Tensor, alpha: Tensor, theta: Tensor) -> Tensor:
+    """Free-drift displacement (m, along the grid axes) from each day k of the
+    window to the last day t, on the C tile: sum over j = k .. t-1 of
+    alpha R(-theta) (u10_j + u10_{j+1}) / 2 x 1 day (velocity taken at the
+    arrival point). f_c: ERA5 [B, W, 4, n, n] (t2m, msl, u10, v10).
+    Returns [B, W, 2, n, n], 0 for day t."""
+    w = torch.nan_to_num(f_c[:, :, 2:4])
+    v = 0.5 * (w[:, 1:] + w[:, :-1])
+    c, s = torch.cos(theta), torch.sin(theta)
+    d = alpha * torch.stack([v[:, :, 0] * c + v[:, :, 1] * s, -v[:, :, 0] * s + v[:, :, 1] * c], 2) * 86400.0
+    disp = torch.flip(torch.cumsum(torch.flip(d, [1]), 1), [1])
+    return torch.cat([disp, torch.zeros_like(disp[:, :1])], 1)
+
+
+def warp(x: Tensor, w: Tensor, disp: Tensor, dx: float) -> tuple[Tensor, Tensor]:
+    """Observations x [B, T, (C,) Y, X] with weights w (same shape) of each day
+    moved by disp [B, T, 2, n, n] (m, C tile, bilinear to the grid of x): value
+    at x(p - disp(p)), weighted bilinear; weights moved alike. The last day
+    (day t, no displacement) is kept exactly as it is."""
+    if x.shape[1] == 1:
+        return x, w
+    xs, ws = _warp(x[:, :-1], w[:, :-1], disp[:, :-1], dx)
+    return torch.cat([xs, x[:, -1:].to(xs)], 1), torch.cat([ws, w[:, -1:].to(ws)], 1)
+
+
+def _warp(x: Tensor, w: Tensor, disp: Tensor, dx: float) -> tuple[Tensor, Tensor]:
+    bsz, nt = x.shape[:2]
+    ny, nx = x.shape[-2:]
+    d = F.interpolate(disp.flatten(0, 1).to(x.dtype), size=(ny, nx), mode="bilinear", align_corners=False)
+    jj = torch.arange(nx, device=x.device, dtype=x.dtype)
+    ii = torch.arange(ny, device=x.device, dtype=x.dtype)
+    gx = (2 * (jj[None, None, :] - d[:, 0] / dx) + 1) / nx - 1   # columns along +x
+    gy = (2 * (ii[None, :, None] + d[:, 1] / dx) + 1) / ny - 1   # rows along -y
+    grid = torch.stack([gx, gy], -1)
+    xf, wf = torch.where(w > 0, x, 0.0).reshape(bsz * nt, -1, ny, nx), w.reshape(bsz * nt, -1, ny, nx).to(x.dtype)
+    num = F.grid_sample(xf * wf, grid, mode="bilinear", align_corners=False)
+    den = F.grid_sample(wf, grid, mode="bilinear", align_corners=False)
+    val = torch.where(den > 1e-6, num / den.clamp_min(1e-6), 0.0)
+    return val.reshape(x.shape), den.reshape(w.shape)
 
 
 class Norm(nn.Module):
@@ -181,7 +230,8 @@ class LitCascadeN0(pl.LightningModule):
     """
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
-                 n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, lambda_in=0.0, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
+                 n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, lambda_in=0.0, advect_window=False,
+                 drift_init=(0.015, 15.0), p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
                  score_every=5, n_score_batches=20):
@@ -192,6 +242,10 @@ class LitCascadeN0(pl.LightningModule):
         self.nets = Nets(d, d_psi, swin, n_up_queries, raw_days, smooth_cond)
         self.ema = make_ema(self.nets, ema_decay)
         self._ranks = {}
+        if advect_window:
+            # free drift: log alpha, theta (rad, to the right); one copy, outside the EMA nets
+            self.drift = nn.Parameter(torch.tensor([math.log(drift_init[0]), math.radians(drift_init[1])]))
+            self.drift.requires_grad_("C" in self.levels)  # frozen with G_C (phase 4)
 
     def train(self, mode: bool = True):
         """The EMA copy always stays in eval mode (no drop-path in the samples
@@ -202,9 +256,39 @@ class LitCascadeN0(pl.LightningModule):
 
     # ----------------------------------------------------------- contexts
 
+    def obs_inputs(self, b: dict) -> dict:
+        """Observation inputs of the window (in_C_cimr, in_M_asip, in_H with their
+        weights, pts), moved to day t along the drift with advect_window. Cached
+        in the batch ("_adv"), losses() recomputes it."""
+        if not self.hparams.advect_window:
+            return b
+        if "_adv" not in b:
+            alpha, theta = self.drift[0].exp(), self.drift[1]
+            disp = drift_displacement(b["f_C"], alpha, theta)
+            out = {}
+            out["in_C_cimr"], out["in_C_cimr_w"] = warp(b["in_C_cimr"], b["in_C_cimr_w"], disp, g.DX_M["C"])
+            out["in_M_asip"], out["in_M_asip_w"] = warp(b["in_M_asip"], b["in_M_asip_w"], disp, g.DX_M["M"])
+            out["in_H"], out["in_H_w"] = warp(b["in_H"], b["in_H_w"], disp[:, -b["in_H"].shape[1]:], g.DX_M["H"])
+            # CRISTAL points: moved forward by the displacement of their day, at their C cell
+            pts = b["pts"].clone()
+            y_edges, x_edges = zip(*[g.tile_edges("C", int(b["iy0"][i]), int(b["ix0"][i]), N_C)
+                                     for i in range(len(b["iy0"]))])
+            x0 = torch.stack([e[0] for e in x_edges]).to(pts)[:, None]
+            y0 = torch.stack([e[0] for e in y_edges]).to(pts)[:, None]
+            col = ((pts[..., 0] - x0) / g.DX_M["C"]).floor().long().clamp(0, N_C - 1)
+            row = ((y0 - pts[..., 1]) / g.DX_M["C"]).floor().long().clamp(0, N_C - 1)
+            day = (pts[..., 4].long() + disp.shape[1] - 1).clamp(0, disp.shape[1] - 1)
+            bi = torch.arange(pts.shape[0], device=pts.device)[:, None].expand_as(day)
+            dsp = disp[bi, day, :, row, col].to(pts)  # [B, P, 2]
+            pts[..., 0], pts[..., 1] = pts[..., 0] + dsp[..., 0], pts[..., 1] + dsp[..., 1]
+            out["pts"] = pts
+            b["_adv"] = {**b, **out}
+        return b["_adv"]
+
     def encode(self, nets: Nets, b: dict) -> dict:
         """Upward pyramid: h_M = U_M(a_M, Pi^up h_H), h_C = U_C(a_C, Pi^up h_M, f), psi_C."""
         nrm, bsz = self.nrm, b["omega_c"].shape[0]
+        b = self.obs_inputs(b)
         m = b["in_C_cimr_w"] > 0
         x = torch.cat([torch.where(m, nrm(b["in_C_cimr"], ("SIC", "SIT"), 2), 0.0), m.to(b["in_C_cimr"])], 2)
         m_cimr = m.any(2).any(1)
@@ -252,6 +336,7 @@ class LitCascadeN0(pl.LightningModule):
         flags = self._flags(keep, ctx["f"])
         parts = [ctx["h_C"] * kh, ctx["f"] * kf, flags[0], flags[2], b["omega_c"][:, None], tile_pos(b)]
         r = self.hparams.raw_days
+        b = self.obs_inputs(b)
         if r:
             # the last r days of gridded CIMR (Y^in), uncompressed: the encoder squeezes the 15 days
             # into d channels, and G_C did not even reach the persistence of CIMR
@@ -282,6 +367,7 @@ class LitCascadeN0(pl.LightningModule):
         brought to H on the same crop (physical, see coarse_h)."""
         n, fh = CROP_C["H"], g.factor("H", "C")
         nrm = self.nrm
+        b = self.obs_inputs(b)
         xm = nrm(x_mh, ("SIC", "SIT"), 1)
         if self.hparams.smooth_cond:  # snow brought to H without steps (P' at M, then bilinear)
             hs_m = crop(nrm(self.coarse_m(z_c, b)[:, 2:3], ("HS",), 1), oy, ox, n, g.factor("M", "C"))
@@ -434,6 +520,7 @@ class LitCascadeN0(pl.LightningModule):
     def losses(self, b: dict, drop: bool = True) -> dict:
         nrm, hp = self.nrm, self.hparams
         bsz, dev = b["omega_c"].shape[0], b["omega_c"].device
+        b.pop("_adv", None)  # moved observations recomputed with the current drift parameters
         keep = self.keep_groups(bsz, dev, drop)
         ctx = self.encode(self.nets, b)
         if "C" not in self.levels:
@@ -515,6 +602,8 @@ class LitCascadeN0(pl.LightningModule):
         total = sum(out.get(k, 0) for k in ("X_C", "X_M", "X_H")) + hp.lambda_s * out.get("S_C", 0) \
             + hp.lambda_c * out.get("cyc", 0) + hp.lambda_psi * out["psi"]
         out["loss"] = total
+        if self.hparams.advect_window:
+            out["drift_alpha"], out["drift_theta_deg"] = self.drift[0].exp().detach(), self.drift[1].detach() * 180 / math.pi
         return out
 
     def training_step(self, batch, batch_idx):
@@ -617,6 +706,8 @@ class LitCascadeN0(pl.LightningModule):
 
     def configure_optimizers(self):
         params = [p for p in self.nets.parameters() if p.requires_grad]
+        if self.hparams.advect_window and self.drift.requires_grad:
+            params.append(self.drift)
         opt = torch.optim.Adam(params, lr=self.hparams.lr, betas=tuple(self.hparams.betas))
         sched = torch.optim.lr_scheduler.LinearLR(opt, start_factor=self.hparams.lr_scheduler_start_factor,
                                                   total_iters=self.hparams.lr_scheduler_iters)

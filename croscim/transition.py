@@ -42,6 +42,7 @@ def only_last_day(b: dict) -> dict:
     """Context of one transition step: observations of the last day only,
     forcing of the last two days (F_{t:t+1})."""
     out = dict(b)
+    out.pop("_adv", None)  # N0's moved observations: recomputed (day t only: not moved)
     for k in ("in_C_cimr_w", "in_M_asip_w", "in_H_w"):
         w = b[k].clone()
         w[:, :-1] = 0

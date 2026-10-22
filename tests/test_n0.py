@@ -4,6 +4,8 @@
 
     pytest tests/test_n0.py
 """
+import math
+
 import pytest
 import torch
 
@@ -224,3 +226,44 @@ def test_scores_keys(model, batch):
     out = model.scores(batch)
     assert {"C_rmse_SIC", "M_crps_SIT", "H_rmse_SIC"} <= set(out)
     assert set(model._ranks) == {"C", "M", "H"}
+
+
+# ------------------------------------------------------------ drift (advect_window)
+
+def test_drift_displacement_cumulates_back_from_t():
+    f = torch.zeros(1, 4, 4, 2, 2)
+    f[:, :, 2] = 10.0  # u10 = 10 m/s along +x, every day
+    d = C.drift_displacement(f, torch.tensor(0.02), torch.tensor(0.0))
+    step = 0.02 * 10 * 86400
+    assert torch.allclose(d[0, :, 0, 0, 0], torch.tensor([3 * step, 2 * step, step, 0.0]))
+    assert torch.all(d[:, :, 1] == 0)
+    # turned to the right: +x wind -> -y component
+    d = C.drift_displacement(f, torch.tensor(0.02), torch.tensor(math.pi / 2))
+    assert torch.allclose(d[0, 0, 1, 0, 0], torch.tensor(-3 * step), rtol=1e-5)
+
+
+def test_warp_moves_observations_along_the_grid_axes():
+    x = torch.zeros(1, 2, 16, 16)  # days t-1, t
+    x[0, :, 8, 5] = 1.0
+    w = torch.ones_like(x)
+    disp = torch.zeros(1, 2, 2, 2, 2)
+    disp[:, 0, 0], disp[:, 0, 1] = 2 * 32e3, 32e3  # day t-1: +2 cells along x, +1 along y (= one row up)
+    y, wy = C.warp(x, w, disp, 32e3)
+    assert y[0, 0, 7, 7] > 0.99 and y[0, 0, 8, 5] < 1e-6
+    assert torch.equal(y[:, 1], x[:, 1]) and torch.equal(wy[:, 1], w[:, 1])  # day t kept as it is
+
+
+def test_advect_window_learns_drift_and_moves_inputs(batch):
+    m = make_model(advect_window=True, corrector=True)
+    b = dict(batch)
+    out = m.losses(b)
+    assert torch.isfinite(out["loss"]) and "drift_alpha" in out
+    out["loss"].backward()
+    assert m.drift.grad is not None and m.drift.grad.abs().sum() > 0
+    adv = b["_adv"]
+    assert not torch.equal(adv["in_M_asip"], batch["in_M_asip"])
+    assert torch.equal(adv["in_M_asip"][:, -1], batch["in_M_asip"][:, -1].to(adv["in_M_asip"]))  # day t not moved
+    assert not torch.equal(adv["pts"][..., :2], batch["pts"][..., :2])
+    # phase 4: frozen with G_C
+    m4 = make_model(advect_window=True, levels=["M", "H"], pyramid=False, corrector=True)
+    assert not m4.drift.requires_grad and all(p is not m4.drift for p in m4.configure_optimizers()["optimizer"].param_groups[0]["params"])
