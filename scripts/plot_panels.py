@@ -217,6 +217,11 @@ def main():
                     sc[f"C_{ref}_bias_{name}"] = round(float(dif.mean()), 5)
                     sc[f"C_model_on_{ref}_cells_rmse_{name}"] = round(float(((mean_c[c][m] - tgt) ** 2).mean().sqrt()), 5)
                     sc[f"C_{ref}_n_cells_{name}"] = int(m.sum())
+        # SIT and snow where the model has open water (ensemble-mean SIC_C < 0.15; cell means: should be ~0)
+        ow_c = (cpu["omega_c"] > 0) & (mean_c[0] < 0.15)
+        if ow_c.any():
+            sc["C_SIT_mean_openwater"] = round(float(mean_c[1][ow_c].mean()), 4)
+            sc["C_HS_mean_openwater"] = round(float(mean_c[2][ow_c].mean()), 4)
         # ice edge and small scales vs ASIP (SIC, M and H crops):
         #   IIEE: area where the model and ASIP disagree on SIC >= 0.15, over the ASIP-covered pixels
         #   (ensemble mean, mean over members, prolonged coarser field alone), and that covered area;
