@@ -86,13 +86,13 @@ def main():
     out = pcfg.out
     os.makedirs(out, exist_ok=True)
     cuda = torch.cuda.is_available() and not args.tiny
-    path = os.path.join(out, "report.json")
-    report = json.load(open(path)) if os.path.exists(path) else {}
+    report_path = os.path.join(out, "report.json")
+    report = json.load(open(report_path)) if os.path.exists(report_path) else {}
     if args.redo_eval:
         report = {k: v for k, v in report.items() if not k.startswith("eval_")}
 
     def save():
-        with open(path, "w") as f:
+        with open(report_path, "w") as f:
             json.dump(report, f, indent=2)
 
     d = pcfg.dates
@@ -135,11 +135,11 @@ def main():
             if ph.get("init_overlay"):  # then some sub-networks from a phase of another run, e.g. G_M / G_H
                 ov = ph.init_overlay
                 old = json.load(open(ov.report))[ov.phase]
-                path = old["best"] or old["last"]
-                sd = torch.load(path, map_location="cpu", weights_only=False)["state_dict"]
+                src = old["best"] or old["last"]
+                sd = torch.load(src, map_location="cpu", weights_only=False)["state_dict"]
                 sd = {k: v for k, v in sd.items() if any(f".{m}." in f".{k}" for m in ov.modules)}
                 model.load_state_dict(sd, strict=False)
-                print(f"{name}: {len(sd)} tensors of {list(ov.modules)} from {path}", flush=True)
+                print(f"{name}: {len(sd)} tensors of {list(ov.modules)} from {src}", flush=True)
         kw = dict(OmegaConf.to_container(ph.trainer), enable_progress_bar=False, num_sanity_val_steps=0)
         try:
             from pytorch_lightning.loggers import TensorBoardLogger
