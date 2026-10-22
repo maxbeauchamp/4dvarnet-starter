@@ -7,8 +7,8 @@ nested polar-stereographic grid (EPSG:3411):
 
 | level | grid | state | targets (v1) |
 |---|---|---|---|
-| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | ASIP aggregated (SIC; CIMR as a weak target outside ASIP), CRISTAL (SIT, snow); CIMR is otherwise an input (prior) |
-| M | 4 km | δSIC, δSIT (corrections of P′X_C) | CRISTAL SIT (as L2 points), ASIP aggregated |
+| C | 32 km | SIC, SIT, snow + 9 sub-grid statistics S_C | ASIP aggregated (SIC), CRISTAL (SIT, snow); CIMR SIC and thin SIT as weak targets outside them; SIT = snow = 0 in open water |
+| M | 4 km | δSIC, δSIT (corrections of P′X_C) | ASIP aggregated, CRISTAL SIT (as L2 points), SIT = 0 in open water |
 | H | 1 km | δSIC (correction of P′X_M) | ASIP |
 
 The state is `X = (X_C, δX_M, δX_H)` with `X_M = P′X_C + δX_M`,

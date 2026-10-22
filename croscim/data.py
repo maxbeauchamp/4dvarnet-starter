@@ -57,6 +57,10 @@ ASIP_PASS_GAP_MIN = 10  # ASIP partition units: acquisitions less than 10 min ap
 OBS_SIGMA = {"cimr": (0.05, 0.10), "cristal": (0.30, 0.05)}  # SIC [-], SIT [m], HS [m]
 GAMMA = {"SIC": 0.5, "SIT": 0.05}  # min. observed ocean fraction of a parent for a detail target
 CIMR_TGT_SIGMA = 0.15  # SIC: scale floor of the weak CIMR target, outside the ASIP coverage only
+CIMR_SIT_TGT_SIGMA = 0.15  # SIT [m]: scale floor of the weak CIMR thin-ice target, outside CRISTAL only
+CIMR_SIT_MAX = 1.0     # SIT [m]: CIMR thin-ice SIT used as a target only below (saturation of L-band retrievals)
+OPEN_WATER_SIC = 0.05  # SIC target <= this: open water, SIT = HS = 0 (cell-mean thicknesses)
+OPEN_WATER_SIGMA = {"SIT": 0.05, "HS": 0.02}  # scale floors of these physical zero targets [m]
 
 
 def to_day(date: str) -> int:
@@ -285,13 +289,29 @@ def build_sample(it: dict, part: dict | None = None) -> dict:
     # tgt_C_sigma (0 for the ASIP / CRISTAL targets), as sigma_S for S_C
     sic_c, _ = g.restrict(sic_m, w_m_sic, g.factor("M", "C"))
     cov_c = g.restrict((w_h > 0).double(), omega_h, g.factor("H", "C"))[0]
+    # Likewise for SIT: CRISTAL, else the CIMR thin-ice SIT of day t (below CIMR_SIT_MAX) as a weak
+    # target. SIT and HS are cell means: where the SIC target is open water (<= OPEN_WATER_SIC) and
+    # CRISTAL has nothing, they get a physical zero target (floor OPEN_WATER_SIGMA). The weak and
+    # zero targets have tgt_*_sigma > 0 and are not scored (strict masks).
+    ocean_c = omega_c > 0
     asip_c, cimr_c = cov_c >= obs.GAMMA_S, out["in_C_cimr_w"][-1, 0] > 0
-    out["tgt_C"] = torch.stack([torch.where(asip_c, sic_c, out["in_C_cimr"][-1, 0]), cr_c[0], cr_c[1]])  # SIC, SIT, HS
-    out["tgt_C_m"] = torch.stack([asip_c | cimr_c, cr_cw[0] > 0, cr_cw[1] > 0]) & (omega_c > 0)
-    out["tgt_C_sigma"] = torch.zeros_like(out["tgt_C"])
-    out["tgt_C_sigma"][0] = torch.where(asip_c, 0.0, CIMR_TGT_SIGMA)
-    out["tgt_M"] = torch.stack([sic_m, cr_m[0]])
-    out["tgt_M_m"] = torch.stack([(w_m_sic > 0) & (omega_m > 0), (cr_mw[0] > 0) & (omega_m > 0)])
+    sic_t = torch.where(asip_c, sic_c, out["in_C_cimr"][-1, 0])
+    ow_c = (asip_c | cimr_c) & (sic_t <= OPEN_WATER_SIC)
+    cimr_sit, cimr_sit_ok = out["in_C_cimr"][-1, 1], (out["in_C_cimr_w"][-1, 1] > 0) & (out["in_C_cimr"][-1, 1] <= CIMR_SIT_MAX)
+    cr_sit, cr_hs = cr_cw[0] > 0, cr_cw[1] > 0
+    zero = torch.zeros_like(sic_t)
+    sit_t = torch.where(cr_sit, cr_c[0], torch.where(ow_c, zero, cimr_sit))
+    sit_s = torch.where(cr_sit, zero, torch.where(ow_c, OPEN_WATER_SIGMA["SIT"], CIMR_SIT_TGT_SIGMA))
+    out["tgt_C"] = torch.stack([sic_t, sit_t, torch.where(cr_hs, cr_c[1], zero)])  # SIC, SIT, HS
+    out["tgt_C_m"] = torch.stack([asip_c | cimr_c, cr_sit | ow_c | cimr_sit_ok, cr_hs | ow_c]) & ocean_c
+    out["tgt_C_sigma"] = torch.stack([torch.where(asip_c, 0.0, CIMR_TGT_SIGMA), sit_s,
+                                      torch.where(cr_hs, zero, OPEN_WATER_SIGMA["HS"])])
+    # M: SIC from ASIP, SIT from CRISTAL, else 0 where ASIP says open water
+    ocean_m, cr_sit_m = omega_m > 0, cr_mw[0] > 0
+    ow_m = (w_m_sic > 0) & (sic_m <= OPEN_WATER_SIC) & ~cr_sit_m
+    out["tgt_M"] = torch.stack([sic_m, torch.where(cr_sit_m, cr_m[0], torch.zeros_like(sic_m))])
+    out["tgt_M_m"] = torch.stack([(w_m_sic > 0) & ocean_m, (cr_sit_m | ow_m) & ocean_m])
+    out["tgt_M_sigma"] = torch.stack([torch.zeros_like(sic_m), torch.where(ow_m, OPEN_WATER_SIGMA["SIT"], 0.0)])
     out["tgt_H"], out["tgt_H_m"] = sic_h[None], ((w_h > 0) & (omega_h > 0))[None]
     d_sic_m, m_sic_m = obs.detail_target(sic_m, w_m_sic, omega_m, 8, GAMMA["SIC"])
     d_sit_m, m_sit_m = obs.detail_target(cr_m[0], cr_mw[0], omega_m, 8, GAMMA["SIT"])

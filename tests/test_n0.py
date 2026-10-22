@@ -46,6 +46,7 @@ def make_batch(bsz=1, seed=0):
          "tgt_C_sigma": torch.cat([0.15 * (r(bsz, 1, 64, 64) > 0.5), torch.zeros(bsz, 2, 64, 64)], 1),
          "tgt_S": r(bsz, 9, 64, 64), "tgt_S_m": r(bsz, 9, 64, 64) > 0.5, "tgt_S_sigma": 0.05 + 0.1 * r(bsz, 9, 64, 64),
          "tgt_M": r(bsz, 2, nm, nm), "tgt_M_m": r(bsz, 2, nm, nm) > 0.5,
+         "tgt_M_sigma": torch.cat([torch.zeros(bsz, 1, nm, nm), 0.05 * (r(bsz, 1, nm, nm) > 0.8)], 1),
          "tgt_H": r(bsz, 1, nh, nh), "tgt_H_m": r(bsz, 1, nh, nh) > 0.5}
     b["f_C"][:, :, :, :5] = float("nan")
     for key, lvl, f in (("tgt_dM", "M", 8), ("tgt_dH", "H", 4)):

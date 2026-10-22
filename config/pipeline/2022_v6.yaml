@@ -1,8 +1,13 @@
-# 2022 pipeline v6 (formulation section 8): v5 plus lambda_in = 0.3, the
-# day-t ASIP of Y^in as fine targets of G_M / G_H (in v5 they ignored the
-# ASIP they were given), and the fixed phase 4 (G_C side of the encoder
-# frozen). G_C: phase 3 of v5, unchanged; G_M / G_H: phase 4 of v5,
-# fine-tuned 20 epochs.
+# 2022 pipeline v6 (formulation section 8): v5 plus
+#   - lambda_in = 0.3: the day-t ASIP of Y^in as fine targets of G_M / G_H
+#     (in v5 they ignored the ASIP they were given);
+#   - SIT: CIMR thin-ice SIT (<= 1 m) as a weak target at C outside CRISTAL;
+#     SIT and snow are cell means: zero targets where the SIC target is open
+#     water (C and, for SIT, M); in v5 G_C SIT was 2-3x worse than CIMR and
+#     G_M put ~7 cm of ice in open water;
+#   - the fixed phase 4 (G_C side of the encoder frozen).
+# G_C: phase 3 of v5 fine-tuned with the new targets; G_M / G_H (and the M side
+# of the encoder, psi head): phase 4 of v5, fine-tuned.
 #   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v6.yaml
 
 out: /Odyssey/private/m19beauc/results/pipeline_2022_v6
@@ -15,9 +20,18 @@ dates:
 common: ["model.lr_scheduler_iters=2000", "model.n_score_batches=5"]
 
 phases:
-  - name: phase4_MH                 # G_M / G_H of v5 fine-tuned with lambda_in (G_C of v5, frozen)
+  - name: phase3_C
     xp: N0
-    init_from: {report: /Odyssey/private/m19beauc/results/pipeline_2022_v5/report.json, phase: phase4_MH}
+    init_from: {report: /Odyssey/private/m19beauc/results/pipeline_2022_v5/report.json, phase: phase3_C}
+    overrides: ["model.levels=[C]", "model.pyramid=false"]
+    trainer: {max_epochs: 20, limit_train_batches: 1000, limit_val_batches: 50}
+  - name: phase4_MH
+    xp: N0
+    init: phase3_C
+    init_overlay:
+      report: /Odyssey/private/m19beauc/results/pipeline_2022_v5/report.json
+      phase: phase4_MH
+      modules: [gen.M, gen.H, down_m, down_h, e_pts_m, e_asip_m, e_asip_h, fuse_m, psi]
     overrides: ["model.levels=[M,H]", "model.pyramid=false", "datamodule.asip_weighted_tiles=true"]
     trainer: {max_epochs: 20, limit_train_batches: 1000, limit_val_batches: 50}
   - name: phase5_full

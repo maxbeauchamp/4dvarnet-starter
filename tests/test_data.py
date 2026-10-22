@@ -166,13 +166,34 @@ def test_targets_come_from_y_tgt_only(item):
     # outside the ASIP coverage (tgt_C_sigma > 0)
     out = D.build_sample(_perturb(item, torch.zeros_like(part["asip"]), torch.ones_like(part["blk"]), ("cimr",)), part)
     assert not torch.equal(out["in_C_cimr"], ref["in_C_cimr"])
-    weak = ref["tgt_C_sigma"] > 0
-    assert weak[0].any() and not weak[1:].any()
-    assert torch.equal(out["tgt_C"][~weak], ref["tgt_C"][~weak])
-    assert torch.equal(out["tgt_C"][0][weak[0]], out["in_C_cimr"][-1, 0][weak[0]])
-    for k in ref:
-        if k.startswith("tgt_") and k != "tgt_C":
+    weak = ref["tgt_C_sigma"][0] > 0
+    assert weak.any()
+    asip = ref["tgt_C_m"][0] & ~weak
+    assert torch.equal(out["tgt_C"][0][asip], ref["tgt_C"][0][asip])
+    assert torch.equal(out["tgt_C"][0][weak], out["in_C_cimr"][-1, 0][weak])
+    for k in ref:  # CIMR only enters the C targets (weak SIC / SIT, open-water zeros)
+        if k.startswith("tgt_") and k not in ("tgt_C", "tgt_C_m", "tgt_C_sigma"):
             assert torch.equal(out[k], ref[k]), k
+
+
+def test_weak_and_open_water_targets(item):
+    it = {k: v.clone() for k, v in item.items()}
+    it["cimr"][-1, 0, :200] = 0.0      # open water in CIMR (outside the ASIP coverage)
+    it["cimr"][-1, 1, :, :150] = 1.5   # CIMR SIT above CIMR_SIT_MAX: not a target
+    out = D.build_sample(it, D.partition(it))
+    t, m, sg = out["tgt_C"], out["tgt_C_m"], out["tgt_C_sigma"]
+    ow = m[0] & (t[0] <= D.OPEN_WATER_SIC)
+    assert ow.any()
+    # SIT and HS: CRISTAL (sigma 0), else zero in open water, else (SIT) CIMR thin ice
+    cr = m[1] & (sg[1] == 0)
+    zero_sit = m[1] & (sg[1] == D.OPEN_WATER_SIGMA["SIT"])
+    assert torch.all(t[1][zero_sit] == 0) and torch.equal(zero_sit, ow & ~cr)
+    cimr = m[1] & (sg[1] == D.CIMR_SIT_TGT_SIGMA)
+    assert cimr.any() and torch.all(t[1][cimr] <= D.CIMR_SIT_MAX) and not (cimr & ow).any()
+    assert torch.all(t[2][m[2] & (sg[2] > 0)] == 0)
+    # M: SIT zero where the ASIP SIC target is open water and CRISTAL has nothing
+    zm = out["tgt_M_m"][1] & (out["tgt_M_sigma"][1] > 0)
+    assert torch.all(out["tgt_M"][1][zm] == 0) and torch.all(out["tgt_M"][0][zm] <= D.OPEN_WATER_SIC)
 
 
 def test_sic_target_at_c_is_restricted_asip(item):

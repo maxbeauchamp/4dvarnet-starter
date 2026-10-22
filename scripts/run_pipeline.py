@@ -132,6 +132,14 @@ def main():
                 sd = torch.load(init, map_location="cpu", weights_only=False)["state_dict"]
                 missing, _ = model.load_state_dict(sd, strict=False)
                 print(f"{name}: initialised from {init} ({len(missing)} tensors left at random init)", flush=True)
+            if ph.get("init_overlay"):  # then some sub-networks from a phase of another run, e.g. G_M / G_H
+                ov = ph.init_overlay
+                old = json.load(open(ov.report))[ov.phase]
+                path = old["best"] or old["last"]
+                sd = torch.load(path, map_location="cpu", weights_only=False)["state_dict"]
+                sd = {k: v for k, v in sd.items() if any(f".{m}." in f".{k}" for m in ov.modules)}
+                model.load_state_dict(sd, strict=False)
+                print(f"{name}: {len(sd)} tensors of {list(ov.modules)} from {path}", flush=True)
         kw = dict(OmegaConf.to_container(ph.trainer), enable_progress_bar=False, num_sanity_val_steps=0)
         try:
             from pytorch_lightning.loggers import TensorBoardLogger

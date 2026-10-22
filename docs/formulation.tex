@@ -287,8 +287,8 @@ avec $\SC^\perp=\SC-\E[\SC\mid\XC]$ et le \emph{même} $\varepsilon$ dans les de
 \begin{tabularx}{\linewidth}{@{}l l X@{}}
 \toprule
 \textbf{niveau} & \textbf{état v1} & \textbf{vérité terrain $\obs X$ (à la volée, depuis $Y^{\rm tgt}$, moyenne pondérée par $\sigma^{-2}$)}\\\midrule
-{\color{cC}$\Cc$} & SIC, SIT, neige & SIC : ASIP agrégé ($R\,\mathcal{G}_\Hh$, mailles couvertes à $\ge50\,\%$ de leur océan), ailleurs CIMR du jour $t$ en cible faible (plancher d'échelle 0{,}15, comme $\sigma_S$ ; non compté dans les scores) ; SIT, neige : CRISTAL\\
-{\color{cM}$\Mm$} & $\delta$SIC, $\delta$SIT & SIC : ASIP agrégé ($\mathcal{G}_\Mm=R\,\mathcal{G}_\Hh$) ; SIT : CRISTAL\\
+{\color{cC}$\Cc$} & SIC, SIT, neige & SIC : ASIP agrégé ($R\,\mathcal{G}_\Hh$, mailles couvertes à $\ge50\,\%$ de leur océan), ailleurs CIMR du jour $t$ en cible faible (plancher d'échelle 0{,}15, comme $\sigma_S$) ; SIT : CRISTAL, ailleurs SIT mince CIMR ($\le1$ m) en cible faible (plancher 0{,}15 m) ; neige : CRISTAL ; SIT et neige sont des moyennes par maille : cible 0 là où la cible SIC est de l'eau libre ($\le0{,}05$ ; planchers 0{,}05 et 0{,}02 m). Cibles faibles et zéros non comptés dans les scores\\
+{\color{cM}$\Mm$} & $\delta$SIC, $\delta$SIT & SIC : ASIP agrégé ($\mathcal{G}_\Mm=R\,\mathcal{G}_\Hh$) ; SIT : CRISTAL, 0 là où ASIP voit de l'eau libre (plancher 0{,}05 m)\\
 {\color{cH}$\Hh$} & $\delta$SIC & ASIP (blocs $2\times2$ exacts de la grille 500 m)\\\bottomrule
 \end{tabularx}\\[2pt]
 \textbf{Grillage $\mathcal{G}_\ell$ sans interpolation.} Champs alignés (ASIP $\to\Hh$) : moyenne par blocs ; champs denses non alignés (CIMR, ERA5 5 km $\to\Cc$) : remappage exact par recouvrement de surfaces (matrices 1D séparables $A_y\,X\,A_x^\top$) ; points (CRISTAL) : affectation à la maille contenant le point. Poids de $R$ : fraction d'océan $\omega_\Hh$ (Natural Earth 10 m, sur-échantillonnée $\times4$), sommée vers $\Mm$ et $\Cc$.

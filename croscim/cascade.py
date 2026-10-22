@@ -77,8 +77,14 @@ def make_ema(module: nn.Module, decay: float) -> AveragedModel:
 
 
 def strict_mask(b: dict) -> Tensor:
-    """Mask of the strict Z_C targets (scores): without the weak CIMR SIC targets."""
+    """Mask of the strict Z_C targets (scores): without the weak CIMR targets and
+    the open-water zeros (tgt_C_sigma > 0)."""
     return torch.cat([b["tgt_C_m"] & (b["tgt_C_sigma"] == 0), b["tgt_S_m"]], 1)
+
+
+def strict_mask_m(b: dict) -> Tensor:
+    """Mask of the strict X_M targets (scores): without the open-water SIT zeros."""
+    return b["tgt_M_m"] & (b["tgt_M_sigma"] == 0)
 
 
 def crop(x: Tensor, oy: Tensor, ox: Tensor, size: int, f: int) -> Tensor:
@@ -463,6 +469,7 @@ class LitCascadeN0(pl.LightningModule):
                         y, m = self.with_inputs(y, m, crop(b["in_M_asip"][:, -1:], oy, ox, CROP_C["M"], fm),
                                                 crop(b["in_M_asip_w"][:, -1:], oy, ox, CROP_C["M"], fm), omega)
                     z1 = (y - coarse) / nrm.dM_std
+                    kw["floor"] = crop(b["tgt_M_sigma"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
                 else:
                     z1 = crop(b["tgt_dM"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
                     m = crop(b["tgt_dM_m"], oy, ox, CROP_C["M"], fm)
@@ -574,7 +581,7 @@ class LitCascadeN0(pl.LightningModule):
         if xms:
             out.update({f"M_{k}": v for k, v in self._accumulate(
                 "M", torch.stack(xms, 1), crop(b["tgt_M"], oy, ox, CROP_C["M"], fm),
-                crop(b["tgt_M_m"], oy, ox, CROP_C["M"], fm), ("SIC", "SIT")).items()})
+                crop(strict_mask_m(b), oy, ox, CROP_C["M"], fm), ("SIC", "SIT")).items()})
             out.update({f"H_{k}": v for k, v in self._accumulate(
                 "H", torch.stack(xhs, 1), crop(b["tgt_H"], hy, hx, CROP_C["H"], fm * fh),
                 crop(b["tgt_H_m"], hy, hx, CROP_C["H"], fm * fh), ("SIC",)).items()})

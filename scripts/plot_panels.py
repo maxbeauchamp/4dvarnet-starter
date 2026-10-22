@@ -36,7 +36,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 sys.path.append(REPO)
 from croscim import data as D  # noqa: E402
 from croscim import grid as g  # noqa: E402
-from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask  # noqa: E402
+from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask, strict_mask_m  # noqa: E402
 from croscim.ocean import ocean_fraction_h  # noqa: E402
 from croscim.transition import load_n0  # noqa: E402
 
@@ -189,7 +189,7 @@ def main():
         sc = {}
         m_c = strict_mask(b)[0].cpu()  # without the weak CIMR SIC targets
         tgt_m = crop(cpu["tgt_M"][None], o(oy), o(ox), CROP_C["M"], FM)[0]
-        msk_m = crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0]
+        msk_m = crop(strict_mask_m(b)[:1].cpu(), o(oy), o(ox), CROP_C["M"], FM)[0]  # without the open-water zeros
         tgt_h = crop(cpu["tgt_H"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0]
         msk_h = crop(cpu["tgt_H_m"][None], o(hy), o(hx), CROP_C["H"], FM * FH)[0]
         for key, ens, tgt, m, names in (
