@@ -30,6 +30,7 @@ import time
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.append(REPO)
@@ -216,6 +217,27 @@ def main():
                     sc[f"C_{ref}_bias_{name}"] = round(float(dif.mean()), 5)
                     sc[f"C_model_on_{ref}_cells_rmse_{name}"] = round(float(((mean_c[c][m] - tgt) ** 2).mean().sqrt()), 5)
                     sc[f"C_{ref}_n_cells_{name}"] = int(m.sum())
+        # ice edge and small scales vs ASIP (SIC, M and H crops):
+        #   IIEE: area where the model and ASIP disagree on SIC >= 0.15, over the ASIP-covered pixels
+        #   (ensemble mean, mean over members, prolonged coarser field alone), and that covered area;
+        #   hf_std: std of SIC minus its 3 x 3 local mean, on pixels whose 3 x 3 window is all covered
+        #   (ASIP vs members): too large = pixel noise that ASIP does not have
+        def hf(x):  # x [n, Y, X]
+            return x - F.avg_pool2d(x[:, None], 3, 1, 1, count_include_pad=False)[:, 0]
+        for key, ens, coarse, tgt, m, km2 in (("M", xm[:, 0], (xm - dmm)[:, 0], tgt_m[0], msk_m[0], 16.0),
+                                               ("H", xh[:, 0], (xh - dhh)[:, 0], tgt_h[0], msk_h[0], 1.0)):
+            if m.sum() < 100:
+                continue
+            ice = tgt >= 0.15
+            iiee = lambda f: float(((f >= 0.15) != ice)[m].sum()) * km2  # noqa: E731
+            sc[f"{key}_iiee_mean_km2"] = round(iiee(ens.mean(0)), 1)
+            sc[f"{key}_iiee_member_km2"] = round(float(np.mean([iiee(e) for e in ens])), 1)
+            sc[f"{key}_iiee_coarse_km2"] = round(iiee(coarse.mean(0)), 1)
+            sc[f"{key}_covered_km2"] = round(float(m.sum()) * km2, 1)
+            full = F.avg_pool2d(m.float()[None, None], 3, 1, 1)[0, 0] > 0.999
+            if full.any():
+                sc[f"{key}_hf_std_asip_SIC"] = round(float(hf(tgt[None])[0][full].std()), 5)
+                sc[f"{key}_hf_std_member_SIC"] = round(float(np.mean([float(h[full].std()) for h in hf(ens)])), 5)
         metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx],
                          "holdout_asip": args.holdout_asip, **sc}
 
