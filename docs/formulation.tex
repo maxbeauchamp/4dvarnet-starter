@@ -324,7 +324,8 @@ Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\g
 \item \emph{$\mathcal L_{\rm cyc}$} : $\Sop_\Cc$ doux (indicatrices sigmoïdes, $\tau=0{,}05$) appliqué à la prédiction en un pas de $\Hh$, comparé au $\SC^\eta$ qui l'a conditionnée, pondéré par $s$.
 \item \emph{Dropout de groupe} ($p_\nul=0{,}1$) : $(\hh{},\Phi,f)$ dans $\mathcal N_0$ ; $(\hh{},f,X,S,\psi)$ dans $\mathcal N_1$, où $\hh{}=\nul$ aussi si $\mu=0$. $I^\uparrow$ est estimé en remplaçant tout le groupe $S$ par $\nul$ : le modèle marginalise alors $S$ sachant $X$, ce qui retire $S^\perp$.
 \item \emph{$\Pi_S$} : bornes physiques et histogramme normalisé (histogramme vide $\Rightarrow$ classe de $\mathrm{SIC}_\Cc$). La cohérence entre la moyenne de l'histogramme et $\mathrm{SIC}_\Cc$ n'est pas imposée en v1.
-\item \emph{Non implémentés en v1} : poids $\lambda_{\rm in}$ des cibles issues de $Y^{\rm in}$, $\SM$, régénération de $\psi^0$ après une intervention sur la condition initiale.
+\item \emph{$\lambda_{\rm in}$} (sixième passe, correcteurs) : l'ASIP du jour $t$ de $Y^{\rm in}$ est aussi cible de G$_\Mm$ et G$_\Hh$, avec le poids $\lambda_{\rm in}=0{,}3$ (1 pour $Y^{\rm tgt}$, moyenne pondérée par canal). Sans lui, la partition rend disjoints les pixels vus et les pixels cibles : aucune perte là où le générateur voit une observation, et l'évaluation sans retenue montrait qu'il ignorait l'ASIP fourni. Les scores restent calculés sur $Y^{\rm tgt}$ seul.
+\item \emph{Non implémentés en v1} : $\SM$, régénération de $\psi^0$ après une intervention sur la condition initiale.
 \end{itemize}
 \end{bsec}
 

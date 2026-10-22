@@ -73,7 +73,7 @@ tests/                  pytest suite (synthetic data, CPU)
    evaluation scripts on the test period). Resumable: submit the same command
    again after the job time limit.
    ```bash
-   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v5.yaml
+   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v6.yaml
    ```
    `config/pipeline/smoke.yaml` runs the same chain on one month in a few
    minutes per phase (end-to-end check).

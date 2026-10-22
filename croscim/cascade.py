@@ -28,6 +28,12 @@ projection), censored at the physical bounds of X. They can then correct the
 coarse errors (level, ice edge) and remove the C-cell steps; X_C stays the G_C
 sample (R X_M is the consistent coarse field). corrector=False: exact
 details (R dX = 0) with the targets Y - P' R Y, for the former checkpoints.
+
+lambda_in > 0 (corrector only): the ASIP SIC of day t that is in Y^in is
+also a target of G_M / G_H, with weight lambda_in (the Y^tgt passes have
+weight 1). Without it the generators never get a loss where they see an
+observation (the partition makes Y^in and Y^tgt pixels disjoint) and learn
+to ignore what they see.
 """
 
 from __future__ import annotations
@@ -169,7 +175,7 @@ class LitCascadeN0(pl.LightningModule):
     """
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
-                 n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
+                 n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, lambda_in=0.0, p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
                  score_every=5, n_score_batches=20):
@@ -331,6 +337,14 @@ class LitCascadeN0(pl.LightningModule):
         hi = torch.cat([(1 - coarse[:, :1]) / std[:, :1], torch.full_like(coarse[:, 1:], float("inf"))], 1)
         return {"lo": lo, "hi": hi}
 
+    def with_inputs(self, y: Tensor, w: Tensor, y_in: Tensor, w_in: Tensor, omega: Tensor):
+        """Channel 0 (ASIP SIC) of the fine targets completed by the day-t ASIP of
+        Y^in, weight lambda_in, on the ocean pixels without a Y^tgt target."""
+        m_in = (w_in > 0) & (omega[:, None] > 0) & (w[:, :1] == 0)
+        y = torch.cat([torch.where(m_in, y_in, y[:, :1]), y[:, 1:]], 1)
+        w = torch.cat([torch.where(m_in, torch.full_like(w[:, :1], self.hparams.lambda_in), w[:, :1]), w[:, 1:]], 1)
+        return y, w
+
     @torch.no_grad()
     def sample_c(self, nets, ctx, b, keep, n_steps, generator=None, w=1.0):
         cond, valid = self.cond_c(ctx, b, keep)
@@ -443,12 +457,16 @@ class LitCascadeN0(pl.LightningModule):
                 coarse = crop(self.coarse_m(z_c, b)[:, :2], oy, ox, CROP_C["M"], fm)
                 kw = self.fine_kw(coarse, omega, fm, nrm.dM_std)
                 if hp.corrector:  # correction of the prolonged sample: Y_M - P' X_C
-                    z1 = (crop(b["tgt_M"], oy, ox, CROP_C["M"], fm) - coarse) / nrm.dM_std
-                    m = crop(b["tgt_M_m"], oy, ox, CROP_C["M"], fm)
+                    y = crop(b["tgt_M"], oy, ox, CROP_C["M"], fm)
+                    m = crop(b["tgt_M_m"], oy, ox, CROP_C["M"], fm).to(y)
+                    if hp.lambda_in > 0:
+                        y, m = self.with_inputs(y, m, crop(b["in_M_asip"][:, -1:], oy, ox, CROP_C["M"], fm),
+                                                crop(b["in_M_asip_w"][:, -1:], oy, ox, CROP_C["M"], fm), omega)
+                    z1 = (y - coarse) / nrm.dM_std
                 else:
                     z1 = crop(b["tgt_dM"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
                     m = crop(b["tgt_dM_m"], oy, ox, CROP_C["M"], fm)
-                per_ch, has, _, _ = self.nets.gen["M"].loss(torch.where(m, z1, 0.0), m, cond, valid, **kw)
+                per_ch, has, _, _ = self.nets.gen["M"].loss(torch.where(m > 0, z1, 0.0), m, cond, valid, **kw)
                 out["X_M"] = channel_mean(per_ch, has)
             if "H" in self.levels:
                 with torch.no_grad():
@@ -460,12 +478,16 @@ class LitCascadeN0(pl.LightningModule):
                 cond, valid, omega = self.cond_h(self.nets, ctx, b, z_c, x_mh, ctx["psi"], hy, hx, keep)
                 kw = self.fine_kw(x_mh[:, :1], omega, fh, nrm.dH_std)
                 if hp.corrector:  # Y_H - P' X_M
-                    z1 = (crop(b["tgt_H"], hy, hx, n, fm * fh) - x_mh[:, :1]) / nrm.dH_std
-                    m = crop(b["tgt_H_m"], hy, hx, n, fm * fh)
+                    y = crop(b["tgt_H"], hy, hx, n, fm * fh)
+                    m = crop(b["tgt_H_m"], hy, hx, n, fm * fh).to(y)
+                    if hp.lambda_in > 0:
+                        y, m = self.with_inputs(y, m, crop(b["in_H"][:, -1:], hy, hx, n, fm * fh),
+                                                crop(b["in_H_w"][:, -1:], hy, hx, n, fm * fh), omega)
+                    z1 = (y - x_mh[:, :1]) / nrm.dH_std
                 else:
                     z1 = crop(b["tgt_dH"], hy, hx, n, fm * fh) / nrm.dH_std
                     m = crop(b["tgt_dH_m"], hy, hx, n, fm * fh)
-                per_ch, has, z_pred, t = self.nets.gen["H"].loss(torch.where(m, z1, 0.0), m, cond, valid, **kw)
+                per_ch, has, z_pred, t = self.nets.gen["H"].loss(torch.where(m > 0, z1, 0.0), m, cond, valid, **kw)
                 out["X_H"] = channel_mean(per_ch, has)
                 # L_cyc: soft S_C of the one-step fine prediction vs the S_C it was conditioned on
                 x_h = x_mh[:, :1] + z_pred * nrm.dH_std

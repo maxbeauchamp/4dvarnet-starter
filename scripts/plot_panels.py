@@ -238,6 +238,38 @@ def main():
             if full.any():
                 sc[f"{key}_hf_std_asip_SIC"] = round(float(hf(tgt[None])[0][full].std()), 5)
                 sc[f"{key}_hf_std_member_SIC"] = round(float(np.mean([float(h[full].std()) for h in hf(ens)])), 5)
+        # fidelity to what the model saw: SIC vs the day-t ASIP of Y^in (empty with --holdout-asip;
+        # not an independent score), model and prolonged coarser field alone
+        for key, ens, coarse, y_in, w_in in (
+                ("M", xm[:, 0], (xm - dmm)[:, 0], crop(cpu["in_M_asip"][None, -1:], o(oy), o(ox), CROP_C["M"], FM)[0, 0],
+                 crop(cpu["in_M_asip_w"][None, -1:], o(oy), o(ox), CROP_C["M"], FM)[0, 0]),
+                ("H", xh[:, 0], (xh - dhh)[:, 0], crop(cpu["in_H"][None, -1:], o(hy), o(hx), CROP_C["H"], FM * FH)[0, 0],
+                 crop(cpu["in_H_w"][None, -1:], o(hy), o(hx), CROP_C["H"], FM * FH)[0, 0])):
+            m = w_in > 0
+            if m.sum() >= 100:
+                sc[f"{key}_rmse_vs_in_SIC"] = round(float(((ens.mean(0) - y_in)[m] ** 2).mean().sqrt()), 5)
+                sc[f"{key}_coarse_rmse_vs_in_SIC"] = round(float(((coarse.mean(0) - y_in)[m] ** 2).mean().sqrt()), 5)
+                sc[f"{key}_n_in"] = int(m.sum())
+        # SIT at M: the correction dSIT vs the correction needed by the CRISTAL targets (Y - P' X_C),
+        # and where there is no target to constrain it (open water: ensemble-mean SIC_M < 0.15)
+        d_sit, sic_mean = dmm.mean(0)[1], xm.mean(0)[0]
+        ocean_m = crop(cpu["omega_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0] > 0
+        m = msk_m[1]
+        sc["M_n_SIT_targets"] = int(m.sum())
+        if m.sum() >= 5:
+            need = (tgt_m[1] - (xm - dmm).mean(0)[1])[m]
+            got = d_sit[m]
+            sc["M_dSIT_needed_mean"] = round(float(need.mean()), 4)
+            sc["M_dSIT_needed_std"] = round(float(need.std()), 4)
+            sc["M_dSIT_on_targets_mean"] = round(float(got.mean()), 4)
+            sc["M_dSIT_on_targets_std"] = round(float(got.std()), 4)
+            if need.std() > 0 and got.std() > 0:
+                sc["M_dSIT_corr_needed"] = round(float(torch.corrcoef(torch.stack([need, got]))[0, 1]), 3)
+        for name, sel in (("openwater", ocean_m & (sic_mean < 0.15)), ("ice", ocean_m & (sic_mean >= 0.15))):
+            if sel.any():
+                sc[f"M_dSIT_mean_{name}"] = round(float(d_sit[sel].mean()), 4)
+                sc[f"M_dSIT_absmean_{name}"] = round(float(d_sit[sel].abs().mean()), 4)
+                sc[f"M_SIT_mean_{name}"] = round(float(xm.mean(0)[1][sel].mean()), 4)
         metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx],
                          "holdout_asip": args.holdout_asip, **sc}
 
@@ -275,7 +307,9 @@ def main():
                                  ("SIC ens. spread", masked(xm.std(0)[0].numpy(), land_m), e_m, spread, e_h, ~land_m),
                                  ("ASIP SIC at M (Y^tgt)", masked(crop(cpu["tgt_M"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy(),
                                                                   crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy()), e_m, sic, None, ~land_m),
-                                 ("dSIT_M ens. mean (m)", masked(dmm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="RdBu_r"), None, ~land_m)]),
+                                 ("dSIT_M ens. mean (m)", masked(dmm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="RdBu_r"), None, ~land_m),
+                                 ("SIT ens. mean (m)", masked(xm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="viridis", vmin=0), None, ~land_m),
+                                 ("CRISTAL SIT at M (Y^tgt)", masked(tgt_m[1].numpy(), msk_m[1].numpy()), e_m, dict(cmap="viridis", vmin=0), None, ~land_m)]),
             ("H 1 km (256 km)", [(f"SIC member {k + 1}", masked(xh[k % len(xh), 0].numpy(), land_h), e_h, sic, None, ~land_h) for k in range(3)]
              + [("SIC ens. mean", masked(xh.mean(0)[0].numpy(), land_h), e_h, sic, None, ~land_h),
                 ("SIC ens. spread", masked(xh.std(0)[0].numpy(), land_h), e_h, spread, None, ~land_h),

@@ -62,8 +62,9 @@ class Generator(nn.Module):
     def loss(self, z1: Tensor, m: Tensor, cond: Tensor, valid: Tensor, floor: Optional[Tensor] = None,
              lo: Optional[Tensor] = None, hi: Optional[Tensor] = None, proj: Proj = None,
              noise: Optional[Tensor] = None, t: Optional[Tensor] = None):
-        """Masked NLL of the velocity. Returns (per-channel loss [C], channel
-        has-data flags [C], one-step prediction z1_hat, pseudo-time t)."""
+        """Masked NLL of the velocity; m is a mask or per-pixel weights (weighted
+        mean per channel). Returns (per-channel loss [C], channel has-data
+        flags [C], one-step prediction z1_hat, pseudo-time t)."""
         t = sample_uniform_time(z1) if t is None else t
         eps = torch.randn_like(z1) if noise is None else noise
         if proj is not None:
@@ -83,7 +84,7 @@ class Generator(nn.Module):
             nll = torch.where(z_pred <= lo, neglogcdf(-r), torch.where(z_pred >= hi, neglogcdf(r), nll))
         mf = m.to(nll.dtype)
         per_ch = (nll * mf).sum((0, 2, 3)) / mf.sum((0, 2, 3)).clamp_min(1)
-        return per_ch, m.any(3).any(2).any(0), z_pred, t
+        return per_ch, (m > 0).any(3).any(2).any(0), z_pred, t
 
     @torch.no_grad()
     def sample(self, cond: Tensor, valid: Tensor, n_steps: int, proj: Proj = None,

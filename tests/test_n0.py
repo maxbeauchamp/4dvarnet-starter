@@ -192,6 +192,20 @@ def test_corrector_losses_and_bounded_samples(batch):
     assert g.restrict(s["d_m"], batch["omega_m"][:, None], 8)[0].abs().max() > 1e-3
 
 
+def test_lambda_in_adds_day_t_inputs_as_weighted_targets(batch):
+    m = make_model(corrector=True, lambda_in=0.3)
+    y = torch.zeros(1, 2, 8, 8)
+    w = torch.zeros(1, 2, 8, 8)
+    w[..., :4, :] = 1.0  # Y^tgt on the top half
+    y_in, w_in = torch.full((1, 1, 8, 8), 0.7), torch.ones(1, 1, 8, 8)
+    y2, w2 = m.with_inputs(y, w, y_in, w_in, torch.ones(1, 8, 8))
+    assert torch.all(w2[:, 0, :4] == 1) and torch.all(y2[:, 0, :4] == 0)        # Y^tgt kept
+    assert torch.all(w2[:, 0, 4:] == 0.3) and torch.all(y2[:, 0, 4:] == 0.7)    # Y^in, weight lambda_in
+    assert torch.equal(w2[:, 1], w[:, 1])                                       # SIT: CRISTAL only
+    out = m.losses(batch)
+    assert torch.isfinite(out["X_M"]) and torch.isfinite(out["X_H"])
+
+
 def test_weak_cimr_targets_are_not_scored(batch):
     m = C.strict_mask(batch)
     assert not (m[:, 0] & (batch["tgt_C_sigma"][:, 0] > 0)).any() and m[:, 0].any()
