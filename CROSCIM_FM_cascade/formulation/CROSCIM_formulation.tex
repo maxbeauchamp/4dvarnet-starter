@@ -329,4 +329,29 @@ Masque : $m^S=\mathbb 1[\mathrm{cov}\ge0{,}5]$ (canaux ASIP), $\mathbb 1[n_\Mm\g
 \end{itemize}
 \end{bsec}
 
+% ======================================================================
+\begin{bsec}[9 \;\; Dérive apprise des seules observations (v2, proposition non implémentée)]{cO}
+\textbf{Contrainte.} Le produit n'utilise que ASIP, CIMR, CRISTAL et le forçage ERA5 : aucune observation de dérive, donc aucune cible pour $\mathbf u=(u,v)$. La dérive est la \emph{variable de contrôle} qui explique au mieux la succession des observations (esprit 4D-Var : un modèle de transport, des observations à des instants différents). Elle n'a de sens physique que si la structure du modèle l'oblige à agir comme un transport ; sinon elle n'est qu'un latent de plus.
+
+\textbf{Information disponible.} ASIP (SIC 500 m, heure d'acquisition par pixel) : déplacement des bords, chenaux et floes entre deux jours, avec l'intervalle exact $\Delta t(x)$ ; le L3 n'a qu'une valeur par pixel et par jour (pas de paires intra-journalières au même endroit). CIMR : déplacement des gradients de SIC à 5 km. CRISTAL : traces éparses, faible. ERA5 : a priori de dérive libre, $\mathbf u_0=\alpha\,\mathcal R(-\theta)\,\mathbf u_{10}$ ($\alpha\approx2\,\%$, $\theta\approx25^\circ$ vers la droite).
+
+\textbf{Transport en forme flux} (moyennes par maille, section 8) :
+\[
+\partial_t A+\nabla\!\cdot(\mathbf u A)=S_A,\qquad \partial_t h+\nabla\!\cdot(\mathbf u h)=S_h,\qquad \partial_t h_s+\nabla\!\cdot(\mathbf u h_s)=S_{h_s},
+\]
+discrétisé en volumes finis (ou semi-lagrangien conservatif) à $\Mm$ : une dérive de 5--20 km/jour est sous-maille à $\Cc$. La divergence $\nabla\!\cdot\mathbf u$ porte l'ouverture des chenaux et la convergence ; $S$ porte la thermodynamique.
+
+\textbf{Paramétrisation.} $\mathbf u=\mathbf u_0(\mathbf u_{10};\alpha,\theta)+\mathbf u_{\rm res}$, avec $\alpha,\theta$ appris (d'abord globaux, puis fonctions de $h$, $A$) et $\mathbf u_{\rm res}=U_\theta(\ZC,f)$ à $\Cc$, prolongé par $P'$ vers $\Mm$ (puis, plus tard, $\delta\mathbf u_\Mm$).
+
+\textbf{Apprentissage dans $\mathcal N_1$} (correcteur du transport, comme G$_\Mm$, G$_\Hh$ corrigent $P'X$) :
+\[
+X^{t+\Delta}=\underbrace{\mathcal T_{\mathbf u,\Delta}\bigl(X^t_\Mm\bigr)}_{\text{prior transporté}}+\ \delta X,\qquad \delta X\sim G^1(\cdot\mid \mathcal T_{\mathbf u}X^t,\ \ZC^t,\ \mu Y,\ f),
+\]
+cibles et pushforward inchangés (section 5) ; $\mathbf u$ est appris de bout en bout par la perte sur les observations futures. Régularisations : $\lambda_u\|\mathbf u_{\rm res}\|^2$ (rappel vers la dérive libre), $\lambda_\nabla\|\nabla\mathbf u\|^2$ (problème d'ouverture : là où la glace est sans structure seule la composante normale aux gradients est contrainte), $\lambda_\delta\|\delta X\|^2$ (sinon la correction absorbe le déplacement et $\mathbf u$ n'apprend rien). Les termes $S$ sont conditionnés par t2m, $h$, $h_s$ pour séparer dynamique et thermodynamique.
+
+\textbf{Diagnostics et validation sans données de dérive.} (0) Faisabilité, avant tout apprentissage (\texttt{scripts/drift\_feasibility.py}) : SIC ASIP de $t-1$ transportée par la dérive libre vs persistance, à $\Mm$, dans la zone du bord ; suivi par blocs de 64 km sur ASIP seul et comparaison à la dérive libre (rapport de vitesse, angle, corrélation vectorielle), ce qui dit aussi quel repère ont $u_{10},v_{10}$ dans les stores. (1) Passages ASIP retenus : $\mathcal T_{\mathbf u}$ doit battre la persistance et la dérive libre seule. (2) Cohérence physique : vitesse/vent plus faible pour la glace épaisse et compacte, plus forte au bord. (3) Carte d'identifiabilité ($|\nabla\mathrm{SIC}|$, couverture à deux jours). Une dérive externe (OSI SAF, bouées) ne servirait qu'à l'évaluation, hors du produit.
+
+\textbf{Étapes.} (0) faisabilité ; (1) $\mathcal N_1$ avec $\mathcal T_{\mathbf u_0}$, $\alpha,\theta$ globaux appris ; (2) $\mathbf u_{\rm res}$ à $\Cc$ régularisé ; (3) $\mathcal N_1$ à $\Mm$ pour SIC (et $\delta\mathbf u_\Mm$) ; (4) dérive dans $\mathcal N_0$ par la même cohérence de transport sur les jours passés de la fenêtre.
+\end{bsec}
+
 \end{document}

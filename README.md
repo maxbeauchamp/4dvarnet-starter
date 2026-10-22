@@ -56,6 +56,7 @@ scripts/convert_all.sh       one conversion job per source over a period
 scripts/run_pipeline.py      whole pipeline from config/pipeline/*.yaml: phases 3-6, then evaluation (resumable)
 scripts/plot_panels.py       inference panels (C / M / H, ensembles, S_C, psi) and metrics of an N0
 scripts/plot_forecast.py     forecast panels (mode A rollouts, fine levels on demand) and lead-time scores of an N1
+scripts/drift_feasibility.py drift from the observations only: free drift vs persistence, block tracking on ASIP (no training)
 scripts/scenarios.py         scenario experiments with an N1 (perturbed S, forcing, do(S), nudging, downscaling, I^up / I^down)
 scripts/submit_odyssey.sbatch  sbatch wrapper: sbatch scripts/submit_odyssey.sbatch <script.py> [args]
 tests/                  pytest suite (synthetic data, CPU)
