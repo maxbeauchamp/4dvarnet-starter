@@ -98,6 +98,7 @@ model:
   lambda_s: 1.0
   lambda_c: 0.1
   lambda_cyc_sit: 0.0  # SIT texture: within-C-cell std of the one-step SIT at M vs sit_std of S_C (v7: 0.1)
+  lambda_shift_sit: 0.0  # C-cell means of the SIT correction at M pulled to 0 (corrector; v7: 0.1)
   lambda_psi: 0.01
   lambda_perp: 1.0
   cyc_tau: 0.05    # width of the soft S_C indicators in L_cyc

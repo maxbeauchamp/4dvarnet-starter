@@ -277,3 +277,13 @@ def test_sit_texture_constraint(batch):
     out["cyc_sit"].backward()
     grads = [p.grad for p in m.nets.gen["M"].parameters() if p.grad is not None]
     assert grads and all(torch.isfinite(g_).all() for g_ in grads) and any(g_.abs().sum() > 0 for g_ in grads)
+
+
+def test_sit_shift_penalty(batch):
+    m = make_model(corrector=True, lambda_shift_sit=0.1)
+    out = m.losses(batch)
+    assert torch.isfinite(out["shift_sit"]) and out["shift_sit"] > 0
+    m.zero_grad()
+    out["shift_sit"].backward()
+    grads = [p.grad for p in m.nets.gen["M"].parameters() if p.grad is not None]
+    assert grads and all(torch.isfinite(g_).all() for g_ in grads) and any(g_.abs().sum() > 0 for g_ in grads)

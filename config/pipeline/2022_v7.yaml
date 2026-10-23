@@ -3,7 +3,8 @@
 # (model.advect_window: alpha, theta learned; ERA5 u10 / v10 along the grid
 # axes, scripts/drift_feasibility.py). To compare with v6 (same data, same
 # epochs): holdout scores, IIEE, fidelity to the inputs. Also the SIT texture
-# constraint at M (model.lambda_cyc_sit): sit_std of the generated SIT = sit_std of S_C.
+# constraint at M (model.lambda_cyc_sit): sit_std of the generated SIT = sit_std of S_C,
+# and the C-cell means of the SIT correction pulled to 0 (model.lambda_shift_sit).
 # Starts from v6: G_C (phase 3 of v6) fine-tuned with the moved window; G_M /
 # G_H from phase 4 of v6. Run it once v6 has finished its phase 4.
 #   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v7.yaml
@@ -30,12 +31,12 @@ phases:
       report: /Odyssey/private/m19beauc/results/pipeline_2022_v6/report.json
       phase: phase4_MH
       modules: [gen.M, gen.H, down_m, down_h, e_pts_m, e_asip_m, e_asip_h, fuse_m, psi]
-    overrides: ["model.levels=[M,H]", "model.pyramid=false", "datamodule.asip_weighted_tiles=true", "model.advect_window=true", "model.lambda_cyc_sit=0.1"]
+    overrides: ["model.levels=[M,H]", "model.pyramid=false", "datamodule.asip_weighted_tiles=true", "model.advect_window=true", "model.lambda_cyc_sit=0.1", "model.lambda_shift_sit=0.1"]
     trainer: {max_epochs: 20, limit_train_batches: 1000, limit_val_batches: 50}
   - name: phase5_full
     xp: N0
     init: phase4_MH
-    overrides: ["model.levels=[C,M,H]", "model.pyramid=true", "datamodule.asip_weighted_tiles=true", "model.advect_window=true", "model.lambda_cyc_sit=0.1"]
+    overrides: ["model.levels=[C,M,H]", "model.pyramid=true", "datamodule.asip_weighted_tiles=true", "model.advect_window=true", "model.lambda_cyc_sit=0.1", "model.lambda_shift_sit=0.1"]
     trainer: {max_epochs: 30, limit_train_batches: 1000, limit_val_batches: 50}
   - name: phase6_N1
     xp: N1

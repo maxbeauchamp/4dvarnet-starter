@@ -231,7 +231,7 @@ class LitCascadeN0(pl.LightningModule):
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
                  n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, lambda_in=0.0, advect_window=False,
-                 drift_init=(0.015, 15.0), p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_cyc_sit=0.0,
+                 drift_init=(0.015, 15.0), p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_cyc_sit=0.0, lambda_shift_sit=0.0,
                  lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
@@ -576,6 +576,14 @@ class LitCascadeN0(pl.LightningModule):
                     ok = crop(b["omega_c"], oy, ox, CROP_C["M"], 1) > 0.5
                     err = ((s_pred - s_cond) / nrm.z_std[:, k]) ** 2 * t_m.view(-1, 1, 1)
                     out["cyc_sit"] = (err * ok).sum() / ok.sum().clamp_min(1)
+                if hp.lambda_shift_sit > 0 and hp.corrector:
+                    # prior "the SIT of G_C is right unless the targets say otherwise": C-cell means of
+                    # the one-step SIT correction (in units of its scale) pulled to 0, weighted by the
+                    # pseudo-time; the CRISTAL targets override it where they require a shift
+                    vm = (omega > 0).to(z_pred_m)
+                    shift = g.restrict(z_pred_m[:, 1] * vm, vm, fm)[0]
+                    ok = crop(b["omega_c"], oy, ox, CROP_C["M"], 1) > 0.5
+                    out["shift_sit"] = (shift ** 2 * t_m.view(-1, 1, 1) * ok).sum() / ok.sum().clamp_min(1)
             if "H" in self.levels:
                 with torch.no_grad():
                     d_m = self.sample_m(ema, ctx_e, b, z_c, ctx_e["psi"], oy, ox, all_in, hp.cond_steps)
@@ -614,7 +622,8 @@ class LitCascadeN0(pl.LightningModule):
             l_psi = l_psi + hp.lambda_perp * out["psi_cov"]
         out["psi"] = l_psi
         total = sum(out.get(k, 0) for k in ("X_C", "X_M", "X_H")) + hp.lambda_s * out.get("S_C", 0) \
-            + hp.lambda_c * out.get("cyc", 0) + hp.lambda_cyc_sit * out.get("cyc_sit", 0) + hp.lambda_psi * out["psi"]
+            + hp.lambda_c * out.get("cyc", 0) + hp.lambda_cyc_sit * out.get("cyc_sit", 0) \
+            + hp.lambda_shift_sit * out.get("shift_sit", 0) + hp.lambda_psi * out["psi"]
         out["loss"] = total
         if self.hparams.advect_window:
             out["drift_alpha"], out["drift_theta_deg"] = self.drift[0].exp().detach(), self.drift[1].detach() * 180 / math.pi
