@@ -36,6 +36,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 sys.path.append(REPO)
 from croscim import data as D  # noqa: E402
 from croscim import grid as g  # noqa: E402
+from croscim import obs  # noqa: E402
 from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask, strict_mask_m  # noqa: E402
 from croscim.ocean import ocean_fraction_h  # noqa: E402
 from croscim.transition import load_n0  # noqa: E402
@@ -275,6 +276,52 @@ def main():
                 sc[f"M_dSIT_mean_{name}"] = round(float(d_sit[sel].mean()), 4)
                 sc[f"M_dSIT_absmean_{name}"] = round(float(d_sit[sel].abs().mean()), 4)
                 sc[f"M_SIT_mean_{name}"] = round(float(xm.mean(0)[1][sel].mean()), 4)
+        # SIT realism at M (a generative ensemble is judged on its members' texture and distribution,
+        # and on its mean not being worse than the coarse field):
+        #   sub-cell variability: std of SIT inside each C cell (as sit_std of S_C), members vs CRISTAL
+        #   on the CRISTAL pixels (cells with >= MIN_SIT_OBS of them), and members on all the ocean
+        #   pixels vs the sit_std predicted by G_C;
+        #   distribution of the members at the CRISTAL pixels vs CRISTAL (quantiles, Wasserstein-1);
+        #   ensemble: CRPS vs the MAE of the coarse field, spread / RMSE, biases;
+        #   cell means of the correction dSIT where CRISTAL has nothing (systematic shifts).
+        sit_m, cr, m_cr = xm[:, 1], tgt_m[1], msk_m[1]
+        coarse_sit = (xm - dmm).mean(0)[1]
+        fm = g.factor("M", "C")
+        tgt_std, n_obs = obs.sit_std_stat(cr, m_cr.float())
+        cells = n_obs >= obs.MIN_SIT_OBS
+        if cells.any():
+            mem_std = torch.stack([obs.sit_std_stat(s_, m_cr.float())[0] for s_ in sit_m])
+            sc["M_sitstd_cristal"] = round(float(tgt_std[cells].mean()), 4)
+            sc["M_sitstd_members_on_cristal"] = round(float(mem_std[:, cells].mean()), 4)
+            sc["M_sitstd_coarse_on_cristal"] = round(float(obs.sit_std_stat(coarse_sit, m_cr.float())[0][cells].mean()), 4)
+            sc["M_sitstd_n_cells"] = int(cells.sum())
+        ice_c = g.restrict(((sic_mean >= 0.15) & ocean_m).float(), ocean_m.float(), fm)[0] > 0.5
+        if ice_c.any():
+            all_std = torch.stack([obs.sit_std_stat(s_, ocean_m.float())[0] for s_ in sit_m])
+            gc_std = crop(zc.mean(0)[None, Z_NAMES.index("sit_std")][None], o(oy), o(ox), CROP_C["M"], 1)[0, 0]
+            sc["M_sitstd_members_ice"] = round(float(all_std[:, ice_c].mean()), 4)
+            sc["M_sitstd_G_C_ice"] = round(float(gc_std[ice_c].mean()), 4)
+        if m_cr.sum() >= 10:
+            y = cr[m_cr]
+            mem = sit_m[:, m_cr].flatten()
+            q = torch.tensor([0.1, 0.5, 0.9])
+            sc["M_SIT_q10_50_90_cristal"] = [round(float(v), 3) for v in torch.quantile(y, q)]
+            sc["M_SIT_q10_50_90_members"] = [round(float(v), 3) for v in torch.quantile(mem, q)]
+            sc["M_SIT_q10_50_90_coarse"] = [round(float(v), 3) for v in torch.quantile(coarse_sit[m_cr], q)]
+            qq = torch.linspace(0.01, 0.99, 99)
+            w1 = lambda a_: float((torch.quantile(a_, qq) - torch.quantile(y, qq)).abs().mean())  # noqa: E731
+            sc["M_SIT_w1_members"], sc["M_SIT_w1_coarse"] = round(w1(mem), 4), round(w1(coarse_sit[m_cr]), 4)
+            sc["M_SIT_bias_ensmean"] = round(float((sit_m.mean(0)[m_cr] - y).mean()), 4)
+            sc["M_SIT_bias_coarse"] = round(float((coarse_sit[m_cr] - y).mean()), 4)
+            sc["M_SIT_mae_coarse"] = round(float((coarse_sit[m_cr] - y).abs().mean()), 4)
+            if sc.get("M_rmse_SIT"):
+                sc["M_SIT_spread_over_rmse"] = round(sc["M_spread_SIT"] / sc["M_rmse_SIT"], 3)
+        has_cr = g.block_sum(m_cr.float(), fm) > 0
+        ocean_cell = g.restrict(ocean_m.float(), torch.ones_like(ocean_m.float()), fm)[0] > 0.5
+        cell_mean_d = g.restrict(dmm.mean(0)[1], ocean_m.float(), fm)[0].abs()
+        for name, sel in (("notarget", ocean_cell & ~has_cr), ("target", ocean_cell & has_cr)):
+            if sel.any():
+                sc[f"M_dSIT_cellmean_abs_{name}"] = round(float(cell_mean_d[sel].mean()), 4)
         metrics[date] = {"tile": [iy0, ix0], "m_crop": [oy, ox], "h_crop": [hy, hx],
                          "holdout_asip": args.holdout_asip, **sc}
 
@@ -314,6 +361,7 @@ def main():
                                                                   crop(cpu["tgt_M_m"][None], o(oy), o(ox), CROP_C["M"], FM)[0, 0].numpy()), e_m, sic, None, ~land_m),
                                  ("dSIT_M ens. mean (m)", masked(dmm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="RdBu_r"), None, ~land_m),
                                  ("SIT ens. mean (m)", masked(xm.mean(0)[1].numpy(), land_m), e_m, dict(cmap="viridis", vmin=0), None, ~land_m),
+                                 ("SIT member 1 (m)", masked(xm[0, 1].numpy(), land_m), e_m, dict(cmap="viridis", vmin=0), None, ~land_m),
                                  ("CRISTAL SIT at M (Y^tgt)", masked(tgt_m[1].numpy(), msk_m[1].numpy()), e_m, dict(cmap="viridis", vmin=0), None, ~land_m)]),
             ("H 1 km (256 km)", [(f"SIC member {k + 1}", masked(xh[k % len(xh), 0].numpy(), land_h), e_h, sic, None, ~land_h) for k in range(3)]
              + [("SIC ens. mean", masked(xh.mean(0)[0].numpy(), land_h), e_h, sic, None, ~land_h),
