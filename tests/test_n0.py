@@ -267,3 +267,13 @@ def test_advect_window_learns_drift_and_moves_inputs(batch):
     # phase 4: frozen with G_C
     m4 = make_model(advect_window=True, levels=["M", "H"], pyramid=False, corrector=True)
     assert not m4.drift.requires_grad and all(p is not m4.drift for p in m4.configure_optimizers()["optimizer"].param_groups[0]["params"])
+
+
+def test_sit_texture_constraint(batch):
+    m = make_model(corrector=True, lambda_cyc_sit=0.1)
+    out = m.losses(batch)
+    assert torch.isfinite(out["cyc_sit"]) and out["cyc_sit"] > 0
+    m.zero_grad()
+    out["cyc_sit"].backward()
+    grads = [p.grad for p in m.nets.gen["M"].parameters() if p.grad is not None]
+    assert grads and all(torch.isfinite(g_).all() for g_ in grads) and any(g_.abs().sum() > 0 for g_ in grads)

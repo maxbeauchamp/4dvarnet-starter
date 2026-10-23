@@ -231,7 +231,8 @@ class LitCascadeN0(pl.LightningModule):
 
     def __init__(self, norm, swin, levels=("C", "M", "H"), pyramid=True, d=32, d_psi=4,
                  n_up_queries=4, raw_days=0, smooth_cond=False, corrector=False, lambda_in=0.0, advect_window=False,
-                 drift_init=(0.015, 15.0), p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_psi=0.01,
+                 drift_init=(0.015, 15.0), p_null=0.1, eta=0.05, lambda_s=1.0, lambda_c=0.1, lambda_cyc_sit=0.0,
+                 lambda_psi=0.01,
                  lambda_perp=1.0, cyc_tau=0.05, lr=1e-4, betas=(0.9, 0.995), lr_scheduler_start_factor=1e-5,
                  lr_scheduler_iters=20_000, ema_decay=0.999, n_steps=20, cond_steps=6, n_members=8,
                  score_every=5, n_score_batches=20):
@@ -560,8 +561,21 @@ class LitCascadeN0(pl.LightningModule):
                 else:
                     z1 = crop(b["tgt_dM"], oy, ox, CROP_C["M"], fm) / nrm.dM_std
                     m = crop(b["tgt_dM_m"], oy, ox, CROP_C["M"], fm)
-                per_ch, has, _, _ = self.nets.gen["M"].loss(torch.where(m > 0, z1, 0.0), m, cond, valid, **kw)
+                per_ch, has, z_pred_m, t_m = self.nets.gen["M"].loss(torch.where(m > 0, z1, 0.0), m, cond, valid, **kw)
                 out["X_M"] = channel_mean(per_ch, has)
+                if hp.lambda_cyc_sit > 0:
+                    # SIT texture: std of the one-step SIT inside each C cell vs the sit_std of S_C it
+                    # was conditioned on (G_M otherwise ignores it), weighted by the pseudo-time
+                    sit = coarse[:, 1] + z_pred_m[:, 1] * nrm.dM_std[:, 1]
+                    vm = (omega > 0).to(sit)  # as obs.sit_std_stat, with an epsilon: d sqrt / dx is infinite at 0
+                    mean = g.restrict(sit * vm, vm, fm)[0]
+                    var = (g.restrict(sit * sit * vm, vm, fm)[0] - mean ** 2).clamp_min(0)
+                    s_pred = torch.sqrt(var + 1e-6)
+                    k = N_X + obs.S_NAMES.index("sit_std")
+                    s_cond = crop(z_c[:, k:k + 1], oy, ox, CROP_C["M"], 1)[:, 0]
+                    ok = crop(b["omega_c"], oy, ox, CROP_C["M"], 1) > 0.5
+                    err = ((s_pred - s_cond) / nrm.z_std[:, k]) ** 2 * t_m.view(-1, 1, 1)
+                    out["cyc_sit"] = (err * ok).sum() / ok.sum().clamp_min(1)
             if "H" in self.levels:
                 with torch.no_grad():
                     d_m = self.sample_m(ema, ctx_e, b, z_c, ctx_e["psi"], oy, ox, all_in, hp.cond_steps)
@@ -600,7 +614,7 @@ class LitCascadeN0(pl.LightningModule):
             l_psi = l_psi + hp.lambda_perp * out["psi_cov"]
         out["psi"] = l_psi
         total = sum(out.get(k, 0) for k in ("X_C", "X_M", "X_H")) + hp.lambda_s * out.get("S_C", 0) \
-            + hp.lambda_c * out.get("cyc", 0) + hp.lambda_psi * out["psi"]
+            + hp.lambda_c * out.get("cyc", 0) + hp.lambda_cyc_sit * out.get("cyc_sit", 0) + hp.lambda_psi * out["psi"]
         out["loss"] = total
         if self.hparams.advect_window:
             out["drift_alpha"], out["drift_theta_deg"] = self.drift[0].exp().detach(), self.drift[1].detach() * 180 / math.pi

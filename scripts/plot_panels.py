@@ -69,16 +69,18 @@ def build(raw, holdout_asip):
     return b
 
 
-def best_crops(b):
+def best_crops(b, by="asip"):
     """M crop (16 C cells) then H crop (8 C cells) inside it with the most ASIP
     targets over the ocean at day t (inputs count for 10 %: there must be
-    targets at M / H for the metrics)."""
+    targets at M / H for the metrics). by="sit": the M crop with the most
+    CRISTAL SIT targets at M (SIT evaluation), the H crop as before."""
     ocean = b["omega_h"][0] > 0
     obs = (b["tgt_H_m"][0, 0] & ocean).float() + 0.1 * ((b["in_H_w"][0, -1] > 0) & ocean).float()
     cov = g.block_sum(obs, FM * FH)
     nm, nh = CROP_C["M"], CROP_C["H"]
     cand = [(y, x) for y in range(0, D.N_C - nm + 1, 4) for x in range(0, D.N_C - nm + 1, 4)]
-    oy, ox = max(cand, key=lambda c: float(cov[c[0]:c[0] + nm, c[1]:c[1] + nm].sum()))
+    cov_m = cov if by == "asip" else g.block_sum(strict_mask_m(b)[0, 1].float(), FM)
+    oy, ox = max(cand, key=lambda c: float(cov_m[c[0]:c[0] + nm, c[1]:c[1] + nm].sum()))
     sub = [(oy + dy, ox + dx) for dy in range(0, nm - nh + 1, 2) for dx in range(0, nm - nh + 1, 2)]
     hy, hx = max(sub, key=lambda c: float(cov[c[0]:c[0] + nh, c[1]:c[1] + nh].sum()))
     return oy, ox, hy, hx
@@ -154,6 +156,8 @@ def main():
     ap.add_argument("--members", type=int, default=8)
     ap.add_argument("--n-steps", type=int, default=None, help="Heun steps (default: the model's)")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--crop-by", choices=("asip", "sit"), default="asip",
+                    help="M crop with the most ASIP (default) or CRISTAL SIT targets (SIT evaluation)")
     ap.add_argument("--holdout-asip", action="store_true",
                     help="every ASIP pass of day t is a target (none as input): evaluates M / H and the "
                          "ASIP-based S_C channels against a SAR scene the model has not seen")
@@ -179,7 +183,7 @@ def main():
         ds = D.CascadeDataset(args.root, [day], omega_h, np.array([[iy0, ix0]]), train=False)
         raw = {k: v.to(dev) for k, v in torch.utils.data.default_collate([ds[0]]).items()}
         b = build(raw, args.holdout_asip)
-        oy, ox, hy, hx = best_crops(b)
+        oy, ox, hy, hx = best_crops(b, args.crop_by)
         with amp:
             zc, xm, dmm, xh, dhh, psi = ensemble(model, b, args.members, n_steps, oy, ox, hy, hx)
 
