@@ -21,6 +21,7 @@ import gc
 import inspect
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -38,8 +39,8 @@ TINY = ["base_dim=8", "encoder_depths=[1,1,1,1]", "decoder_depths=[1,1,1]", "num
         "time_dim=16", "modulation_rank=4"]
 
 
-def load_cfg(xp: str, overrides: list[str]):
-    with initialize_config_dir(config_dir=os.path.join(REPO, "config"), version_base="1.3"):
+def load_cfg(config_dir: str, xp: str, overrides: list[str]):
+    with initialize_config_dir(config_dir=config_dir, version_base="1.3"):
         return compose("main", overrides=[f"xp={xp}", *overrides])
 
 
@@ -86,6 +87,11 @@ def main():
     out = pcfg.out
     os.makedirs(out, exist_ok=True)
     cuda = torch.cuda.is_available() and not args.tiny
+    # configs frozen at launch, like the code already imported: a git pull during the job
+    # must not mix new configs with the old code (phases compose their config when they start)
+    config_dir = os.path.join(os.path.abspath(out), ".config_snapshot")
+    shutil.rmtree(config_dir, ignore_errors=True)
+    shutil.copytree(os.path.join(REPO, "config"), config_dir)
     report_path = os.path.join(out, "report.json")
     report = json.load(open(report_path)) if os.path.exists(report_path) else {}
     if args.redo_eval:
@@ -117,7 +123,7 @@ def main():
             overrides += tiny_n0
         else:
             overrides.append(f"model.n0_ckpt='{ckpt_of(ph.n0)}'")  # quoted: checkpoint names contain "="
-        cfg = load_cfg(ph.xp, overrides)
+        cfg = load_cfg(config_dir, ph.xp, overrides)
         dm = hydra.utils.instantiate(cfg.datamodule)
         model = hydra.utils.instantiate(cfg.model)
         ckpt_dir = os.path.join(out, name, "checkpoints")
