@@ -171,6 +171,19 @@ def main():
             ("ASIP SIC of the day (not used)", masked(asip_all, (asip_w | tg_m).numpy()), e_h, sic, None, ~land_h)]))
         panel(os.path.join(args.out, f"forecast_{date}.png"),
               f"start {date}  tile ({iy0}, {ix0})  {args.members} members, w = {args.w}, {n_steps} Heun steps", rows)
+        # individual members at C (the ensemble mean smooths by construction: each member must stay
+        # a coherent sea-ice state)
+        ns = min(3, traj.shape[0])
+        sit_max = float(traj[:ns, :, 1].amax())
+        rows_m = [(f"t+{k} d", [(f"SIC member {s + 1}", masked(traj[s, k, 0].numpy(), land_c), e_c, sic, None, ~land_c)
+                               for s in range(ns)]
+                   + [(f"SIT member {s + 1} (m)", masked(traj[s, k, 1].numpy(), land_c), e_c,
+                       dict(cmap="viridis", vmin=0, vmax=sit_max), None, ~land_c) for s in range(min(2, ns))]
+                   + [(f"h_pack member {s + 1}", masked(traj[s, k, I_PACK].numpy(), land_c), e_c,
+                       dict(cmap="cividis", vmin=0, vmax=1), None, ~land_c) for s in range(min(2, ns))])
+                  for k in leads]
+        panel(os.path.join(args.out, f"members_{date}.png"),
+              f"start {date}  tile ({iy0}, {ix0})  members, w = {args.w}, {n_steps} Heun steps", rows_m)
         metrics[date]["time_s"] = round(time.perf_counter() - tic, 1)
         with open(os.path.join(args.out, "metrics.json"), "w") as f:
             json.dump(metrics, f, indent=2)
