@@ -1,0 +1,27 @@
+# N1 retrained on the N0 of v6 (phase 5), with the N1b options (formulation
+# section 5): increment (G_C^1 generates Z^{t+1} - Z^t: doing nothing is
+# persistence), state_input (previous state as such in the conditioning),
+# raw_obs (CIMR of the day uncompressed). The v6 N1 was worse than persistence
+# from the first day, with or without the observations (w = 1 ~ w = 0).
+#   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v6_n1b.yaml
+
+out: /Odyssey/private/m19beauc/results/pipeline_2022_v6_n1b
+
+dates:
+  train: [2022-01-15, 2022-10-31]
+  val: [2022-11-01, 2022-11-30]
+  test: [2022-12-01, 2022-12-24]
+
+common: ["model.lr_scheduler_iters=2000", "model.n_score_batches=5"]
+
+phases:
+  - name: phase6_N1
+    xp: N1
+    n0_from: {report: /Odyssey/private/m19beauc/results/pipeline_2022_v6/report.json, phase: phase5_full}
+    overrides: ["model.k_max=7", "model.curriculum_epochs=3", "model.increment=true", "model.state_input=true",
+                "model.raw_obs=true"]
+    trainer: {max_epochs: 25, limit_train_batches: 400, limit_val_batches: 20}
+
+evaluation:
+  plot_forecast: {ckpt_of: phase6_N1, lead: 7, n: 4, members: 8}
+  scenarios: {ckpt_of: phase6_N1, lead: 7, n: 3, members: 8}

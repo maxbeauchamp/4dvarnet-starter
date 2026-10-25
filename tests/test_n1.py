@@ -124,3 +124,35 @@ def test_batch_without_any_target_still_backpropagates(n1, days, monkeypatch):
     out = n1.losses(empty)
     assert out["loss"] == 0 and out["loss"].requires_grad
     out["loss"].backward()
+
+
+# ----------------------------------------------------- N1b (increment, state_input, raw_obs)
+
+@pytest.fixture(scope="module")
+def n1b():
+    torch.manual_seed(0)
+    return LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                        increment=True, state_input=True, raw_obs=True)
+
+
+def test_n1b_loss_backward(n1b, days, monkeypatch):
+    monkeypatch.setattr(n1b, "k_now", lambda n: 2)
+    out = n1b.losses(days)
+    assert torch.isfinite(out["loss"])
+    n1b.zero_grad()
+    out["loss"].backward()
+    assert any(p.grad is not None and p.grad.abs().sum() > 0 for p in n1b.nets.gen.parameters())
+
+
+def test_n1b_zero_increment_is_persistence_and_bounds_hold(n1b, days, monkeypatch):
+    nets = n1b.ema.module
+    z, psi = n1b.analysis(days[0], 1)
+    keep = n1b.keep(1, "cpu", train=False)
+    real = nets.gen.sample
+    monkeypatch.setattr(nets.gen, "sample", lambda cond, valid, n, **kw: torch.zeros(1, N_Z + n1b.d_psi, 64, 64))
+    z1, psi1 = n1b.step(nets, days[1], z, psi, keep, 1)
+    assert torch.allclose(z1, z, atol=1e-5) and torch.allclose(psi1, psi, atol=1e-5)
+    monkeypatch.setattr(nets.gen, "sample", real)
+    z1, _ = n1b.step(nets, days[1], z, psi, keep, 1)
+    sic = z1[:, 0]
+    assert sic.min() >= -1e-4 and sic.max() <= 1 + 1e-4 and z1[:, 1].min() >= -1e-4  # SIC in [0, 1], SIT >= 0

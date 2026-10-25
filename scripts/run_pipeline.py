@@ -122,7 +122,12 @@ def main():
         if ph.xp == "N0":
             overrides += tiny_n0
         else:
-            overrides.append(f"model.n0_ckpt='{ckpt_of(ph.n0)}'")  # quoted: checkpoint names contain "="
+            if ph.get("n0_from"):  # the N0 of another pipeline run
+                old = json.load(open(ph.n0_from.report))[ph.n0_from.phase]
+                n0 = old["best"] or old["last"]
+            else:
+                n0 = ckpt_of(ph.n0)
+            overrides.append(f"model.n0_ckpt='{n0}'")  # quoted: checkpoint names contain "="
         cfg = load_cfg(config_dir, ph.xp, overrides)
         dm = hydra.utils.instantiate(cfg.datamodule)
         model = hydra.utils.instantiate(cfg.model)

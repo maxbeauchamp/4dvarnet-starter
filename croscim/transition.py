@@ -19,6 +19,17 @@ K = 1 .. k_max; targets at t+k are X^, S^ (Y^tgt of day t+k) and
 psi^ = Psi_bar(h_C^{t+k}) from the N0 EMA encoder, where observed:
 
     L = sum_k gamma^{k-1} [L_X + lambda_S L_S + lambda_psi L_psi^dyn]_{t+k}
+
+Options (v6, N1b; all False for the former checkpoints):
+  increment    G_C^1 generates the increment Z^{t+1} - Z^t (normalised; psi
+               included), censored so that Z^{t+1} stays within the physical
+               bounds: doing nothing is persistence (the v6 N1 regressed to a
+               mean state from the first step, worse than persistence);
+  state_input  the normalised previous state (and psi) enters as such, besides
+               its encoding E^s (same group dropout);
+  raw_obs      the gridded CIMR (SIC, SIT, masks) of the day enters
+               uncompressed, as raw_days for G_C^0 (the encoder compresses it:
+               the v6 N1 barely used the observations, w = 1 ~ w = 0).
 """
 
 from __future__ import annotations
@@ -87,7 +98,7 @@ def load_n1(path: str, n0_ckpt: str | None = None) -> "LitCascadeN1":
 
 class N1Nets(nn.Module):
 
-    def __init__(self, n0: LitCascadeN0, swin: dict):
+    def __init__(self, n0: LitCascadeN0, swin: dict, n_extra: int = 0):
         super().__init__()
         d, d_psi = n0.hparams.d, n0.hparams.d_psi
         self.enc = copy.deepcopy(n0.ema.module)
@@ -96,7 +107,7 @@ class N1Nets(nn.Module):
         for p in self.enc.parameters():
             p.requires_grad_(True)
         self.e_state = DenseEncoder(N_Z + d_psi + len(STATE_GROUPS), d)
-        self.gen = Generator(N_Z + d_psi, 3 * d + 5, (N_C, N_C), 32., swin)
+        self.gen = Generator(N_Z + d_psi, 3 * d + 5 + n_extra, (N_C, N_C), 32., swin)
         self.n_loaded = load_matching(self.gen, n0.ema.module.gen["C"])
 
 
@@ -106,7 +117,7 @@ class LitCascadeN1(pl.LightningModule):
                  k_max=7, curriculum_epochs=10, p_obs=0.7, p_null=0.1, gamma=0.9, lambda_s=1.0, lambda_psi=1.0,
                  freeze_encoders=True, push_steps=4, n_steps=20, lr=1e-4, betas=(0.9, 0.995),
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
-                 score_every=5, n_score_batches=10):
+                 score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -115,7 +126,8 @@ class LitCascadeN1(pl.LightningModule):
             p.requires_grad_(False)
         self.n0, self.nrm = n0, n0.nrm
         self.d_psi = n0.hparams.d_psi
-        self.nets = N1Nets(n0, swin if swin is not None else n0.hparams.swin["C"])
+        n_extra = (N_Z + self.d_psi if state_input else 0) + (4 if raw_obs else 0)
+        self.nets = N1Nets(n0, swin if swin is not None else n0.hparams.swin["C"], n_extra)
         if freeze_encoders:
             for p in self.nets.enc.parameters():
                 p.requires_grad_(False)
@@ -152,9 +164,20 @@ class LitCascadeN1(pl.LightningModule):
         flags = [k[n].expand(-1, 1, *zn.shape[-2:]) for n in STATE_GROUPS]
         x_s = torch.cat([zn[:, :N_X] * k["x"], zn[:, N_X:] * k["s"], psi * k["psi"], *flags], 1)
         e_s = nets.e_state(x_s, torch.ones_like(b["omega_c"], dtype=torch.bool))
-        cond = torch.cat([ctx["h_C"] * k["h"], ctx["f"] * k["f"], e_s, k["h"].expand(-1, 1, *zn.shape[-2:]),
-                          k["f"].expand(-1, 1, *zn.shape[-2:]), b["omega_c"][:, None], tile_pos(b)], 1)
+        parts = [ctx["h_C"] * k["h"], ctx["f"] * k["f"], e_s, k["h"].expand(-1, 1, *zn.shape[-2:]),
+                 k["f"].expand(-1, 1, *zn.shape[-2:]), b["omega_c"][:, None], tile_pos(b)]
+        if self.hparams.state_input:
+            parts.append(x_s[:, :N_Z + self.d_psi])
+        if self.hparams.raw_obs:
+            m = b["in_C_cimr_w"][:, -1] > 0
+            raw = torch.cat([torch.where(m, self.nrm(b["in_C_cimr"][:, -1], ("SIC", "SIT"), 1), 0.0), m.to(zn)], 1)
+            parts.append(raw * k["h"])
+        cond = torch.cat(parts, 1)
         return cond, (b["omega_c"] > 0)[:, None].to(cond)
+
+    def state_n(self, z: Tensor, psi: Tensor) -> Tensor:
+        """Normalised (Z, psi): the state the increment is added to."""
+        return torch.cat([self.nrm.z(z), psi], 1)
 
     @torch.no_grad()
     def target(self, b: dict) -> tuple[Tensor, Tensor, Tensor]:
@@ -169,7 +192,11 @@ class LitCascadeN1(pl.LightningModule):
     def step_loss(self, b: dict, z: Tensor, psi: Tensor, keep: dict, noise=None, t=None) -> dict:
         z1, m, floor = self.target(b)
         cond, valid = self.cond(self.nets, b, z, psi, keep)
-        per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, self.lo, self.hi, noise=noise, t=t)
+        lo, hi = self.lo, self.hi
+        if self.hparams.increment:
+            s0 = self.state_n(z, psi)
+            z1, lo, hi = torch.where(m, z1 - s0, 0.0), lo - s0, hi - s0
+        per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, lo, hi, noise=noise, t=t)
         out = {"X": channel_mean(per_ch[:N_X], has[:N_X]), "S": channel_mean(per_ch[N_X:N_Z], has[N_X:N_Z]),
                "psi": channel_mean(per_ch[N_Z:], has[N_Z:])}
         out["loss"] = out["X"] + self.hparams.lambda_s * out["S"] + self.hparams.lambda_psi * out["psi"]
@@ -182,8 +209,13 @@ class LitCascadeN1(pl.LightningModule):
         on the observations (w = 0: free simulation, w = 1: assimilation)."""
         cond, valid = self.cond(nets, b, z, psi, keep)
         cond_null = self.cond(nets, b, z, psi, {**keep, "h": torch.zeros_like(keep["h"])})[0] if w != 1.0 else None
-        zn = nets.gen.sample(cond, valid, n_steps, lo=self.lo, hi=self.hi, cond_null=cond_null, w=w,
-                             generator=generator)
+        lo, hi = self.lo, self.hi
+        if self.hparams.increment:
+            s0 = self.state_n(z, psi)
+            lo, hi = lo - s0, hi - s0
+        zn = nets.gen.sample(cond, valid, n_steps, lo=lo, hi=hi, cond_null=cond_null, w=w, generator=generator)
+        if self.hparams.increment:
+            zn = s0 + zn
         return self.nrm.z_inv(zn[:, :N_Z]), zn[:, N_Z:]
 
     @torch.no_grad()
