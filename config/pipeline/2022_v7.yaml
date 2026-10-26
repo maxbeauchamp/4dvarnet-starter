@@ -42,7 +42,7 @@ phases:
     xp: N1
     n0: phase5_full
     overrides: ["model.k_max=7", "model.curriculum_epochs=3", "model.increment=true", "model.state_input=true",
-                "model.raw_obs=true"]
+                "model.raw_obs=true", "model.bg_sigma=0.5", "model.analysis_steps=20", "model.push_steps=8"]
     trainer: {max_epochs: 25, limit_train_batches: 400, limit_val_batches: 20}
 
 evaluation:

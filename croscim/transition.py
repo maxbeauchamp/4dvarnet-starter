@@ -30,6 +30,14 @@ Options (v6, N1b; all False for the former checkpoints):
   raw_obs      the gridded CIMR (SIC, SIT, masks) of the day enters
                uncompressed, as raw_days for G_C^0 (the encoder compresses it:
                the v6 N1 barely used the observations, w = 1 ~ w = 0).
+  bg_sigma     background term (N1c): where a channel has no target at t+k, its
+               target is its own previous state, with the scale floor bg_sigma
+               (normalised units), as the background term of 4D-Var. Without it
+               S_C (targets only where the held-out ASIP passes cover) was
+               resampled at random each step, and accumulated as a random walk
+               with the increment (the N1b rollouts became noise).
+  analysis_steps  Heun steps of the initial N0 analysis at training (default:
+               push_steps; inference uses n_steps: noisier training states).
 """
 
 from __future__ import annotations
@@ -117,7 +125,8 @@ class LitCascadeN1(pl.LightningModule):
                  k_max=7, curriculum_epochs=10, p_obs=0.7, p_null=0.1, gamma=0.9, lambda_s=1.0, lambda_psi=1.0,
                  freeze_encoders=True, push_steps=4, n_steps=20, lr=1e-4, betas=(0.9, 0.995),
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
-                 score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False):
+                 score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
+                 bg_sigma=None, analysis_steps=None):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -193,6 +202,11 @@ class LitCascadeN1(pl.LightningModule):
         z1, m, floor = self.target(b)
         cond, valid = self.cond(self.nets, b, z, psi, keep)
         lo, hi = self.lo, self.hi
+        if self.hparams.bg_sigma:  # background: no target -> previous state, floor bg_sigma
+            bg = (b["omega_c"] > 0)[:, None] & ~m
+            z1 = torch.where(bg, self.state_n(z, psi), z1)
+            floor = torch.where(bg, torch.full_like(floor, self.hparams.bg_sigma), floor)
+            m = m | bg
         if self.hparams.increment:
             s0 = self.state_n(z, psi)
             z1, lo, hi = torch.where(m, z1 - s0, 0.0), lo - s0, hi - s0
@@ -231,7 +245,7 @@ class LitCascadeN1(pl.LightningModule):
     def losses(self, days: list[dict], train: bool = True) -> dict:
         hp = self.hparams
         bsz, dev = days[0]["omega_c"].shape[0], days[0]["omega_c"].device
-        z, psi = self.analysis(days[0], hp.push_steps)
+        z, psi = self.analysis(days[0], hp.analysis_steps or hp.push_steps)
         total, out = 0.0, {}
         for k in range(1, self.k_now(len(days)) + 1):
             keep = self.keep(bsz, dev, train)

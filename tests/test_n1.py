@@ -156,3 +156,27 @@ def test_n1b_zero_increment_is_persistence_and_bounds_hold(n1b, days, monkeypatc
     z1, _ = n1b.step(nets, days[1], z, psi, keep, 1)
     sic = z1[:, 0]
     assert sic.min() >= -1e-4 and sic.max() <= 1 + 1e-4 and z1[:, 1].min() >= -1e-4  # SIC in [0, 1], SIT >= 0
+
+
+def test_n1c_background_targets(days, monkeypatch):
+    torch.manual_seed(0)
+    n1c = LitCascadeN1(n0=make_model(), swin=TINY, k_max=1, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, state_input=True, raw_obs=True, bg_sigma=0.5, analysis_steps=2)
+    z, psi = n1c.analysis(days[0], 1)
+    keep = n1c.keep(1, "cpu", train=False)
+    z1_obs, m_obs, floor_obs = n1c.target(days[1])
+    seen = {}
+    real = n1c.nets.gen.loss
+
+    def spy(z1, m, cond, valid, floor, lo, hi, **kw):
+        seen.update(z1=z1, m=m, floor=floor)
+        return real(z1, m, cond, valid, floor, lo, hi, **kw)
+    monkeypatch.setattr(n1c.nets.gen, "loss", spy)
+    out = n1c.step_loss(days[1], z, psi, keep)
+    assert torch.isfinite(out["loss"])
+    ocean = (days[1]["omega_c"] > 0)[:, None].expand_as(m_obs)
+    bg = ocean & ~m_obs
+    assert bg.any() and torch.all(seen["m"][ocean] > 0)            # every ocean cell has a target
+    assert torch.all(seen["z1"][bg] == 0)                            # increment 0 = persistence where unobserved
+    assert torch.allclose(seen["floor"][bg], torch.tensor(0.5))
+    assert torch.equal(seen["floor"][m_obs], floor_obs[m_obs])        # observed targets unchanged

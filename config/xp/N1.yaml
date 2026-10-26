@@ -69,6 +69,8 @@ model:
   increment: false     # G_C^1 generates Z^{t+1} - Z^t (doing nothing = persistence)
   state_input: false   # normalised previous state as such in the conditioning
   raw_obs: false       # gridded CIMR of the day uncompressed in the conditioning
+  bg_sigma: null       # background term: no target -> previous state, floor (normalised); N1c: 0.5
+  analysis_steps: null # Heun steps of the initial analysis at training (null: push_steps)
 
 entrypoints:
   - _target_: croscim.train.base_training
