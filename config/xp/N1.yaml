@@ -25,10 +25,10 @@ trainer:
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
       logging_interval: step
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      monitor: val_loss
+      monitor: val_loss_k1  # not val_loss: it sums the K rollout steps, K grows with the curriculum
       save_top_k: 3
       save_last: true
-      filename: 'FM-cascade-N1-{val_loss:.5f}-{epoch:03d}'
+      filename: 'FM-cascade-N1-{val_loss_k1:.5f}-{epoch:03d}'
 
 datamodule:
   _target_: croscim.data.CascadeDataModule

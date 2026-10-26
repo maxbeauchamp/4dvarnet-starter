@@ -237,6 +237,8 @@ class LitCascadeN1(pl.LightningModule):
             keep = self.keep(bsz, dev, train)
             lk = self.step_loss(days[k], z, psi, keep)
             total = total + hp.gamma ** (k - 1) * lk["loss"]
+            if k == 1:  # comparable across epochs (the total grows with the curriculum K): checkpoint selection
+                out["loss_k1"] = lk["loss"]
             out.update({f"{n}_k{k}": v for n, v in lk.items() if n != "loss"})
             if k < self.k_now(len(days)):
                 z, psi = self.step(self.nets, days[k], z, psi, keep, hp.push_steps)
