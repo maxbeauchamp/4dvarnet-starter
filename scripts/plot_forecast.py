@@ -134,6 +134,16 @@ def main():
                 if msk[0, c].any():
                     pers = traj[:, 0, c].mean(0)
                     row[f"pers_rmse_{name}"] = round(float(((pers - tgt[0, c])[msk[0, c]] ** 2).mean().sqrt()), 5)
+                    # systematic drift: mean error of the forecast and of persistence on the targets
+                    row[f"fc_bias_{name}"] = round(float((traj[:, k, c].mean(0) - tgt[0, c])[msk[0, c]].mean()), 5)
+                    row[f"pers_bias_{name}"] = round(float((pers - tgt[0, c])[msk[0, c]].mean()), 5)
+            # SIC against the CIMR of the day (all of it): does the forecast drift towards CIMR?
+            cimr, m_cimr = b["in_C_cimr"][0, -1, 0].float().cpu(), (b["in_C_cimr_w"][0, -1, 0] > 0).cpu()
+            if m_cimr.any():
+                for key, f in (("fc", traj[:, k, 0].mean(0)), ("pers", traj[:, 0, 0].mean(0))):
+                    d = (f - cimr)[m_cimr]
+                    row[f"{key}_rmse_vs_cimr_SIC"] = round(float((d ** 2).mean().sqrt()), 5)
+                    row[f"{key}_bias_vs_cimr_SIC"] = round(float(d.mean()), 5)
             m_date[f"lead{k}"] = row
         metrics[date] = m_date
 
