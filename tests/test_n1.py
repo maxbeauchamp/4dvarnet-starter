@@ -180,3 +180,15 @@ def test_n1c_background_targets(days, monkeypatch):
     assert torch.all(seen["z1"][bg] == 0)                            # increment 0 = persistence where unobserved
     assert torch.allclose(seen["floor"][bg], torch.tensor(0.5))
     assert torch.equal(seen["floor"][m_obs], floor_obs[m_obs])        # observed targets unchanged
+
+
+def test_n1d_drops_weak_cimr_targets(days):
+    torch.manual_seed(0)
+    kw = dict(n0=make_model(), swin=TINY, k_max=1, n_steps=1, push_steps=1, n_members=2)
+    m_with = LitCascadeN1(**kw).target(days[1])[1]
+    m_without = LitCascadeN1(**kw, weak_targets=False).target(days[1])[1]
+    weak = days[1]["tgt_C_m"][:, 0] & (days[1]["tgt_C_sigma"][:, 0] > 0.1)
+    assert weak.any() and torch.all(m_with[:, 0][weak]) and not m_without[:, 0][weak].any()
+    strict = days[1]["tgt_C_m"][:, 0] & (days[1]["tgt_C_sigma"][:, 0] == 0)
+    assert torch.equal(m_without[:, 0][strict], m_with[:, 0][strict])
+    assert torch.equal(m_without[:, 2:], m_with[:, 2:])

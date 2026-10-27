@@ -1,0 +1,28 @@
+# N1d on the N0 of v6 (phase 5): N1c with (i) no weak CIMR targets in N1
+# (model.weak_targets=false: CIMR, lower than ASIP, pulled the free forecast
+# towards it; the background term takes over where ASIP / CRISTAL do not
+# observe) and (ii) a tighter background (bg_sigma 0.15 instead of 0.5: with
+# 0.5, h_thin, h_mid, sic_std, anisotropy still drifted as a random walk).
+#   sbatch scripts/submit_odyssey.sbatch scripts/run_pipeline.py --config config/pipeline/2022_v6_n1d.yaml
+
+out: /Odyssey/private/m19beauc/results/pipeline_2022_v6_n1d
+
+dates:
+  train: [2022-01-15, 2022-10-31]
+  val: [2022-11-01, 2022-11-30]
+  test: [2022-12-01, 2022-12-24]
+
+common: ["model.lr_scheduler_iters=2000", "model.n_score_batches=5"]
+
+phases:
+  - name: phase6_N1
+    xp: N1
+    n0_from: {report: /Odyssey/private/m19beauc/results/pipeline_2022_v6/report.json, phase: phase5_full}
+    overrides: ["model.k_max=7", "model.curriculum_epochs=3", "model.increment=true", "model.state_input=true",
+                "model.raw_obs=true", "model.bg_sigma=0.15", "model.analysis_steps=20", "model.push_steps=8",
+                "model.weak_targets=false"]
+    trainer: {max_epochs: 25, limit_train_batches: 400, limit_val_batches: 20}
+
+evaluation:
+  plot_forecast: {ckpt_of: phase6_N1, lead: 7, n: 4, members: 8}
+  scenarios: {ckpt_of: phase6_N1, lead: 7, n: 3, members: 8}

@@ -71,6 +71,7 @@ model:
   raw_obs: false       # gridded CIMR of the day uncompressed in the conditioning
   bg_sigma: null       # background term: no target -> previous state, floor (normalised); N1c: 0.5
   analysis_steps: null # Heun steps of the initial analysis at training (null: push_steps)
+  weak_targets: true   # weak CIMR targets (SIC, SIT) in N1 (N1d: false, the background takes over)
 
 entrypoints:
   - _target_: croscim.train.base_training

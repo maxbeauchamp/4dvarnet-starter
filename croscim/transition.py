@@ -38,6 +38,11 @@ Options (v6, N1b; all False for the former checkpoints):
                with the increment (the N1b rollouts became noise).
   analysis_steps  Heun steps of the initial N0 analysis at training (default:
                push_steps; inference uses n_steps: noisier training states).
+  weak_targets False (N1d): no weak CIMR targets (SIC, SIT) in N1, the
+               background term takes over where ASIP / CRISTAL do not observe;
+               the open-water zeros stay. CIMR is lower than ASIP: as a target
+               everywhere it pulled the free forecast towards CIMR, day after
+               day (the N1c tile lost ice at every step).
 """
 
 from __future__ import annotations
@@ -50,6 +55,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .cascade import N_S, N_X, N_Z, LitCascadeN0, make_ema, strict_mask, tile_pos
+from . import data as D
 from .data import N_C
 from .encoders import DenseEncoder
 from .generators import Generator, channel_mean
@@ -126,7 +132,7 @@ class LitCascadeN1(pl.LightningModule):
                  freeze_encoders=True, push_steps=4, n_steps=20, lr=1e-4, betas=(0.9, 0.995),
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
-                 bg_sigma=None, analysis_steps=None):
+                 bg_sigma=None, analysis_steps=None, weak_targets=True):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -193,6 +199,10 @@ class LitCascadeN1(pl.LightningModule):
         """(X^, S^, psi^) normalised, mask and scale floor; psi^ from the N0 EMA
         encoder on the full window of the day, where it saw observations."""
         z, m, floor = self.n0.target_c(b)
+        if not self.hparams.weak_targets:  # drop the weak CIMR targets (SIC, SIT); keep the open-water zeros
+            sg = b["tgt_C_sigma"]
+            weak = torch.stack([sg[:, 0] == D.CIMR_TGT_SIGMA, sg[:, 1] == D.CIMR_SIT_TGT_SIGMA, torch.zeros_like(sg[:, 2], dtype=torch.bool)], 1)
+            m = torch.cat([m[:, :N_X] & ~weak, m[:, N_X:]], 1)
         ctx = self.n0.encode(self.n0.ema.module, b)
         m_psi = ctx["m_C"][:, None].expand(-1, self.d_psi, -1, -1)
         return (torch.cat([z, ctx["psi"]], 1), torch.cat([m, m_psi], 1),
