@@ -192,3 +192,29 @@ def test_n1d_drops_weak_cimr_targets(days):
     strict = days[1]["tgt_C_m"][:, 0] & (days[1]["tgt_C_sigma"][:, 0] == 0)
     assert torch.equal(m_without[:, 0][strict], m_with[:, 0][strict])
     assert torch.equal(m_without[:, 2:], m_with[:, 2:])
+
+
+def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
+    torch.manual_seed(0)
+    n1f = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, state_input=True, raw_obs=True, bg_sigma=0.15, inc_scale=0.2,
+                       bg_advect=True)
+    monkeypatch.setattr(n1f, "k_now", lambda n: 2)
+    out = n1f.losses(days)
+    assert torch.isfinite(out["loss"]) and "drift_alpha" in out
+    n1f.zero_grad()
+    out["loss"].backward()
+    assert n1f.drift.grad is not None and n1f.drift.grad.abs().sum() > 0
+    assert any(p is n1f.drift for p in n1f.configure_optimizers()["optimizer"].param_groups[0]["params"])
+    # zero increment: the state moved by the free drift; no wind: persistence
+    nets = n1f.ema.module
+    z, psi = n1f.analysis(days[0], 1)
+    keep = n1f.keep(1, "cpu", train=False)
+    monkeypatch.setattr(nets.gen, "sample", lambda cond, valid, n, **kw: torch.zeros(1, N_Z + n1f.d_psi, 64, 64))
+    z1, _ = n1f.step(nets, days[1], z, psi, keep, 1)
+    base = n1f.base(days[1], z, psi)
+    assert torch.allclose(n1f.state_n(z1, _), base, atol=1e-5) and not torch.allclose(base, n1f.state_n(z, psi))
+    calm = dict(days[1])
+    calm["f_C"] = days[1]["f_C"].clone()
+    calm["f_C"][:, :, 2:4] = 0.0
+    assert torch.allclose(n1f.base(calm, z, psi), n1f.state_n(z, psi), atol=1e-5)

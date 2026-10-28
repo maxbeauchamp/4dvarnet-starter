@@ -72,6 +72,9 @@ model:
   bg_sigma: null       # background term: no target -> previous state, floor (normalised); N1c: 0.5
   analysis_steps: null # Heun steps of the initial analysis at training (null: push_steps)
   weak_targets: true   # weak CIMR targets (SIC, SIT) in N1 (N1d: false, the background takes over)
+  inc_scale: null      # increment in units of inc_scale x the state scale (N1f: 0.2)
+  bg_advect: false     # increment / background relative to the state moved by the free drift (N1e)
+  drift_init: [0.015, 15.0]  # free drift: alpha (ice / wind speed), theta (deg to the right), learned
 
 entrypoints:
   - _target_: croscim.train.base_training

@@ -43,6 +43,15 @@ Options (v6, N1b; all False for the former checkpoints):
                the open-water zeros stay. CIMR is lower than ASIP: as a target
                everywhere it pulled the free forecast towards CIMR, day after
                day (the N1c tile lost ice at every step).
+  inc_scale    (N1f) the increment is generated in units of inc_scale x the
+               state scale: with the state normalisation (SIC: identity) the
+               flow started from a noise ~10x the daily increments, and the
+               residual, cut one-sided at the bounds (SIC 0 / 1), pulled pack
+               ice down and open water up at every step (the smoothing).
+  bg_advect    (N1e) the increment (and the background) are relative to the
+               previous state moved along the free drift of the day,
+               alpha R(-theta) u10 (ERA5 along the grid axes), alpha and theta
+               learned end to end; the moved state also enters the conditioning.
 """
 
 from __future__ import annotations
@@ -54,7 +63,10 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from .cascade import N_S, N_X, N_Z, LitCascadeN0, make_ema, strict_mask, tile_pos
+import math
+
+from . import grid as g
+from .cascade import N_S, N_X, N_Z, LitCascadeN0, _warp, drift_displacement, make_ema, strict_mask, tile_pos
 from . import data as D
 from .data import N_C
 from .encoders import DenseEncoder
@@ -132,7 +144,8 @@ class LitCascadeN1(pl.LightningModule):
                  freeze_encoders=True, push_steps=4, n_steps=20, lr=1e-4, betas=(0.9, 0.995),
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
-                 bg_sigma=None, analysis_steps=None, weak_targets=True):
+                 bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
+                 drift_init=(0.015, 15.0)):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -141,7 +154,7 @@ class LitCascadeN1(pl.LightningModule):
             p.requires_grad_(False)
         self.n0, self.nrm = n0, n0.nrm
         self.d_psi = n0.hparams.d_psi
-        n_extra = (N_Z + self.d_psi if state_input else 0) + (4 if raw_obs else 0)
+        n_extra = (N_Z + self.d_psi if state_input else 0) + (4 if raw_obs else 0) + (N_Z + self.d_psi if bg_advect else 0)
         self.nets = N1Nets(n0, swin if swin is not None else n0.hparams.swin["C"], n_extra)
         if freeze_encoders:
             for p in self.nets.enc.parameters():
@@ -151,6 +164,8 @@ class LitCascadeN1(pl.LightningModule):
         hi = torch.cat([self.nrm.z_hi, torch.full((1, self.d_psi, 1, 1), float("inf"))], 1)
         self.register_buffer("lo", lo, persistent=False)
         self.register_buffer("hi", hi, persistent=False)
+        if bg_advect:  # free drift: log alpha, theta (rad, to the right)
+            self.drift = nn.Parameter(torch.tensor([math.log(drift_init[0]), math.radians(drift_init[1])]))
 
     def train(self, mode: bool = True):
         """The frozen N0 and the EMA copy always stay in eval mode."""
@@ -171,7 +186,7 @@ class LitCascadeN1(pl.LightningModule):
             keep["h"] &= torch.rand(bsz, device=device) < self.hparams.p_obs  # mu ~ Bernoulli(p_obs)
         return keep
 
-    def cond(self, nets: N1Nets, b: dict, z: Tensor, psi: Tensor, keep: dict) -> tuple[Tensor, Tensor]:
+    def cond(self, nets: N1Nets, b: dict, z: Tensor, psi: Tensor, keep: dict, base: Tensor | None = None):
         """c_C^1 = (h_C of the day, f, E^s(Z^t)); z physical, psi latent."""
         ctx = self.n0.encode(nets.enc, only_last_day(b))
         zn = self.nrm.z(z)
@@ -187,12 +202,26 @@ class LitCascadeN1(pl.LightningModule):
             m = b["in_C_cimr_w"][:, -1] > 0
             raw = torch.cat([torch.where(m, self.nrm(b["in_C_cimr"][:, -1], ("SIC", "SIT"), 1), 0.0), m.to(zn)], 1)
             parts.append(raw * k["h"])
+        if self.hparams.bg_advect:  # the moved state, same group dropout as the state
+            parts.append(torch.cat([base[:, :N_X] * k["x"], base[:, N_X:N_Z] * k["s"], base[:, N_Z:] * k["psi"]], 1))
         cond = torch.cat(parts, 1)
         return cond, (b["omega_c"] > 0)[:, None].to(cond)
 
     def state_n(self, z: Tensor, psi: Tensor) -> Tensor:
-        """Normalised (Z, psi): the state the increment is added to."""
+        """Normalised (Z, psi)."""
         return torch.cat([self.nrm.z(z), psi], 1)
+
+    def base(self, b: dict, z: Tensor, psi: Tensor) -> Tensor:
+        """The state the increment is added to (and the background): the normalised
+        previous state, moved along the free drift of the day with bg_advect
+        (cells whose departure point is not ocean of the tile keep their value)."""
+        s0 = self.state_n(z, psi)
+        if not self.hparams.bg_advect:
+            return s0
+        disp = drift_displacement(b["f_C"][:, -2:], self.drift[0].exp(), self.drift[1])[:, :1]  # t+k-1 -> t+k
+        w = (b["omega_c"] > 0)[:, None, None].expand(-1, 1, s0.shape[1], -1, -1).to(s0)
+        val, den = _warp(s0[:, None], w, disp, g.DX_M["C"])
+        return torch.where(den[:, 0] > 0.5, val[:, 0], s0)
 
     @torch.no_grad()
     def target(self, b: dict) -> tuple[Tensor, Tensor, Tensor]:
@@ -209,17 +238,20 @@ class LitCascadeN1(pl.LightningModule):
                 torch.cat([floor, torch.zeros_like(ctx["psi"])], 1))
 
     def step_loss(self, b: dict, z: Tensor, psi: Tensor, keep: dict, noise=None, t=None) -> dict:
+        hp = self.hparams
         z1, m, floor = self.target(b)
-        cond, valid = self.cond(self.nets, b, z, psi, keep)
+        base = self.base(b, z, psi)
+        cond, valid = self.cond(self.nets, b, z, psi, keep, base)
         lo, hi = self.lo, self.hi
-        if self.hparams.bg_sigma:  # background: no target -> previous state, floor bg_sigma
+        if hp.bg_sigma:  # background: no target -> previous (moved) state, floor bg_sigma
             bg = (b["omega_c"] > 0)[:, None] & ~m
-            z1 = torch.where(bg, self.state_n(z, psi), z1)
-            floor = torch.where(bg, torch.full_like(floor, self.hparams.bg_sigma), floor)
+            z1 = torch.where(bg, base, z1)
+            floor = torch.where(bg, torch.full_like(floor, hp.bg_sigma), floor)
             m = m | bg
-        if self.hparams.increment:
-            s0 = self.state_n(z, psi)
-            z1, lo, hi = torch.where(m, z1 - s0, 0.0), lo - s0, hi - s0
+        if hp.increment:  # in units of inc_scale x the state scale
+            sc = hp.inc_scale or 1.0
+            z1, lo, hi = torch.where(m, (z1 - base) / sc, 0.0), (lo - base) / sc, (hi - base) / sc
+            floor = floor / sc
         per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, lo, hi, noise=noise, t=t)
         out = {"X": channel_mean(per_ch[:N_X], has[:N_X]), "S": channel_mean(per_ch[N_X:N_Z], has[N_X:N_Z]),
                "psi": channel_mean(per_ch[N_Z:], has[N_Z:])}
@@ -231,15 +263,16 @@ class LitCascadeN1(pl.LightningModule):
              w: float = 1.0, generator=None) -> tuple[Tensor, Tensor]:
         """One transition step (physical z, latent psi), with guidance weight w
         on the observations (w = 0: free simulation, w = 1: assimilation)."""
-        cond, valid = self.cond(nets, b, z, psi, keep)
-        cond_null = self.cond(nets, b, z, psi, {**keep, "h": torch.zeros_like(keep["h"])})[0] if w != 1.0 else None
+        base = self.base(b, z, psi)
+        cond, valid = self.cond(nets, b, z, psi, keep, base)
+        cond_null = self.cond(nets, b, z, psi, {**keep, "h": torch.zeros_like(keep["h"])}, base)[0] if w != 1.0 else None
         lo, hi = self.lo, self.hi
+        sc = self.hparams.inc_scale or 1.0
         if self.hparams.increment:
-            s0 = self.state_n(z, psi)
-            lo, hi = lo - s0, hi - s0
+            lo, hi = (lo - base) / sc, (hi - base) / sc
         zn = nets.gen.sample(cond, valid, n_steps, lo=lo, hi=hi, cond_null=cond_null, w=w, generator=generator)
         if self.hparams.increment:
-            zn = s0 + zn
+            zn = base + zn * sc
         return self.nrm.z_inv(zn[:, :N_Z]), zn[:, N_Z:]
 
     @torch.no_grad()
@@ -267,6 +300,8 @@ class LitCascadeN1(pl.LightningModule):
             if k < self.k_now(len(days)):
                 z, psi = self.step(self.nets, days[k], z, psi, keep, hp.push_steps)
         out["loss"] = total
+        if hp.bg_advect:
+            out["drift_alpha"], out["drift_theta_deg"] = self.drift[0].exp().detach(), self.drift[1].detach() * 180 / math.pi
         return out
 
     def training_step(self, batch, batch_idx):
@@ -312,6 +347,8 @@ class LitCascadeN1(pl.LightningModule):
 
     def configure_optimizers(self):
         params = [p for p in self.nets.parameters() if p.requires_grad]
+        if self.hparams.bg_advect:
+            params.append(self.drift)
         opt = torch.optim.Adam(params, lr=self.hparams.lr, betas=tuple(self.hparams.betas))
         sched = torch.optim.lr_scheduler.LinearLR(opt, start_factor=self.hparams.lr_scheduler_start_factor,
                                                   total_iters=self.hparams.lr_scheduler_iters)
