@@ -140,7 +140,7 @@ def warp(x: Tensor, w: Tensor, disp: Tensor, dx: float) -> tuple[Tensor, Tensor]
     return torch.cat([xs, x[:, -1:].to(xs)], 1), torch.cat([ws, w[:, -1:].to(ws)], 1)
 
 
-def _warp(x: Tensor, w: Tensor, disp: Tensor, dx: float) -> tuple[Tensor, Tensor]:
+def _warp(x: Tensor, w: Tensor, disp: Tensor, dx: float, mode: str = "bilinear") -> tuple[Tensor, Tensor]:
     bsz, nt = x.shape[:2]
     ny, nx = x.shape[-2:]
     d = F.interpolate(disp.flatten(0, 1).to(x.dtype), size=(ny, nx), mode="bilinear", align_corners=False)
@@ -150,8 +150,8 @@ def _warp(x: Tensor, w: Tensor, disp: Tensor, dx: float) -> tuple[Tensor, Tensor
     gy = (2 * (ii[None, :, None] + d[:, 1] / dx) + 1) / ny - 1   # rows along -y
     grid = torch.stack([gx, gy], -1)
     xf, wf = torch.where(w > 0, x, 0.0).reshape(bsz * nt, -1, ny, nx), w.reshape(bsz * nt, -1, ny, nx).to(x.dtype)
-    num = F.grid_sample(xf * wf, grid, mode="bilinear", align_corners=False)
-    den = F.grid_sample(wf, grid, mode="bilinear", align_corners=False)
+    num = F.grid_sample(xf * wf, grid, mode=mode, align_corners=False)
+    den = F.grid_sample(wf, grid, mode=mode, align_corners=False)
     val = torch.where(den > 1e-6, num / den.clamp_min(1e-6), 0.0)
     return val.reshape(x.shape), den.reshape(w.shape)
 

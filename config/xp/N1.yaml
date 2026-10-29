@@ -75,6 +75,7 @@ model:
   inc_scale: null      # increment in units of inc_scale x the state scale (N1f: 0.2)
   bg_advect: false     # increment / background relative to the state moved by the free drift (N1e)
   drift_init: [0.015, 15.0]  # free drift: alpha (ice / wind speed), theta (deg to the right), learned
+  warp_mode: bilinear  # interpolation of the free-drift move (N1g: bicubic, less diffusive)
 
 entrypoints:
   - _target_: croscim.train.base_training

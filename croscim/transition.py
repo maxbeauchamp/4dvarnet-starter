@@ -52,6 +52,9 @@ Options (v6, N1b; all False for the former checkpoints):
                previous state moved along the free drift of the day,
                alpha R(-theta) u10 (ERA5 along the grid axes), alpha and theta
                learned end to end; the moved state also enters the conditioning.
+  warp_mode    (N1g) interpolation of that move: "bilinear" (N1f) diffuses
+               (~half a C cell a day: the N1f rollouts lost their texture day
+               after day), "bicubic" much less; clipped to the bounds.
 """
 
 from __future__ import annotations
@@ -145,7 +148,7 @@ class LitCascadeN1(pl.LightningModule):
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
-                 drift_init=(0.015, 15.0)):
+                 drift_init=(0.015, 15.0), warp_mode="bilinear"):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -220,8 +223,9 @@ class LitCascadeN1(pl.LightningModule):
             return s0
         disp = drift_displacement(b["f_C"][:, -2:], self.drift[0].exp(), self.drift[1])[:, :1]  # t+k-1 -> t+k
         w = (b["omega_c"] > 0)[:, None, None].expand(-1, 1, s0.shape[1], -1, -1).to(s0)
-        val, den = _warp(s0[:, None], w, disp, g.DX_M["C"])
-        return torch.where(den[:, 0] > 0.5, val[:, 0], s0)
+        val, den = _warp(s0[:, None], w, disp, g.DX_M["C"], self.hparams.get("warp_mode", "bilinear"))
+        val = torch.minimum(torch.maximum(val[:, 0], self.lo), self.hi)  # bicubic overshoots
+        return torch.where(den[:, 0] > 0.5, val, s0)
 
     @torch.no_grad()
     def target(self, b: dict) -> tuple[Tensor, Tensor, Tensor]:

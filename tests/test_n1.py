@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from croscim import rollout as R
-from croscim.cascade import N_X, N_Z, Z_NAMES
+from croscim.cascade import N_X, N_Z, Z_NAMES, _warp
 from croscim.transition import LitCascadeN1, only_last_day
 from tests.test_n0 import TINY, make_batch, make_model
 
@@ -218,6 +218,29 @@ def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
     calm["f_C"] = days[1]["f_C"].clone()
     calm["f_C"][:, :, 2:4] = 0.0
     assert torch.allclose(n1f.base(calm, z, psi), n1f.state_n(z, psi), atol=1e-5)
+
+
+def test_bicubic_warp_diffuses_less(days, monkeypatch):
+    # half a cell to +x on a sharp field: bilinear averages neighbours, bicubic keeps more variance
+    x = torch.rand(1, 1, 1, 32, 32)
+    w = torch.ones_like(x)
+    disp = torch.zeros(1, 1, 2, 4, 4)
+    disp[:, :, 0] = 0.5 * 1000.0
+    var = {m: _warp(x, w, disp, 1000.0, m)[0][..., 4:-4, 4:-4].var() for m in ("bilinear", "bicubic")}
+    assert var["bicubic"] > 1.2 * var["bilinear"]
+    one = _warp(torch.ones_like(x), w, disp, 1000.0, "bicubic")[0][..., 4:-4, 4:-4]
+    assert torch.allclose(one, torch.ones_like(one), atol=1e-4)
+    # the moved state stays within the physical bounds
+    torch.manual_seed(0)
+    n1g = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, bg_sigma=0.05, inc_scale=0.2, bg_advect=True, warp_mode="bicubic")
+    z, psi = n1g.analysis(days[0], 1)
+    base, s0 = n1g.base(days[1], z, psi), n1g.state_n(z, psi)
+    moved = base != s0  # cells left in place keep the (untrained) state as is
+    assert moved.any()
+    assert torch.all((base >= n1g.lo) & (base <= n1g.hi) | ~moved)
+    monkeypatch.setattr(n1g, "k_now", lambda n: 2)
+    assert torch.isfinite(n1g.losses(days)["loss"])
 
 
 def test_non_finite_steps_are_skipped(n1, days, monkeypatch):
