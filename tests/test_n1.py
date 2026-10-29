@@ -218,3 +218,18 @@ def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
     calm["f_C"] = days[1]["f_C"].clone()
     calm["f_C"][:, :, 2:4] = 0.0
     assert torch.allclose(n1f.base(calm, z, psi), n1f.state_n(z, psi), atol=1e-5)
+
+
+def test_non_finite_steps_are_skipped(n1, days, monkeypatch):
+    monkeypatch.setattr(n1, "losses", lambda batch: {"loss": torch.tensor(float("nan"))})
+    monkeypatch.setattr(n1, "log", lambda *a, **k: None)
+    assert n1.training_step(days, 0) is None
+    p = next(n1.nets.gen.parameters())
+    p.grad = torch.full_like(p, float("nan"))
+
+    class Opt:
+        def zero_grad(self, set_to_none=True):
+            for q in n1.parameters():
+                q.grad = None
+    n1.on_before_optimizer_step(Opt())
+    assert p.grad is None and n1._skipped == 2

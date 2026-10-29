@@ -306,9 +306,22 @@ class LitCascadeN1(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         out = self.losses(batch)
-        self.log_dict({f"train_{k}": v for k, v in out.items()}, batch_size=batch[0]["omega_c"].shape[0])
         self.log("k_now", float(self.k_now(len(batch))))
+        if not torch.isfinite(out["loss"]):
+            # one non-finite batch (an aberrant rollout state, an extreme censored term) poisons every
+            # weight (the N1f run turned nan at epoch 21): skip it, count it
+            self._skipped = getattr(self, "_skipped", 0) + 1
+            self.log("train_skipped_steps", float(self._skipped))
+            return None
+        self.log_dict({f"train_{k}": v for k, v in out.items()}, batch_size=batch[0]["omega_c"].shape[0])
         return out["loss"]
+
+    def on_before_optimizer_step(self, optimizer):
+        """Finite loss but non-finite gradients: skip the update as well."""
+        if any(p.grad is not None and not torch.isfinite(p.grad).all() for p in self.parameters()):
+            optimizer.zero_grad(set_to_none=True)
+            self._skipped = getattr(self, "_skipped", 0) + 1
+            self.log("train_skipped_steps", float(self._skipped))
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
         self.ema.update_parameters(self.nets)
