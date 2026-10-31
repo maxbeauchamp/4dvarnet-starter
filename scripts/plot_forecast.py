@@ -137,6 +137,17 @@ def main():
                     # systematic drift: mean error of the forecast and of persistence on the targets
                     row[f"fc_bias_{name}"] = round(float((traj[:, k, c].mean(0) - tgt[0, c])[msk[0, c]].mean()), 5)
                     row[f"pers_bias_{name}"] = round(float((pers - tgt[0, c])[msk[0, c]].mean()), 5)
+            # SIC by class of the initial state (pack / edge / open water): where does the error come from?
+            if msk[0, 0].any():
+                s0 = traj[:, 0, 0].mean(0)
+                for cls, sel in (("pack", s0 > 0.9), ("edge", (s0 >= 0.15) & (s0 <= 0.9)), ("ow", s0 < 0.15)):
+                    mc = msk[0, 0] & sel
+                    row[f"n_SIC_{cls}"] = int(mc.sum())
+                    if mc.any():
+                        for key, f in (("fc", traj[:, k, 0].mean(0)), ("pers", s0)):
+                            d = (f - tgt[0, 0])[mc]
+                            row[f"{key}_rmse_SIC_{cls}"] = round(float((d ** 2).mean().sqrt()), 5)
+                            row[f"{key}_bias_SIC_{cls}"] = round(float(d.mean()), 5)
             # SIC against the CIMR of the day (all of it): does the forecast drift towards CIMR?
             cimr, m_cimr = b["in_C_cimr"][0, -1, 0].float().cpu(), (b["in_C_cimr_w"][0, -1, 0] > 0).cpu()
             if m_cimr.any():
