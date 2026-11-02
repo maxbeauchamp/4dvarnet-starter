@@ -61,10 +61,17 @@ class Generator(nn.Module):
 
     def loss(self, z1: Tensor, m: Tensor, cond: Tensor, valid: Tensor, floor: Optional[Tensor] = None,
              lo: Optional[Tensor] = None, hi: Optional[Tensor] = None, proj: Proj = None,
-             noise: Optional[Tensor] = None, t: Optional[Tensor] = None):
+             noise: Optional[Tensor] = None, t: Optional[Tensor] = None, tobit: bool = False):
         """Masked NLL of the velocity; m is a mask or per-pixel weights (weighted
         mean per channel). Returns (per-channel loss [C], channel has-data
-        flags [C], one-step prediction z1_hat, pseudo-time t)."""
+        flags [C], one-step prediction z1_hat, pseudo-time t).
+
+        Censoring: the former CROSCIM rule switches to a CDF when the
+        prediction leaves the bounds, -log P(latent <= target) above hi: a
+        target at the bound penalises any overshoot, so an uncertain prediction
+        stays inside (pack ice lost, open water iced, compounded by the N1
+        rollouts). tobit=True: a target at a bound is censored, -log P(latent
+        >= hi) (or <= lo), and the sampler clamps the overshoot back onto it."""
         t = sample_uniform_time(z1) if t is None else t
         eps = torch.randn_like(z1) if noise is None else noise
         if proj is not None:
@@ -79,7 +86,9 @@ class Generator(nn.Module):
         r = (u - v) / sigma
         nll = neglogpdf(r, sigma.log())
         z_pred = zt + (1 - t) * v
-        if lo is not None:
+        if lo is not None and tobit:
+            nll = torch.where(z1 <= lo + 1e-4, neglogcdf(r), torch.where(z1 >= hi - 1e-4, neglogcdf(-r), nll))
+        elif lo is not None:
             # censoring at the bounds (same rule as the former CROSCIM FM model)
             nll = torch.where(z_pred <= lo, neglogcdf(-r), torch.where(z_pred >= hi, neglogcdf(r), nll))
         mf = m.to(nll.dtype)

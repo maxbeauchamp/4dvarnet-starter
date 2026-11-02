@@ -243,6 +243,28 @@ def test_bicubic_warp_diffuses_less(days, monkeypatch):
     assert torch.isfinite(n1g.losses(days)["loss"])
 
 
+def test_tobit_censoring_lets_targets_at_a_bound_overshoot(n1, monkeypatch):
+    gen = n1.nets.gen
+    c, t = gen.n_state, torch.full((1, 1, 1, 1), 0.5)
+    lo, hi = torch.full((1, c, 1, 1), -1.0), torch.zeros(1, c, 1, 1)
+    eps, m, cond = torch.zeros(1, c, 8, 8), torch.ones(1, c, 8, 8, dtype=torch.bool), torch.zeros(1, 1, 8, 8)
+
+    def nll(z1, z_pred, tobit, bounds=True):
+        v = (z_pred - t * z1 - (1 - t) * eps) / (1 - t)  # velocity giving that one-step prediction
+        monkeypatch.setattr(gen.net, "forward", lambda x, pseudo_time, mask: v.expand(1, c, 8, 8))
+        b = (lo, hi) if bounds else (None, None)
+        return gen.loss(torch.full((1, c, 8, 8), z1), m, cond, None, None, *b, noise=eps, t=t, tobit=tobit)[0].mean()
+
+    with torch.no_grad():
+        # target at hi (pack ice): Tobit does not penalise the overshoot, the former rule does
+        assert nll(0.0, 0.5, True) < nll(0.0, 0.0, True)
+        assert nll(0.0, 0.5, False) > nll(0.0, 0.0, False)
+        # at lo (open water), mirror
+        assert nll(-1.0, -1.5, True) < nll(-1.0, -1.0, True)
+        # target inside the bounds: Gaussian NLL, as without bounds
+        assert torch.allclose(nll(-0.5, -0.2, True), nll(-0.5, -0.2, True, bounds=False))
+
+
 def test_non_finite_steps_are_skipped(n1, days, monkeypatch):
     monkeypatch.setattr(n1, "losses", lambda batch: {"loss": torch.tensor(float("nan"))})
     monkeypatch.setattr(n1, "log", lambda *a, **k: None)

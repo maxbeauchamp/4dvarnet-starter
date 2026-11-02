@@ -55,6 +55,11 @@ Options (v6, N1b; all False for the former checkpoints):
   warp_mode    (N1g) interpolation of that move: "bilinear" (N1f) diffuses
                (~half a C cell a day: the N1f rollouts lost their texture day
                after day), "bicubic" much less; clipped to the bounds.
+  tobit        (N1h) Tobit censoring of the targets at a bound (Generator.loss):
+               with the former rule the rollouts lost pack ice and iced open
+               water a little more each day (N1g, bias by class of the initial
+               state: pack -0.09 at lead 1 to -0.29, open water +0.10 to +0.15,
+               persistence ~0).
 """
 
 from __future__ import annotations
@@ -148,7 +153,7 @@ class LitCascadeN1(pl.LightningModule):
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
-                 drift_init=(0.015, 15.0), warp_mode="bilinear"):
+                 drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -256,7 +261,8 @@ class LitCascadeN1(pl.LightningModule):
             sc = hp.inc_scale or 1.0
             z1, lo, hi = torch.where(m, (z1 - base) / sc, 0.0), (lo - base) / sc, (hi - base) / sc
             floor = floor / sc
-        per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, lo, hi, noise=noise, t=t)
+        per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, lo, hi, noise=noise, t=t,
+                                                tobit=hp.get("tobit", False))
         out = {"X": channel_mean(per_ch[:N_X], has[:N_X]), "S": channel_mean(per_ch[N_X:N_Z], has[N_X:N_Z]),
                "psi": channel_mean(per_ch[N_Z:], has[N_Z:])}
         out["loss"] = out["X"] + self.hparams.lambda_s * out["S"] + self.hparams.lambda_psi * out["psi"]
