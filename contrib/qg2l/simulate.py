@@ -134,7 +134,7 @@ def to_dataset(truth, obs, model_kw, constellation, splits, extra_attrs=None):
         ),
         coords=dict(time=np.arange(n_days, dtype=np.float32), layer=[1, 2], y=x, x=x),
     )
-    ds.time.attrs.update(units="days since end of spin-up")
+    ds.time.attrs.update(units="day", long_name="days after the end of the spin-up")  # no "since": not a CF date
     ds.x.attrs.update(units="km")
     ds.y.attrs.update(units="km")
     ds.attrs.update(

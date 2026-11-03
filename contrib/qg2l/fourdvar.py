@@ -216,7 +216,7 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     if str(device).startswith("cuda") and not torch.cuda.is_available():
         print("[4dvar] CUDA not available, using CPU")
         device = "cpu"
-    ds = xr.open_dataset(data_path).load()
+    ds = xr.open_dataset(data_path, decode_times=False).load()
     kw = json.loads(ds.attrs["model_kw"])
     kw.update(model_overrides or {})
     splits = json.loads(ds.attrs["splits"])

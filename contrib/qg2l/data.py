@@ -31,7 +31,7 @@ from src.data import TrainingItem
 def load_qg2l(path):
     import xarray as xr
 
-    ds = xr.open_dataset(path).load()
+    ds = xr.open_dataset(path, decode_times=False).load()
     kw = json.loads(ds.attrs["model_kw"])
     return ds, kw
 

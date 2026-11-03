@@ -128,4 +128,4 @@ def test_datamodule_and_litmodule(tmp_path, setup):
     assert out.shape == batch.tgt.shape and torch.isfinite(out).all()
     w = qg_rec_weight(5, [1, 2], 32)
     assert w.shape == (C, 32, 32)
-    json.loads(xr.open_dataset(path).attrs["model_kw"])["f0"]
+    json.loads(xr.open_dataset(path, decode_times=False).attrs["model_kw"])["f0"]

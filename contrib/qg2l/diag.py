@@ -39,7 +39,7 @@ def load_reconstructions(recs, t0, t1, truth_ds):
         if path is None or not Path(path).exists():
             print(f"[diag] skip {name}: {path} not found")
             continue
-        ds = xr.open_dataset(path).load()
+        ds = xr.open_dataset(path, decode_times=False).load()
         if 2 not in json.loads(ds.attrs.get("layers_estimated", "[1, 2]")):
             print(f"[diag] skip {name}: the deep layer is not estimated (layers=[1])")
             continue
@@ -73,7 +73,7 @@ def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bw
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ds = xr.open_dataset(data_path).load()
+    ds = xr.open_dataset(data_path, decode_times=False).load()
     kw = json.loads(ds.attrs["model_kw"])
     splits = json.loads(ds.attrs["splits"])
     t0, t1 = t_range or splits["test"]
