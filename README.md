@@ -1,65 +1,102 @@
-# 4DVarNet
+# Two-layer QG testbed: 4DVarNet vs 4DVar, and the Lyapunov view of the gain
 
-## Prerequisite
-- git
-- conda
+Goal: explain *mechanistically* why end-to-end learned DA (4DVarNet) beats a classical
+4DVar in a chaotic system with model error. Both reconstruction errors are projected
+on the backward / covariant Lyapunov vectors (BLV / CLV) of the DA model: does
+4DVarNet win on the **unstable** component (better control of the growing
+directions) or on the **stable** one (where the 4DVar model error accumulates and
+the learned prior acts)?
 
-## Install
-### Install project dependencies
-```
-git clone https://github.com/CIA-Oceanix/4dvarnet-starter.git
-cd 4dvarnet-starter
-conda install -c conda-forge mamba
-conda create -n 4dvarnet-starter
-conda activate 4dvarnet-starter
-mamba env update -f environment.yaml
-```
+## Pipeline
 
-### Download example data
-From the directory
-```
-wget https://s3.eu-central-1.wasabisys.com/sla-data-registry/6d/206c6be2dfe0edf1a53c29029ed239 -O data/natl_gf_w_5nadirs.nc
+```bash
+python main.py xp=qg2l_generate          # 1. truth + nadir/SWOT obs + figures/animation
+python main.py xp=qg2l_4dvarnet          # 2. train/test 4DVarNet -> data/qg2l/reconstructions/4dvarnet.nc
+python main.py xp=qg2l_4dvar             # 3. cycled 4DVar (strong)  -> .../4dvar_strong_test.nc
+python main.py xp=qg2l_4dvar qg2l_4dvar.mode=weak   #              (weak)    -> .../4dvar_weak_test.nc
+python main.py xp=qg2l_diag              # 4. BLV/CLV projections -> data/qg2l/diag/
 ```
 
-## Run
-The model uses hydra see [#useful-links]
-```
-python main.py xp=base 
-```
-## Saved weights:
+Install: see `environment.yaml` (conda/mamba), then run from the repository root.
 
-### Gulfstream training
-A bigger model has been trained using the command
+Quick end-to-end check on CPU (tiny grid, a few minutes per step):
 
-```
-python main.py xp=base +params=bigger_model 
+```bash
+for xp in qg2l_generate qg2l_4dvarnet qg2l_4dvar qg2l_diag; do
+  python main.py xp=$xp +params=qg2l_smoke; done
 ```
 
-You can find pre-trained weights [here](https://s3.eu-central-1.wasabisys.com/melody/quentin_cloud/starter_big_mod_07a265.ckpt)
+Notebook (same pipeline; small 32x32 / 500 km configuration by default, sized to run in minutes per step on a GPU, hours for `SIZE="full"`):
+`contrib/qg2l/qg2l_pipeline.ipynb` (`*.ipynb` is git-ignored in this repo: use `git add -f` to commit changes to it).
 
-The test metrics of this model are ([see here for the details])(https://github.com/ocean-data-challenges/2020a_SSH_mapping_NATL60):
+Tests (numpy core always; torch / Lightning tests when available):
 
-|          |   osse_metrics |
-|:---------|---------------:|
-| RMSE (m) |      0.0211406 |
-| λx       |      0.716     |
-| λt       |      4.681     |
-| μ        |      0.96362   |
-| σ        |      0.00544   |
+```bash
+cd contrib/qg2l/tests && python -m pytest -q
+```
 
-Animation:
-![Animation](https://s3.eu-central-1.wasabisys.com/melody/quentin_cloud/starter_anim.gif)
+## Files
 
+| file | content |
+|---|---|
+| `contrib/qg2l/qgmodel.py` | 2-layer QG on a doubly periodic beta-plane, pseudo-spectral, RK4, pyqg-like exponential filter. numpy **or** torch backend (same code): torch gives the 4DVar adjoint and the exact TLM (`torch.func.jvp`) |
+| `contrib/qg2l/simulate.py` | truth run (HR `nx_truth=128` spectrally truncated to the DA grid `nx=64` -> structured model error of the LR DA model), presets, OSSE netCDF, lambda_1 / revisit summary |
+| `contrib/qg2l/obs.py` | synthetic altimetry: Jason-3, Sentinel-3A/B (nadir) + SWOT (2 x 50 km KaRIn swaths, 20 km nadir gap + nadir), repeat cycles, interleaved sub-cycles, white noise (+ optional roll error) |
+| `contrib/qg2l/viz.py` | snapshots, spectra, coverage / revisit maps, energy, animations (mp4, gif fallback) |
+| `contrib/qg2l/data.py` | `QG2LDataModule`: full-domain sliding windows; state = (psi_1, psi_2) in SSH-equivalent units, obs on layer 1 only (NaN on layer 2), mask-resampling augmentation |
+| `contrib/qg2l/models.py` | `LitQG2L` (subclass of `src.models.Lit4dVarNet`): time blending of windows, scores, export in the 4DVar format; `periodic()` -> circular conv padding |
+| `contrib/qg2l/fourdvar.py` | nonlinear cycled 4DVar, strong or weak constraint (daily model-error forcing), spectral isotropic 2-layer B (control-variable transform), L-BFGS, autograd adjoint |
+| `contrib/qg2l/lyapunov.py` | Benettin QR (BLV, exponents) + Ginelli backward pass (CLV) in the energy norm; on-the-fly projection of errors; BLV/CLV decompositions |
+| `contrib/qg2l/diag.py` | the diagnostic: `summary.json`, `lyapunov_projection.nc`, figures, comparison animation |
+| `contrib/qg2l/metrics.py` | RMSE, mu = 1 - RMSE/RMS, effective resolution lambda_x from the isotropic PSD score |
 
+## Default set-up and measured regime
 
-## Useful links:
-- [Hydra documentation](https://hydra.cc/docs/intro/)
-- [Pytorch lightning documentation](https://pytorch-lightning.readthedocs.io/en/stable/index.html#get-started)
-- 4DVarNet papers:
-	- Fablet, R.; Amar, M. M.; Febvre, Q.; Beauchamp, M.; Chapron, B. END-TO-END PHYSICS-INFORMED REPRESENTATION LEARNING FOR SA℡LITE OCEAN REMOTE SENSING DATA: APPLICATIONS TO SA℡LITE ALTIMETRY AND SEA SURFACE CURRENTS. ISPRS Annals of the Photogrammetry, Remote Sensing and Spatial Information Sciences 2021, V-3–2021, 295–302. https://doi.org/10.5194/isprs-annals-v-3-2021-295-2021.
-	- Fablet, R.; Chapron, B.; Drumetz, L.; Mmin, E.; Pannekoucke, O.; Rousseau, F. Learning Variational Data Assimilation Models and Solvers. Journal of Advances in Modeling Earth Systems n/a (n/a), e2021MS002572. https://doi.org/10.1029/2021MS002572.
-	- Fablet, R.; Beauchamp, M.; Drumetz, L.; Rousseau, F. Joint Interpolation and Representation Learning for Irregularly Sampled Satellite-Derived Geophysical Fields. Frontiers in Applied Mathematics and Statistics 2021, 7. https://doi.org/10.3389/fams.2021.655224.
+`energetic` preset (pyqg "eddy" parameters with doubled shear U1 = 5 cm/s), L = 1000 km,
+DA grid 64^2 (dx = 15.6 km), R_d = 15 km, DA dt = 2 h. Checked here (numpy):
 
+* stable, saturated turbulence, SSH std ~ 7 cm, eddies 100-200 km, CFL ~ 0.3;
+* leading exponent of the 64^2 DA model lambda_1 ~ 0.08-0.10 /day (Lyapunov time ~ 10-13 days);
+* median revisit time of the constellation 7.6 days -> **lambda_1 tau_obs ~ 0.6-0.8**: the
+  intermediate regime where neither the dynamics nor the statistics alone suffice;
+* the Lyapunov spectrum is **very flat** (extensive chaos: every eddy contributes its own
+  unstable directions). With k = 256 vectors (50-day average) **all 256 exponents are
+  positive**, decreasing from 0.104 to 0.017 /day (lambda_50 = 0.074, lambda_100 = 0.054,
+  lambda_200 = 0.029); extrapolating the tail gives an unstable dimension n_0 ~ 300-400 out of
+  8192. Hence **k must exceed it**: default `qg2l_diag.k=512` (if `n_unstable == k` the run
+  warns: increase k). This is a real difference with Lorenz-96 (13 / 40) worth stating in the
+  paper: the unstable subspace scales with the number of eddies, i.e. with the domain area,
+  so "AUS-like" low-rank arguments only hold relative to n_0, not in absolute dimension.
 
-## Two-layer QG testbed (4DVarNet vs 4DVar, Lyapunov diagnostic)
-See [contrib/qg2l/README.md](contrib/qg2l/README.md): `xp=qg2l_generate`, `xp=qg2l_4dvarnet`, `xp=qg2l_4dvar`, `xp=qg2l_diag`.
+`preset=eddy` (weaker shear) gives a less chaotic regime (lambda_1 ~ 0.035 /day) to sweep
+lambda_1 tau_obs; the constellation (revisit) can be changed in `obs.DEFAULT_CONSTELLATION`
+or through `entrypoints[0].constellation`.
+
+## What the diagnostic reports
+
+For each method and test day, with e = x_rec - x_truth (both layers, energy norm):
+
+* BLV (orthogonal, additive): unstable / neutral / stable-resolved / residual (outside the
+  span of the k leading BLVs, i.e. the most stable directions) — absolute energies and fractions;
+* CLV (oblique) split of the resolved part;
+* error energy along the Lyapunov index (`lyapunov_spectrum_error_distribution.png`);
+* `gain_vs_<first method>`: relative gain per subspace (1 - E_ref / E_other).
+
+Sanity check performed on synthetic errors: an error *grown* by the dynamics over 20 days
+puts ~90x more energy fraction in the leading BLVs than white noise of the same energy.
+
+## Design choices / caveats
+
+* Truth-model vs DA-model: model error = unresolved scales (HR 128 -> LR 64). Set
+  `qg2l.nx_truth=64` for a perfect-model twin, or use `truth_overrides` in
+  `simulate.generate` for parameter error.
+* Lyapunov vectors are those of the **LR DA model** along the **true** trajectory.
+* 4DVarNet reconstructs both layers from SSH only (`qg2l_net.layers=[1,2]`); with `[1]` it is the
+  standard SSH-only set-up and the Lyapunov diagnostic is skipped for it.
+* 4DVar: B = b_scale^2 x climatological spectral covariance (homogeneous, isotropic, with
+  inter-layer correlation). Tune `b_scale`, `q_scale`, `window_days` on the validation split
+  before comparing (`qg2l_4dvar.split=val`). Strong-constraint windows longer than
+  ~1 Lyapunov time hit the non-convexity issue — that is part of the story, so sweep it.
+* Both methods are smoothers within their window (4DVarNet +-7 days, 4DVar its window).
+* `tlm=fd` (central differences, float64) is the default for the Lyapunov vectors; `jvp` is
+  exact and faster on GPU (validated against fd in the tests).
