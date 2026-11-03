@@ -1,0 +1,36 @@
+# @package _global_
+# Step 3: cycled nonlinear 4DVar with the (imperfect) low-resolution QG model, adjoint by autograd
+#   python main.py xp=qg2l_4dvar                       # strong constraint
+#   python main.py xp=qg2l_4dvar qg2l_4dvar.mode=weak  # weak constraint (model-error forcing)
+# Tune b_scale / q_scale / window_days on the validation period first:
+#   python main.py -m xp=qg2l_4dvar qg2l_4dvar.split=val qg2l_4dvar.b_scale=0.2,0.5,1.0
+defaults:
+  - /xp/qg2l_common
+  - _self_
+
+qg2l_4dvar:
+  mode: strong               # strong | weak
+  window_days: 10            # ~ 1 Lyapunov time for the 'energetic' preset
+  b_scale: 0.5               # B = b_scale^2 * climatological spectral covariance
+  q_scale: 0.05              # weak: daily model-error forcing std = q_scale * climatological std
+  r_inflation: 1.0
+  n_iter: 60                 # L-BFGS iterations per window
+  spinup_days: 60            # cycling spin-up before the diagnosed period
+  b_scale_first: 1.0         # first window starts from the climatological mean (zero)
+  split: test
+
+entrypoints:
+  - _target_: contrib.qg2l.fourdvar.run_4dvar
+    _convert_: all
+    data_path: ${qg2l.data_path}
+    out_path: ${qg2l.rec_dir}/4dvar_${qg2l_4dvar.mode}_${qg2l_4dvar.split}.nc
+    mode: ${qg2l_4dvar.mode}
+    window_days: ${qg2l_4dvar.window_days}
+    b_scale: ${qg2l_4dvar.b_scale}
+    q_scale: ${qg2l_4dvar.q_scale}
+    r_inflation: ${qg2l_4dvar.r_inflation}
+    n_iter: ${qg2l_4dvar.n_iter}
+    spinup_days: ${qg2l_4dvar.spinup_days}
+    b_scale_first: ${qg2l_4dvar.b_scale_first}
+    split: ${qg2l_4dvar.split}
+    device: ${qg2l.device}

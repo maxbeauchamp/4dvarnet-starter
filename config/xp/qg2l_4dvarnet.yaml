@@ -1,0 +1,84 @@
+# @package _global_
+# Step 2: train / test 4DVarNet on the QG OSSE (state = psi_1, psi_2 in SSH-equivalent units)
+#   python main.py xp=qg2l_4dvarnet
+defaults:
+  - /xp/qg2l_common
+  - _self_
+
+qg2l_net:
+  n_time: 15
+  layers: [1, 2]             # [1] -> SSH only (no deep layer -> no Lyapunov diagnostic)
+  n_channels: {_target_: contrib.qg2l.data.n_channels, n_time: '${qg2l_net.n_time}', layers: '${qg2l_net.layers}'}
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  inference_mode: False
+  gradient_clip_val: 0.5
+  accelerator: auto
+  devices: 1
+  logger:
+    _target_: pytorch_lightning.loggers.CSVLogger
+    save_dir: ${hydra:runtime.output_dir}
+    name: ${hydra:runtime.choices.xp}
+    version: ''
+  max_epochs: 100
+  callbacks:
+    # - _target_: src.versioning_cb.VersioningCallback   # as in xp/base, if wanted
+    - _target_: pytorch_lightning.callbacks.LearningRateMonitor
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      monitor: val_mse
+      save_top_k: 3
+      filename: '{val_mse:.5f}-{epoch:03d}'
+
+datamodule:
+  _target_: contrib.qg2l.data.QG2LDataModule
+  path: ${qg2l.data_path}
+  n_time: ${qg2l_net.n_time}
+  layers: ${qg2l_net.layers}
+  dl_kw: {batch_size: 16, num_workers: 2}
+  aug_factor: 2              # extra windows with the sampling pattern of other windows
+  aug_only: False
+
+model:
+  _target_: contrib.qg2l.models.LitQG2L
+  persist_rw: False
+  export_path: ${qg2l.rec_dir}/4dvarnet.nc
+  opt_fn:
+    _target_: src.utils.cosanneal_lr_adam
+    _partial_: true
+    lr: 1e-3
+    T_max: ${trainer.max_epochs}
+  rec_weight:
+    _target_: contrib.qg2l.data.qg_rec_weight
+    n_time: ${qg2l_net.n_time}
+    layers: ${qg2l_net.layers}
+    nx: ${qg2l.nx}
+    offset: 1
+  solver:
+    _target_: src.models.GradSolver
+    n_step: 15
+    lr_grad: 1e3
+    prior_cost:
+      _target_: contrib.qg2l.models.periodic
+      module:
+        _target_: src.models.BilinAEPriorCost
+        dim_in: ${qg2l_net.n_channels}
+        dim_hidden: 64
+        bilin_quad: False
+        downsamp: 2
+    obs_cost:
+      _target_: src.models.BaseObsCost
+    grad_mod:
+      _target_: contrib.qg2l.models.periodic
+      module:
+        _target_: src.models.ConvLstmGradModel
+        dim_in: ${qg2l_net.n_channels}
+        dim_hidden: 96
+
+entrypoints:
+  - _target_: pytorch_lightning.seed_everything
+    seed: 333
+  - _target_: src.train.base_training
+    trainer: ${trainer}
+    lit_mod: ${model}
+    dm: ${datamodule}

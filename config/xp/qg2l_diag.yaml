@@ -1,0 +1,32 @@
+# @package _global_
+# Step 4: projection of the reconstruction errors on the BLVs / CLVs of the DA model
+#   python main.py xp=qg2l_diag
+# Missing reconstruction files are skipped. Check summary.json: if n_unstable == k, increase k.
+defaults:
+  - /xp/qg2l_common
+  - _self_
+
+qg2l_diag:
+  k: 512                     # > number of unstable exponents (~300-400 for the 64x64 energetic run)
+  n_transient_fwd: 30
+  n_transient_bwd: 60
+  tlm: fd                    # fd (central finite differences, float64) | jvp (torch.func forward mode)
+  neutral_tol: 0.01          # |lambda| <= tol [1/day] -> neutral
+  t_range: null              # null -> test split; e.g. [1307, 1400] for a quicker run
+
+entrypoints:
+  - _target_: contrib.qg2l.diag.run_diag
+    _convert_: all
+    data_path: ${qg2l.data_path}
+    recs:
+      4dvarnet: ${qg2l.rec_dir}/4dvarnet.nc
+      4dvar_strong: ${qg2l.rec_dir}/4dvar_strong_test.nc
+      4dvar_weak: ${qg2l.rec_dir}/4dvar_weak_test.nc
+    out_dir: ${qg2l.out_dir}/diag
+    k: ${qg2l_diag.k}
+    n_transient_fwd: ${qg2l_diag.n_transient_fwd}
+    n_transient_bwd: ${qg2l_diag.n_transient_bwd}
+    t_range: ${qg2l_diag.t_range}
+    tlm: ${qg2l_diag.tlm}
+    neutral_tol: ${qg2l_diag.neutral_tol}
+    device: ${qg2l.device}

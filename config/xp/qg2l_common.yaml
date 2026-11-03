@@ -1,0 +1,22 @@
+# @package _global_
+# Shared settings of the two-layer QG testbed (contrib/qg2l).
+# Every qg2l_* xp includes this file; override on the command line, e.g.
+#   python main.py xp=qg2l_generate qg2l.preset=eddy qg2l.device=cpu
+qg2l:
+  preset: energetic          # see contrib/qg2l/simulate.py PRESETS
+  L: 1.0e6                   # domain size [m] (doubly periodic)
+  nx: 64                     # DA grid (dx = 15.6 km)
+  dt: 7200.0                 # DA-model time step [s]
+  nx_truth: 128              # truth resolution (== nx -> perfect-model twin experiment)
+  dt_truth: 3600.0
+  spinup_days: 1095
+  splits:                    # days after spin-up; 30-day gap before test + 90-day margin after it
+    train: [0, 1095]         # are needed by the Lyapunov diagnostic (forward / backward transients)
+    val: [1095, 1277]
+    test: [1307, 1672]
+    total: 1762
+  seed: 0
+  device: cuda               # falls back to cpu when cuda is not available
+  out_dir: data/qg2l
+  data_path: ${qg2l.out_dir}/qg2l_${qg2l.preset}_nx${qg2l.nx}_truth${qg2l.nx_truth}.nc
+  rec_dir: ${qg2l.out_dir}/reconstructions

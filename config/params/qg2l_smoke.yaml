@@ -1,0 +1,30 @@
+# @package _global_
+# Tiny end-to-end configuration (CPU, a few minutes per step) to check the pipeline:
+#   for xp in qg2l_generate qg2l_4dvarnet qg2l_4dvar qg2l_diag; do
+#     python main.py xp=$xp +params=qg2l_smoke; done
+qg2l:
+  L: 5.0e5
+  nx: 32
+  nx_truth: 64
+  spinup_days: 300
+  splits: {train: [0, 150], val: [150, 180], test: [200, 240], total: 270}
+  device: cpu
+  out_dir: data/qg2l_smoke
+qg2l_net:
+  n_time: 7
+trainer:
+  max_epochs: 2
+datamodule:
+  dl_kw: {batch_size: 8, num_workers: 0}
+  aug_factor: 0
+model:
+  solver:
+    n_step: 3
+qg2l_4dvar:
+  window_days: 5
+  n_iter: 8
+  spinup_days: 10
+qg2l_diag:
+  k: 16
+  n_transient_fwd: 10
+  n_transient_bwd: 10

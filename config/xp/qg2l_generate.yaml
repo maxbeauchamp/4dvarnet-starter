@@ -1,0 +1,24 @@
+# @package _global_
+# Step 1: truth run + nadir/SWOT observations + figures/animation
+#   python main.py xp=qg2l_generate
+defaults:
+  - /xp/qg2l_common
+  - _self_
+
+entrypoints:
+  - _target_: contrib.qg2l.simulate.generate
+    _convert_: all
+    out_dir: ${qg2l.out_dir}
+    preset: ${qg2l.preset}
+    nx: ${qg2l.nx}
+    dt: ${qg2l.dt}
+    nx_truth: ${qg2l.nx_truth}
+    dt_truth: ${qg2l.dt_truth}
+    L: ${qg2l.L}
+    spinup_days: ${qg2l.spinup_days}
+    splits: ${qg2l.splits}
+    seed: ${qg2l.seed}
+    backend: torch
+    device: ${qg2l.device}
+    constellation: null      # null -> contrib/qg2l/obs.py DEFAULT_CONSTELLATION (Jason-3, S3A, S3B, SWOT)
+    animation_days: 60
