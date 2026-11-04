@@ -48,6 +48,7 @@ cd contrib/qg2l/tests && python -m pytest -q
 | `contrib/qg2l/fourdvar.py` | nonlinear cycled 4DVar, strong or weak constraint (daily model-error forcing), spectral isotropic 2-layer B (control-variable transform), L-BFGS, autograd adjoint |
 | `contrib/qg2l/lyapunov.py` | Benettin QR (BLV, exponents) + Ginelli backward pass (CLV) in the energy norm; on-the-fly projection of errors; BLV/CLV decompositions |
 | `contrib/qg2l/diag.py` | the diagnostic: `summary.json`, `lyapunov_projection.nc`, figures, comparison animation |
+| `contrib/qg2l/pipeline.py` | cached scenario pipeline (generation, 4DVarNet with checkpoint resume, 4DVar / hybrid, diagnostic), keyed by configuration hash |
 | `contrib/qg2l/metrics.py` | RMSE, mu = 1 - RMSE/RMS, effective resolution lambda_x from the isotropic PSD score |
 
 ## Default set-up and measured regime
@@ -71,6 +72,25 @@ DA grid 64^2 (dx = 15.6 km), R_d = 15 km, DA dt = 2 h. Checked here (numpy):
 `preset=eddy` (weaker shear) gives a less chaotic regime (lambda_1 ~ 0.035 /day) to sweep
 lambda_1 tau_obs; the constellation (revisit) can be changed in `obs.DEFAULT_CONSTELLATION`
 or through `entrypoints[0].constellation`.
+
+## Realism scenarios (`contrib/qg2l/qg2l_realism_sweep.ipynb`)
+
+The default OSSE is a favourable case for 4DVar (same equations / parameters / forcing for truth and DA model,
+observations without representativeness error, known diagonal R, B estimated from the truth, perfect H, periodic
+domain, unlimited optimisation budget). The second notebook switches these assumptions off, one at a time and all
+together, retrains 4DVarNet on each dataset and compares 4DVarNet, strong / weak / low-budget 4DVar and the hybrid
+4DVarNet -> 4DVar, with scores and error energy per Lyapunov subspace. Options (also usable in `simulate.generate`
+and `fourdvar.run_4dvar`):
+
+| option | effect |
+|---|---|
+| `truth_overrides=dict(rek=..., beta=..., U1=...)` | truth physics differs from the DA model (parameter / structural model error) |
+| `forcing=dict(ssh_std, wavelength_km)` | unknown band-limited stochastic forcing in the truth only |
+| `obs_source="hr_block"` | obs sample the block-averaged high-resolution SSH (representativeness error) |
+| `unresolved_signal=dict(ssh_std, wavelength_km, decorrelation_days)` | internal-tide-like signal in the obs only |
+| `constellation[...]["roll_std"]` | correlated SWOT cross-track error (4DVar keeps a diagonal R) |
+| `run_4dvar(b_source="free_run")` | B from a free run of the DA model instead of the truth |
+| `run_4dvar(background_path=4dvarnet.nc, spinup_days=0)` | hybrid: 4DVarNet reconstruction as background of each window |
 
 ## What the diagnostic reports
 

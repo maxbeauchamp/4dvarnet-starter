@@ -59,13 +59,41 @@ def simulate_truth(
     truth_overrides=None,
     keep_hr=False,
     log_every=100,
+    forcing=None,
+    obs_source="lr",
 ):
-    """Integrate the truth model and return daily LR-grid fields (numpy)."""
+    """Integrate the truth model and return daily LR-grid fields (numpy).
+
+    Model-error / realism options (all off by default = truncation-only model error):
+      truth_overrides: physical parameters of the truth differing from the DA model (e.g. rek, beta, U1)
+      forcing:   dict(ssh_std=..., wavelength_km=(lmin, lmax), layers=[1]) -> random band-limited
+                 streamfunction increment added once a day to the truth only (unknown forcing;
+                 ssh_std = daily increment std in SSH-equivalent metres), white in time
+      obs_source: "lr" -> observations sample the spectrally truncated truth (no representativeness
+                 error); "hr_block" -> they sample the block average of the high-resolution SSH
+                 (sub-grid scales aliased into the observations = representativeness error)
+    """
     kw = model_kwargs(preset, nx=nx_truth, dt=dt_truth, L=L, **(truth_overrides or {}))
     m = QG2L(backend=backend, device=device, dtype=dtype, **kw)
     t0 = time.time()
     psi = m.random_init(seed=seed)
     energy = []
+    rng_f = np.random.default_rng(seed + 7)
+    if obs_source not in ("lr", "hr_block"):
+        raise ValueError(obs_source)
+    if obs_source == "hr_block" and nx_truth % nx:
+        raise ValueError("hr_block needs nx_truth to be a multiple of nx")
+
+    def step(p):
+        p = m.forecast_days(p, 1)
+        if forcing:
+            inc = np.zeros((2, m.ny, m.nx))
+            fld = obs_mod.band_limited_field(m.nx, L, forcing.get("wavelength_km", (150.0, 400.0)), rng_f)
+            fld *= m.g / m.f0 * forcing["ssh_std"]
+            for l in forcing.get("layers", [1]):
+                inc[l - 1] = fld
+            p = p + m.xp.asarray(inc)
+        return p
 
     def log(d, p):
         energy.append(float(m.energy(p)))
@@ -74,20 +102,26 @@ def simulate_truth(
 
     to_np = (lambda a: a.detach().cpu().numpy()) if backend == "torch" else np.asarray
     for d in range(spinup_days):
-        psi = m.forecast_days(psi, 1)
+        psi = step(psi)
         if log_every and (d + 1) % (5 * log_every) == 0:
             print(f"[truth] spin-up day {d+1}: E={float(m.energy(psi)):.3e}  ({time.time()-t0:.0f}s)", flush=True)
     print(f"[truth] spin-up done ({spinup_days} d): E={float(m.energy(psi)):.3e}", flush=True)
     traj = [to_np(psi)]
     log(0, psi)
     for d in range(1, n_days):
-        psi = m.forecast_days(psi, 1)
+        psi = step(psi)
         traj.append(to_np(psi))
         log(d, psi)
     traj = np.stack(traj)
     lr = spectral_coarsen(traj, nx) if nx_truth != nx else traj
+    ssh_obs_src = None
+    if obs_source == "hr_block":
+        f = nx_truth // nx
+        ssh_hr = m.f0 / m.g * traj[:, 0]
+        ssh_obs_src = ssh_hr.reshape(len(traj), nx, f, nx, f).mean((2, 4))
     return dict(
         psi=lr.astype(np.float32),
+        ssh_obs_src=ssh_obs_src,
         psi_hr=traj.astype(np.float32) if keep_hr and nx_truth != nx else None,
         energy=np.array(energy),
         truth_params=m.params,
@@ -167,8 +201,19 @@ def generate(
     truth_overrides=None,
     make_figures=True,
     animation_days=60,
+    forcing=None,
+    obs_source="lr",
+    unresolved_signal=None,
 ):
-    """Generate the OSSE dataset + figures. Returns the path of the netCDF file."""
+    """Generate the OSSE dataset + figures. Returns the path of the netCDF file.
+
+    Realism options (defaults = truncation-only model error, oracle-like observations):
+      truth_overrides, forcing, obs_source: see ``simulate_truth``
+      unresolved_signal: dict(ssh_std=..., wavelength_km=(lmin, lmax), decorrelation_days=...) ->
+          SSH signal present in the observations only (e.g. internal-tide / ageostrophic like),
+          never in the truth nor the model: an extra, spatially correlated observation error
+      constellation[*]["roll_std"] > 0: correlated SWOT cross-track (roll-like) error
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     splits = dict(splits or DEFAULT_SPLITS)
@@ -184,12 +229,19 @@ def generate(
     truth = simulate_truth(
         preset=preset, nx=nx, nx_truth=nx_truth, dt_truth=dt_truth, L=L, spinup_days=spinup_days,
         n_days=splits["total"], seed=seed, backend=backend, device=device, dtype=dtype,
-        truth_overrides=truth_overrides,
+        truth_overrides=truth_overrides, forcing=forcing, obs_source=obs_source,
     )
     model_kw = model_kwargs(preset, nx=nx, dt=dt, L=L)
     m = QG2L(**model_kw)
     ssh = m.ssh(truth["psi"].astype(np.float64))
-    obs = obs_mod.build_observations(ssh, L, constellation, lat=lat, seed=seed + 1)
+    ssh_sampled = ssh if truth["ssh_obs_src"] is None else truth["ssh_obs_src"]
+    if unresolved_signal:
+        ssh_sampled = ssh_sampled + obs_mod.unresolved_signal(
+            ssh.shape[0], nx, L, rng=np.random.default_rng(seed + 11), **unresolved_signal)
+    obs = obs_mod.build_observations(ssh_sampled, L, constellation, lat=lat, seed=seed + 1)
+    # actual obs - truth error statistics (incl. representativeness / unresolved signal)
+    seen = np.isfinite(obs["obs"])
+    obs_err_std = float(np.std(obs["obs"][seen] - ssh[seen]))
     rt_map, rt_med = revisit_time(obs["sat_id"])
     lam1 = estimate_lambda1(model_kw, truth["psi"][splits["test"][0]].astype(np.float64))
     summary = dict(
@@ -199,9 +251,14 @@ def generate(
         lambda1_x_revisit=lam1 * rt_med,
         coverage_per_day=obs_mod.coverage_stats(obs["sat_id"], obs["names"]),
         ssh_std_m=float(ssh.std()),
+        obs_minus_truth_std_m=obs_err_std,
     )
+    gen_config = dict(preset=preset, nx=nx, dt=dt, nx_truth=nx_truth, dt_truth=dt_truth, L=L,
+                      spinup_days=spinup_days, splits=splits, constellation=constellation, lat=lat, seed=seed,
+                      truth_overrides=truth_overrides or {}, forcing=forcing or {}, obs_source=obs_source,
+                      unresolved_signal=unresolved_signal or {})
     print("[generate] summary:", json.dumps(summary, indent=1))
-    ds = to_dataset(truth, obs, model_kw, constellation, splits, extra_attrs=dict(summary=json.dumps(summary)))
+    ds = to_dataset(truth, obs, model_kw, constellation, splits, extra_attrs=dict(summary=json.dumps(summary), gen_config=json.dumps(gen_config)))
     path = out_dir / f"qg2l_{preset}_nx{nx}_truth{nx_truth}.nc"
     ds.to_netcdf(path)
     np.save(out_dir / "truth_energy.npy", truth["energy"])

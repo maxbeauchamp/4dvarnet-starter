@@ -268,3 +268,49 @@ def test_blend_with_padded_windows():
     w = D.qg_rec_weight(T, [1, 2], 8).reshape(2, T, 8, 8)[:, :, 0, 0]
     rec = D.blend_windows(outs, ds.starts, t0, t1 - t0, w)
     assert np.allclose(rec, state[t0:t1], atol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# realism options
+# ---------------------------------------------------------------------------
+def test_band_limited_and_unresolved_signal():
+    rng = np.random.default_rng(0)
+    f = O.band_limited_field(64, 1e6, (100.0, 200.0), rng)
+    assert np.isclose(f.std(), 1.0)
+    k = np.fft.fftfreq(64, 1e6 / 64) * 1e3  # cycles / km
+    kk = np.sqrt(k[None, :] ** 2 + k[:, None] ** 2)
+    p = np.abs(np.fft.fft2(f)) ** 2
+    assert p[(kk < 1 / 200 - 1e-9) | (kk > 1 / 100 + 1e-9)].sum() < 1e-10 * p.sum()
+    s = O.unresolved_signal(400, 32, 5e5, ssh_std=0.01, wavelength_km=(50, 150), decorrelation_days=5.0, rng=rng)
+    assert abs(s.std() - 0.01) < 0.002
+    r = np.corrcoef(s[:-1].ravel(), s[1:].ravel())[0, 1]
+    assert abs(r - np.exp(-1 / 5)) < 0.05
+
+
+def test_truth_forcing_and_hr_block_obs():
+    from qg2l.simulate import simulate_truth
+
+    common = dict(preset="energetic", nx=16, nx_truth=32, dt_truth=3600.0, L=2.5e5, spinup_days=60, n_days=20,
+                  backend="numpy", log_every=0)
+    a = simulate_truth(**common)
+    b = simulate_truth(**common, forcing=dict(ssh_std=0.002, wavelength_km=(60.0, 200.0)), obs_source="hr_block")
+    assert a["ssh_obs_src"] is None and b["ssh_obs_src"].shape == (20, 16, 16)
+    assert not np.allclose(a["psi"], b["psi"])  # forcing changes the truth
+    m = QG2L(**model_kwargs("energetic", nx=16, dt=7200.0, L=2.5e5))
+    ssh_lr = m.ssh(b["psi"].astype(np.float64))
+    diff = b["ssh_obs_src"] - ssh_lr  # representativeness error: small but non zero, mostly small scales
+    assert 0 < diff.std() < 0.5 * ssh_lr.std()
+
+
+def test_free_run_b():
+    from qg2l.fourdvar import free_run, isotropic_layer_covariance
+
+    kw = model_kwargs("energetic", nx=16, dt=7200.0, L=2.5e5)
+    m = QG2L(**kw)
+    p = m.random_init(0, amp=1e-5)
+    for _ in range(300):
+        p = m.forecast_days(p, 1)
+    fr = free_run(kw, p, 50, every=5, discard=5)
+    assert fr.shape == (10, 2, 16, 16) and np.isfinite(fr).all()
+    cov = isotropic_layer_covariance(fr, m.dx)
+    assert np.all(cov["Sigma"][1:, 0, 0] >= 0)

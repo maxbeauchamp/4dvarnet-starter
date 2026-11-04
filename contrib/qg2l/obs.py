@@ -126,3 +126,29 @@ def build_observations(ssh, L, constellation=None, lat=35.0, seed=0, day0=0):
 def coverage_stats(sat_id, names):
     n = sat_id[0].size
     return {name: float((sat_id == i).sum() / sat_id.shape[0] / n) for i, name in enumerate(names)}
+
+
+def band_limited_field(n, L, wavelength_km, rng):
+    """Unit-variance random field on the periodic (n, n) grid with wavelengths in [lmin, lmax] km."""
+    lmin, lmax = wavelength_km
+    k = np.fft.fftfreq(n, L / n)  # cycles / m
+    kk = np.sqrt(k[None, :] ** 2 + k[:, None] ** 2)
+    band = (kk >= 1e-3 / lmax) & (kk <= 1e-3 / lmin)
+    if not band.any():
+        raise ValueError("no resolved wavenumber in the requested band")
+    fld = np.fft.ifft2(band * np.fft.fft2(rng.standard_normal((n, n)))).real
+    return fld / fld.std()
+
+
+def unresolved_signal(n_days, nx, L, ssh_std, wavelength_km=(50.0, 150.0), decorrelation_days=1.0, rng=None):
+    """SSH signal seen by the altimeters but absent from the truth / model (internal-tide-like):
+    band-limited in space, AR(1) in time with the given decorrelation time. (n_days, nx, nx) in m."""
+    rng = rng or np.random.default_rng(0)
+    a = math.exp(-1.0 / decorrelation_days) if decorrelation_days > 0 else 0.0
+    out = np.empty((n_days, nx, nx))
+    s = band_limited_field(nx, L, wavelength_km, rng)
+    for t in range(n_days):
+        if t:
+            s = a * s + math.sqrt(1 - a**2) * band_limited_field(nx, L, wavelength_km, rng)
+        out[t] = ssh_std * s
+    return out

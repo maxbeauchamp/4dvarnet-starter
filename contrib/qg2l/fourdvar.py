@@ -165,9 +165,13 @@ class FourDVar:
         return traj.detach(), info
 
     # -- cycling --------------------------------------------------------------------
-    def run(self, obs, sigma, t_start, t_end, spinup_days=60, xb0=None, b_scale_first=1.0, truth=None):
+    def run(self, obs, sigma, t_start, t_end, spinup_days=60, xb0=None, b_scale_first=1.0, truth=None,
+            background=None):
         """Cycled 4DVar over [t_start - spinup_days, t_end). obs/sigma: full (T, n, n) arrays.
 
+        background: optional (t_end - t_start, 2, n, n) psi (e.g. a 4DVarNet reconstruction): the
+            background of every window starting in [t_start, t_end) is taken from it instead of the
+            cycled forecast (hybrid 4DVarNet -> 4DVar; b_scale then sizes the 4DVarNet error).
         Returns the analysed trajectory on [t_start, t_end) (numpy, psi), and a log list.
         truth (optional, (T,2,n,n) numpy psi) is only used for logging RMSEs."""
         torch = self.torch
@@ -179,6 +183,9 @@ class FourDVar:
         t, first, tic = t0, True, time.time()
         while t < t_end:
             W = min(self.window_days, t_end - t)
+            if background is not None and t_start <= t < t_end:
+                xb = torch.as_tensor(background[t - t_start], dtype=self.dtype, device=self.device)
+                first = False
             traj, info = self.analyse_window(xb, obs[t:t + W], sigma[t:t + W],
                                              b_scale=b_scale_first if first else None)
             first = False
@@ -201,13 +208,32 @@ class FourDVar:
         return out, log
 
 
+def free_run(model_kw, psi0, n_days, every=5, discard=30):
+    """Daily free run of the DA model from psi0 (numpy); returns every ``every``-th state after ``discard`` days."""
+    m = QG2L(**model_kw)
+    p, out = np.asarray(psi0, dtype=np.float64), []
+    for d in range(n_days + discard):
+        p = m.forecast_days(p, 1)
+        if d >= discard and (d - discard) % every == 0:
+            out.append(p)
+    return np.stack(out)
+
+
 # ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
 def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q_scale=0.05,
               r_inflation=1.0, n_iter=60, spinup_days=60, b_scale_first=1.0, split="test",
-              t_range=None, device="cuda", dtype="float64", model_overrides=None):
-    """Run the cycled 4DVar on a split of the OSSE and write a netCDF like LitQG2L's."""
+              t_range=None, device="cuda", dtype="float64", model_overrides=None, b_source="truth",
+              background_path=None, method=None):
+    """Run the cycled 4DVar on a split of the OSSE and write a netCDF like LitQG2L's.
+
+    b_source: "truth"    -> B from the training truth (oracle-like statistics)
+              "free_run" -> B from a free run of the DA (low-resolution) model over the training
+                            period length (model climatology: no knowledge of the truth statistics)
+    background_path: reconstruction file (e.g. 4dvarnet.nc) providing the background of each window
+              (hybrid scheme); use spinup_days=0 and a b_scale matching its error level.
+    """
     import torch
     import xarray as xr
 
@@ -223,20 +249,33 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     t_start, t_end = t_range or splits[split]
     psi = ds.psi.values.astype(np.float64)
     tr0, tr1 = splits["train"]
-    b_cov = isotropic_layer_covariance(psi[tr0:tr1:5], kw["L"] / kw["nx"])
+    if b_source == "truth":
+        b_cov = isotropic_layer_covariance(psi[tr0:tr1:5], kw["L"] / kw["nx"])
+    elif b_source == "free_run":
+        b_cov = isotropic_layer_covariance(free_run(kw, psi[tr0], tr1 - tr0), kw["L"] / kw["nx"])
+    else:
+        raise ValueError(b_source)
+    background = None
+    if background_path is not None:
+        bg = xr.open_dataset(background_path, decode_times=False).load()
+        background = bg.psi.sel(time=ds.time.values[t_start:t_end], method="nearest").values.astype(np.float64)
+        if not np.isfinite(background).all():
+            raise ValueError(f"{background_path}: NaN in the background (deep layer not estimated?)")
     da = FourDVar(kw, b_cov, b_scale=b_scale, mode=mode, q_scale=q_scale, r_inflation=r_inflation,
                   window_days=window_days, n_iter=n_iter, device=device, dtype=dtype)
     rec, log = da.run(ds.obs_ssh.values, ds.obs_sigma.values, t_start, t_end, spinup_days=spinup_days,
-                      b_scale_first=b_scale_first, truth=psi)
+                      b_scale_first=b_scale_first, truth=psi, background=background)
     f = kw["f0"] / kw["g"]
     scores = qg_metrics.all_scores(f * rec, f * psi[t_start:t_end], dx=kw["L"] / kw["nx"])
     print("\n" + "\n".join(f"| {k:16s} | {v:10.4f} |" for k, v in scores.items()))
     cfg = dict(mode=mode, window_days=window_days, b_scale=b_scale, q_scale=q_scale, r_inflation=r_inflation,
-               n_iter=n_iter, spinup_days=spinup_days, model_overrides=model_overrides or {})
+               n_iter=n_iter, spinup_days=spinup_days, model_overrides=model_overrides or {}, b_source=b_source,
+               background_path=str(background_path) if background_path else None)
+    method = method or (f"hybrid_{mode}" if background_path else f"4dvar_{mode}")
     out = xr.Dataset(
-        dict(psi=(("time", "layer", "y", "x"), rec, dict(units="m2 s-1", long_name=f"4DVar ({mode}) analysis"))),
+        dict(psi=(("time", "layer", "y", "x"), rec, dict(units="m2 s-1", long_name=f"{method} analysis"))),
         coords=dict(time=ds.time.values[t_start:t_end], layer=[1, 2], y=ds.y.values, x=ds.x.values),
-        attrs=dict(method=f"4dvar_{mode}", model_kw=json.dumps(kw), scores=json.dumps(scores),
+        attrs=dict(method=method, model_kw=json.dumps(kw), scores=json.dumps(scores),
                    config=json.dumps(cfg), log=json.dumps(log), layers_estimated=json.dumps([1, 2])),
     )
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
