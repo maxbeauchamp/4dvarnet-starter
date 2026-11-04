@@ -45,7 +45,7 @@ cd contrib/qg2l/tests && python -m pytest -q
 | `contrib/qg2l/viz.py` | snapshots, spectra, coverage / revisit maps, energy, animations (mp4, gif fallback) |
 | `contrib/qg2l/data.py` | `QG2LDataModule`: full-domain sliding windows; state = (psi_1, psi_2) in SSH-equivalent units, obs on layer 1 only (NaN on layer 2), mask-resampling augmentation |
 | `contrib/qg2l/models.py` | `LitQG2L` (subclass of `src.models.Lit4dVarNet`): time blending of windows, scores, export in the 4DVar format; `periodic()` -> circular conv padding |
-| `contrib/qg2l/fourdvar.py` | nonlinear cycled 4DVar, strong or weak constraint (daily model-error forcing), spectral isotropic 2-layer B (control-variable transform), L-BFGS, autograd adjoint |
+| `contrib/qg2l/fourdvar.py` | cycled 4DVar, strong or weak constraint (daily model-error forcing), spectral isotropic 2-layer B (control-variable transform = preconditioning); solvers: nonlinear L-BFGS or incremental Gauss-Newton + preconditioned CG (TL / adjoint by autograd) |
 | `contrib/qg2l/lyapunov.py` | Benettin QR (BLV, exponents) + Ginelli backward pass (CLV) in the energy norm; on-the-fly projection of errors; BLV/CLV decompositions |
 | `contrib/qg2l/diag.py` | the diagnostic: `summary.json`, `lyapunov_projection.nc`, figures, comparison animation |
 | `contrib/qg2l/pipeline.py` | cached scenario pipeline (generation, 4DVarNet with checkpoint resume, 4DVar / hybrid, diagnostic), keyed by configuration hash |
@@ -90,6 +90,7 @@ and `fourdvar.run_4dvar`):
 | `unresolved_signal=dict(ssh_std, wavelength_km, decorrelation_days)` | internal-tide-like signal in the obs only |
 | `constellation[...]["roll_std"]` | correlated SWOT cross-track error (4DVar keeps a diagonal R) |
 | `run_4dvar(b_source="free_run")` | B from a free run of the DA model instead of the truth |
+| `run_4dvar(solver="incremental", n_outer, n_inner)` | operational-style incremental 4DVar: Gauss-Newton outer loops + conjugate gradient on the B^{1/2}-preconditioned quadratic cost (TL / adjoint by `torch.func.jvp` / `vjp`); the default `lbfgs` minimises the nonlinear preconditioned cost to near convergence |
 | `run_4dvar(background_path=4dvarnet.nc, spinup_days=0)` | hybrid: 4DVarNet reconstruction as background of each window |
 
 ## What the diagnostic reports

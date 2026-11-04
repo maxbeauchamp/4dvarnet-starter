@@ -70,11 +70,37 @@ def sqrt_cov_field(cov, n, scale=1.0, eps=1e-12):
 
 
 # ---------------------------------------------------------------------------
+# linear algebra
+# ---------------------------------------------------------------------------
+def conjugate_gradient(A, b, n_iter, rtol=1e-8):
+    """Solve A x = b for a symmetric positive definite operator A (callable) by CG, x0 = 0.
+    Backend agnostic (numpy arrays or torch tensors). Returns (x, number of A applications)."""
+    x = b * 0
+    r = b * 1
+    p = r * 1
+    rs = float((r * r).sum())
+    b_norm = rs ** 0.5
+    it = 0
+    for it in range(1, n_iter + 1):
+        Ap = A(p)
+        alpha = rs / float((p * Ap).sum())
+        x = x + alpha * p
+        r = r - alpha * Ap
+        rs_new = float((r * r).sum())
+        if rs_new ** 0.5 <= rtol * b_norm:
+            break
+        p = r + (rs_new / rs) * p
+        rs = rs_new
+    return x, it
+
+
+# ---------------------------------------------------------------------------
 # 4DVar
 # ---------------------------------------------------------------------------
 class FourDVar:
     def __init__(self, model_kw, b_cov, b_scale=0.5, mode="strong", q_scale=0.05, r_inflation=1.0,
-                 window_days=10, n_iter=60, history_size=20, device="cpu", dtype="float64", verbose=True):
+                 window_days=10, n_iter=60, history_size=20, device="cpu", dtype="float64", verbose=True,
+                 solver="lbfgs", n_outer=3, n_inner=20):
         import torch
 
         self.torch = torch
@@ -85,6 +111,9 @@ class FourDVar:
         self.window_days = int(window_days)
         self.n_iter = int(n_iter)
         self.history_size = history_size
+        if solver not in ("lbfgs", "incremental"):
+            raise ValueError(solver)
+        self.solver, self.n_outer, self.n_inner = solver, int(n_outer), int(n_inner)
         self.r_inflation = float(r_inflation)
         self.verbose = verbose
         self.dtype = getattr(torch, dtype)
@@ -125,15 +154,21 @@ class FourDVar:
             w = torch.zeros((W - 1, 2, self.n, self.n), dtype=self.dtype, device=self.device, requires_grad=True)
             params.append(w)
 
-        def trajectory():
-            x = xb + self._apply_sqrt(Sb, v)
+        def trajectory_of(v_, w_):
+            x = xb + self._apply_sqrt(Sb, v_)
             out = [x]
             for d in range(1, W):
                 x = self.model.forecast_days(x, 1)
                 if self.mode == "weak":
-                    x = x + self._apply_sqrt(self.Sq, w[d - 1])
+                    x = x + self._apply_sqrt(self.Sq, w_[d - 1])
                 out.append(x)
             return torch.stack(out)
+
+        def trajectory():
+            return trajectory_of(v, w if self.mode == "weak" else None)
+
+        if self.solver == "incremental":
+            return self._incremental(trajectory_of, v, w if self.mode == "weak" else None, y, rinv, msk, n_obs, W)
 
         def cost():
             traj = trajectory()
@@ -161,7 +196,66 @@ class FourDVar:
             traj = trajectory()
             J1, parts = cost()
         info = dict(J0=J0, J=float(J1), jb=parts[0], jq=parts[1], jo=parts[2], n_obs=n_obs,
-                    n_eval=len(hist), jo_per_obs=parts[2] / max(n_obs, 1))
+                    n_eval=len(hist), jo_per_obs=parts[2] / max(n_obs, 1),
+                    n_nonlinear=len(hist), n_tl=0, n_adjoint=len(hist))
+        return traj.detach(), info
+
+    def _incremental(self, trajectory_of, v, w, y, rinv, msk, n_obs, W):
+        """Incremental (Gauss-Newton) 4DVar: outer loops re-linearise the model around the current
+        trajectory, inner loops solve the quadratic problem with preconditioned conjugate gradient:
+
+            (I + G'^T G') dz = -(z - G'^T r),   r = R^{-1/2}(y - H M(xb + B^{1/2} v)),  z = (v [, w])
+
+        The B^{1/2} control-variable transform makes the background Hessian the identity, so CG works on
+        I + G'^T G' (eigenvalues >= 1). G' = tangent linear (torch.func.jvp), G'^T = adjoint (torch.func.vjp).
+        Cost per inner iteration: one TL + one adjoint integration over the window."""
+        torch = self.torch
+        nv = v.numel()
+        mskf = msk.to(self.dtype)
+        shp_w = (W - 1, 2, self.n, self.n)
+
+        def split(z):
+            return z[:nv].reshape(v.shape), (z[nv:].reshape(shp_w) if w is not None else None)
+
+        def G(z):  # scaled model equivalent of the observations (0 where no obs)
+            v_, w_ = split(z)
+            return self.ssh(trajectory_of(v_, w_)) * rinv * mskf
+
+        yr = y * rinv * mskf
+
+        def cost(z):
+            with torch.no_grad():
+                r = yr - G(z)
+                jb = 0.5 * float((z[:nv] ** 2).sum())
+                jq = 0.5 * float((z[nv:] ** 2).sum())
+                jo = 0.5 * float((r ** 2).sum())
+            return jb + jq + jo, (jb, jq, jo)
+
+        z = torch.zeros(nv + (w.numel() if w is not None else 0), dtype=self.dtype, device=self.device)
+        J0 = cost(z)[0]
+        n_tl = n_ad = n_nl = 0
+        for _ in range(self.n_outer):
+            Gz, vjp_fn = torch.func.vjp(G, z)
+            n_nl += 1
+            grad = z - vjp_fn(yr - Gz)[0]
+            n_ad += 1
+            z_lin = z
+
+            def hess_vec(d):
+                _, Jd = torch.func.jvp(G, (z_lin,), (d,))
+                return d + vjp_fn(Jd)[0]
+
+            dz, it = conjugate_gradient(hess_vec, -grad, self.n_inner)
+            n_tl += it
+            n_ad += it
+            z = (z + dz).detach()
+        J1, parts = cost(z)
+        n_nl += 1
+        with torch.no_grad():
+            traj = trajectory_of(*split(z))
+        info = dict(J0=J0, J=J1, jb=parts[0], jq=parts[1], jo=parts[2], n_obs=n_obs,
+                    n_eval=self.n_outer, jo_per_obs=parts[2] / max(n_obs, 1),
+                    n_nonlinear=n_nl, n_tl=n_tl, n_adjoint=n_ad)
         return traj.detach(), info
 
     # -- cycling --------------------------------------------------------------------
@@ -225,7 +319,7 @@ def free_run(model_kw, psi0, n_days, every=5, discard=30):
 def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q_scale=0.05,
               r_inflation=1.0, n_iter=60, spinup_days=60, b_scale_first=1.0, split="test",
               t_range=None, device="cuda", dtype="float64", model_overrides=None, b_source="truth",
-              background_path=None, method=None):
+              background_path=None, method=None, solver="lbfgs", n_outer=3, n_inner=20):
     """Run the cycled 4DVar on a split of the OSSE and write a netCDF like LitQG2L's.
 
     b_source: "truth"    -> B from the training truth (oracle-like statistics)
@@ -233,6 +327,9 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
                             period length (model climatology: no knowledge of the truth statistics)
     background_path: reconstruction file (e.g. 4dvarnet.nc) providing the background of each window
               (hybrid scheme); use spinup_days=0 and a b_scale matching its error level.
+    solver:   "lbfgs" (nonlinear L-BFGS on the preconditioned cost, n_iter iterations) or "incremental"
+              (operational-style Gauss-Newton: n_outer outer loops x n_inner preconditioned CG iterations
+              with tangent-linear / adjoint models).
     """
     import torch
     import xarray as xr
@@ -262,21 +359,26 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
         if not np.isfinite(background).all():
             raise ValueError(f"{background_path}: NaN in the background (deep layer not estimated?)")
     da = FourDVar(kw, b_cov, b_scale=b_scale, mode=mode, q_scale=q_scale, r_inflation=r_inflation,
-                  window_days=window_days, n_iter=n_iter, device=device, dtype=dtype)
+                  window_days=window_days, n_iter=n_iter, device=device, dtype=dtype, solver=solver,
+                  n_outer=n_outer, n_inner=n_inner)
     rec, log = da.run(ds.obs_ssh.values, ds.obs_sigma.values, t_start, t_end, spinup_days=spinup_days,
                       b_scale_first=b_scale_first, truth=psi, background=background)
+    cost = {k: int(sum(l.get(k, 0) for l in log)) for k in ["n_nonlinear", "n_tl", "n_adjoint"]}
+    print("[4dvar] model integrations over the run:", cost)
     f = kw["f0"] / kw["g"]
     scores = qg_metrics.all_scores(f * rec, f * psi[t_start:t_end], dx=kw["L"] / kw["nx"])
     print("\n" + "\n".join(f"| {k:16s} | {v:10.4f} |" for k, v in scores.items()))
     cfg = dict(mode=mode, window_days=window_days, b_scale=b_scale, q_scale=q_scale, r_inflation=r_inflation,
                n_iter=n_iter, spinup_days=spinup_days, model_overrides=model_overrides or {}, b_source=b_source,
-               background_path=str(background_path) if background_path else None)
+               background_path=str(background_path) if background_path else None, solver=solver,
+               n_outer=n_outer, n_inner=n_inner)
     method = method or (f"hybrid_{mode}" if background_path else f"4dvar_{mode}")
     out = xr.Dataset(
         dict(psi=(("time", "layer", "y", "x"), rec, dict(units="m2 s-1", long_name=f"{method} analysis"))),
         coords=dict(time=ds.time.values[t_start:t_end], layer=[1, 2], y=ds.y.values, x=ds.x.values),
         attrs=dict(method=method, model_kw=json.dumps(kw), scores=json.dumps(scores),
-                   config=json.dumps(cfg), log=json.dumps(log), layers_estimated=json.dumps([1, 2])),
+                   config=json.dumps(cfg), log=json.dumps(log), layers_estimated=json.dumps([1, 2]),
+                   cost=json.dumps(cost)),
     )
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     out.to_netcdf(out_path)

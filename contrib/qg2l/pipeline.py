@@ -132,7 +132,7 @@ def training_curves(rec_path):
 # 4DVar / hybrid
 # ---------------------------------------------------------------------------
 DEFAULT_VAR = dict(mode="strong", window_days=7, b_scale=0.5, q_scale=0.05, r_inflation=1.0, n_iter=40,
-                   spinup_days=30, b_source="truth")
+                   spinup_days=30, b_source="truth", solver="lbfgs", n_outer=3, n_inner=20)
 
 
 def run_4dvar_cached(data_path, out_path, var, background_path=None, device="cuda", force=False):
@@ -172,6 +172,8 @@ def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", f
                                        background_path=rec_net if m.get("background") == "4dvarnet" else None,
                                        device=device)
     scores = {k: json.loads(xr.open_dataset(v, decode_times=False).attrs["scores"]) for k, v in recs.items()}
+    cost = {k: json.loads(xr.open_dataset(v, decode_times=False).attrs.get("cost", "{}")) for k, v in recs.items()
+            if k != "4dvarnet"}
     summary = None
     if lyap is not None:
         lyap = dict(lyap)
@@ -185,5 +187,5 @@ def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", f
             _write_sidecar(summ, cfg)
         summary = json.loads(summ.read_text())
     ds = xr.open_dataset(data, decode_times=False)
-    return dict(name=name, data=data, recs=recs, scores=scores, lyap=summary,
+    return dict(name=name, data=data, recs=recs, scores=scores, cost=cost, lyap=summary,
                 obs_summary=json.loads(ds.attrs["summary"]), diag_dir=sc_dir / "diag")

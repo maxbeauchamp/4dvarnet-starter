@@ -74,8 +74,9 @@ def test_4dvar_adjoint_gradient(setup):
     assert abs(float((g * d).sum()) - float(fd)) < 1e-4 * abs(float(fd))
 
 
-@pytest.mark.parametrize("mode", ["strong", "weak"])
-def test_4dvar_twin_reduces_error(setup, mode):
+@pytest.mark.parametrize("mode,solver", [("strong", "lbfgs"), ("weak", "lbfgs"),
+                                         ("strong", "incremental"), ("weak", "incremental")])
+def test_4dvar_twin_reduces_error(setup, mode, solver):
     """Perfect-model twin: analysis closer to the truth than the background."""
     kw, m, traj = setup
     cov = isotropic_layer_covariance(traj, m.dx)
@@ -83,7 +84,8 @@ def test_4dvar_twin_reduces_error(setup, mode):
     rng = np.random.default_rng(2)
     obs = np.where(rng.random(ssh.shape) < 0.15, ssh + 0.005 * rng.standard_normal(ssh.shape), np.nan)
     sig = np.where(np.isfinite(obs), 0.005, np.nan)
-    da = FourDVar(kw, cov, b_scale=0.5, mode=mode, q_scale=0.02, window_days=4, n_iter=30, verbose=False)
+    da = FourDVar(kw, cov, b_scale=0.5, mode=mode, q_scale=0.02, window_days=4, n_iter=30, verbose=False,
+                  solver=solver, n_outer=2, n_inner=15)
     xb = torch.as_tensor(traj[10] + 0.5 * (traj[0] - traj[10]), dtype=torch.float64)
     a, info = da.analyse_window(xb, obs[10:14], sig[10:14])
     err_b = np.sqrt(((xb.numpy() - traj[10]) ** 2).mean())

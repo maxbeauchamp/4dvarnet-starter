@@ -314,3 +314,18 @@ def test_free_run_b():
     assert fr.shape == (10, 2, 16, 16) and np.isfinite(fr).all()
     cov = isotropic_layer_covariance(fr, m.dx)
     assert np.all(cov["Sigma"][1:, 0, 0] >= 0)
+
+
+def test_conjugate_gradient():
+    from qg2l.fourdvar import conjugate_gradient
+
+    rng = np.random.default_rng(0)
+    A = rng.standard_normal((30, 30))
+    A = np.eye(30) + A @ A.T  # I + G^T G structure
+    b = rng.standard_normal(30)
+    x, it = conjugate_gradient(lambda p: A @ p, b, 60, rtol=1e-12)
+    assert np.allclose(A @ x, b, atol=1e-8) and it <= 60
+    # few iterations already reduce the quadratic cost a lot (preconditioned problem)
+    x5, _ = conjugate_gradient(lambda p: A @ p, b, 5)
+    q = lambda v: 0.5 * v @ A @ v - b @ v
+    assert q(x5) < 0.5 * q(np.zeros(30)) + 0.5 * q(x)

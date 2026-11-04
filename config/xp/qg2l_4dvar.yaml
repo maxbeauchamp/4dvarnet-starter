@@ -14,7 +14,10 @@ qg2l_4dvar:
   b_scale: 0.5               # B = b_scale^2 * climatological spectral covariance
   q_scale: 0.05              # weak: daily model-error forcing std = q_scale * climatological std
   r_inflation: 1.0
+  solver: lbfgs              # lbfgs (nonlinear, near convergence) | incremental (Gauss-Newton + preconditioned CG)
   n_iter: 60                 # L-BFGS iterations per window
+  n_outer: 3                 # incremental: outer loops (re-linearisations)
+  n_inner: 20                # incremental: CG iterations (TL + adjoint) per outer loop
   spinup_days: 60            # cycling spin-up before the diagnosed period
   b_scale_first: 1.0         # first window starts from the climatological mean (zero)
   split: test
@@ -30,6 +33,9 @@ entrypoints:
     q_scale: ${qg2l_4dvar.q_scale}
     r_inflation: ${qg2l_4dvar.r_inflation}
     n_iter: ${qg2l_4dvar.n_iter}
+    solver: ${qg2l_4dvar.solver}
+    n_outer: ${qg2l_4dvar.n_outer}
+    n_inner: ${qg2l_4dvar.n_inner}
     spinup_days: ${qg2l_4dvar.spinup_days}
     b_scale_first: ${qg2l_4dvar.b_scale_first}
     split: ${qg2l_4dvar.split}
