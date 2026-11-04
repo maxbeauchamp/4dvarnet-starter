@@ -227,3 +227,44 @@ def test_metrics():
     rec = np.fft.ifft2(np.fft.fft2(ref) * (kk < kc)).real
     lam = M.psd_score(rec, ref, dx)[2]
     assert 85 < lam < 115, lam
+
+
+def test_clv_split_bounded_and_exact(l96_run):
+    m, traj, out = l96_run
+    d = LY.decompose(out, "noise", neutral_tol=0.02)
+    for key in ["clv_unstable", "clv_neutral", "clv_stable_resolved"]:
+        assert np.all((d[key] >= -1e-12) & (d[key] <= 1 + 1e-12)), key
+    assert np.all((d["angle_us_deg"] > 0) & (d["angle_us_deg"] <= 90))
+    # an error in the unstable subspace: clv_unstable = 1, its stable projection = cos^2 of its angle to S
+    uns, neu, _ = LY.classify_exponents(out["exponents"], 0.02)
+    c = np.zeros((1, 20))
+    c[0, 0], c[0, 2] = 1.0, -0.5
+    sp = LY._clv_split(out["C"][:1], c, int(uns.sum()), int(neu.sum()))
+    assert np.isclose(sp["clv_unstable"][0], 1.0)
+    assert sp["clv_stable_resolved"][0] <= np.cos(np.radians(sp["angle_us_deg"][0])) ** 2 + 1e-9
+
+
+def test_blend_with_padded_windows():
+    """Windows sticking out of the test period: full, exact coverage."""
+    import collections, sys, types
+    # data.py needs torch / lightning / src.data only for class definitions: stub them if missing
+    try:
+        from qg2l import data as D
+    except ImportError:
+        stub = types.ModuleType("torch")
+        stub.utils = types.SimpleNamespace(data=types.SimpleNamespace(Dataset=object, DataLoader=None))
+        pl = types.ModuleType("pytorch_lightning"); pl.LightningDataModule = object
+        sd = types.ModuleType("src.data"); sd.TrainingItem = collections.namedtuple("TrainingItem", ["input", "tgt"])
+        sys.modules.update({"torch": stub, "torch.utils": stub.utils, "torch.utils.data": stub.utils.data,
+                            "pytorch_lightning": pl, "src": types.ModuleType("src"), "src.data": sd})
+        from qg2l import data as D
+    rng = np.random.default_rng(0)
+    state = rng.standard_normal((100, 2, 8, 8)).astype(np.float32)
+    obs = state[:, 0].copy()
+    T, t0, t1 = 7, 40, 60
+    ds = D.QGWindowDataset(state, obs, obs * 0, t0, t1, T, pad=T - 1)
+    assert ds.starts[0] == t0 - T + 1 and ds.starts[-1] == t1 - 1
+    outs = np.stack([np.moveaxis(state[s:s + T], 1, 0) for s in ds.starts])
+    w = D.qg_rec_weight(T, [1, 2], 8).reshape(2, T, 8, 8)[:, :, 0, 0]
+    rec = D.blend_windows(outs, ds.starts, t0, t1 - t0, w)
+    assert np.allclose(rec, state[t0:t1], atol=1e-6)

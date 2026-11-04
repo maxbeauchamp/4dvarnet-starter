@@ -72,8 +72,12 @@ def blend_windows(out, starts, t0, n_days, w):
     cnt = np.zeros((n_days, L, 1, 1))
     for i, start in enumerate(starts):
         j = int(start) - t0
-        acc[j:j + T] += np.moveaxis(out[i] * w[:, :, None, None], 0, 1)
-        cnt[j:j + T] += w.T[:, :, None, None]
+        a, b = max(j, 0), min(j + T, n_days)  # windows may stick out of [t0, t0 + n_days)
+        if b <= a:
+            continue
+        sl = slice(a - j, b - j)
+        acc[a:b] += np.moveaxis(out[i][:, sl] * w[:, sl, None, None], 0, 1)
+        cnt[a:b] += w[:, sl].T[:, :, None, None]
     return np.where(cnt > 0, acc / np.maximum(cnt, 1e-12), np.nan)
 
 
@@ -89,13 +93,16 @@ class QGWindowDataset(torch.utils.data.Dataset):
     """
 
     def __init__(self, state, obs, obs_sigma, t0, t1, n_time, stride=1, layers=(1, 2),
-                 norm=(0.0, 1.0), aug_factor=0, aug_only=False, seed=0):
+                 norm=(0.0, 1.0), aug_factor=0, aug_only=False, seed=0, pad=0):
         self.state = state  # (T, 2, ny, nx) float32, SSH-equivalent (m)
         self.obs = obs  # (T, ny, nx)
         self.obs_sigma = obs_sigma
         self.n_time = n_time
         self.layers = [l - 1 for l in layers]
-        self.starts = np.arange(t0, t1 - n_time + 1, stride)
+        # pad > 0: windows also start up to ``pad`` days before t0 / end ``pad`` days after t1, so that
+        # every day of [t0, t1) is seen by full windows (no edge effect at test time)
+        lo, hi = max(0, t0 - pad), min(len(state), t1 + pad)
+        self.starts = np.arange(lo, hi - n_time + 1, stride)
         self.norm = norm
         self.aug_factor = int(aug_factor)
         self.aug_only = bool(aug_only)
@@ -152,7 +159,7 @@ class QG2LDataModule(pl.LightningDataModule):
     """
 
     def __init__(self, path, n_time=15, layers=(1, 2), splits=None, dl_kw=None, aug_factor=1,
-                 aug_only=False, test_stride=1, norm_stats=None):
+                 aug_only=False, test_stride=1, norm_stats=None, test_pad=None):
         super().__init__()
         self.path = path
         self.n_time = int(n_time)
@@ -162,6 +169,8 @@ class QG2LDataModule(pl.LightningDataModule):
         self.aug_factor = aug_factor
         self.aug_only = aug_only
         self.test_stride = test_stride
+        # test windows extend n_time - 1 days around the test period (obs only, no truth used)
+        self.test_pad = self.n_time - 1 if test_pad is None else int(test_pad)
         self._norm_stats = None if norm_stats is None else tuple(norm_stats)
         self._loaded = False
 
@@ -197,7 +206,7 @@ class QG2LDataModule(pl.LightningDataModule):
         self._load()
         self.train_ds = self._ds("train", aug_factor=self.aug_factor, aug_only=self.aug_only)
         self.val_ds = self._ds("val")
-        self.test_ds = self._ds("test", stride=self.test_stride)
+        self.test_ds = self._ds("test", stride=self.test_stride, pad=self.test_pad)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.train_ds, shuffle=True, **self.dl_kw)

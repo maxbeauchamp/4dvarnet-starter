@@ -78,7 +78,7 @@ For each method and test day, with e = x_rec - x_truth (both layers, energy norm
 
 * BLV (orthogonal, additive): unstable / neutral / stable-resolved / residual (outside the
   span of the k leading BLVs, i.e. the most stable directions) — absolute energies and fractions;
-* CLV (oblique) split of the resolved part;
+* CLV subspaces: orthogonal projections of the resolved error on the unstable / neutral / stable CLV subspaces (bounded, not additive) and the smallest unstable-stable angle. The oblique split is not reported: near-tangencies (angles of a few degrees, Lorenz-96 and QG) make it ill-conditioned;
 * error energy along the Lyapunov index (`lyapunov_spectrum_error_distribution.png`);
 * `gain_vs_<first method>`: relative gain per subspace (1 - E_ref / E_other).
 
@@ -100,3 +100,6 @@ puts ~90x more energy fraction in the leading BLVs than white noise of the same 
 * Both methods are smoothers within their window (4DVarNet +-10 days with `n_time=21`, 4DVar its window but with the memory of all past obs through the cycled background). Keep the 4DVarNet window >= 2-3 revisit times, otherwise it is starved of observations compared to the cycled 4DVar; the window length is itself a parameter worth sweeping.
 * `tlm=fd` (central differences, float64) is the default for the Lyapunov vectors; `jvp` is
   exact and faster on GPU (validated against fd in the tests).
+* 4DVarNet test windows extend `n_time - 1` days on each side of the test period (observations only),
+  so every test day is reconstructed from full windows; without it the first / last days of the test
+  period carry large edge errors that dominate the mean scores.

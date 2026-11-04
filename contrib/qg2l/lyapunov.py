@@ -200,6 +200,41 @@ def classify_exponents(exponents, neutral_tol=0.01):
     return exponents > neutral_tol, neutral, exponents < -neutral_tol
 
 
+def _orth(A, rtol=1e-10):
+    """Orthonormal basis of span(A) (SVD, numerically rank-revealing)."""
+    if A.shape[1] == 0:
+        return A
+    U, sv, _ = np.linalg.svd(A, full_matrices=False)
+    return U[:, sv > rtol * sv[0]]
+
+
+def _clv_split(C, c, n_u, n_n):
+    """CLV-subspace diagnostics of P e (BLV coordinates c).
+
+    U = span(CLV_1..n_u) (= span(BLV_1..n_u)), N = span(neutral CLVs), S = span(stable CLVs).
+    The *oblique* split e = e_U + e_N + e_S is ill-conditioned: the smallest principal angle
+    between U and S is typically a few degrees (near-tangencies), so the oblique components are
+    amplified by ~1/sin^2(angle) and cancel each other. We therefore report the *orthogonal*
+    projections on each CLV subspace, |P_X e|^2 / |P e|^2 in [0, 1] (not additive), plus the
+    smallest principal angle between U and S (angle_us_deg).
+    Exponents are assumed ordered (first n_u unstable, then n_n neutral)."""
+    n, k = c.shape
+    out = {key: np.full(n, np.nan) for key in ["clv_unstable", "clv_neutral", "clv_stable_resolved", "angle_us_deg"]}
+    for t in range(n):
+        if not np.isfinite(c[t]).all():
+            continue
+        pn = (c[t] ** 2).sum()
+        Bn = _orth(C[t][:, n_u:n_u + n_n])
+        Bs = _orth(C[t][:, n_u + n_n:])
+        out["clv_unstable"][t] = (c[t][:n_u] ** 2).sum() / pn
+        out["clv_neutral"][t] = ((Bn.T @ c[t]) ** 2).sum() / pn
+        out["clv_stable_resolved"][t] = ((Bs.T @ c[t]) ** 2).sum() / pn
+        if n_u and Bs.shape[1]:
+            cos = np.linalg.svd(Bs[:n_u], compute_uv=False).max()  # Eu^T Bs = first n_u rows of Bs
+            out["angle_us_deg"][t] = np.degrees(np.arccos(min(cos, 1.0)))
+    return out
+
+
 def decompose(lyap, name, neutral_tol=0.01):
     """Energy fractions of the error ``name`` in the Lyapunov subspaces.
 
@@ -207,10 +242,12 @@ def decompose(lyap, name, neutral_tol=0.01):
         blv_unstable + blv_neutral + blv_stable_resolved + residual = 1
         (residual = part outside the span of the k leading vectors, i.e. in the
          unresolved, most stable directions -> choose k > number of unstable exponents)
-    Oblique (CLV) split of the resolved part P e (not additive, relative to |P e|^2):
-        clv_unstable, clv_neutral, clv_stable_resolved
+    CLV subspaces (see ``_clv_split``): orthogonal projections of P e on the unstable, neutral
+    and stable CLV subspaces, |P_X e|^2 / |P e|^2 in [0, 1] (not additive; the oblique split is
+    ill-conditioned because of near-tangencies), and angle_us_deg = smallest principal angle
+    between the unstable and stable CLV subspaces.
     Also returns the absolute error energies (``*_abs``, m2 s-2 per unit mass x 2)
-    and the mean BLV / CLV coefficient spectrum (``spec_blv``, ``spec_clv``).
+    and the mean BLV coefficient spectrum (``spec_blv``).
     """
     uns, neu, sta = classify_exponents(lyap["exponents"], neutral_tol)
     c, tot = lyap["proj"][name]["c"], lyap["proj"][name]["tot"]
@@ -226,13 +263,5 @@ def decompose(lyap, name, neutral_tol=0.01):
     for key in ["blv_unstable", "blv_neutral", "blv_stable_resolved", "residual"]:
         res[key + "_abs"] = res[key] * tot
     if "C" in lyap:
-        C = lyap["C"]
-        good = np.isfinite(c).all(-1)
-        a = np.full_like(c, np.nan)
-        a[good] = np.linalg.solve(C[good], c[good][..., None])[..., 0]
-        pnorm = c2.sum(-1)
-        for key, msk in [("unstable", uns), ("neutral", neu), ("stable_resolved", sta)]:
-            comp = np.einsum("nij,nj->ni", C[:, :, msk], np.nan_to_num(a[:, msk]))
-            res[f"clv_{key}"] = np.where(good, (comp**2).sum(-1) / pnorm, np.nan)
-        res["spec_clv"] = np.nanmean(a**2 / pnorm[:, None], 0)
+        res.update(_clv_split(lyap["C"], c, int(uns.sum()), int(neu.sum())))
     return res

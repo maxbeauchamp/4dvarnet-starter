@@ -7,7 +7,8 @@ For each method m and each test day n, with e = x_m - x_truth (both layers):
     BLV (orthogonal) split, energy norm:
         |e|^2 = |e_unstable|^2 + |e_neutral|^2 + |e_stable,resolved|^2 + |e_residual|^2
         (residual = outside the span of the k leading BLVs = most stable directions)
-    CLV (oblique) split of the resolved part.
+    projections on the unstable / neutral / stable CLV subspaces of the resolved part,
+    and the smallest angle between the unstable and stable CLV subspaces.
 The key outputs are the *absolute* error energies per subspace: if 4DVarNet beats
 4DVar mostly on the unstable component, its gain comes from better controlling
 the growing directions (observability / optimisation); if it wins on the stable
@@ -112,7 +113,7 @@ def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bw
     days = ds.time.values[a + lyap["index"]]
     keys = ["total", "blv_unstable", "blv_neutral", "blv_stable_resolved", "residual",
             "blv_unstable_abs", "blv_neutral_abs", "blv_stable_resolved_abs", "residual_abs",
-            "clv_unstable", "clv_neutral", "clv_stable_resolved"]
+            "clv_unstable", "clv_neutral", "clv_stable_resolved", "angle_us_deg"]
     res = xr.Dataset(
         {f"{name}__{key}": (("time",), dec[name][key]) for name in dec for key in keys if key in dec[name]},
         coords=dict(time=days, k=np.arange(1, k + 1)),
@@ -229,7 +230,7 @@ def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neut
     ax[0].set_title("mean error energy per subspace (BLV)")
     ax[0].legend()
     ax[1].set_title("fraction of error energy (BLV, sums to 1)")
-    ax[2].set_title(r"CLV oblique split, $|e_s|^2 / |Pe|^2$")
+    ax[2].set_title(r"projection on CLV subspaces, $|P_X e|^2 / |Pe|^2$")
     fig.savefig(out_dir / "subspace_summary.png", dpi=120)
     plt.close(fig)
 
