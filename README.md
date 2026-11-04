@@ -97,6 +97,6 @@ puts ~90x more energy fraction in the leading BLVs than white noise of the same 
   inter-layer correlation). Tune `b_scale`, `q_scale`, `window_days` on the validation split
   before comparing (`qg2l_4dvar.split=val`). Strong-constraint windows longer than
   ~1 Lyapunov time hit the non-convexity issue — that is part of the story, so sweep it.
-* Both methods are smoothers within their window (4DVarNet +-7 days, 4DVar its window).
+* Both methods are smoothers within their window (4DVarNet +-10 days with `n_time=21`, 4DVar its window but with the memory of all past obs through the cycled background). Keep the 4DVarNet window >= 2-3 revisit times, otherwise it is starved of observations compared to the cycled 4DVar; the window length is itself a parameter worth sweeping.
 * `tlm=fd` (central differences, float64) is the default for the Lyapunov vectors; `jvp` is
   exact and faster on GPU (validated against fd in the tests).

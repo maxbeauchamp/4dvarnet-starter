@@ -6,7 +6,8 @@ defaults:
   - _self_
 
 qg2l_net:
-  n_time: 15
+  n_time: 21                 # >= 2-3 revisit times (median revisit ~ 7.6 days)
+  downsamp: null             # 2 -> half-resolution prior / grad model (smoother fields)
   layers: [1, 2]             # [1] -> SSH only (no deep layer -> no Lyapunov diagnostic)
   n_channels: {_target_: contrib.qg2l.data.n_channels, n_time: '${qg2l_net.n_time}', layers: '${qg2l_net.layers}'}
 
@@ -21,7 +22,7 @@ trainer:
     save_dir: ${hydra:runtime.output_dir}
     name: ${hydra:runtime.choices.xp}
     version: ''
-  max_epochs: 100
+  max_epochs: 150
   callbacks:
     # - _target_: src.versioning_cb.VersioningCallback   # as in xp/base, if wanted
     - _target_: pytorch_lightning.callbacks.LearningRateMonitor
@@ -36,7 +37,7 @@ datamodule:
   n_time: ${qg2l_net.n_time}
   layers: ${qg2l_net.layers}
   dl_kw: {batch_size: 16, num_workers: 2}
-  aug_factor: 2              # extra windows with the sampling pattern of other windows
+  aug_factor: 5              # extra windows with the sampling pattern of other windows
   aug_only: False
 
 model:
@@ -65,7 +66,7 @@ model:
         dim_in: ${qg2l_net.n_channels}
         dim_hidden: 64
         bilin_quad: False
-        downsamp: 2
+        downsamp: ${qg2l_net.downsamp}
     obs_cost:
       _target_: src.models.BaseObsCost
     grad_mod:
@@ -74,6 +75,7 @@ model:
         _target_: src.models.ConvLstmGradModel
         dim_in: ${qg2l_net.n_channels}
         dim_hidden: 96
+        downsamp: ${qg2l_net.downsamp}
 
 entrypoints:
   - _target_: pytorch_lightning.seed_everything
