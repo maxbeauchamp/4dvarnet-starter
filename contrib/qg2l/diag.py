@@ -45,7 +45,10 @@ def load_reconstructions(recs, t0, t1, truth_ds):
             continue
         rec = ds.psi.sel(time=truth_ds.time.values[t0:t1], method="nearest")
         if rec.sizes["time"] != t1 - t0 or not np.allclose(rec.time.values, truth_ds.time.values[t0:t1]):
-            raise ValueError(f"{name}: time axis does not cover the diagnostic period")
+            raise ValueError(
+                f"{name} ({path}) covers days [{rec.time.values.min():.0f}, {rec.time.values.max():.0f}] "
+                f"(file: [{ds.time.values.min():.0f}, {ds.time.values.max():.0f}]) but the diagnostic needs "
+                f"[{t0}, {t1 - 1}]: it was probably computed with other splits; delete it and recompute")
         out[name] = rec.values.astype(np.float64)
     return out
 
