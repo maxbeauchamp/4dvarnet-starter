@@ -265,6 +265,25 @@ def test_tobit_censoring_lets_targets_at_a_bound_overshoot(n1, monkeypatch):
         assert torch.allclose(nll(-0.5, -0.2, True), nll(-0.5, -0.2, True, bounds=False))
 
 
+def test_inc_scale_sic(days, monkeypatch):
+    torch.manual_seed(0)
+    n1i = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, bg_sigma=0.05, inc_scale=0.2, inc_scale_sic=0.05, tobit=True)
+    sc = n1i.inc_sc()
+    assert sc[0, Z_NAMES.index("SIC"), 0, 0] == 0.05 and torch.all(sc[0, 1:] == 0.2)
+    monkeypatch.setattr(n1i, "k_now", lambda n: 2)
+    assert torch.isfinite(n1i.losses(days)["loss"])
+    # a unit increment moves SIC by 0.05 and the other channels by 0.2 (normalised)
+    nets = n1i.ema.module
+    z, psi = n1i.analysis(days[0], 1)
+    keep = n1i.keep(1, "cpu", train=False)
+    monkeypatch.setattr(nets.gen, "sample", lambda cond, valid, n, **kw: torch.ones(1, N_Z + n1i.d_psi, 64, 64))
+    z1, psi1 = n1i.step(nets, days[1], z, psi, keep, 1)
+    d = n1i.state_n(z1, psi1) - n1i.base(days[1], z, psi)
+    assert torch.allclose(d[:, 0], torch.full_like(d[:, 0], 0.05), atol=1e-5)
+    assert torch.allclose(d[:, N_Z:], torch.full_like(d[:, N_Z:], 0.2), atol=1e-5)
+
+
 def test_non_finite_steps_are_skipped(n1, days, monkeypatch):
     monkeypatch.setattr(n1, "losses", lambda batch: {"loss": torch.tensor(float("nan"))})
     monkeypatch.setattr(n1, "log", lambda *a, **k: None)

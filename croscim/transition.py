@@ -48,6 +48,11 @@ Options (v6, N1b; all False for the former checkpoints):
                flow started from a noise ~10x the daily increments, and the
                residual, cut one-sided at the bounds (SIC 0 / 1), pulled pack
                ice down and open water up at every step (the smoothing).
+  inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
+               the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
+               stuck against SIC = 1 and carried on by the background (the
+               previous state), walked the pack down ~sigma sqrt(k), in March
+               (training) as in November / December.
   bg_advect    (N1e) the increment (and the background) are relative to the
                previous state moved along the free drift of the day,
                alpha R(-theta) u10 (ERA5 along the grid axes), alpha and theta
@@ -74,7 +79,7 @@ from torch import Tensor
 import math
 
 from . import grid as g
-from .cascade import N_S, N_X, N_Z, LitCascadeN0, _warp, drift_displacement, make_ema, strict_mask, tile_pos
+from .cascade import N_S, N_X, N_Z, Z_NAMES, LitCascadeN0, _warp, drift_displacement, make_ema, strict_mask, tile_pos
 from . import data as D
 from .data import N_C
 from .encoders import DenseEncoder
@@ -153,6 +158,7 @@ class LitCascadeN1(pl.LightningModule):
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
+                 inc_scale_sic=None,
                  drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
@@ -232,6 +238,16 @@ class LitCascadeN1(pl.LightningModule):
         val = torch.minimum(torch.maximum(val[:, 0], self.lo), self.hi)  # bicubic overshoots
         return torch.where(den[:, 0] > 0.5, val, s0)
 
+    def inc_sc(self) -> Tensor | float:
+        """Scale of the generated increment: inc_scale, inc_scale_sic for SIC."""
+        sc = self.hparams.inc_scale or 1.0
+        sic = self.hparams.get("inc_scale_sic")
+        if sic is None:
+            return sc
+        out = torch.full_like(self.lo, sc)
+        out[:, Z_NAMES.index("SIC")] = sic
+        return out
+
     @torch.no_grad()
     def target(self, b: dict) -> tuple[Tensor, Tensor, Tensor]:
         """(X^, S^, psi^) normalised, mask and scale floor; psi^ from the N0 EMA
@@ -258,7 +274,7 @@ class LitCascadeN1(pl.LightningModule):
             floor = torch.where(bg, torch.full_like(floor, hp.bg_sigma), floor)
             m = m | bg
         if hp.increment:  # in units of inc_scale x the state scale
-            sc = hp.inc_scale or 1.0
+            sc = self.inc_sc()
             z1, lo, hi = torch.where(m, (z1 - base) / sc, 0.0), (lo - base) / sc, (hi - base) / sc
             floor = floor / sc
         per_ch, has, _, _ = self.nets.gen.loss(z1, m, cond, valid, floor, lo, hi, noise=noise, t=t,
@@ -277,7 +293,7 @@ class LitCascadeN1(pl.LightningModule):
         cond, valid = self.cond(nets, b, z, psi, keep, base)
         cond_null = self.cond(nets, b, z, psi, {**keep, "h": torch.zeros_like(keep["h"])}, base)[0] if w != 1.0 else None
         lo, hi = self.lo, self.hi
-        sc = self.hparams.inc_scale or 1.0
+        sc = self.inc_sc()
         if self.hparams.increment:
             lo, hi = (lo - base) / sc, (hi - base) / sc
         zn = nets.gen.sample(cond, valid, n_steps, lo=lo, hi=hi, cond_null=cond_null, w=w, generator=generator)
