@@ -98,16 +98,19 @@ def train_4dvarnet(root, data_path, net=None, retrain=False, accelerator="auto")
 
     lit = LitQG2L(solver=solver, rec_weight=qg_rec_weight(net["n_time"], net["layers"], nx), opt_fn=opt_fn,
                   persist_rw=False, export_path=str(rec_path))
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "run.json").write_text(json.dumps(dict(data=str(data_path), net=net), indent=1))
     last = ckpt_dir / "last.ckpt"
     resume = None if retrain or not last.exists() else last
     epoch = torch.load(resume, map_location="cpu", weights_only=False)["epoch"] if resume else -1
     done = epoch + 1 >= net["epochs"]
     trainer = pl.Trainer(max_epochs=net["epochs"], accelerator=accelerator, devices=1, inference_mode=False,
-                         gradient_clip_val=0.5, logger=pl.loggers.CSVLogger(str(run_dir / "logs"), name=""),
+                         gradient_clip_val=0.5,
+                         logger=pl.loggers.CSVLogger(str(run_dir / "logs"), name="", flush_logs_every_n_steps=10),
                          callbacks=[pl.callbacks.ModelCheckpoint(
                              dirpath=str(ckpt_dir), monitor="val_mse", save_top_k=1, save_last=True,
                              filename="best-{epoch:03d}-{val_mse:.5f}")],
-                         enable_progress_bar=False)
+                         enable_progress_bar=True)
     if done:
         best = sorted(ckpt_dir.glob("best-*.ckpt")) or [last]
         if not rec_path.exists():
@@ -189,3 +192,67 @@ def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", f
     ds = xr.open_dataset(data, decode_times=False)
     return dict(name=name, data=data, recs=recs, scores=scores, cost=cost, lyap=summary,
                 obs_summary=json.loads(ds.attrs["summary"]), diag_dir=sc_dir / "diag")
+
+
+# ---------------------------------------------------------------------------
+# progress report (usable from another terminal while a notebook runs)
+# ---------------------------------------------------------------------------
+def progress(root):
+    """Print the state of every dataset / 4DVarNet training / scenario under ``root``.
+
+    From a terminal:  python -m contrib.qg2l.pipeline data/qg2l_scenarios_small"""
+    import csv
+    import time
+
+    root = Path(root)
+    now = time.time()
+
+    def age(p):
+        m = (now - Path(p).stat().st_mtime) / 60
+        return f"{m:.0f} min ago" if m < 120 else f"{m / 60:.1f} h ago"
+
+    print(f"== {root}")
+    print("-- datasets")
+    for d in sorted((root / "data").glob("*")):
+        nc = sorted(d.glob("*.nc"))
+        req = sorted(d.glob("*.nc.json"))
+        opts = {}
+        if req:
+            g = json.loads(req[0].read_text())
+            opts = {k: g[k] for k in ["obs_source", "forcing", "unresolved_signal", "truth_overrides"] if g.get(k)}
+            if any(s.get("roll_std") for s in g.get("constellation", {}).values()):
+                opts["swot_roll"] = True
+            if g.get("constellation") and not any(s.get("kind") == "swot" for s in g["constellation"].values()):
+                opts["nadir_only"] = True
+        state = f"ready ({age(nc[0])})" if nc and req else "GENERATING / incomplete"
+        print(f"  {d.name}: {state} {opts or 'baseline'}")
+    print("-- 4DVarNet trainings")
+    for r in sorted((root / "4dvarnet").glob("*")):
+        cfg = json.loads((r / "run.json").read_text()) if (r / "run.json").exists() else {}
+        n_ep = cfg.get("net", {}).get("epochs", "?")
+        ep, best = -1, float("inf")
+        for f in (r / "logs").glob("**/metrics.csv"):
+            with open(f) as fh:
+                for row in csv.DictReader(fh):
+                    if row.get("epoch"):
+                        ep = max(ep, int(float(row["epoch"])))
+                    if row.get("val_mse"):
+                        best = min(best, float(row["val_mse"]))
+        rec = r / "4dvarnet.nc"
+        state = "done" if rec.exists() else ("training" if ep >= 0 else "starting")
+        last = r / "checkpoints" / "last.ckpt"
+        print(f"  {r.name}: {state}, epoch {ep + 1}/{n_ep}, best val_mse {best:.4g}"
+              + (f", last ckpt {age(last)}" if last.exists() else ""))
+    print("-- scenarios")
+    for sc in sorted((root / "scenarios").glob("*")):
+        done = sorted(p.stem for p in sc.glob("*.nc") if Path(str(p) + ".json").exists())
+        running = sorted(p.stem for p in sc.glob("*.nc") if not Path(str(p) + ".json").exists())
+        diag = sc / "diag" / "summary.json"
+        print(f"  {sc.name}: 4DVar done {done}" + (f", in progress {running}" if running else "")
+              + (f", diag done ({age(diag)})" if diag.exists() else ", diag not done"))
+
+
+if __name__ == "__main__":
+    import sys
+
+    progress(sys.argv[1] if len(sys.argv) > 1 else "data/qg2l_scenarios_small")

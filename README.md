@@ -82,6 +82,8 @@ together, retrains 4DVarNet on each dataset and compares 4DVarNet, strong / weak
 4DVarNet -> 4DVar, with scores and error energy per Lyapunov subspace. Options (also usable in `simulate.generate`
 and `fourdvar.run_4dvar`):
 
+Progress of a sweep (from another terminal while the notebook runs): `python -m contrib.qg2l.pipeline data/qg2l_scenarios_small` (datasets ready, 4DVarNet epoch / best val_mse, 4DVar and diagnostic done per scenario).
+
 | option | effect |
 |---|---|
 | `truth_overrides=dict(rek=..., beta=..., U1=...)` | truth physics differs from the DA model (parameter / structural model error) |
