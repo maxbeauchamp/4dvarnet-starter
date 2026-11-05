@@ -1,29 +1,23 @@
+# conda / mamba environment for the two-layer QG testbed (contrib/qg2l)
 channels:
   - conda-forge
   - pytorch
   - nvidia
-  - pyviz
 dependencies:
+  - python>=3.10
   - pip
-  - pytorch::pytorch=2.0
-  - pytorch::pytorch-cuda=11.7
-  - pytorch-lightning=2.0
-  - pyinterp
+  - pytorch::pytorch>=2.0
+  - pytorch::pytorch-cuda=11.7   # remove for a CPU-only install
+  - pytorch-lightning>=2.0
   - xarray
-  - dask
   - netCDF4
-  - bottleneck
-  - xrft
-  - metpy
   - scipy
+  - pandas
   - matplotlib
-  - holoviews
+  - ffmpeg                       # mp4 animations (gif fallback otherwise)
+  - jupyterlab                   # notebooks
+  - ipykernel
+  - pytest
   - pip:
-    - GitPython
-    - einops
-    - toolz
-    - xrpatcher
     - hydra-core
-    - hydra-zen
     - kornia
-    - tabulate
