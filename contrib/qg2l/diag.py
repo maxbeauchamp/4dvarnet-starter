@@ -104,8 +104,14 @@ def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bw
         errors[name] = e
     tlm_fn = LY.make_tlm_torch(m) if tlm == "jvp" else LY.make_tlm_fd(m)
     snap = n_transient_fwd + min(snapshot_offset, t1 - t0 - 1)
+    ck_dir = out_dir / "lyap_checkpoint"
+    ck_key = json.dumps(dict(data=str(data_path), recs={nm: [str(p), Path(p).stat().st_mtime] for nm, p in recs.items()
+                                                        if nm in rec},
+                             k=k, fwd=n_transient_fwd, bwd=n_transient_bwd, t=[int(t0), int(t1)], tlm=tlm,
+                             snap=int(snap)), sort_keys=True)
     lyap = LY.lyapunov_vectors(m, traj, k=k, tlm=tlm_fn, n_transient_fwd=n_transient_fwd,
-                               n_transient_bwd=n_transient_bwd, errors=errors, snapshot_index=[snap])
+                               n_transient_bwd=n_transient_bwd, errors=errors, snapshot_index=[snap],
+                               checkpoint_dir=ck_dir, checkpoint_key=ck_key)
     dec = {name: LY.decompose(lyap, name, neutral_tol) for name in rec}
     uns, neu, sta = LY.classify_exponents(lyap["exponents"], neutral_tol)
 
@@ -150,6 +156,9 @@ def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bw
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary, indent=1))
 
+    import shutil
+
+    shutil.rmtree(ck_dir, ignore_errors=True)  # results are saved: the forward-sweep checkpoint is no longer needed
     if make_figures:
         figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_transient_fwd, a, neutral_tol,
                 animation_days)

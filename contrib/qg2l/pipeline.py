@@ -246,10 +246,19 @@ def progress(root):
     print("-- scenarios")
     for sc in sorted((root / "scenarios").glob("*")):
         done = sorted(p.stem for p in sc.glob("*.nc") if Path(str(p) + ".json").exists())
-        running = sorted(p.stem for p in sc.glob("*.nc") if not Path(str(p) + ".json").exists())
+        running = []
+        for part in sc.glob("*.nc.partial.npz"):
+            day = int(np.load(part, allow_pickle=False)["t"])
+            running.append(f"{part.name.split('.nc')[0]} (next window day {day}, saved {age(part)})")
         diag = sc / "diag" / "summary.json"
-        print(f"  {sc.name}: 4DVar done {done}" + (f", in progress {running}" if running else "")
-              + (f", diag done ({age(diag)})" if diag.exists() else ", diag not done"))
+        lyap_ck = sc / "diag" / "lyap_checkpoint" / "state.npz"
+        if diag.exists():
+            dstate = f"diag done ({age(diag)})"
+        elif lyap_ck.exists():
+            dstate = f"diag running (Lyapunov step {int(np.load(lyap_ck, allow_pickle=False)['n_next'])}, saved {age(lyap_ck)})"
+        else:
+            dstate = "diag not done"
+        print(f"  {sc.name}: 4DVar done {done}" + (f", in progress {running}" if running else "") + f", {dstate}")
 
 
 if __name__ == "__main__":

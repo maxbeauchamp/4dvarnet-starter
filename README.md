@@ -82,6 +82,8 @@ together, retrains 4DVarNet on each dataset and compares 4DVarNet, strong / weak
 4DVarNet -> 4DVar, with scores and error energy per Lyapunov subspace. Options (also usable in `simulate.generate`
 and `fourdvar.run_4dvar`):
 
+Crash-safe: re-running a notebook or an xp reuses finished steps and resumes unfinished ones (4DVarNet from `last.ckpt`, cycled 4DVar from its last window, Lyapunov sweep from its last 10-day checkpoint).
+
 Progress of a sweep (from another terminal while the notebook runs): `python -m contrib.qg2l.pipeline data/qg2l_scenarios_small` (datasets ready, 4DVarNet epoch / best val_mse, 4DVar and diagnostic done per scenario).
 
 | option | effect |

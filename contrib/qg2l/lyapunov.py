@@ -94,6 +94,59 @@ def _solve_triangular(R, C):
 
 
 # ---------------------------------------------------------------------------
+# checkpointing of the forward sweep
+# ---------------------------------------------------------------------------
+def _save_lyap_checkpoint(ckdir, key, n_next, V, logs, Rs, n_rs_saved, proj, names, snaps):
+    """R factors: append-only chunks R_<first index>.npy; everything else: state.npz (atomic)."""
+    import json
+    import os
+    from pathlib import Path
+
+    ckdir = Path(ckdir)
+    ckdir.mkdir(parents=True, exist_ok=True)
+    if len(Rs) > n_rs_saved:
+        np.save(ckdir / f"R_{n_rs_saved:06d}.npy", np.stack(Rs[n_rs_saved:]))
+    k = V.shape[0]
+    arrs = dict(key=np.array(key), n_next=np.array(n_next), V=V, logs=np.array(logs), n_rs=np.array(len(Rs)),
+                names=np.array(json.dumps(names)),
+                snap_idx=np.array(sorted(snaps), dtype=int),
+                snap_val=np.stack([snaps[i] for i in sorted(snaps)]) if snaps else np.zeros((0,) + V.shape, np.float32))
+    for i, nm in enumerate(names):
+        c = proj[nm]["c"]
+        arrs[f"c_{i}"] = np.stack(c) if c else np.zeros((0, k))
+        arrs[f"tot_{i}"] = np.array(proj[nm]["tot"], dtype=float)
+    tmp = ckdir / "state.tmp.npz"
+    np.savez(tmp, **arrs)
+    os.replace(tmp, ckdir / "state.npz")
+    return len(Rs)
+
+
+def _load_lyap_checkpoint(ckdir, key, names, k):
+    import json
+    from pathlib import Path
+
+    f = Path(ckdir) / "state.npz"
+    if not f.exists():
+        return None
+    ck = np.load(f, allow_pickle=False)
+    if str(ck["key"]) != key or json.loads(str(ck["names"])) != names or ck["V"].shape[0] != k:
+        print(f"[lyap] ignoring checkpoint in {ckdir} (other configuration)", flush=True)
+        return None
+    n_rs = int(ck["n_rs"])
+    Rs = []
+    for chunk in sorted(Path(ckdir).glob("R_*.npy")):
+        if int(chunk.stem[2:]) < n_rs:
+            Rs.extend(list(np.load(chunk)))
+    Rs = Rs[:n_rs]
+    if len(Rs) != n_rs:
+        print(f"[lyap] incomplete checkpoint in {ckdir}, restarting", flush=True)
+        return None
+    proj = {nm: dict(c=list(ck[f"c_{i}"]), tot=list(ck[f"tot_{i}"])) for i, nm in enumerate(names)}
+    snaps = {int(i): v for i, v in zip(ck["snap_idx"], ck["snap_val"])}
+    return int(ck["n_next"]), ck["V"], list(ck["logs"]), Rs, proj, snaps
+
+
+# ---------------------------------------------------------------------------
 # main computation
 # ---------------------------------------------------------------------------
 def lyapunov_vectors(
@@ -109,8 +162,15 @@ def lyapunov_vectors(
     snapshot_index=(),
     seed=0,
     verbose=True,
+    checkpoint_dir=None,
+    checkpoint_key="",
+    checkpoint_every=10,
 ):
     """Compute k leading BLVs (and CLVs) along ``traj`` and project errors on them.
+
+    checkpoint_dir: if given, the forward sweep is saved every ``checkpoint_every`` steps (BLVs,
+        exponents, projections; the R factors needed by the backward CLV sweep in append-only chunks)
+        and a call with the same ``checkpoint_key`` resumes from the last saved step.
 
     traj:   (N+1, 2, ny, nx) reference states (numpy or backend array), daily.
     errors: optional dict name -> (N+1, 2, ny, nx) numpy error fields aligned with traj
@@ -143,7 +203,17 @@ def lyapunov_vectors(
     proj = {name: dict(c=[], tot=[]) for name in errors}
     Rs, logs, snaps = [], [], {}
     snapshot_index = set(int(i) for i in snapshot_index)
-    for n in range(N):
+    names = sorted(errors)
+    n_start, n_rs_saved = 0, 0
+    if checkpoint_dir is not None:
+        ck = _load_lyap_checkpoint(checkpoint_dir, checkpoint_key, names, k)
+        if ck is not None:
+            n_start, V, logs, Rs, proj, snaps = ck
+            V = xp.asarray(V)
+            n_rs_saved = len(Rs)
+            if verbose:
+                print(f"[lyap] resuming from {checkpoint_dir} at step {n_start}/{N}", flush=True)
+    for n in range(n_start, N):
         W = tlm(traj[n], V)
         Qz, R = np.linalg.qr(energy_coords(model, W).T)  # (dz, k), (k, k)
         sgn = np.sign(np.diag(R))
@@ -164,6 +234,9 @@ def lyapunov_vectors(
         if verbose and (n % 20 == 0 or n == N - 1):
             lam = np.mean(logs[n_transient_fwd:] or logs, 0)
             print(f"[lyap] {n+1}/{N} lambda_1={lam[0]:.3f}/day  n_pos={(lam > 0).sum()}/{k}", flush=True)
+        if checkpoint_dir is not None and ((n + 1) % checkpoint_every == 0 or n == N - 1):
+            n_rs_saved = _save_lyap_checkpoint(checkpoint_dir, checkpoint_key, n + 1, _to_np(V), logs, Rs,
+                                               n_rs_saved, proj, names, snaps)
 
     logs = np.array(logs)
     exps = logs[n_transient_fwd:].mean(0) if N > n_transient_fwd else logs.mean(0)

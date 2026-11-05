@@ -131,3 +131,34 @@ def test_datamodule_and_litmodule(tmp_path, setup):
     w = qg_rec_weight(5, [1, 2], 32)
     assert w.shape == (C, 32, 32)
     json.loads(xr.open_dataset(path, decode_times=False).attrs["model_kw"])["f0"]
+
+
+def test_4dvar_cycling_resume(setup, tmp_path):
+    """Interrupted cycled 4DVar + resume == uninterrupted run."""
+    kw, m, traj = setup
+    cov = isotropic_layer_covariance(traj, m.dx)
+    ssh = m.ssh(traj)
+    rng = np.random.default_rng(3)
+    obs = np.where(rng.random(ssh.shape) < 0.15, ssh, np.nan)
+    sig = np.where(np.isfinite(obs), 0.005, np.nan)
+
+    def make():
+        return FourDVar(kw, cov, b_scale=0.5, window_days=3, n_iter=5, verbose=False)
+
+    ref, _ = make().run(obs, sig, 10, 22, spinup_days=3)
+    da = make()
+    orig, calls = da.analyse_window, {"n": 0}
+
+    def crashing(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("simulated GPU crash")
+        return orig(*a, **k)
+
+    da.analyse_window = crashing
+    ck = str(tmp_path / "x.partial.npz")
+    with pytest.raises(RuntimeError):
+        da.run(obs, sig, 10, 22, spinup_days=3, checkpoint_path=ck, checkpoint_key="k")
+    res, log = make().run(obs, sig, 10, 22, spinup_days=3, checkpoint_path=ck, checkpoint_key="k")
+    assert len(log) == 5  # (22 - 7) / 3 windows, the first 2 restored from the checkpoint
+    assert np.allclose(res, ref, rtol=1e-6, atol=1e-6 * np.abs(ref).max())

@@ -329,3 +329,40 @@ def test_conjugate_gradient():
     x5, _ = conjugate_gradient(lambda p: A @ p, b, 5)
     q = lambda v: 0.5 * v @ A @ v - b @ v
     assert q(x5) < 0.5 * q(np.zeros(30)) + 0.5 * q(x)
+
+
+def test_lyapunov_checkpoint_resume(tmp_path):
+    """Interrupted forward sweep + resume == uninterrupted run."""
+    m = L96()
+    x = m.forecast_days(8 + np.random.default_rng(0).standard_normal((1, 1, 40)), 50)
+    traj = [x]
+    for _ in range(80):
+        traj.append(m.forecast_days(traj[-1], 1))
+    traj = np.stack(traj)
+    err = dict(e=0.1 * np.random.default_rng(1).standard_normal(traj.shape))
+    kw = dict(k=12, n_transient_fwd=20, n_transient_bwd=20, errors=err, snapshot_index=[40], verbose=False)
+    ref = LY.lyapunov_vectors(m, traj, **kw)
+
+    calls = {"n": 0}
+    base = LY.make_tlm_fd(m, 1)
+
+    def crashing_tlm(x, V):
+        calls["n"] += 1
+        if calls["n"] == 47:
+            raise RuntimeError("simulated GPU crash")
+        return base(x, V)
+
+    ck = tmp_path / "ck"
+    with pytest.raises(RuntimeError):
+        LY.lyapunov_vectors(m, traj, tlm=crashing_tlm, checkpoint_dir=ck, checkpoint_key="a", checkpoint_every=10, **kw)
+    assert (ck / "state.npz").exists()
+    calls["n"] = -10**9  # no more crash
+    res = LY.lyapunov_vectors(m, traj, tlm=crashing_tlm, checkpoint_dir=ck, checkpoint_key="a", checkpoint_every=10, **kw)
+    assert calls["n"] == -10**9 + (80 - 40)  # resumed at step 40: only 40 more TLM calls
+    assert np.allclose(res["exponents"], ref["exponents"])
+    assert np.allclose(res["C"], ref["C"])
+    assert np.allclose(res["proj"]["e"]["c"], ref["proj"]["e"]["c"], equal_nan=True)
+    assert np.allclose(res["snapshots"][40], ref["snapshots"][40])
+    # another configuration key is not resumed
+    res2 = LY.lyapunov_vectors(m, traj, checkpoint_dir=ck, checkpoint_key="b", **kw)
+    assert np.allclose(res2["exponents"], ref["exponents"])

@@ -25,6 +25,7 @@ Cycling: consecutive windows of ``window_days``; the background of a window is t
 of a window is its analysed trajectory (4D smoother within the window).
 """
 import json
+import os
 import time
 from pathlib import Path
 
@@ -260,12 +261,15 @@ class FourDVar:
 
     # -- cycling --------------------------------------------------------------------
     def run(self, obs, sigma, t_start, t_end, spinup_days=60, xb0=None, b_scale_first=1.0, truth=None,
-            background=None):
+            background=None, checkpoint_path=None, checkpoint_key=""):
         """Cycled 4DVar over [t_start - spinup_days, t_end). obs/sigma: full (T, n, n) arrays.
 
         background: optional (t_end - t_start, 2, n, n) psi (e.g. a 4DVarNet reconstruction): the
             background of every window starting in [t_start, t_end) is taken from it instead of the
             cycled forecast (hybrid 4DVarNet -> 4DVar; b_scale then sizes the 4DVarNet error).
+        checkpoint_path: if given, the state of the cycling (next window start, next background,
+            analyses so far, log) is saved atomically after every window, and a run with the same
+            ``checkpoint_key`` resumes from it (e.g. after a GPU crash).
         Returns the analysed trajectory on [t_start, t_end) (numpy, psi), and a log list.
         truth (optional, (T,2,n,n) numpy psi) is only used for logging RMSEs."""
         torch = self.torch
@@ -275,6 +279,16 @@ class FourDVar:
         out = np.full((t_end - t_start, 2, self.n, self.n), np.nan, dtype=np.float32)
         log = []
         t, first, tic = t0, True, time.time()
+        if checkpoint_path and os.path.exists(checkpoint_path):
+            ck = np.load(checkpoint_path, allow_pickle=False)
+            if str(ck["key"]) == checkpoint_key:
+                t, first = int(ck["t"]), False
+                out = ck["out"].copy()
+                xb = torch.as_tensor(ck["xb"], dtype=self.dtype, device=self.device)
+                log = json.loads(str(ck["log"]))
+                print(f"[4dvar] resuming from {checkpoint_path} at day {t}", flush=True)
+            else:
+                print(f"[4dvar] ignoring {checkpoint_path} (other configuration)", flush=True)
         while t < t_end:
             W = min(self.window_days, t_end - t)
             if background is not None and t_start <= t < t_end:
@@ -299,6 +313,11 @@ class FourDVar:
             with torch.no_grad():
                 xb = self.model.forecast_days(traj[-1], 1)
             t += W
+            if checkpoint_path:
+                tmp = str(checkpoint_path) + ".tmp.npz"
+                np.savez(tmp, key=np.array(checkpoint_key), t=np.array(t), out=out, xb=xb.cpu().numpy(),
+                         log=np.array(json.dumps(log)))
+                os.replace(tmp, checkpoint_path)
         return out, log
 
 
@@ -319,7 +338,7 @@ def free_run(model_kw, psi0, n_days, every=5, discard=30):
 def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q_scale=0.05,
               r_inflation=1.0, n_iter=60, spinup_days=60, b_scale_first=1.0, split="test",
               t_range=None, device="cuda", dtype="float64", model_overrides=None, b_source="truth",
-              background_path=None, method=None, solver="lbfgs", n_outer=3, n_inner=20):
+              background_path=None, method=None, solver="lbfgs", n_outer=3, n_inner=20, resume=True):
     """Run the cycled 4DVar on a split of the OSSE and write a netCDF like LitQG2L's.
 
     b_source: "truth"    -> B from the training truth (oracle-like statistics)
@@ -330,6 +349,8 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     solver:   "lbfgs" (nonlinear L-BFGS on the preconditioned cost, n_iter iterations) or "incremental"
               (operational-style Gauss-Newton: n_outer outer loops x n_inner preconditioned CG iterations
               with tangent-linear / adjoint models).
+    resume:   save the cycling state after every window in <out_path>.partial.npz and resume from it
+              after an interruption (the file is removed once the output is written).
     """
     import torch
     import xarray as xr
@@ -361,8 +382,15 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     da = FourDVar(kw, b_cov, b_scale=b_scale, mode=mode, q_scale=q_scale, r_inflation=r_inflation,
                   window_days=window_days, n_iter=n_iter, device=device, dtype=dtype, solver=solver,
                   n_outer=n_outer, n_inner=n_inner)
+    ckpt = str(out_path) + ".partial.npz" if resume else None
+    ckpt_key = json.dumps(dict(data=str(data_path), t=[int(t_start), int(t_end)], mode=mode, window_days=window_days,
+                               b_scale=b_scale, q_scale=q_scale, r_inflation=r_inflation, n_iter=n_iter,
+                               spinup_days=spinup_days, b_scale_first=b_scale_first, b_source=b_source,
+                               background=str(background_path), solver=solver, n_outer=n_outer, n_inner=n_inner,
+                               model_overrides=model_overrides or {}), sort_keys=True)
     rec, log = da.run(ds.obs_ssh.values, ds.obs_sigma.values, t_start, t_end, spinup_days=spinup_days,
-                      b_scale_first=b_scale_first, truth=psi, background=background)
+                      b_scale_first=b_scale_first, truth=psi, background=background, checkpoint_path=ckpt,
+                      checkpoint_key=ckpt_key)
     cost = {k: int(sum(l.get(k, 0) for l in log)) for k in ["n_nonlinear", "n_tl", "n_adjoint"]}
     print("[4dvar] model integrations over the run:", cost)
     f = kw["f0"] / kw["g"]
@@ -383,4 +411,6 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     out.to_netcdf(out_path)
     print("[4dvar] wrote", out_path)
+    if ckpt and os.path.exists(ckpt):
+        os.remove(ckpt)
     return str(out_path)
