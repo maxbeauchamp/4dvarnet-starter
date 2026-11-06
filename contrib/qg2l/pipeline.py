@@ -186,7 +186,8 @@ def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", f
         if force_diag or not _sidecar_ok(summ, cfg):
             run_diag(str(data), {k: str(v) for k, v in recs.items()}, str(diag_dir), device=device,
                      k=lyap.get("k", 192), n_transient_fwd=lyap.get("n_fwd", 30),
-                     n_transient_bwd=lyap.get("n_bwd", 60), animation_days=lyap.get("animation_days", 30))
+                     n_transient_bwd=lyap.get("n_bwd", 60), animation_days=lyap.get("animation_days", 30),
+                     figure_methods=lyap.get("figure_methods"))
             _write_sidecar(summ, cfg)
         summary = json.loads(summ.read_text())
     ds = xr.open_dataset(data, decode_times=False)

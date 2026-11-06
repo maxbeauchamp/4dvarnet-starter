@@ -261,12 +261,15 @@ class FourDVar:
 
     # -- cycling --------------------------------------------------------------------
     def run(self, obs, sigma, t_start, t_end, spinup_days=60, xb0=None, b_scale_first=1.0, truth=None,
-            background=None, checkpoint_path=None, checkpoint_key=""):
+            background=None, checkpoint_path=None, checkpoint_key="", innovations=None):
         """Cycled 4DVar over [t_start - spinup_days, t_end). obs/sigma: full (T, n, n) arrays.
 
         background: optional (t_end - t_start, 2, n, n) psi (e.g. a 4DVarNet reconstruction): the
             background of every window starting in [t_start, t_end) is taken from it instead of the
             cycled forecast (hybrid 4DVarNet -> 4DVar; b_scale then sizes the 4DVarNet error).
+        innovations: if a list is given, (t, d_b, d_a) is appended for every window, with
+            d_b = y - H(background trajectory) and d_a = y - H(analysis) as (W, n, n) numpy arrays
+            (NaN where no obs): input of the Desroziers diagnostic.
         checkpoint_path: if given, the state of the cycling (next window start, next background,
             analyses so far, log) is saved atomically after every window, and a run with the same
             ``checkpoint_key`` resumes from it (e.g. after a GPU crash).
@@ -294,8 +297,18 @@ class FourDVar:
             if background is not None and t_start <= t < t_end:
                 xb = torch.as_tensor(background[t - t_start], dtype=self.dtype, device=self.device)
                 first = False
+            if innovations is not None:
+                with torch.no_grad():
+                    xs, bg = xb, [xb]
+                    for _ in range(W - 1):
+                        xs = self.model.forecast_days(xs, 1)
+                        bg.append(xs)
+                    hb = self.ssh(torch.stack(bg)).cpu().numpy()
             traj, info = self.analyse_window(xb, obs[t:t + W], sigma[t:t + W],
                                              b_scale=b_scale_first if first else None)
+            if innovations is not None:
+                y = obs[t:t + W]
+                innovations.append((t, y - hb, y - self.ssh(traj).cpu().numpy()))
             first = False
             tn = traj.cpu().numpy()
             info.update(t=t, W=W, elapsed=time.time() - tic)
@@ -333,12 +346,50 @@ def free_run(model_kw, psi0, n_days, every=5, discard=30):
 
 
 # ---------------------------------------------------------------------------
+# observation-error statistics
+# ---------------------------------------------------------------------------
+def sigma_from_satellite_std(sat_id, nominal, std_by_sat):
+    """Observation-error std field: per-satellite values where available, nominal elsewhere."""
+    sig = np.array(nominal, dtype=np.float64, copy=True)
+    for s, v in std_by_sat.items():
+        sig = np.where(sat_id == s, v, sig)
+    return sig
+
+
+def oracle_obs_std(obs, ssh_truth, sat_id, t0, t1):
+    """Actual std of (obs - truth SSH) per satellite on days [t0, t1): uses the truth (upper bound)."""
+    out = {}
+    for s in np.unique(sat_id[t0:t1]):
+        if s < 0:
+            continue
+        m = sat_id[t0:t1] == s
+        out[int(s)] = float(np.sqrt(np.mean((obs[t0:t1][m] - ssh_truth[t0:t1][m]) ** 2)))
+    return out
+
+
+def desroziers_obs_std(innovations, sat_id):
+    """Desroziers et al. (2005): E[d_a d_b] = R, per satellite, from (t, d_b, d_a) window innovations."""
+    num, cnt = {}, {}
+    for t, db, da in innovations:
+        sid = sat_id[t:t + db.shape[0]]
+        ok = np.isfinite(db) & np.isfinite(da)
+        for s in np.unique(sid[ok]):
+            if s < 0:
+                continue
+            m = ok & (sid == s)
+            num[int(s)] = num.get(int(s), 0.0) + float((db[m] * da[m]).sum())
+            cnt[int(s)] = cnt.get(int(s), 0) + int(m.sum())
+    return {s: float(np.sqrt(max(num[s] / cnt[s], 1e-12))) for s in num if cnt[s] > 0}
+
+
+# ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
 def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q_scale=0.05,
               r_inflation=1.0, n_iter=60, spinup_days=60, b_scale_first=1.0, split="test",
               t_range=None, device="cuda", dtype="float64", model_overrides=None, b_source="truth",
-              background_path=None, method=None, solver="lbfgs", n_outer=3, n_inner=20, resume=True):
+              background_path=None, method=None, solver="lbfgs", n_outer=3, n_inner=20, resume=True,
+              r_mode="nominal", desroziers_iter=2, calib_split="val"):
     """Run the cycled 4DVar on a split of the OSSE and write a netCDF like LitQG2L's.
 
     b_source: "truth"    -> B from the training truth (oracle-like statistics)
@@ -349,6 +400,12 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     solver:   "lbfgs" (nonlinear L-BFGS on the preconditioned cost, n_iter iterations) or "incremental"
               (operational-style Gauss-Newton: n_outer outer loops x n_inner preconditioned CG iterations
               with tangent-linear / adjoint models).
+    r_mode:   observation-error std used in R (diagonal):
+              "nominal"    -> instrumental noise of the constellation (default; ignores representativeness)
+              "desroziers" -> per-satellite std estimated with the Desroziers diagnostic
+                              E[d_a d_b] = R from cycled runs on ``calib_split`` (``desroziers_iter``
+                              fixed-point iterations): uses no truth, operationally realistic
+              "oracle"     -> per-satellite std of (obs - truth) on the training split (upper bound)
     resume:   save the cycling state after every window in <out_path>.partial.npz and resume from it
               after an interruption (the file is removed once the output is written).
     """
@@ -382,13 +439,38 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     da = FourDVar(kw, b_cov, b_scale=b_scale, mode=mode, q_scale=q_scale, r_inflation=r_inflation,
                   window_days=window_days, n_iter=n_iter, device=device, dtype=dtype, solver=solver,
                   n_outer=n_outer, n_inner=n_inner)
+    obs_all, sigma = ds.obs_ssh.values, ds.obs_sigma.values.astype(np.float64)
+    sat_id = ds.sat_id.values
+    r_info = {}
+    if r_mode == "oracle":
+        std = oracle_obs_std(obs_all, kw["f0"] / kw["g"] * psi[:, 0], sat_id, tr0, tr1)
+        sigma = sigma_from_satellite_std(sat_id, sigma, std)
+        r_info = dict(oracle=std)
+    elif r_mode == "desroziers":
+        c0, c1 = splits[calib_split]
+        hist_r = []
+        for it in range(desroziers_iter):
+            innov = []
+            da.verbose = False
+            # calibration = plain cycled 4DVar with a spin-up (also for the hybrid, whose own spin-up is 0)
+            da.run(obs_all, sigma, c0, c1, spinup_days=max(spinup_days, 3 * window_days), b_scale_first=b_scale_first,
+                   innovations=innov)
+            std = desroziers_obs_std([w for w in innov if w[0] >= c0], sat_id)  # skip spin-up windows
+            sigma = sigma_from_satellite_std(sat_id, sigma, std)
+            hist_r.append(std)
+            print(f"[4dvar] Desroziers iteration {it + 1}: obs std per satellite {std}", flush=True)
+        da.verbose = True
+        r_info = dict(desroziers=hist_r, calib_split=calib_split)
+    elif r_mode != "nominal":
+        raise ValueError(r_mode)
     ckpt = str(out_path) + ".partial.npz" if resume else None
     ckpt_key = json.dumps(dict(data=str(data_path), t=[int(t_start), int(t_end)], mode=mode, window_days=window_days,
                                b_scale=b_scale, q_scale=q_scale, r_inflation=r_inflation, n_iter=n_iter,
                                spinup_days=spinup_days, b_scale_first=b_scale_first, b_source=b_source,
                                background=str(background_path), solver=solver, n_outer=n_outer, n_inner=n_inner,
-                               model_overrides=model_overrides or {}), sort_keys=True)
-    rec, log = da.run(ds.obs_ssh.values, ds.obs_sigma.values, t_start, t_end, spinup_days=spinup_days,
+                               model_overrides=model_overrides or {}, r_mode=r_mode,
+                               desroziers_iter=desroziers_iter, calib_split=calib_split), sort_keys=True)
+    rec, log = da.run(obs_all, sigma, t_start, t_end, spinup_days=spinup_days,
                       b_scale_first=b_scale_first, truth=psi, background=background, checkpoint_path=ckpt,
                       checkpoint_key=ckpt_key)
     cost = {k: int(sum(l.get(k, 0) for l in log)) for k in ["n_nonlinear", "n_tl", "n_adjoint"]}
@@ -399,7 +481,7 @@ def run_4dvar(data_path, out_path, mode="strong", window_days=10, b_scale=0.5, q
     cfg = dict(mode=mode, window_days=window_days, b_scale=b_scale, q_scale=q_scale, r_inflation=r_inflation,
                n_iter=n_iter, spinup_days=spinup_days, model_overrides=model_overrides or {}, b_source=b_source,
                background_path=str(background_path) if background_path else None, solver=solver,
-               n_outer=n_outer, n_inner=n_inner)
+               n_outer=n_outer, n_inner=n_inner, r_mode=r_mode, r_info=r_info)
     method = method or (f"hybrid_{mode}" if background_path else f"4dvar_{mode}")
     out = xr.Dataset(
         dict(psi=(("time", "layer", "y", "x"), rec, dict(units="m2 s-1", long_name=f"{method} analysis"))),

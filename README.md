@@ -49,6 +49,7 @@ cd contrib/qg2l/tests && python -m pytest -q
 | `contrib/qg2l/lyapunov.py` | Benettin QR (BLV, exponents) + Ginelli backward pass (CLV) in the energy norm; on-the-fly projection of errors; BLV/CLV decompositions |
 | `contrib/qg2l/diag.py` | the diagnostic: `summary.json`, `lyapunov_projection.nc`, figures, comparison animation |
 | `contrib/qg2l/pipeline.py` | cached scenario pipeline (generation, 4DVarNet with checkpoint resume, 4DVar / hybrid, diagnostic), keyed by configuration hash |
+| `contrib/qg2l/stats.py` | paired moving-block bootstrap: confidence intervals of the error energies per Lyapunov subspace and of the ratios between methods |
 | `contrib/qg2l/metrics.py` | RMSE, mu = 1 - RMSE/RMS, effective resolution lambda_x from the isotropic PSD score |
 
 ## Default set-up and measured regime
@@ -95,6 +96,7 @@ Progress of a sweep (from another terminal while the notebook runs): `python -m 
 | `constellation[...]["roll_std"]` | correlated SWOT cross-track error (4DVar keeps a diagonal R) |
 | `run_4dvar(b_source="free_run")` | B from a free run of the DA model instead of the truth |
 | `run_4dvar(solver="incremental", n_outer, n_inner)` | operational-style incremental 4DVar: Gauss-Newton outer loops + conjugate gradient on the B^{1/2}-preconditioned quadratic cost (TL / adjoint by `torch.func.jvp` / `vjp`); the default `lbfgs` minimises the nonlinear preconditioned cost to near convergence |
+| `run_4dvar(r_mode="desroziers" \| "oracle")` | R (per satellite) from the Desroziers diagnostic E[d_a d_b] = R on the validation split (no truth), or from the actual obs - truth std (upper bound); default `nominal` = instrumental noise only |
 | `run_4dvar(background_path=4dvarnet.nc, spinup_days=0)` | hybrid: 4DVarNet reconstruction as background of each window |
 
 ## What the diagnostic reports

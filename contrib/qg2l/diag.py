@@ -65,11 +65,13 @@ def kaplan_yorke(exps):
 
 def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bwd=60, t_range=None,
              backend="torch", device="cuda", tlm="fd", neutral_tol=0.01, snapshot_offset=60,
-             animation_days=60, make_figures=True):
+             animation_days=60, make_figures=True, figure_methods=None):
     """
     data_path: OSSE netCDF;  recs: dict name -> reconstruction netCDF (psi, time, layer, y, x)
     t_range:   (t0, t1) days to diagnose (default: test split). Truth must be available on
                [t0 - n_transient_fwd, t1 + n_transient_bwd].
+    figure_methods: subset of methods shown in the maps / animation (all by default; every method is
+               always in the numbers, the spectrum and the subspace figures)
     k:         number of Lyapunov vectors; must exceed the number of unstable exponents
                (check ``n_unstable`` in summary.json: if n_unstable == k, increase k).
     """
@@ -161,14 +163,15 @@ def run_diag(data_path, recs, out_dir, k=256, n_transient_fwd=30, n_transient_bw
     shutil.rmtree(ck_dir, ignore_errors=True)  # results are saved: the forward-sweep checkpoint is no longer needed
     if make_figures:
         figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_transient_fwd, a, neutral_tol,
-                animation_days)
+                animation_days, figure_methods)
     return summary
 
 
 # ---------------------------------------------------------------------------
 # figures
 # ---------------------------------------------------------------------------
-def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neutral_tol, animation_days):
+def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neutral_tol, animation_days,
+            figure_methods=None):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -243,13 +246,15 @@ def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neut
     fig.savefig(out_dir / "subspace_summary.png", dpi=120)
     plt.close(fig)
 
+    map_names = [n for n in names if not figure_methods or n in figure_methods]
+
     # 4. maps: leading CLVs/BLVs and errors at the snapshot day --------------------------------
     if snap in lyap["snapshots"]:
         V = lyap["snapshots"][snap]  # (k, 2, n, n) BLVs
         j = snap - lyap["index"][0]
         clv = np.einsum("k...,kj->j...", V.astype(np.float64), lyap["C"][j]) if "C" in lyap else V
         t_abs = a + snap
-        n_m = len(names)
+        n_m = len(map_names)
         fig, ax = plt.subplots(2, 4 + n_m, figsize=(3.3 * (4 + n_m), 6.4), constrained_layout=True)
         ext = [0, kw["L"] / 1e3, 0, kw["L"] / 1e3]
         panels = [("SSH truth", truth[t_abs, 0], truth[t_abs, 1], "psi"),
@@ -258,10 +263,10 @@ def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neut
                                                          clv[max(uns.sum() // 2, 1) - 1, 1], "v"),
                   (f"CLV {min(uns.sum() + 5, k)}", clv[min(uns.sum() + 5, k) - 1, 0],
                    clv[min(uns.sum() + 5, k) - 1, 1], "v")]
-        for name in names:
+        for name in map_names:
             e = rec[name][t_abs - t0] - truth[t_abs]
             panels.append((f"error {name}", e[0], e[1], "e"))
-        emax = max(np.abs(rec[nm][t_abs - t0] - truth[t_abs]).max() for nm in names)
+        emax = max(np.abs(rec[nm][t_abs - t0] - truth[t_abs]).max() for nm in map_names)
         for col, (title, l1, l2, kind) in enumerate(panels):
             for row, fld in enumerate([l1, l2]):
                 if kind == "psi":
@@ -282,11 +287,11 @@ def figures(out_dir, lyap, dec, rec, truth, ds, kw, t0, t1, snap, n_fwd, a, neut
     if animation_days:
         fields = {}
         T = ds.sizes["time"]
-        for name in names:
+        for name in map_names:
             full = np.full((T,) + rec[name].shape[-2:], np.nan)
             full[t0:t1] = f0g * rec[name][:, 0]
             fields[f"SSH {name}"] = full
-        for name in names:
+        for name in map_names:
             err = np.full((T,) + rec[name].shape[-2:], np.nan)
             err[t0:t1] = f0g * (rec[name][:, 0] - truth[t0:t1, 0])
             fields[f"SSH err {name}"] = err

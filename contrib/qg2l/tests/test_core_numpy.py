@@ -366,3 +366,42 @@ def test_lyapunov_checkpoint_resume(tmp_path):
     # another configuration key is not resumed
     res2 = LY.lyapunov_vectors(m, traj, checkpoint_dir=ck, checkpoint_key="b", **kw)
     assert np.allclose(res2["exponents"], ref["exponents"])
+
+
+def test_block_bootstrap_ci():
+    from qg2l.stats import block_bootstrap_indices, subspace_ci
+
+    rng = np.random.default_rng(0)
+    idx = block_bootstrap_indices(90, 10, 5, rng)
+    assert idx.shape == (5, 90) and idx.max() < 90
+    assert np.all(np.diff(idx[0][:10]) % 90 == 1)  # contiguous (circular) blocks
+    # correlated daily series: method b is 2x worse than a, with a common AR(1) fluctuation
+    T = 200
+    z = np.zeros(T)
+    for t in range(1, T):
+        z[t] = 0.9 * z[t - 1] + rng.standard_normal()
+    base = np.exp(0.3 * z)
+    series = {"a": {"total": base * (1 + 0.05 * rng.standard_normal(T))},
+              "b": {"total": 2 * base * (1 + 0.05 * rng.standard_normal(T))}}
+    rows = {r["method"]: r for r in subspace_ci(series, ref="b", block=10, n_boot=1000)}
+    assert 1.8 < rows["a"]["ratio_lo"] < rows["a"]["ratio"] < rows["a"]["ratio_hi"] < 2.2  # paired: tight
+    assert rows["a"]["p_better"] == 1.0 and abs(rows["b"]["ratio"] - 1) < 1e-12
+    assert rows["a"]["lo"] < rows["a"]["mean"] < rows["a"]["hi"]
+
+
+def test_desroziers_and_oracle_obs_std():
+    from qg2l.fourdvar import desroziers_obs_std, oracle_obs_std, sigma_from_satellite_std
+
+    rng = np.random.default_rng(0)
+    B, R, n = 1.0, 0.25, 200000  # optimal scalar analysis: E[d_a d_b] = R
+    x = rng.normal(0, 1, n)
+    y = x + rng.normal(0, R**0.5, n)
+    xa = B / (B + R) * y
+    sid = np.zeros((1, 1, n), int)
+    sid[0, 0, ::2] = 1
+    est = desroziers_obs_std([(0, y.reshape(1, 1, n), (y - xa).reshape(1, 1, n))], sid)
+    assert abs(est[0] - 0.5) < 0.01 and abs(est[1] - 0.5) < 0.01
+    obs = (x + 0.1 * rng.standard_normal(n)).reshape(1, 1, n)
+    assert abs(oracle_obs_std(obs, x.reshape(1, 1, n), sid, 0, 1)[0] - 0.1) < 0.005
+    sig = sigma_from_satellite_std(sid, np.full((1, 1, n), 0.03), {1: 0.07})
+    assert np.all(sig[sid == 1] == 0.07) and np.all(sig[sid == 0] == 0.03)
