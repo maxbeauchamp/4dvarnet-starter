@@ -48,6 +48,12 @@ Options (v6, N1b; all False for the former checkpoints):
                flow started from a noise ~10x the daily increments, and the
                residual, cut one-sided at the bounds (SIC 0 / 1), pulled pack
                ice down and open water up at every step (the smoothing).
+  weak_sic     False (N1j): no weak CIMR SIC target in N1 (the thin-SIT one is
+               kept): with the observations dropped from the conditioning the
+               model still had to reach CIMR, ~0.03 below the state, and learnt
+               a blind negative SIC increment; the free forecasts drifted
+               linearly through CIMR (~-0.015 / day, March as December; half
+               of it at w = 1). The background takes over off the ASIP passes.
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -158,7 +164,7 @@ class LitCascadeN1(pl.LightningModule):
                  lr_scheduler_start_factor=1e-5, lr_scheduler_iters=20_000, ema_decay=0.999, n_members=8,
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
-                 inc_scale_sic=None,
+                 inc_scale_sic=None, weak_sic=True,
                  drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
@@ -253,9 +259,12 @@ class LitCascadeN1(pl.LightningModule):
         """(X^, S^, psi^) normalised, mask and scale floor; psi^ from the N0 EMA
         encoder on the full window of the day, where it saw observations."""
         z, m, floor = self.n0.target_c(b)
-        if not self.hparams.weak_targets:  # drop the weak CIMR targets (SIC, SIT); keep the open-water zeros
+        drop_sic = not self.hparams.weak_targets or not self.hparams.get("weak_sic", True)
+        if drop_sic:  # drop the weak CIMR targets (SIC; SIT too without weak_targets); keep the open-water zeros
             sg = b["tgt_C_sigma"]
-            weak = torch.stack([sg[:, 0] == D.CIMR_TGT_SIGMA, sg[:, 1] == D.CIMR_SIT_TGT_SIGMA, torch.zeros_like(sg[:, 2], dtype=torch.bool)], 1)
+            no = torch.zeros_like(sg[:, 2], dtype=torch.bool)
+            weak = torch.stack([sg[:, 0] == D.CIMR_TGT_SIGMA,
+                                sg[:, 1] == D.CIMR_SIT_TGT_SIGMA if not self.hparams.weak_targets else no, no], 1)
             m = torch.cat([m[:, :N_X] & ~weak, m[:, N_X:]], 1)
         ctx = self.n0.encode(self.n0.ema.module, b)
         m_psi = ctx["m_C"][:, None].expand(-1, self.d_psi, -1, -1)
