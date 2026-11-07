@@ -88,7 +88,7 @@ and `fourdvar.run_4dvar`):
 Run everything in the background on a Slurm cluster (one GPU, small then full size, chain of jobs that resume from the caches / checkpoints; the executed notebook is written back in place):
 
 ```bash
-bash contrib/qg2l/slurm/submit_sweep.sh        # adapt the #SBATCH lines in run_sweep_notebook.sbatch first
+bash contrib/qg2l/slurm/submit_sweep.sh        # Odyssey settings by default (H100, 96 h, 2 chained jobs)
 ```
 
 Optional: `pip install papermill` in the environment (from a node with network) to stream the cell outputs to the Slurm log and save the notebook after every cell; otherwise `jupyter nbconvert --execute` is used.

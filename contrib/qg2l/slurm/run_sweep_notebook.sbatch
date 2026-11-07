@@ -1,23 +1,35 @@
 #!/bin/bash
 # Execute the realism-sweep notebook headless on one GPU (submitted by submit_sweep.sh).
-# Adapt the #SBATCH lines to your cluster (partition / account / qos / time limit).
+# Odyssey settings; other clusters: override with GRES / PARTITION / TIME / MEM / SBATCH_EXTRA in submit_sweep.sh.
 #SBATCH --job-name=qg2l-sweep
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=32G
-#SBATCH --time=24:00:00
-#SBATCH --output=logs/slurm/qg2l-sweep-%j.out
-##SBATCH --partition=gpu
-##SBATCH --account=xxx
+#SBATCH --partition=Odyssey_GPU
+#SBATCH --account=odyssey
+#SBATCH --gres=gpu:h100:1
+#SBATCH --mem=64G
+#SBATCH --cpus-per-task=12
+#SBATCH --time=96:00:00
+#SBATCH --output=logs/slurm/%x_%j.out
+#SBATCH --error=logs/slurm/%x_%j.err
+# BASH_ENV empty: bash does not source ~/.bashrc (and its broken Setup.sh) when the batch script starts
+#SBATCH --export=ALL,BASH_ENV=
 
-set -uo pipefail
 REPO=${REPO:-${SLURM_SUBMIT_DIR:-$(pwd)}}
 CONDA_ENV=${CONDA_ENV:-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter}
 NOTEBOOK=${NOTEBOOK:-contrib/qg2l/qg2l_realism_sweep.ipynb}
 CHAIN_FILE=${CHAIN_FILE:-}
 
+export HOME=/Odyssey/private/$USER
+source "$HOME/.bashrc"
+conda activate "$CONDA_ENV"
+if [[ -z "${CONDA_PREFIX:-}" ]]; then
+    echo "ERROR: conda activation failed (CONDA_PREFIX is empty)" >&2
+    exit 1
+fi
+echo "[$(date)] conda env: ${CONDA_PREFIX}"
+echo "[$(date)] python: $(which python) ($(python --version 2>&1))"
+set -uo pipefail
+
 cd "$REPO" || exit 1
-export PATH="$CONDA_ENV/bin:$PATH"     # no 'conda activate' needed on the compute node
 export PYTHONUNBUFFERED=1
 echo "[sweep] job ${SLURM_JOB_ID:-local} on $(hostname) at $(date) | repo $REPO | python $(which python)"
 nvidia-smi -L || true
