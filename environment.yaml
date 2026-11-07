@@ -17,6 +17,7 @@ dependencies:
   - ffmpeg                       # mp4 animations (gif fallback otherwise)
   - jupyterlab                   # notebooks
   - ipykernel
+  - papermill                    # headless notebook execution (Slurm)
   - pytest
   - pip:
     - hydra-core

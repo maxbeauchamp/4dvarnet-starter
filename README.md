@@ -85,6 +85,14 @@ together, retrains 4DVarNet on each dataset and compares 4DVarNet, strong / weak
 4DVarNet -> 4DVar, with scores and error energy per Lyapunov subspace. Options (also usable in `simulate.generate`
 and `fourdvar.run_4dvar`):
 
+Run everything in the background on a Slurm cluster (one GPU, small then full size, chain of jobs that resume from the caches / checkpoints; the executed notebook is written back in place):
+
+```bash
+bash contrib/qg2l/slurm/submit_sweep.sh        # adapt the #SBATCH lines in run_sweep_notebook.sbatch first
+```
+
+Optional: `pip install papermill` in the environment (from a node with network) to stream the cell outputs to the Slurm log and save the notebook after every cell; otherwise `jupyter nbconvert --execute` is used.
+
 Fair 4DVar reference: `4dvar_tuned` (b_scale, window, q_scale selected on the validation split by a cached grid search, `pipeline.tune_4dvar`, + Desroziers R). 4DVarNet seed-to-seed variability: 3 training seeds in the seed scenarios. Full-size confirmation: `SIZE="full"` (baseline + realistic at 64x64 / 1000 km).
 
 Crash-safe: re-running a notebook or an xp reuses finished steps and resumes unfinished ones (4DVarNet from `last.ckpt`, cycled 4DVar from its last window, Lyapunov sweep from its last 10-day checkpoint).
