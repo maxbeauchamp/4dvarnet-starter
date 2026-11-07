@@ -59,8 +59,11 @@ DEFAULT_NET = dict(n_time=21, epochs=120, n_step=15, batch_size=16, hidden_prior
                    aug_factor=5, downsamp=None, layers=[1, 2], lr=1e-3, num_workers=0)
 
 
-def train_4dvarnet(root, data_path, net=None, retrain=False, accelerator="auto"):
-    """Train (or resume / reuse) 4DVarNet on ``data_path``; returns the path of the test reconstruction."""
+def train_4dvarnet(root, data_path, net=None, retrain=False, accelerator="auto", seed=333):
+    """Train (or resume / reuse) 4DVarNet on ``data_path``; returns the path of the test reconstruction.
+
+    seed: random seed of the training (weights init, batch order); 333 is the reference seed and keeps the
+    historical run folder names, other seeds get their own folder (seed-to-seed variability)."""
     import torch
     import pytorch_lightning as pl
 
@@ -69,13 +72,14 @@ def train_4dvarnet(root, data_path, net=None, retrain=False, accelerator="auto")
     from .models import LitQG2L, periodic
 
     net = {**DEFAULT_NET, **(net or {})}
+    net.pop("seed", None)
     gen_hash = Path(data_path).parent.name
-    run_dir = Path(root) / "4dvarnet" / f"{gen_hash}_{_hash(net)}"
+    run_dir = Path(root) / "4dvarnet" / f"{gen_hash}_{_hash(net if seed == 333 else {**net, 'seed': seed})}"
     rec_path = run_dir / "4dvarnet.nc"
     ckpt_dir = run_dir / "checkpoints"
     nx = json.loads(__import__("xarray").open_dataset(data_path, decode_times=False).attrs["model_kw"])["nx"]
 
-    pl.seed_everything(333)
+    pl.seed_everything(seed)
     C = n_channels(net["n_time"], net["layers"])
     dm = QG2LDataModule(str(data_path), n_time=net["n_time"], layers=net["layers"], aug_factor=net["aug_factor"],
                         dl_kw=dict(batch_size=net["batch_size"], num_workers=net["num_workers"]))
@@ -99,7 +103,7 @@ def train_4dvarnet(root, data_path, net=None, retrain=False, accelerator="auto")
     lit = LitQG2L(solver=solver, rec_weight=qg_rec_weight(net["n_time"], net["layers"], nx), opt_fn=opt_fn,
                   persist_rw=False, export_path=str(rec_path))
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "run.json").write_text(json.dumps(dict(data=str(data_path), net=net), indent=1))
+    (run_dir / "run.json").write_text(json.dumps(dict(data=str(data_path), net=net, seed=seed), indent=1))
     last = ckpt_dir / "last.ckpt"
     resume = None if retrain or not last.exists() else last
     epoch = torch.load(resume, map_location="cpu", weights_only=False)["epoch"] if resume else -1
@@ -153,21 +157,58 @@ def run_4dvar_cached(data_path, out_path, var, background_path=None, device="cud
     return Path(out_path)
 
 
+def tune_4dvar(root, name, data_path, base, grid_b=(0.25, 0.5, 1.0), grid_w=(5, 7, 10), grid_q=(),
+               n_iter=20, r_mode="oracle", split="val", device="cuda"):
+    """Grid search of the 4DVar hyper-parameters on the validation split (truth-based, like the
+    early stopping of 4DVarNet): b_scale x window (strong constraint), then q_scale (weak constraint)
+    with the best (b_scale, window). Objective: MSE of both layers (SSH-equivalent).
+    Every run is cached (<root>/scenarios/<name>/tuning/). Returns dict(best_strong, best_weak, table)."""
+    import xarray as xr
+
+    tdir = Path(root) / "scenarios" / name / "tuning"
+    tdir.mkdir(parents=True, exist_ok=True)
+
+    def run(tag, var):
+        p = run_4dvar_cached(data_path, tdir / f"{tag}.nc", {**base, **var, "split": split, "n_iter": n_iter,
+                                                            "solver": "lbfgs", "r_mode": r_mode}, device=device)
+        sc = json.loads(xr.open_dataset(p, decode_times=False).attrs["scores"])
+        return dict(tag=tag, **var, rmse_ssh=sc["rmse_ssh"], rmse_layer2=sc["rmse_layer2"],
+                    objective=sc["rmse_ssh"] ** 2 + sc["rmse_layer2"] ** 2)
+
+    rows = [run(f"strong_b{b}_w{w}", dict(mode="strong", b_scale=b, window_days=w)) for b in grid_b for w in grid_w]
+    best = min(rows, key=lambda r: r["objective"])
+    best_strong = dict(b_scale=best["b_scale"], window_days=best["window_days"])
+    best_weak = None
+    if grid_q:
+        wrows = [run(f"weak_b{best['b_scale']}_w{best['window_days']}_q{q}",
+                     dict(mode="weak", q_scale=q, **best_strong)) for q in grid_q]
+        rows += wrows
+        bw = min(wrows, key=lambda r: r["objective"])
+        best_weak = dict(best_strong, q_scale=bw["q_scale"])
+    out = dict(best_strong=best_strong, best_weak=best_weak, table=rows)
+    (tdir / "tuning.json").write_text(json.dumps(out, indent=1))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # one scenario
 # ---------------------------------------------------------------------------
-def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", force_diag=False):
+def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", force_diag=False, seeds=(333,)):
     """gen: generation kwargs; methods: list of dicts with 'name' + run_4dvar kwargs
-    (optional 'background': '4dvarnet' for the hybrid). Returns a dict with paths, scores and diag summary."""
+    (optional 'background': '4dvarnet' for the hybrid). seeds: 4DVarNet training seeds; the first one is
+    '4dvarnet' (used by the hybrids), the others '4dvarnet_s<seed>'.
+    Returns a dict with paths, scores and diag summary."""
     import xarray as xr
 
     from .diag import run_diag
 
     data = generate_cached(root, gen, device=device)
-    rec_net = train_4dvarnet(root, data, net)
+    rec_net = train_4dvarnet(root, data, net, seed=seeds[0])
     sc_dir = Path(root) / "scenarios" / name
     sc_dir.mkdir(parents=True, exist_ok=True)
     recs = {"4dvarnet": rec_net}
+    for sd in seeds[1:]:
+        recs[f"4dvarnet_s{sd}"] = train_4dvarnet(root, data, net, seed=sd)
     for m in methods:
         m = copy.deepcopy(m)
         mname = m["name"]
@@ -176,7 +217,7 @@ def run_scenario(root, name, gen, methods, net=None, lyap=None, device="cuda", f
                                        device=device)
     scores = {k: json.loads(xr.open_dataset(v, decode_times=False).attrs["scores"]) for k, v in recs.items()}
     cost = {k: json.loads(xr.open_dataset(v, decode_times=False).attrs.get("cost", "{}")) for k, v in recs.items()
-            if k != "4dvarnet"}
+            if not k.startswith("4dvarnet")}
     summary = None
     if lyap is not None:
         lyap = dict(lyap)
@@ -259,7 +300,11 @@ def progress(root):
             dstate = f"diag running (Lyapunov step {int(np.load(lyap_ck, allow_pickle=False)['n_next'])}, saved {age(lyap_ck)})"
         else:
             dstate = "diag not done"
-        print(f"  {sc.name}: 4DVar done {done}" + (f", in progress {running}" if running else "") + f", {dstate}")
+        tun = len(list((sc / "tuning").glob("*.nc.json")))
+        tstate = (", tuning done" if (sc / "tuning" / "tuning.json").exists()
+                  else (f", tuning {tun} runs done" if tun else ""))
+        print(f"  {sc.name}: 4DVar done {done}" + (f", in progress {running}" if running else "") + tstate
+              + f", {dstate}")
 
 
 if __name__ == "__main__":

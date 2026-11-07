@@ -49,6 +49,8 @@ cd contrib/qg2l/tests && python -m pytest -q
 | `contrib/qg2l/lyapunov.py` | Benettin QR (BLV, exponents) + Ginelli backward pass (CLV) in the energy norm; on-the-fly projection of errors; BLV/CLV decompositions |
 | `contrib/qg2l/diag.py` | the diagnostic: `summary.json`, `lyapunov_projection.nc`, figures, comparison animation |
 | `contrib/qg2l/pipeline.py` | cached scenario pipeline (generation, 4DVarNet with checkpoint resume, 4DVar / hybrid, diagnostic), keyed by configuration hash |
+| `contrib/qg2l/sweep_config.py` | configuration of the scenario sweep (scenarios, methods, seeds, 4DVar tuning grid; small / full size) |
+| `contrib/qg2l/run_sweep.py` | `python -m contrib.qg2l.run_sweep --size small --scenario realistic [--only seeds\|tuning]`: same steps as the notebook, as separate (parallel) GPU jobs |
 | `contrib/qg2l/stats.py` | paired moving-block bootstrap: confidence intervals of the error energies per Lyapunov subspace and of the ratios between methods |
 | `contrib/qg2l/metrics.py` | RMSE, mu = 1 - RMSE/RMS, effective resolution lambda_x from the isotropic PSD score |
 
@@ -82,6 +84,8 @@ domain, unlimited optimisation budget). The second notebook switches these assum
 together, retrains 4DVarNet on each dataset and compares 4DVarNet, strong / weak / low-budget 4DVar and the hybrid
 4DVarNet -> 4DVar, with scores and error energy per Lyapunov subspace. Options (also usable in `simulate.generate`
 and `fourdvar.run_4dvar`):
+
+Fair 4DVar reference: `4dvar_tuned` (b_scale, window, q_scale selected on the validation split by a cached grid search, `pipeline.tune_4dvar`, + Desroziers R). 4DVarNet seed-to-seed variability: 3 training seeds in the seed scenarios. Full-size confirmation: `SIZE="full"` (baseline + realistic at 64x64 / 1000 km).
 
 Crash-safe: re-running a notebook or an xp reuses finished steps and resumes unfinished ones (4DVarNet from `last.ckpt`, cycled 4DVar from its last window, Lyapunov sweep from its last 10-day checkpoint).
 
