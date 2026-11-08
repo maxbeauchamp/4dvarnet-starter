@@ -42,8 +42,9 @@ phases:
     xp: N1
     n0: phase5_full
     overrides: ["model.k_max=7", "model.curriculum_epochs=3", "model.increment=true", "model.state_input=true",
-                "model.raw_obs=true", "model.bg_sigma=0.15", "model.analysis_steps=20", "model.push_steps=8",
-                "model.inc_scale=0.2", "model.bg_advect=true"]
+                "model.raw_obs=true", "model.bg_sigma=0.05", "model.analysis_steps=20", "model.push_steps=8",
+                "model.inc_scale=0.2", "model.inc_scale_sic=0.05", "model.bg_advect=true", "model.warp_mode=bicubic",
+                "model.tobit=true", "model.weak_sic=false"]  # N1j: first N1 to beat persistence (2022_v6_n1j)
     trainer: {max_epochs: 25, limit_train_batches: 400, limit_val_batches: 20}
 
 evaluation:

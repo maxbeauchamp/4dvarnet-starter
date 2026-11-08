@@ -7,7 +7,9 @@ stores), on the C tile with the most ASIP observations at t: an ensemble of
 starts from its own analysis sample), without observations after t
 (--w 0: forecast) or with them (--w 1: assimilation). References: the
 persistence of the analysis at t, and the N0 analysis of each day t+k (which
-uses the observations of that day).
+uses the observations of that day), and with bg_advect the drift-only
+forecast: the mean analysis at t moved by N1's learned free drift each day,
+without increment (what the network adds beyond the transport).
 
 One figure per start date: one row per displayed lead (SIC mean / spread,
 SIT mean, h_pack mean, CIMR SIC of the day (not used by the forecast), error
@@ -39,7 +41,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from croscim import data as D  # noqa: E402
 from croscim import grid as g  # noqa: E402
 from croscim import rollout as R  # noqa: E402
-from croscim.cascade import CROP_C, X_NAMES, Z_NAMES, crop, strict_mask  # noqa: E402
+from croscim.cascade import CROP_C, N_Z, X_NAMES, Z_NAMES, crop, strict_mask  # noqa: E402
 from croscim.ocean import ocean_fraction_h  # noqa: E402
 from croscim.transition import load_n1  # noqa: E402
 from plot_panels import best_crops, best_tile, extent, masked, panel  # noqa: E402
@@ -116,6 +118,15 @@ def main():
             ana = torch.stack([torch.stack([n1.analysis(days[k], n_steps, torch.Generator(dev).manual_seed(100 + s))[0][0]
                                             for k in range(K + 1)]) for s in range(args.members)]).float()
             oy, ox, hy, hx = best_crops(days[K])
+            drift = None
+            if n1.hparams.get("bg_advect"):  # drift-only: the mean analysis at t moved by the learned free drift
+                zd, pd = traj[:, 0].mean(0, keepdim=True).to(dev), psis[:, 0].mean(0, keepdim=True).to(dev)
+                drift = [zd[0]]
+                for k in range(1, K + 1):
+                    sd = n1.base(days[k], zd, pd)
+                    zd, pd = n1.nrm.z_inv(sd[:, :N_Z]), sd[:, N_Z:]
+                    drift.append(zd[0])
+                drift = torch.stack(drift).float().cpu()                       # [K+1, 12, 64, 64]
             fine = torch.stack([downscale_zoom(n0, days[K], traj[s:s + 1, K].to(dev), psis[s:s + 1, K].to(dev),
                                                oy, ox, hy, hx, n_steps, s) for s in range(min(3, args.members))])
         traj, ana = traj.cpu(), ana.cpu()
@@ -134,6 +145,8 @@ def main():
                 if msk[0, c].any():
                     pers = traj[:, 0, c].mean(0)
                     row[f"pers_rmse_{name}"] = round(float(((pers - tgt[0, c])[msk[0, c]] ** 2).mean().sqrt()), 5)
+                    if drift is not None:
+                        row[f"drift_rmse_{name}"] = round(float(((drift[k, c] - tgt[0, c])[msk[0, c]] ** 2).mean().sqrt()), 5)
                     # systematic drift: mean error of the forecast and of persistence on the targets
                     row[f"fc_bias_{name}"] = round(float((traj[:, k, c].mean(0) - tgt[0, c])[msk[0, c]].mean()), 5)
                     row[f"pers_bias_{name}"] = round(float((pers - tgt[0, c])[msk[0, c]].mean()), 5)
@@ -144,7 +157,8 @@ def main():
                     mc = msk[0, 0] & sel
                     row[f"n_SIC_{cls}"] = int(mc.sum())
                     if mc.any():
-                        for key, f in (("fc", traj[:, k, 0].mean(0)), ("pers", s0)):
+                        refs = (("fc", traj[:, k, 0].mean(0)), ("pers", s0)) + ((("drift", drift[k, 0]),) if drift is not None else ())
+                        for key, f in refs:
                             d = (f - tgt[0, 0])[mc]
                             row[f"{key}_rmse_SIC_{cls}"] = round(float((d ** 2).mean().sqrt()), 5)
                             row[f"{key}_bias_SIC_{cls}"] = round(float(d.mean()), 5)
@@ -227,7 +241,8 @@ def curves(metrics, K, path):
     lead = np.arange(K + 1)
     for ax, name in zip(axes, X_NAMES):
         for key, label, style in ((f"fc_rmse_{name}", "forecast RMSE", "-o"), (f"fc_spread_{name}", "forecast spread", "--o"),
-                                  (f"pers_rmse_{name}", "persistence RMSE", "-s"), (f"ana_rmse_{name}", "N0 analysis RMSE", ":^")):
+                                  (f"pers_rmse_{name}", "persistence RMSE", "-s"), (f"drift_rmse_{name}", "drift-only RMSE", "-.d"),
+                                  (f"ana_rmse_{name}", "N0 analysis RMSE", ":^")):
             ax.plot(lead, [mean(key, k) for k in lead], style, label=label, ms=3)
         ax.set_title(name, fontsize=9)
         ax.set_xlabel("lead (days)", fontsize=8)
