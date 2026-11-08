@@ -54,6 +54,9 @@ Options (v6, N1b; all False for the former checkpoints):
                a blind negative SIC increment; the free forecasts drifted
                linearly through CIMR (~-0.015 / day, March as December; half
                of it at w = 1). The background takes over off the ASIP passes.
+               "seen" (N1k): the weak CIMR SIC target only in the steps whose
+               conditioning has the observations of the day (group h kept):
+               N1j ignored them (w = 1 = w = 0); without them, the background.
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -255,16 +258,24 @@ class LitCascadeN1(pl.LightningModule):
         return out
 
     @torch.no_grad()
-    def target(self, b: dict) -> tuple[Tensor, Tensor, Tensor]:
+    def target(self, b: dict, keep: dict | None = None) -> tuple[Tensor, Tensor, Tensor]:
         """(X^, S^, psi^) normalised, mask and scale floor; psi^ from the N0 EMA
-        encoder on the full window of the day, where it saw observations."""
+        encoder on the full window of the day, where it saw observations.
+        keep: the groups of the step's conditioning (weak_sic = "seen")."""
         z, m, floor = self.n0.target_c(b)
-        drop_sic = not self.hparams.weak_targets or not self.hparams.get("weak_sic", True)
-        if drop_sic:  # drop the weak CIMR targets (SIC; SIT too without weak_targets); keep the open-water zeros
-            sg = b["tgt_C_sigma"]
-            no = torch.zeros_like(sg[:, 2], dtype=torch.bool)
-            weak = torch.stack([sg[:, 0] == D.CIMR_TGT_SIGMA,
-                                sg[:, 1] == D.CIMR_SIT_TGT_SIGMA if not self.hparams.weak_targets else no, no], 1)
+        ws = self.hparams.get("weak_sic", True)
+        sg = b["tgt_C_sigma"]
+        no = torch.zeros_like(sg[:, 0], dtype=torch.bool)
+        sic = sg[:, 0] == D.CIMR_TGT_SIGMA
+        if not self.hparams.weak_targets or ws is False:
+            drop_sic = sic
+        elif ws == "seen" and keep is not None:  # only where the CIMR of the day is not in the conditioning
+            drop_sic = sic & ~keep["h"].view(-1, 1, 1)
+        else:
+            drop_sic = no
+        drop_sit = sg[:, 1] == D.CIMR_SIT_TGT_SIGMA if not self.hparams.weak_targets else no
+        if drop_sic.any() or drop_sit.any():  # drop weak CIMR targets; keep the open-water zeros
+            weak = torch.stack([drop_sic, drop_sit, no], 1)
             m = torch.cat([m[:, :N_X] & ~weak, m[:, N_X:]], 1)
         ctx = self.n0.encode(self.n0.ema.module, b)
         m_psi = ctx["m_C"][:, None].expand(-1, self.d_psi, -1, -1)
@@ -273,7 +284,7 @@ class LitCascadeN1(pl.LightningModule):
 
     def step_loss(self, b: dict, z: Tensor, psi: Tensor, keep: dict, noise=None, t=None) -> dict:
         hp = self.hparams
-        z1, m, floor = self.target(b)
+        z1, m, floor = self.target(b, keep)
         base = self.base(b, z, psi)
         cond, valid = self.cond(self.nets, b, z, psi, keep, base)
         lo, hi = self.lo, self.hi

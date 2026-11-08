@@ -73,7 +73,7 @@ model:
   analysis_steps: null # Heun steps of the initial analysis at training (null: push_steps)
   weak_targets: true   # weak CIMR targets (SIC, SIT) in N1 (N1d: false, the background takes over)
   inc_scale: null      # increment in units of inc_scale x the state scale (N1f: 0.2)
-  weak_sic: true       # weak CIMR SIC target in N1 (N1j: false; the thin-SIT one stays)
+  weak_sic: true       # weak CIMR SIC target in N1 (N1j: false; N1k: seen = only with the obs in the cond.)
   inc_scale_sic: null  # inc_scale of SIC alone (N1i: 0.05; null: inc_scale)
   bg_advect: false     # increment / background relative to the state moved by the free drift (N1e)
   drift_init: [0.015, 15.0]  # free drift: alpha (ice / wind speed), theta (deg to the right), learned

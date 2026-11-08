@@ -206,6 +206,17 @@ def test_n1j_drops_the_weak_cimr_sic_target_only(days):
     assert torch.equal(m_without[:, 1:], m_with[:, 1:])  # thin SIT (weak CIMR) kept
 
 
+def test_n1k_weak_cimr_sic_target_only_when_seen(days):
+    torch.manual_seed(0)
+    n1k = LitCascadeN1(n0=make_model(), swin=TINY, k_max=1, n_steps=1, push_steps=1, n_members=2, weak_sic="seen")
+    weak = days[1]["tgt_C_m"][:, 0] & (days[1]["tgt_C_sigma"][:, 0] > 0.1)
+    assert weak.any()
+    seen = n1k.target(days[1], {"h": torch.ones(1, dtype=torch.bool)})[1]
+    unseen = n1k.target(days[1], {"h": torch.zeros(1, dtype=torch.bool)})[1]
+    assert torch.all(seen[:, 0][weak]) and not unseen[:, 0][weak].any()
+    assert torch.equal(seen[:, 1:], unseen[:, 1:])  # thin SIT and the rest untouched
+
+
 def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
     torch.manual_seed(0)
     n1f = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
