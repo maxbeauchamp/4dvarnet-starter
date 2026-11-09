@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_cmt_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method CMT && python run_metrics.py --xp GP --method CMT",
+  "commit": "00c9bec",
+  "host": "sl-mee-br-207",
+  "slurm_job": "71029",
+  "started": "2026-11-09T14:31:03",
+  "status": "ok",
+  "seconds": 20137.8,
+  "finished": "2026-11-09T20:06:41"
+}
