@@ -112,7 +112,7 @@ def sync_code():
     (HERE / "COMMIT").write_text(head + ("-dirty" if dirty else "") + "\n")
     ssh(f"mkdir -p {shlex.quote(r)}/runs")
     rsync(f"{REPO}/", f"{CFG['ODY_HOST']}:{r}/",
-          ["--delete", "--exclude", ".git/", "--exclude", "data/", "--exclude", "runs/", "--exclude", ".pilot/",
+          ["--delete", "--exclude", ".git/", "--exclude", "/data", "--exclude", "runs/", "--exclude", ".pilot/",
            "--exclude", "results/", "--exclude", "logs*", "--exclude", "lightning_logs", "--exclude", "*.ckpt",
            "--exclude", "consistency/sbatch_submission/figures/", "--exclude", "consistency/cartopy/",
            "--exclude", "__pycache__/", "--exclude", "*.pyc", "--exclude", "*.ipynb_checkpoints"])

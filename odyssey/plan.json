@@ -1,10 +1,29 @@
 {
-  "_doc": "Ordered plan driven by pilot.py, one Slurm job at a time. Each step runs `cmd` from the repository root on a GPU node ($ODY_REPO, $ODY_OLD, $ODY_DATA, $ODY_CONDA_ENV and $RUN_DIR are set; python is the conda env). 'gate' is a Python expression on status and on col('<xp>/<file>.csv', '<column>'), the mean of a column of a CSV written during the step under consistency/sbatch_submission/results/. A step with 'confirm': true waits for `pilot.py approve <id>`.",
-  "steps": [
-    {"id": "p0_env", "time": "00:20:00", "gate": "status == 'ok'",
-     "cmd": "python -c \"import torch, papermill, yaml, pandas; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')\" && ls -la $ODY_DATA"},
-
-    {"id": "p0_inventory", "time": "00:30:00", "gate": "status == 'ok'",
-     "cmd": "bash odyssey/inventory.sh > $RUN_DIR/inventory.txt; cat $RUN_DIR/inventory.txt"}
-  ]
+ "_doc": "Ordered plan driven by pilot.py, one Slurm job at a time. Each step runs `cmd` from the repository root on a GPU node ($ODY_REPO, $ODY_OLD, $ODY_DATA, $ODY_CONDA_ENV and $RUN_DIR are set; python is the conda env). 'gate' is a Python expression on status and on col('<xp>/<file>.csv', '<column>'), the mean of a column of a CSV written during the step under consistency/sbatch_submission/results/. A step with 'confirm': true waits for `pilot.py approve <id>`.",
+ "steps": [
+  {
+   "id": "p0_env",
+   "time": "00:20:00",
+   "gate": "status == 'ok'",
+   "cmd": "python -c \"import torch, papermill, yaml, pandas; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')\" && ls -la $ODY_DATA"
+  },
+  {
+   "id": "p0_inventory",
+   "time": "00:30:00",
+   "gate": "status == 'ok'",
+   "cmd": "bash odyssey/inventory.sh > $RUN_DIR/inventory.txt; cat $RUN_DIR/inventory.txt"
+  },
+  {
+   "id": "p1_setup_gp",
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "ln -sfn $ODY_DATA data && for d in logs_CT_CM_spde logs_CT_VarCM_spde_grad logs_CT_DynCM_spde logs_CT_VarDynCM_spde_grad logs_FM_spde logs_DynFM_spde; do [ -e consistency/Notebooks/Notebooks_GP/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_GP/$d consistency/Notebooks/Notebooks_GP/; done && du -sh consistency/Notebooks/Notebooks_GP/logs_* && python -c \"import xarray as xr; ds = xr.open_dataset('data/SPDE_diffusion_dataset_1.nc'); print(ds); [print(k, ds[k].attrs) for k in ds.data_vars]\""
+  },
+  {
+   "id": "gp_eval_old",
+   "time": "24:00:00",
+   "gate": "status == 'ok' and len([k for k in metrics if k.endswith('_calibration.csv')]) == 6",
+   "cmd": "cd consistency/sbatch_submission && for m in FM DynFM CM VarCM DynCM VarDynCM; do python run_metrics.py --xp GP --method $m || exit 1; done && python make_latex_table.py --xp GP || true"
+  }
+ ]
 }
