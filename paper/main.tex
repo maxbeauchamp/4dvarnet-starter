@@ -136,6 +136,23 @@ suffice \citep{bocquet2017fourdenvar}. \emph{Corollary used here:} a dynamically
 trajectory, as in strong-constraint 4DVar) has an error whose unstable component grows within the window, while its
 stable components are damped for free by the dynamics. A learned smoother is not constrained to be a model
 trajectory; where its error lies in the Lyapunov spectrum is therefore an empirical question, which we answer.
+Figure~\ref{fig:concept} illustrates these notions on Lorenz-63 and summarises the diagnostic and the mechanism
+tested in this paper.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{figures/concept.pdf}
+\caption{Conceptual view. (a) Covariant Lyapunov vectors of Lorenz-63 along the attractor (Ginelli algorithm):
+unstable (red), neutral, along the flow (grey), and stable (blue) directions, with their exponents.
+(b) Tangent-linear evolution of a circle of initial errors, expressed in the local CLV frame: the error is
+stretched along the unstable direction and collapses along the stable one, so that it ends up aligned with the
+unstable subspace. (c) In a large chaotic system (here the spectrum of a QG-like model), the error of an estimate is
+decomposed on the $n_0$ unstable, the neutral and the stable directions resolved by the $k$ computed vectors, plus a
+residual on the most stable ones. (d) Mechanism examined in this paper (schematic): a dynamically consistent
+estimate (strong-constraint 4DVar) is a model trajectory, so its unstable error grows within each window and is
+reset by the observations of the next one, while the dynamics damps its stable error; a learned space-time smoother
+is not a trajectory and is not subject to this growth.}
+\label{fig:concept}
+\end{figure}
 
 % ===========================================================================
 \section{Testbed}\label{sec:testbed}
