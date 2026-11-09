@@ -26,6 +26,12 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method CMT"
   },
   {
+   "id": "gp_eval_stochvarcm",
+   "time": "12:00:00",
+   "gate": "status == 'ok' and len([k for k in metrics if k.startswith('GP/StochVarCM_')]) >= 3",
+   "cmd": "for c in grad obs; do d=consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_$c; [ -e $d ] || cp -r $ODY_OLD/$d $d; done && python consistency/rebuttal/eval_stochvarcm_gp.py --cond grad obs --members 20 --nsteps 40"
+  },
+  {
    "id": "gp_eval_old",
    "time": "24:00:00",
    "gate": "status == 'ok' and len([k for k in metrics if k.endswith('_calibration.csv')]) == 6",
