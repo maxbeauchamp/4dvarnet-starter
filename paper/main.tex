@@ -15,7 +15,7 @@
 
 % ---------------------------------------------------------------------------
 % numbers, tables and figures are generated from the cached results of the code
-% (paper/scripts/make_paper_assets.py); \pend marks what awaits the final sweep
+% (paper/scripts/make_paper_assets.py); \pend marks a missing number
 % ---------------------------------------------------------------------------
 \newcommand{\pend}[1]{\textcolor{orange!80!black}{[#1]}}
 \input{tables/macros.tex}
@@ -54,17 +54,20 @@ End-to-end learned variational schemes such as 4DVarNet now outperform operation
 altimetry, but \emph{why} they win against a well-specified 4DVar in a chaotic system remains mostly empirical.
 We introduce an open, controllable testbed --- a two-layer quasi-geostrophic (QG) model observed by synthetic nadir
 and SWOT altimetry --- and a mechanistic diagnostic that projects reconstruction errors onto the backward and covariant
-Lyapunov vectors of the assimilation model. Comparing 4DVarNet with strong-, weak-constraint and incremental 4DVar,
-with observation-error statistics estimated by the Desroziers diagnostic, across scenarios that progressively break
-the assumptions favourable to 4DVar (perfect model, resolvable observations, known $\R$), we find that
-(i)~the gain of 4DVarNet is concentrated in the \emph{unstable} subspace, where its error energy is $3$--$5\times$
-lower than that of 4DVar with bootstrap intervals far from unity, consistent with the theory that dynamically
-consistent estimators let their error collapse onto, and grow along, the unstable manifold;
-(ii)~the advantage of 4DVar is narrow: it is confined to the most stable, unobserved directions and requires both a
-near-perfect model and a correct $\R$; it vanishes under model error;
-(iii)~the two error structures are complementary: a short-window 4DVar initialised by 4DVarNet yields the lowest
-total error for a third of the cost of a 4DVar. Code, notebooks and the scripts generating every number of this paper
-are available.\footnote{\code}
+Lyapunov vectors of the assimilation model. We compare 4DVarNet (three training seeds) with strong-, weak-constraint
+and incremental 4DVar whose hyper-parameters are tuned on validation data and whose observation-error statistics are
+estimated by the Desroziers diagnostic, in two domain sizes and across scenarios that progressively break the
+assumptions favourable to 4DVar (perfect model, resolvable observations, known $\R$). We find that
+(i)~the gain of 4DVarNet is concentrated in the \emph{unstable} subspace, where its error energy is
+$2.5$--$5\times$ lower than that of the tuned 4DVar, with bootstrap intervals far from unity and a seed-to-seed
+spread of a few percent, consistent with the theory that dynamically consistent estimators let their error grow along
+the unstable manifold;
+(ii)~this factor grows with realism and with domain size, and the only advantage of 4DVar --- on the most stable
+directions and, with a perfect model, on the unobserved deep layer --- is found in the small domain; it vanishes in
+the larger domain, where 4DVarNet is better in every subspace and halves the total error energy;
+(iii)~a short-window 4DVar initialised by 4DVarNet recovers part of these stable directions, which pays off in the
+small domain but not in the larger one. Code, notebooks and the scripts generating every number of this paper are
+available.\footnote{\code}
 \end{abstract}
 
 % ===========================================================================
@@ -98,9 +101,10 @@ unstable subspace \citep{carrassi2007adaptive,trevisan2010four,bocquet2017degene
   (Sec.~\ref{sec:diag}).
 \item A systematic comparison of 4DVarNet with nonlinear, incremental and low-budget 4DVar, including
   observation-error statistics estimated by the Desroziers diagnostic and hyper-parameters tuned on validation data,
-  across realism scenarios (Sec.~\ref{sec:results}).
-\item The finding that the gain of 4DVarNet lies in the unstable subspace, that the advantage of 4DVar is confined to
-  the most stable directions and conditional on a near-perfect model, and that a short-window hybrid exploits both.
+  across realism scenarios and two domain sizes, with training-seed replicates (Sec.~\ref{sec:results}).
+\item The finding that the gain of 4DVarNet lies in the unstable subspace and is robust to training seeds, realism
+  and domain size, whereas the advantage of 4DVar is confined to the most stable directions of the small
+  domain; a short-window hybrid exploits it only there.
 \end{itemize}
 
 % ===========================================================================
@@ -160,18 +164,19 @@ is not a trajectory and is not subject to this growth.}
 \paragraph{Model.} We use a two-layer QG model on a doubly periodic $\beta$-plane \citep{vallis2017atmospheric},
 $\partial_t q_i+J(\psi_i,q_i)=\mathcal{D}_i$, $q_i=\nabla^2\psi_i+F_i(\psi_j-\psi_i)+\beta y$, with a background
 shear driving baroclinic instability, bottom Ekman friction and a spectral filter (pseudo-spectral, RK4, numpy/torch
-backends). The truth is integrated at high resolution ($64^2$ in a 500\,km box for the results below,
-\resultsSize\ configuration; $128^2$ in 1000\,km for the full configuration) and spectrally truncated to the
-assimilation grid ($32^2$, resp.\ $64^2$, $\Delta x=15.6$\,km, $R_d=15$\,km): the low-resolution assimilation model has
+backends). Two domain sizes are used: a \emph{small} 500\,km box (truth at $64^2$, assimilation grid $32^2$) for the full
+set of scenarios and methods, and a \emph{full} 1000\,km box (truth at $128^2$, assimilation grid $64^2$) for the
+baseline and realistic scenarios; in both, $\Delta x=15.6$\,km and $R_d=15$\,km, and the high-resolution truth is
+spectrally truncated to the assimilation grid: the low-resolution assimilation model has
 a genuine, structured model error. SSH is $f_0\psi_1/g$; the deep layer is never observed. The flow is turbulent,
 with SSH standard deviation $\approx7$\,cm and eddies of 100--200\,km (Fig.~\ref{fig:testbed}).
 
 \paragraph{Observations.} Jason-3, Sentinel-3A/B (nadir, 1--1.4\,cm noise) and SWOT (two 50\,km KaRIn swaths around
 a 20\,km nadir gap, 3\,mm noise) are simulated with their inclinations, repeat cycles and interleaved sub-cycles, with
-the real ground-track spacing. The median revisit time is $\tau_{\mathrm{obs}}=\getnum{rev@Base}$\,days and the
-leading exponent of the assimilation model $\lambda_1\approx\getnum{lam@Base}$\,day$^{-1}$, so
-$\lambda_1\tau_{\mathrm{obs}}\approx\lamtau{Base}$: the intermediate regime where neither dynamics nor statistics
-alone suffice.
+the real ground-track spacing. The median revisit time is $\tau_{\mathrm{obs}}=\getnum{rev@Base}$\,days in the small box
+and \getnum{rev@BaseFull}\,days in the full one, and the leading exponent of the assimilation model is
+$\lambda_1\approx\getnum{lam@Base}$\,day$^{-1}$, so $\lambda_1\tau_{\mathrm{obs}}\approx\lamtau{Base}$ (resp.\
+\lamtau{BaseFull}): the intermediate regime where neither dynamics nor statistics alone suffice.
 
 \paragraph{Scenarios.} Starting from this \emph{baseline} (a favourable case for 4DVar: same equations, parameters
 and forcing for truth and model, observations of resolvable scales with white noise of known variance, $\B$ estimated
@@ -208,15 +213,19 @@ correlated error (1\,cm per 100\,km) & all \\\bottomrule
 
 \paragraph{Methods.} \emph{4DVarNet}: state $(\psi_1,\psi_2)$ in SSH-equivalent units over 21-day windows
 (2--3 revisit times), observations on layer 1 only, circular padding, $K=15$ solver steps, trained on 3 years,
-validated on 90 days, tested on 90 days with overlapping windows blended in time.
-\emph{4DVar}: cycled windows of 7 days ($\approx1$ Lyapunov time), nonlinear low-resolution QG model, adjoint by
-automatic differentiation, homogeneous isotropic two-layer spectral $\B$ (control-variable transform), diagonal $\R$.
-Variants: L-BFGS on the preconditioned cost (near convergence); incremental Gauss--Newton/CG with $3\times20$
-(operational-like) or $1\times5$ (low budget) iterations; weak constraint (daily model-error forcing); $\R$ nominal,
-estimated by the Desroziers diagnostic $\E[\mathbf{d}_a\mathbf{d}_b^\top]=\R$ on the validation period
-\citep{desroziers2005diagnosis} ($\R_{\mathrm D}$, no truth used), or oracle. The tuned 4DVar selects $\B$ scaling,
-window and $\mathbf{Q}$ on validation data, the counterpart of 4DVarNet's training and early stopping.
-\emph{Hybrid}: incremental 4DVar over 3-day windows whose background is the 4DVarNet reconstruction.
+validated on 90 days, tested on 90 days with overlapping windows blended in time; three training seeds in the
+baseline and realistic scenarios.
+\emph{4DVar}: cycled windows, nonlinear low-resolution QG model, adjoint by automatic differentiation, homogeneous
+isotropic two-layer spectral $\B$ (control-variable transform), diagonal $\R$.
+Variants: L-BFGS on the preconditioned cost (near convergence; 7-day windows, $\approx1$ Lyapunov time, for the
+untuned version); incremental Gauss--Newton/CG with $3\times20$ (operational-like) or $1\times5$ (low budget)
+iterations; weak constraint (daily model-error forcing); $\R$ nominal, estimated by the Desroziers diagnostic
+$\E[\mathbf{d}_a\mathbf{d}_b^\top]=\R$ on the validation period \citep{desroziers2005diagnosis} ($\R_{\mathrm D}$, no
+truth used), or oracle. The \emph{tuned} 4DVar --- the reference of all ratios below --- selects the $\B$ scaling, the
+window length and $\mathbf{Q}$ by a grid search on the validation period, the counterpart of 4DVarNet's training and
+early stopping; it retains 10-day windows and $\B$ scalings of 0.25--1 depending on the scenario.
+\emph{Hybrid}: incremental 4DVar with $\R_{\mathrm D}$ over 3-day windows whose background is the 4DVarNet
+reconstruction.
 
 % ===========================================================================
 \section{Lyapunov-subspace error diagnostic}\label{sec:diag}
@@ -242,72 +251,105 @@ validated on Lorenz-96 (exponents, CLV covariance $\mathbf{M}_n\mathbf{c}_{i,n}\
 % ===========================================================================
 \section{Results}\label{sec:results}
 % ===========================================================================
-\pend{Numbers below: \resultsSize\ configuration, reference \refmethod; to be updated with the tuned 4DVar,
-3 training seeds and the full-size runs (generated automatically by \texttt{make\_paper\_assets.py}).}
-
 \paragraph{Regime.} The spectrum is flat (Fig.~\ref{fig:testbed}c): $n_0\approx\nunst{Base}$ of $\stateDim$
-directions are unstable in the small box (several hundreds in the full box), i.e.\ the unstable dimension scales with
-the number of eddies, unlike Lorenz-96 \citep{lorenz1996predictability}. Low-rank arguments therefore hold relative to
-$n_0$, not in absolute dimension.
+directions are unstable in the small box and $\nunst{BaseFull}$ of $\stateDimFull$ in the full box ($\approx3.6\%$ in
+both), i.e.\ the unstable dimension scales with the number of eddies, unlike Lorenz-96
+\citep{lorenz1996predictability}. Low-rank arguments therefore hold relative to $n_0$, not in absolute dimension.
 
 \begin{table}[t]\centering\small
-\caption{Test RMSE (cm) of SSH (observed) and of the deep layer (never observed, SSH-equivalent).
-Best in bold.}\label{tab:scores}
-\resizebox{\linewidth}{!}{\input{tables/scores.tex}}
+\caption{Test RMSE (cm) of SSH (observed) and of the deep layer (never observed, SSH-equivalent); 4DVarNet: mean
+($\pm$ s.d.) over three training seeds where available. Best in bold.}\label{tab:scores}
+\textbf{(a) small domain} (500\,km, $32^2$)\\[2pt]
+\resizebox{\linewidth}{!}{\input{tables/scores.tex}}\\[6pt]
+\textbf{(b) full domain} (1000\,km, $64^2$)\\[2pt]
+\input{tables/scores_full.tex}
 \end{table}
 
-\paragraph{Scores.} On the observed variable 4DVarNet is the most accurate in every scenario
-(Table~\ref{tab:scores}): \ssh{Net}{Base} vs \ssh{Var}{Base}\,cm in the baseline and \ssh{Net}{Real} vs
-\ssh{Var}{Real}\,cm in the realistic scenario. On the unobserved deep layer the picture depends on the model: 4DVar,
-which infers $\psi_2$ through the exact baroclinic coupling, is better in the baseline (\ltwo{RD}{Base} vs
-\ltwo{Net}{Base}\,cm), whereas 4DVarNet is better under parameter error (\ltwo{Net}{ParErr} vs
-\ltwo{Var}{ParErr}\,cm) and in the realistic scenario. The incremental solver at $3\times20$ matches the nonlinear
-L-BFGS minimisation, but a properly preconditioned 4DVar with $1\times5$ iterations collapses (\ssh{Budget}{Base}\,cm):
-the Hessian has as many eigenvalues $\gg1$ as there are directions constrained by the precise SWOT data, far more than
-5 CG iterations can capture, and analysis errors propagate through the cycled background. Matching 4DVar requires
-$\sim10^3$ model integrations per 90 test days (Table~\ref{tab:cost}).
+\paragraph{Scores.} On the observed variable 4DVarNet is the most accurate in every scenario and both domains
+(Table~\ref{tab:scores}): \ssh{Net}{Base} vs \ssh{Tuned}{Base}\,cm for the tuned 4DVar in the small baseline,
+\ssh{Net}{Real} vs \ssh{Tuned}{Real}\,cm in the small realistic scenario, and \ssh{Net}{BaseFull} vs
+\ssh{Tuned}{BaseFull}, resp.\ \ssh{Net}{RealFull} vs \ssh{Tuned}{RealFull}\,cm in the full domain. On the unobserved
+deep layer the picture depends on the configuration. In the small domain with a perfect model, 4DVar, which infers
+$\psi_2$ through the exact baroclinic coupling, is better (baseline \ltwo{Tuned}{Base} vs \ltwo{Net}{Base}\,cm,
+unresolved signal \ltwo{Tuned}{ObsSig} vs \ltwo{Net}{ObsSig}\,cm); under parameter error, in the realistic scenario
+and in the full domain 4DVarNet is better (full baseline \ltwo{Net}{BaseFull} vs \ltwo{Tuned}{BaseFull}\,cm, full
+realistic \ltwo{Net}{RealFull} vs \ltwo{Tuned}{RealFull}\,cm). Tuning matters: relative to the untuned 4DVar it
+reduces the total error energy by a factor \getnum{rv@Tuned@Tot@Base@vsVar} (small baseline) to
+\getnum{rv@Tuned@Tot@Real@vsVar} (small realistic), so that all comparisons below are against a 4DVar given the same
+access to validation data as 4DVarNet. The incremental solver at $3\times20$ matches the nonlinear L-BFGS
+minimisation, but a properly preconditioned 4DVar with $1\times5$ iterations collapses (\ssh{Budget}{Base}\,cm small,
+\ssh{Budget}{BaseFull}\,cm full): the Hessian has as many eigenvalues $\gg1$ as there are directions constrained by the
+precise SWOT data, far more than 5 CG iterations can capture, and analysis errors propagate through the cycled
+background. Matching 4DVar requires $\sim10^3$ model integrations per 90 test days (Table~\ref{tab:cost}).
 
 \begin{figure}[t]\centering
 \includegraphics[width=\linewidth]{figures/ratios.pdf}
 \caption{Error-energy ratio $E_{\mathrm{ref}}/E_{\mathrm{method}}$ per Lyapunov subspace (reference: \refmethod;
-$>1$: the method is better), with 90\% paired block-bootstrap intervals.}
+$>1$: the method is better), with 90\% paired block-bootstrap intervals; small dots: individual 4DVarNet training
+seeds. Left of the dotted line: small domain, all scenarios; right: full domain.}
 \label{fig:ratios}
 \end{figure}
 
-\paragraph{Where the gain lies.} Figure~\ref{fig:ratios} is the central result. In every scenario the error of 4DVarNet
-is $3$--$5\times$ smaller in the \emph{unstable} subspace (baseline \ratio{Net}{Unst}{Base}; parameter error
-\ratio{Net}{Unst}{ParErr}; realistic \ratio{Net}{Unst}{Real}), with intervals far from 1, and the factor grows with
-realism. In the baseline, the advantage of 4DVar is confined to the most stable directions (residual
-\ratio{Net}{Res}{Base}; free-run $\B$ \ratio{Net}{Res}{Bfree}), i.e.\ to the directions that its exact dynamics damps
-for free. Under parameter error this advantage disappears and 4DVarNet becomes better in all subspaces (stable
-\ratio{Net}{Stab}{ParErr}, residual \ratio{Net}{Res}{ParErr}). The 4DVar error is aligned with the unstable manifold:
-it grows along the leading BLVs within each window (saw-tooth in time), as predicted for dynamically consistent
-estimators, whereas the learned smoother is not a model trajectory and does not let these directions grow.
+\paragraph{Where the gain lies.} Figure~\ref{fig:ratios} is the central result. In every scenario and both domains
+the error energy of 4DVarNet is $2.5$--$5\times$ smaller than that of the tuned 4DVar in the \emph{unstable}
+subspace (small domain: baseline \ratio{Net}{Unst}{Base}, unresolved signal \ratio{Net}{Unst}{ObsSig}, parameter
+error \ratio{Net}{Unst}{ParErr}, realistic \ratio{Net}{Unst}{Real}; full domain: baseline \ratio{Net}{Unst}{BaseFull},
+realistic \ratio{Net}{Unst}{RealFull}), with intervals far from 1; the factor grows with realism and with domain size.
+The 4DVar error is aligned with the unstable manifold: it grows along the leading BLVs within each window (saw-tooth
+in time), as predicted for dynamically consistent estimators, whereas the learned smoother is not a model trajectory
+and does not let these directions grow. The untuned 4DVar loses mostly in the same subspace
+(\ratiov{Var}{Unst}{Base}--\ratiov{Var}{Unst}{ParErr} relative to the tuned one), i.e.\ tuning narrows but does not
+close the gap.
 
-\paragraph{Observation-error statistics.} With an unresolved signal in the observations the actual observation error
-rises from \omt{Base} to \omt{ObsSig}\,cm while the nominal $\R$ keeps the instrumental noise; the Desroziers
-diagnostic recovers most of it without the truth (SWOT: 0.3$\to$1.0\,cm vs 1.4\,cm actual, the spatially correlated
-part being under-estimated). Correcting $\R$ improves 4DVar by \ratio{RD}{Tot}{ObsSig} in total error energy and gives
-it back the most stable directions and the deep layer, but 4DVarNet remains $\approx4\times$ better in the unstable
-subspace (\ratio{Net}{Unst}{ObsSig} vs \ratio{RD}{Unst}{ObsSig} relative to the nominal 4DVar). In the realistic
-scenario the corrected 4DVar remains behind 4DVarNet in all subspaces but the residual. The source of $\B$ (truth vs
+The advantage of 4DVar, where it exists, lies at the other end of the spectrum. In the small domain it is better in
+the residual, most stable directions (baseline \ratio{Net}{Res}{Base}, unresolved signal
+\ratio{Net}{Res}{ObsSig}, realistic \ratio{Net}{Res}{Real}), i.e.\ in the directions that its exact dynamics damps for
+free. Under parameter error alone this advantage disappears (stable \ratio{Net}{Stab}{ParErr}, residual
+\ratio{Net}{Res}{ParErr}), and in the full domain 4DVarNet is better in \emph{all} subspaces (stable resolved
+\ratio{Net}{Stab}{BaseFull}, residual \ratio{Net}{Res}{BaseFull} in the baseline; \ratio{Net}{Stab}{RealFull} and
+\ratio{Net}{Res}{RealFull} in the realistic scenario), so that its total error energy is about half that of the tuned
+4DVar (\ratio{Net}{Tot}{BaseFull}, \ratio{Net}{Tot}{RealFull}). The full domain differs from the small one by a
+shorter revisit time ($\lambda_1\tau_{\mathrm{obs}}\approx\lamtau{BaseFull}$ vs \lamtau{Base}) and by four times
+more eddies per training window; our experiments do not separate the two effects, but both favour the learned prior
+on the poorly observed, slowly varying directions.
+
+\begin{table}[t]\centering\small
+\caption{Robustness of 4DVarNet to the training seed: mean $\pm$ standard deviation over seeds of the SSH RMSE and of
+the error-energy ratios to \refmethod.}\label{tab:seeds}
+\input{tables/robustness.tex}
+\end{table}
+
+\paragraph{Robustness.} The seed-to-seed spread is small compared with the effects discussed
+(Table~\ref{tab:seeds}): a few percent on the unstable ratio (e.g.\ $5.02\pm0.14$ in the full baseline) and on the
+total, i.e.\ the conclusions are not an artefact of a lucky training run. The bootstrap intervals, which account for
+the temporal correlation of the errors over one Lyapunov time, are of the same order. The source of $\B$ (truth vs
 model free run) has no measurable effect in this homogeneous flow (\ratio{Net}{Tot}{Bfree} vs
 \ratio{Net}{Tot}{Base}).
 
-\paragraph{Hybrid.} Initialising a short (3-day) 4DVar with 4DVarNet and the Desroziers $\R$ yields the lowest total
-error energy (baseline \ratio{Hyb}{Tot}{Base}, realistic \ratio{Hyb}{Tot}{Real} vs \ratio{Net}{Tot}{Real} for
-4DVarNet): it keeps most of the unstable gain (\ratio{Hyb}{Unst}{Real}) while the dynamics cleans the most stable
-directions. Longer hybrid windows lose part of the unstable gain through the same within-window growth. On the
-observed SSH, however, 4DVarNet alone remains the most accurate (\ssh{Hyb}{Real} vs \ssh{Net}{Real}\,cm, realistic):
-the hybrid gain is on dynamical consistency and the deep layer, and the conclusion depends on the metric. Its cost is
-about a third of that of a 4DVar (Table~\ref{tab:cost}).
+\paragraph{Observation-error statistics.} With an unresolved signal in the observations the actual observation error
+rises from \omt{Base} to \omt{ObsSig}\,cm while the nominal $\R$ keeps the instrumental noise. The Desroziers
+diagnostic recovers most of it without the truth (SWOT: \getnum{rdswot@ObsSig}\,cm vs \getnum{roswot@ObsSig}\,cm
+actual), the spatially correlated part being under-estimated, and improves the untuned 4DVar by a factor
+\getnum{rv@RD@Tot@ObsSig@vsVar} in total error energy. It brings 4DVar to within a few percent of the tuned
+configuration (\ratio{RD}{Tot}{ObsSig}), and in the full baseline the tuning selects exactly the
+$\R_{\mathrm D}$ configuration. Even so, 4DVarNet remains \ratiov{Net}{Unst}{ObsSig}$\times$ better in the unstable
+subspace: a better $\R$ does not remove the within-window growth.
+
+\paragraph{Hybrid.} Initialising a short (3-day) 4DVar with 4DVarNet and $\R_{\mathrm D}$ trades part of the unstable
+gain (\ratio{Hyb}{Unst}{Base} vs \ratio{Net}{Unst}{Base} for 4DVarNet, small baseline) for the most stable directions
+(\ratio{Hyb}{Res}{Base} vs \ratio{Net}{Res}{Base}). In the small domain, where 4DVarNet is weak on the latter, this
+lowers the total error energy (baseline \ratio{Hyb}{Tot}{Base} vs \ratio{Net}{Tot}{Base}, realistic
+\ratio{Hyb}{Tot}{Real} vs \ratio{Net}{Tot}{Real}). In the full domain there is little left to gain on the stable side
+and the hybrid is on par with or behind 4DVarNet (baseline \ratio{Hyb}{Tot}{BaseFull} vs \ratio{Net}{Tot}{BaseFull},
+realistic \ratio{Hyb}{Tot}{RealFull} vs \ratio{Net}{Tot}{RealFull}). On the observed SSH 4DVarNet alone is always
+the most accurate (e.g.\ \ssh{Hyb}{RealFull} vs \ssh{Net}{RealFull}\,cm, full realistic). The hybrid costs about two
+thirds of a tuned 4DVar (Table~\ref{tab:cost}).
 
 \begin{table}[t]\centering\small
-\caption{Model integrations over a 90-day test period (+ 30-day spin-up), small configuration.}\label{tab:cost}
+\caption{Model integrations over a 90-day test period (+ 30-day spin-up), small domain. 4DVarNet needs none at
+inference (one forward pass of the network per window).}\label{tab:cost}
 \input{tables/cost.tex}
 \end{table}
-
-\paragraph{Robustness.} \input{tables/robustness.tex}
 
 % ===========================================================================
 \section{Discussion and conclusion}
@@ -316,21 +358,25 @@ The Lyapunov view turns the empirical superiority of 4DVarNet into a mechanism. 
 model trajectory; between observations its error grows along the unstable directions and, by the classical collapse
 results, is dominated by them, while the stable part is controlled for free by the dynamics. The learned
 space-time smoother is not constrained to be a trajectory and is trained to minimise the expected error under the
-actual sampling: it suppresses the growing directions $3$--$5\times$ better, but lacks the dynamical consistency that
-damps the most stable directions. Hence the advantage of 4DVar is narrow (most stable and unobserved directions) and
-conditional (near-perfect model, correct $\R$), which is precisely what the realism scenarios erode; and the two
-estimators are complementary, as the short-window hybrid shows.
+actual sampling: it suppresses the growing directions $2.5$--$5\times$ better than a tuned 4DVar, robustly across
+scenarios, training seeds and domain sizes. The dynamical consistency of 4DVar buys it an advantage only on the most
+stable directions, and only in the small domain (on the deep layer, only with a perfect model); it disappears in the
+larger domain, where 4DVarNet is better in every subspace and halves the total error energy. A short-window hybrid
+exploits this complementarity where it exists, in the small domain, but brings nothing at the larger scale. For
+practice, this suggests that the relevant question is not whether a learned scheme beats 4DVar on average, but whether
+the dynamics of the assimilation model is accurate enough on the stable directions to be worth enforcing.
 
-\emph{Limitations.} The testbed is periodic and quasi-geostrophic (no coasts, topography or internal tides); the
-results are obtained in a small box with one truth realisation per scenario (temporal bootstrap only), pending the
-full-size runs and training-seed replicates; the diagnostic uses the Lyapunov vectors of the assimilation model along
-the true trajectory. \emph{Perspectives}: penalising the learned reconstruction in the stable subspace (dynamical
+\emph{Limitations.} The testbed is periodic and quasi-geostrophic (no coasts, topography or internal tides); each
+scenario uses one truth realisation (temporal bootstrap only), the full domain covers two scenarios, and seed
+replicates are limited to three; the diagnostic uses the Lyapunov vectors of the assimilation model along the true
+trajectory. Separating the effects of revisit time and training-sample size on the stable directions requires
+dedicated experiments. \emph{Perspectives}: penalising the learned reconstruction in the stable subspace (dynamical
 consistency losses), hybrid schemes with a learned background-error covariance, and the same diagnostic on SWOT
 observing-system experiments.
 
 \paragraph{Code and reproducibility.} Model, observation simulator, 4DVarNet, 4DVar (nonlinear, incremental,
-weak-constraint, Desroziers), Lyapunov diagnostic, notebooks, Slurm scripts and the script generating all tables,
-figures and numbers of this paper: \code.
+weak-constraint, Desroziers, tuning), Lyapunov diagnostic, notebooks, Slurm scripts and the script generating all
+tables, figures and numbers of this paper: \code.
 
 \bibliographystyle{abbrvnat}
 \bibliography{refs}

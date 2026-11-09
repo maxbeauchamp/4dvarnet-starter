@@ -1,9 +1,11 @@
 % generated -- do not edit
-\begin{tabular}{lccc}\toprule scenario & seeds & SSH RMSE (cm) & unstable ratio \\ \midrule
-free-run $\mathbf{B}$ & 3 & 0.51$\pm$0.01 & -- \\
-baseline & 3 & 0.51$\pm$0.01 & 2.58$\pm$0.08 \\
-realistic & 3 & 0.92$\pm$0.01 & 4.02$\pm$0.03 \\
-\bottomrule\end{tabular}
-
-% full size baseline: {"4dvarnet": 5.148218069868269}
-% full size realistic: {"4dvarnet": 4.995400335597716}
+\begin{tabular}{llccccc}
+\toprule
+size & scenario & seeds & SSH RMSE (cm) & \multicolumn{3}{c}{ratio to \refmethod} \\
+\cmidrule(lr){5-7} & & & & unstable & residual & total \\
+\midrule
+small & baseline & 3 & 0.51$\pm$0.01 & 2.58$\pm$0.08 & 0.90$\pm$0.02 & 1.10$\pm$0.03 \\
+small & realistic & 3 & 0.92$\pm$0.01 & 4.02$\pm$0.03 & 0.86$\pm$0.02 & 1.45$\pm$0.03 \\
+full & baseline & 3 & 0.48$\pm$0.01 & 5.02$\pm$0.14 & 1.47$\pm$0.05 & 1.91$\pm$0.07 \\
+\bottomrule
+\end{tabular}
