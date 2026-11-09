@@ -20,10 +20,23 @@
    "cmd": "ln -sfn $ODY_DATA data && for d in logs_CT_CM_spde logs_CT_VarCM_spde_grad logs_CT_DynCM_spde logs_CT_VarDynCM_spde_grad logs_FM_spde logs_DynFM_spde; do [ -e consistency/Notebooks/Notebooks_GP/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_GP/$d consistency/Notebooks/Notebooks_GP/; done && du -sh consistency/Notebooks/Notebooks_GP/logs_* && python -c \"import xarray as xr; ds = xr.open_dataset('data/SPDE_diffusion_dataset_1.nc'); print(ds); [print(k, ds[k].attrs) for k in ds.data_vars]\""
   },
   {
+   "id": "gp_cmt_smoke",
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method CMT"
+  },
+  {
    "id": "gp_eval_old",
    "time": "24:00:00",
    "gate": "status == 'ok' and len([k for k in metrics if k.endswith('_calibration.csv')]) == 6",
    "cmd": "cd consistency/sbatch_submission && for m in FM DynFM CM VarCM DynCM VarDynCM; do python run_metrics.py --xp GP --method $m || exit 1; done && python make_latex_table.py --xp GP || true"
+  },
+  {
+   "id": "gp_cmt_train",
+   "time": "48:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method CMT && python run_metrics.py --xp GP --method CMT"
   }
  ]
 }

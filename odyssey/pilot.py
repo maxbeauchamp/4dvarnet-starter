@@ -105,7 +105,16 @@ def remote_repo():
     return r
 
 
+def git_pull():
+    """Fast-forward the working copy to origin/<branch> (new code and plan from Claude); never merges or overwrites."""
+    br = CFG.get("GIT_BRANCH", "consistency_models")
+    r = subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--ff-only", "origin", br], capture_output=True, text=True)
+    if r.returncode != 0:
+        log(f"git pull --ff-only failed (local changes?): {(r.stderr or '').strip()[:200]}")
+
+
 def sync_code():
+    git_pull()
     r = remote_repo()
     head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()

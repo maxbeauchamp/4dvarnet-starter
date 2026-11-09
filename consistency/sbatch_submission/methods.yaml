@@ -72,6 +72,19 @@ methods:
         log_dir: logs_CT_CM_ssh_gf
         status: existing
 
+  CMT:
+    # ICLR rebuttal: pairwise CM with ODE-teacher targets (consistency_models/teacher_targets.py, FM teacher),
+    # warm-started from the submitted CM checkpoint. GP only for now.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_CMT_spde.ipynb
+        log_dir: logs_CMT_spde
+        status: generated
+
   VarCM:
     generative: true
     n_samples_metrics: 20

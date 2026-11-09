@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -67,6 +68,8 @@ def main():
         "METRICS_CSV": str(metrics_csv),
     }
     params.update(method_cfg.get("params") or {})
+    if os.environ.get("MAX_EPOCHS_OVERRIDE"):          # smoke tests driven by odyssey/plan.json
+        params["MAX_EPOCHS"] = int(os.environ["MAX_EPOCHS_OVERRIDE"])
 
     print(f"\n{'='*88}\n[run_training] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
     print(f"[run_training] {args.method} / {args.xp} -> {notebook_out}", flush=True)
