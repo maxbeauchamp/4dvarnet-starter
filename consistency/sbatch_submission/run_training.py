@@ -62,7 +62,7 @@ def main():
 
     params = {
         "MAX_EPOCHS": cfg["max_epochs"],
-        "N_SAMPLES": 1,
+        "N_SAMPLES": 2,   # >= 2: the illustration cells index ensemble[1]
         "RESET_TRAINING": bool(args.reset),
         "CUDA_VISIBLE_DEVICES": args.cuda_device,
         "METRICS_CSV": str(metrics_csv),
