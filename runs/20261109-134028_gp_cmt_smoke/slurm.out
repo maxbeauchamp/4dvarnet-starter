@@ -1,0 +1,199 @@
+[job] 2026-11-09T13:40:32+01:00 host=sl-mee-br-206 job=70999 run_dir=runs/20261109-134028_gp_cmt_smoke args=--cmd cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method CMT
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING CMT / GP
+========================================================================================
+[run_training] CMT / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 3, 'N_SAMPLES': 1, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics_train.csv'}
+Unable to parse line 20 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Executing:   0%|          | 0/32 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/32 [00:05<02:50,  5.51s/cell]Executing:   9%|▉         | 3/32 [00:26<04:31,  9.35s/cell]Mon Nov  9 13:41:00 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:8B:00.0 Off |                    0 |
+| N/A   35C    P0             68W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  16%|█▌        | 5/32 [00:27<02:08,  4.75s/cell]Executing:  22%|██▏       | 7/32 [00:33<01:36,  3.86s/cell]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  28%|██▊       | 9/32 [00:37<01:14,  3.26s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+TrainingItem shapes — input (y): (5, 128, 128), tgt (x): (5, 128, 128)
+Executing:  31%|███▏      | 10/32 [00:38<00:59,  2.71s/cell]Executing:  44%|████▍     | 14/32 [00:44<00:36,  2.03s/cell][CMT] ODE-teacher targets from logs_FM_spde/best_model
+Valid checkpoint: logs_CT_CM_spde/checkpoints/last.ckpt
+[CMT] warm start from logs_CT_CM_spde/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=3
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.7 M    Non-trainable params
+98.6 M    Total params
+394.414   Total estimated model params size (MB)
+
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.7 M    Non-trainable params
+98.6 M    Total params
+394.414   Total estimated model params size (MB)
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+✅ Val batch loaded: tgt=torch.Size([1, 5, 128, 128])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[Epoch 0] num_timesteps=18
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+[Epoch 0] sigmas=tensor([0.0000, 0.0588, 0.1176, 0.1765, 0.2353, 0.2941, 0.3529, 0.4118, 0.4706,
+        0.5294, 0.5882, 0.6471, 0.7059, 0.7647, 0.8235, 0.8824, 0.9412, 1.0000],
+       device='cuda:0')
+[progress] epoch 1/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0266
+[Epoch 0]  Val RMSE (10 steps, EMA) = 0.8527
+[Epoch 1] num_timesteps=18
+[Epoch 1] sigmas=tensor([0.0000, 0.0588, 0.1176, 0.1765, 0.2353, 0.2941, 0.3529, 0.4118, 0.4706,
+        0.5294, 0.5882, 0.6471, 0.7059, 0.7647, 0.8235, 0.8824, 0.9412, 1.0000],
+       device='cuda:0')
+[progress] epoch 2/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0047 | val_rmse_ema=0.8527
+[Epoch 1]  Val RMSE (10 steps, EMA) = 0.8525
+[Epoch 2] num_timesteps=18
+[Epoch 2] sigmas=tensor([0.0000, 0.0588, 0.1176, 0.1765, 0.2353, 0.2941, 0.3529, 0.4118, 0.4706,
+        0.5294, 0.5882, 0.6471, 0.7059, 0.7647, 0.8235, 0.8824, 0.9412, 1.0000],
+       device='cuda:0')
+[progress] epoch 3/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0760 | val_rmse_ema=0.8525
+[Epoch 2]  Val RMSE (10 steps, EMA) = 0.8519
+`Trainer.fit` stopped: `max_epochs=3` reached.
+
+`Trainer.fit` stopped: `max_epochs=3` reached.
+EMA model saved to: logs_CMT_spde/best_model
+Executing:  56%|█████▋    | 18/32 [02:49<03:29, 14.93s/cell]✅ Model loaded from: logs_CMT_spde/best_model
+Executing:  62%|██████▎   | 20/32 [02:50<02:17, 11.43s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  69%|██████▉   | 22/32 [02:50<01:25,  8.54s/cell]  Sample 1/1 done
+✅ 1 ensemble members generated
+/tmp/ipykernel_4060776/2015497030.py:29: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /pytorch/aten/src/ATen/native/ReduceOps.cpp:1879.)
+  ens_std  = ensemble.std(dim=0)                       # (C, H, W)
+
+/tmp/ipykernel_4060776/2015497030.py:29: UserWarning: std(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /pytorch/aten/src/ATen/native/ReduceOps.cpp:1879.)
+  ens_std  = ensemble.std(dim=0)                       # (C, H, W)
+Executing:  75%|███████▌  | 24/32 [02:51<00:51,  6.41s/cell]Executing:  81%|████████▏ | 26/32 [02:52<00:28,  4.74s/cell]Executing:  81%|████████▏ | 26/32 [02:55<00:40,  6.74s/cell]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 101, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 88, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [16]":
+---------------------------------------------------------------------------
+IndexError                                Traceback (most recent call last)
+Cell In[16], line 19
+     15 oi_phys   = datamodule.oi[start_t: start_t + C].astype(np.float32)  # (C,H,W)
+     16 mean_phys = ens_mean.float().cpu().numpy() * s_norm + m_norm    # (C,H,W)
+     17 std_phys  = ens_std.float().cpu().numpy()  * s_norm             # (C,H,W)
+     18 mbr0_phys = ensemble[0].float().cpu().numpy() * s_norm + m_norm # (C,H,W)
+---> 19 mbr1_phys = ensemble[1].float().cpu().numpy() * s_norm + m_norm # (C,H,W)
+     20 
+     21 # Shared colorbar range for all field images
+     22 vmax_f = float(np.nanpercentile(np.abs(gt_phys), 99))
+
+IndexError: index 1 is out of bounds for dimension 0 with size 1
+
+[run_step] exit 1 in 176.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-134028_gp_cmt_smoke
+[job] 2026-11-09T13:43:29+01:00 exit=1

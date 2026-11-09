@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_cmt_smoke",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method CMT",
+  "commit": "4ff2073",
+  "host": "sl-mee-br-206",
+  "slurm_job": "70999",
+  "started": "2026-11-09T13:40:32",
+  "status": "exit 1",
+  "seconds": 176.5,
+  "finished": "2026-11-09T13:43:29"
+}
