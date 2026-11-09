@@ -22,3 +22,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-09 14:30 `gp_varcmt_smoke` done in 00:04:58, gate passed
 - 2026-11-09 14:31 submitted `gp_cmt_train` as job 71029 -> `runs/20261109-143059_gp_cmt_train`
 - 2026-11-09 20:32 `gp_cmt_train` done in 05:35:38, gate passed
+- 2026-11-09 20:32 submitted `gp_eval_stochvarcm` as job 71443 -> `runs/20261109-203239_gp_eval_stochvarcm`
+- 2026-11-09 20:44 approved `gp_varcmt_train`
+- 2026-11-09 20:45 `gp_eval_stochvarcm` ended FAILED after 00:00:38; retrying once
+- 2026-11-09 20:45 submitted `gp_eval_stochvarcm` as job 71473 -> `runs/20261109-204521_gp_eval_stochvarcm`

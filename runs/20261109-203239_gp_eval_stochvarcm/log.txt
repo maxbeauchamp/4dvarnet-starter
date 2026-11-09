@@ -1,0 +1,42 @@
+<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+[OK] UNet stoch=True, grad mode : mu torch.Size([2, 5, 100, 100])  alpha_raw torch.Size([2, 1])
+[OK] UNet stoch=True, obs  mode : mu torch.Size([2, 5, 100, 100])  alpha_raw torch.Size([2, 1])
+[CHECK] alpha at init: 1.0998  (expected ≈ 1.0 — linear profile)
+[CHECK] sigma(t=0.1) ≈ 0.7947  (linear ref: 1.0000)
+[CHECK] sigma(t=0.9) ≈ 8.9059  (linear ref: 9.0000)
+J_o = 100210.64
+J_b = 100234.40
+Phi(x) shape = torch.Size([2, 5, 100, 100])
+[OK] stoch=False  loss=1.6122  N=3
+  L_pair=0.0183  L_anc=1.0788  (L_long=1.0685  L_short=0.0103)  L_sigma=0.000000  L_ae=1.0303
+[OK] stoch=True   loss=7069.1909  N=3
+  L_pair=0.0182  L_anc=1.0831  (L_long=1.0727  L_short=0.0104)  L_sigma=7067.574707  L_ae=1.0303
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/rebuttal/eval_stochvarcm_gp.py", line 112, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/rebuttal/eval_stochvarcm_gp.py", line 64, in main
+    unet = ns["UNet"].from_pretrained(str(mp)).eval().to(device=device, dtype=dtype)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<cell 10>", line 200, in from_pretrained
+FileNotFoundError: [Errno 2] No such file or directory: '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_grad/best_model/config.json'
+[run_step] exit 1 in 36.4 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-203239_gp_eval_stochvarcm
