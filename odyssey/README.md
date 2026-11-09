@@ -1,6 +1,6 @@
 # ICLR 2027 rebuttal: running the experiments on Odyssey from the Mac
 
-Same pilot as in `physical-generator-matching`, adapted to this repository (branch `rebuttal-iclr`).
+Same pilot as in `physical-generator-matching`, adapted to this repository (branch `consistency_models`).
 
 ```
 Mac (SSH key for `mee`, GitHub)                                Odyssey (/Odyssey/private/m19beauc)
@@ -10,7 +10,7 @@ Mac (SSH key for `mee`, GitHub)                                Odyssey (/Odyssey
     ├─ squeue / sacct ◀─────────────────────────────────────────     runs/<run_id>/{run.json, metrics.json, log.txt}
     ├─ rsync runs/<run_id> + sbatch_submission/results (csv/tex/png/pdf) ◀──
     ├─ gate (plan.json) → submit the next step, or pause + macOS notification
-    └─ git commit + push to origin/rebuttal-iclr ─▶ Claude reads the results, updates the paper repo
+    └─ git commit + push to origin/consistency_models ─▶ Claude reads the results, updates the paper repo
 ```
 
 * **One `icl-*` job at a time, never a dependency chain** (shared cluster).
@@ -21,10 +21,8 @@ Mac (SSH key for `mee`, GitHub)                                Odyssey (/Odyssey
 ## First use (on the Mac)
 
 ```bash
-cd ~/Desktop/4dvarnet-starter-croscim            # your main clone
-git fetch origin rebuttal-iclr
-git worktree add ../4dvarnet-iclr rebuttal-iclr   # separate working copy for the rebuttal
-cd ../4dvarnet-iclr
+cd ~/Desktop/<worktree on consistency_models>    # your existing working copy of the branch
+git pull
 ssh -o BatchMode=yes mee hostname                 # must answer without asking anything (key already set up for PGM)
 python3 odyssey/pilot.py next                     # submits p0_env
 python3 odyssey/pilot.py tick                     # later: fetch, gate, push, submit the next step

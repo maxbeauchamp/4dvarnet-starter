@@ -196,7 +196,7 @@ def push():
         return
     msg = f"results: update ({time.strftime('%Y-%m-%d %H:%M')})"
     subprocess.run(["git", "-C", str(REPO), "commit", "-q", "-m", msg], check=True)
-    br = CFG.get("GIT_BRANCH", "rebuttal-iclr")
+    br = CFG.get("GIT_BRANCH", "consistency_models")
     subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--rebase", "origin", br], check=False)
     subprocess.run(["git", "-C", str(REPO), "push", "-q", "origin", f"HEAD:{br}"], check=False)
 
