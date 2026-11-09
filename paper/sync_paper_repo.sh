@@ -22,7 +22,10 @@ git -C "$PAPER_DIR" pull --ff-only
 case "${1:-}" in
   push)
     for f in "${GENERATED[@]}"; do
-        [ -e "$CODE/paper/$f" ] && rsync -a --delete "$CODE/paper/$f" "$PAPER_DIR/"
+        if [ -e "$CODE/paper/$f" ]; then
+            rm -rf "${PAPER_DIR:?}/$f"
+            cp -a "$CODE/paper/$f" "$PAPER_DIR/"
+        fi
     done
     git -C "$PAPER_DIR" add -A "${GENERATED[@]}"
     if git -C "$PAPER_DIR" diff --cached --quiet; then
@@ -34,9 +37,9 @@ case "${1:-}" in
     fi
     ;;
   pull)
-    excl=(--exclude=.git)
-    for f in "${GENERATED[@]}"; do excl+=(--exclude="/$f"); done
-    rsync -a "${excl[@]}" "$PAPER_DIR/" "$CODE/paper/"
+    excl=(--exclude=./.git)
+    for f in "${GENERATED[@]}"; do excl+=(--exclude="./$f"); done
+    tar -C "$PAPER_DIR" "${excl[@]}" -cf - . | tar -C "$CODE/paper" -xf -
     git -C "$CODE" status --short paper/
     echo "text copied into paper/: review, then commit and push the code branch"
     ;;
