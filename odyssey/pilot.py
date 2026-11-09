@@ -108,9 +108,10 @@ def remote_repo():
 def git_pull():
     """Fast-forward the working copy to origin/<branch> (new code and plan from Claude); never merges or overwrites."""
     br = CFG.get("GIT_BRANCH", "consistency_models")
-    r = subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--ff-only", "origin", br], capture_output=True, text=True)
+    r = subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--rebase", "--autostash", "origin", br],
+                       capture_output=True, text=True)
     if r.returncode != 0:
-        log(f"git pull --ff-only failed (local changes?): {(r.stderr or '').strip()[:200]}")
+        log(f"git pull failed: {(r.stderr or '').strip()[:200]}")
 
 
 def sync_code():
@@ -207,8 +208,13 @@ def push():
     msg = f"results: update ({time.strftime('%Y-%m-%d %H:%M')})"
     subprocess.run(["git", "-C", str(REPO), "commit", "-q", "-m", msg], check=True)
     br = CFG.get("GIT_BRANCH", "consistency_models")
-    subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--rebase", "origin", br], check=False)
-    subprocess.run(["git", "-C", str(REPO), "push", "-q", "origin", f"HEAD:{br}"], check=False)
+    r = subprocess.run(["git", "-C", str(REPO), "pull", "-q", "--rebase", "--autostash", "origin", br],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        log(f"git pull --rebase failed: {(r.stderr or '').strip()[:300]}")
+    r = subprocess.run(["git", "-C", str(REPO), "push", "-q", "origin", f"HEAD:{br}"], capture_output=True, text=True)
+    if r.returncode != 0:
+        attention(f"git push failed, results not on GitHub: {(r.stderr or '').strip()[:300]}")
 
 
 def advance(st, sid):
