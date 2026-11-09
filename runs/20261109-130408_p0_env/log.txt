@@ -1,0 +1,10 @@
+torch 2.12.1+cu126 cuda True NVIDIA A100-SXM4-80GB
+total 54712572
+drwx------ 2 m19beauc mee-perm         209 juil. 18 12:17 .
+drwx------ 5 m19beauc mee-perm         177 sept.  9 11:55 ..
+-rw------- 1 m19beauc mee-perm 13582444107 juin  18  2025 asip_database_daw15_sparse.nc
+-rw------- 1 m19beauc mee-perm 41351055360 juil. 18 13:23 deepchimere_export_256_2019.tar
+-rw------- 1 m19beauc mee-perm   934419608 oct.   7  2024 natl_gf_w_5nadirs_swot.nc
+-rw------- 1 m19beauc mee-perm    78862083 juil.  3 21:52 SPDE_diffusion_dataset_1.nc
+-rw------- 1 m19beauc mee-perm    78862083 juil.  3 21:52 SPDE_diffusion_dataset_2.nc
+[run_step] ok in 3.4 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-130408_p0_env

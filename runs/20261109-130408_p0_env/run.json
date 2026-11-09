@@ -1,0 +1,11 @@
+{
+  "plan_id": "p0_env",
+  "cmd": "python -c \"import torch, papermill, yaml, pandas; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')\" && ls -la $ODY_DATA",
+  "commit": "b954722",
+  "host": "sl-mee-br-206",
+  "slurm_job": "70977",
+  "started": "2026-11-09T13:04:15",
+  "status": "ok",
+  "seconds": 3.4,
+  "finished": "2026-11-09T13:04:18"
+}
