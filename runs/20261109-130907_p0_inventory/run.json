@@ -1,0 +1,11 @@
+{
+  "plan_id": "p0_inventory",
+  "cmd": "bash odyssey/inventory.sh > $RUN_DIR/inventory.txt; cat $RUN_DIR/inventory.txt",
+  "commit": "c9dbe90",
+  "host": "sl-mee-br-206",
+  "slurm_job": "70982",
+  "started": "2026-11-09T13:09:40",
+  "status": "ok",
+  "seconds": 20.1,
+  "finished": "2026-11-09T13:10:00"
+}

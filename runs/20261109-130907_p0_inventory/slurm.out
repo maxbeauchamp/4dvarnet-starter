@@ -1,0 +1,52 @@
+[job] 2026-11-09T13:09:39+01:00 host=sl-mee-br-206 job=70982 run_dir=runs/20261109-130907_p0_inventory args=--cmd bash odyssey/inventory.sh > $RUN_DIR/inventory.txt; cat $RUN_DIR/inventory.txt
+NVIDIA A100-SXM4-80GB, 81920 MiB
+== clones of 4dvarnet-starter under /Odyssey/private/m19beauc
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency
+/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency
+
+== consistency checkpoints (dir, number of .ckpt, newest .ckpt date)
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde  ckpt=4  newest: 2026-04-16 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_4dvarnet_unet_spde/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_CM_spde  ckpt=12  newest: 2026-08-21 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_CM_spde/checkpoints/last-v2.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_DynCM_spde  ckpt=8  newest: 2026-08-06 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_DynCM_spde/checkpoints/last-v1.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde_grad  ckpt=4  newest: 2026-06-10 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_grad  ckpt=4  newest: 2026-06-14 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_obs  ckpt=4  newest: 2026-06-16 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_obs/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarDynCM_spde_grad  ckpt=5  newest: 2026-06-16 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarDynCM_spde_grad/checkpoints/val_loss=0.37009-epoch=1778.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarDynCM_spde_obs  ckpt=12  newest: 2026-08-09 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_CT_VarDynCM_spde_obs/checkpoints/val_loss=0.85289-epoch=1972.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP  ckpt=24  newest: 2026-08-21 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_direct_unet_GP/checkpoints/last-v5.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_DynFM_spde  ckpt=8  newest: 2026-08-10 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_DynFM_spde/checkpoints/last-v1.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_FM_spde  ckpt=14  newest: 2026-08-09 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_GP/logs_FM_spde/checkpoints/last-v2.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic  ckpt=6  newest: 2026-08-03 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic_assim  ckpt=4  newest: 2026-08-05 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic_assim/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic_sr  ckpt=4  newest: 2026-08-04 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_CT_CM_sic_sr/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_FM_sic  ckpt=4  newest: 2026-08-01 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SIC/logs_FM_sic/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_4dvarnet_unet  ckpt=4  newest: 2026-07-25 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_4dvarnet_unet/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_CM_ssh_gf  ckpt=8  newest: 2026-07-31 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_CM_ssh_gf/checkpoints/last-v1.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_DynCM_ssh_gf  ckpt=4  newest: 2026-08-07 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_DynCM_ssh_gf/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_VarCM_ssh_gf_grad  ckpt=4  newest: 2026-08-03 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_VarCM_ssh_gf_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_VarDynCM_ssh_gf_grad  ckpt=4  newest: 2026-08-10 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_CT_VarDynCM_ssh_gf_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_direct_unet  ckpt=8  newest: 2026-07-23 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_direct_unet/checkpoints/last-v1.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_DynFM_ssh_gf  ckpt=4  newest: 2026-08-11 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_DynFM_ssh_gf/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf  ckpt=11  newest: 2026-08-10 /Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf/checkpoints/last-v2.ckpt
+
+== existing metrics CSVs
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/CM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/CM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/DynCM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/DynCM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/DynFM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/DynFM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/FM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/FM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/VarCM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/VarCM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/VarDynCM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/GP/VarDynCM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/4dvarnet_lstm_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/4dvarnet_lstm_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/CM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/CM_nfe_sweep.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/FM_metrics_nfe_placeholder.csv
+/Odyssey/private/m19beauc/4dvarnet-starter-devs/consistency/sbatch_submission/results/SSH_GF/FM_nfe_sweep.csv
+[run_step] ok in 20.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-130907_p0_inventory
+[job] 2026-11-09T13:10:00+01:00 exit=0
