@@ -1,0 +1,126 @@
+{
+ "GP/CM_metrics.csv": [
+  {
+   "Method": "CM (ens. mean, full test set)",
+   "RMSE": "0.2298 $\\pm$ 0.0171",
+   "lambda_x": "50.6 $\\pm$ 42.8",
+   "CRPS": "0.1094 $\\pm$ 0.0336"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/CM_metrics_calibration.csv": [
+  {
+   "method": "CM_spde",
+   "members": 20,
+   "spread": 0.021867433882506986,
+   "rmse": 0.23042769546304218,
+   "ssr": 0.09724287608815874,
+   "crps_all": 0.1672748379562755,
+   "rank_dev": 2.7437767125748005,
+   "ranks": "391951 13081 7787 6080 5073 4503 4176 3888 3641 3663 3452 3665 3749 3821 4120 4505 5049 6075 7787 13012 400922"
+  }
+ ],
+ "GP/DynCM_metrics.csv": [
+  {
+   "Method": "DynCM (ens. mean, full test set)",
+   "RMSE": "0.2262 $\\pm$ 0.0190",
+   "lambda_x": "52.0 $\\pm$ 49.7",
+   "CRPS": "0.0477 $\\pm$ 0.0283"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/DynCM_metrics_calibration.csv": [
+  {
+   "method": "DynCM_spde",
+   "members": 20,
+   "spread": 0.09621707451055656,
+   "rmse": 0.22697556348795636,
+   "ssr": 0.4343778731963162,
+   "crps_all": 0.14127788109875636,
+   "rank_dev": 1.5220083170129741,
+   "ranks": "248534 44563 30548 24943 21563 19537 18463 17531 16804 16382 16305 16086 16441 16980 17673 18612 20226 23144 28440 41115 226110"
+  }
+ ],
+ "GP/DynFM_metrics.csv": [
+  {
+   "Method": "DynFM (ens. mean, full test set)",
+   "RMSE": "0.2294 $\\pm$ 0.0058",
+   "lambda_x": "54.9 $\\pm$ 45.9",
+   "CRPS": "0.0296 $\\pm$ 0.0086"
+  }
+ ],
+ "GP/DynFM_metrics_calibration.csv": [
+  {
+   "method": "DynFM_spde",
+   "members": 20,
+   "spread": 0.22095302075044948,
+   "rmse": 0.22949232011351037,
+   "ssr": 0.9865666633637458,
+   "crps_all": 0.12652902432660912,
+   "rank_dev": 0.04802018496886954,
+   "ranks": "46721 40779 40190 40931 41583 41561 42332 42209 42645 43125 43097 43008 43047 42811 42754 42428 42641 41998 42242 44160 49738"
+  }
+ ],
+ "GP/FM_metrics.csv": [
+  {
+   "Method": "FM (ens. mean, full test set)",
+   "RMSE": "0.1976 $\\pm$ 0.0233",
+   "lambda_x": "25.2 $\\pm$ 27.1",
+   "CRPS": "0.0156 $\\pm$ 0.0019"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/FM_metrics_calibration.csv": [
+  {
+   "method": "FM_spde",
+   "members": 20,
+   "spread": 0.136257784140902,
+   "rmse": 0.19893352750845297,
+   "ssr": 0.7018559531204441,
+   "crps_all": 0.1106263285285162,
+   "rank_dev": 0.400748586431277,
+   "ranks": "91905 51315 41965 38583 36512 35326 34691 34578 34095 33803 33759 33778 34209 34322 34298 35463 36580 38456 42613 51519 92230"
+  }
+ ],
+ "GP/VarCM_metrics.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2295 $\\pm$ 0.0213",
+   "lambda_x": "32.1 $\\pm$ 31.5",
+   "CRPS": "0.0292 $\\pm$ 0.0071"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_metrics_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 20,
+   "spread": 0.011185216397787445,
+   "rmse": 0.2304830272345715,
+   "ssr": 0.04972789671756803,
+   "crps_all": 0.16962366063691897,
+   "rank_dev": 2.879372304135245,
+   "ranks": "367064 9450 5635 4322 3539 3206 2873 2694 2641 2528 2579 2565 2488 2766 2966 3327 3641 4329 5736 9581 456070"
+  }
+ ]
+}
