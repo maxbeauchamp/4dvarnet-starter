@@ -32,6 +32,13 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method VarCMT"
   },
   {
+   "id": "gp_cmt_train",
+   "time": "48:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method CMT && python run_metrics.py --xp GP --method CMT"
+  },
+  {
    "id": "gp_eval_stochvarcm",
    "time": "12:00:00",
    "gate": "status == 'ok' and len([k for k in metrics if k.startswith('GP/StochVarCM_')]) >= 3",
@@ -42,13 +49,6 @@
    "time": "24:00:00",
    "gate": "status == 'ok' and len([k for k in metrics if k.endswith('_calibration.csv')]) == 6",
    "cmd": "cd consistency/sbatch_submission && for m in FM DynFM CM VarCM DynCM VarDynCM; do python run_metrics.py --xp GP --method $m || exit 1; done && python make_latex_table.py --xp GP || true"
-  },
-  {
-   "id": "gp_cmt_train",
-   "time": "48:00:00",
-   "confirm": true,
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method CMT && python run_metrics.py --xp GP --method CMT"
   },
   {
    "id": "gp_varcmt_train",
