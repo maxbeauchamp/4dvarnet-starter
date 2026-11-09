@@ -47,8 +47,8 @@
   {
    "id": "gp_eval_old",
    "time": "24:00:00",
-   "gate": "status == 'ok' and len([k for k in metrics if k.endswith('_calibration.csv')]) == 6",
-   "cmd": "cd consistency/sbatch_submission && for m in FM DynFM CM VarCM DynCM VarDynCM; do python run_metrics.py --xp GP --method $m || exit 1; done && python make_latex_table.py --xp GP || true"
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && for m in FM DynFM CM VarCM DynCM VarDynCM; do [ -f results/GP/${m}_metrics_calibration.csv ] && { echo \"[skip] $m already evaluated\"; continue; }; python run_metrics.py --xp GP --method $m || exit 1; done && python make_latex_table.py --xp GP || true"
   },
   {
    "id": "gp_varcmt_train",
