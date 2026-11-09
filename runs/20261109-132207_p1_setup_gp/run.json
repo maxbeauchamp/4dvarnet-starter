@@ -1,0 +1,11 @@
+{
+  "plan_id": "p1_setup_gp",
+  "cmd": "ln -sfn $ODY_DATA data && for d in logs_CT_CM_spde logs_CT_VarCM_spde_grad logs_CT_DynCM_spde logs_CT_VarDynCM_spde_grad logs_FM_spde logs_DynFM_spde; do [ -e consistency/Notebooks/Notebooks_GP/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_GP/$d consistency/Notebooks/Notebooks_GP/; done && du -sh consistency/Notebooks/Notebooks_GP/logs_* && python -c \"import xarray as xr; ds = xr.open_dataset('data/SPDE_diffusion_dataset_1.nc'); print(ds); [print(k, ds[k].attrs) for k in ds.data_vars]\"",
+  "commit": "9827cb6-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "70989",
+  "started": "2026-11-09T13:22:12",
+  "status": "ok",
+  "seconds": 19.9,
+  "finished": "2026-11-09T13:22:32"
+}

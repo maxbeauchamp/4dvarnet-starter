@@ -1,0 +1,37 @@
+[job] 2026-11-09T13:22:12+01:00 host=sl-mee-br-206 job=70989 run_dir=runs/20261109-132207_p1_setup_gp args=--cmd ln -sfn $ODY_DATA data && for d in logs_CT_CM_spde logs_CT_VarCM_spde_grad logs_CT_DynCM_spde logs_CT_VarDynCM_spde_grad logs_FM_spde logs_DynFM_spde; do [ -e consistency/Notebooks/Notebooks_GP/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_GP/$d consistency/Notebooks/Notebooks_GP/; done && du -sh consistency/Notebooks/Notebooks_GP/logs_* && python -c "import xarray as xr; ds = xr.open_dataset('data/SPDE_diffusion_dataset_1.nc'); print(ds); [print(k, ds[k].attrs) for k in ds.data_vars]"
+NVIDIA A100-SXM4-80GB, 81920 MiB
+7,5G	consistency/Notebooks/Notebooks_GP/logs_CT_CM_spde
+5,1G	consistency/Notebooks/Notebooks_GP/logs_CT_DynCM_spde
+2,6G	consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_spde_grad
+2,5G	consistency/Notebooks/Notebooks_GP/logs_CT_VarDynCM_spde_grad
+4,0G	consistency/Notebooks/Notebooks_GP/logs_DynFM_spde
+6,9G	consistency/Notebooks/Notebooks_GP/logs_FM_spde
+<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+x {}
+y {}
+OI {}
+H11 {}
+H22 {}
+H12 {}
+Time {}
+longitude {}
+latitude {}
+[run_step] ok in 19.9 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-132207_p1_setup_gp
+[job] 2026-11-09T13:22:32+01:00 exit=0
