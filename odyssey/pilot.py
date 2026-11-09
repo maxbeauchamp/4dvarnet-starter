@@ -250,6 +250,11 @@ def tick(st):
     if st.get("paused"):
         print("pilot paused"); return
     nxt = st.get("next")
+    if not nxt:                       # steps may have been appended to plan.json since the plan last finished
+        done = {h["step"] for h in st.get("history", []) if str(h.get("state", "")).startswith("COMPLETED")}
+        nxt = next((i for i in IDS if i not in done), None)
+        if nxt:
+            st["next"] = nxt; save_state(st); log(f"new steps in plan.json; next is `{nxt}`")
     if not nxt:
         print("plan complete"); return
     if step(nxt).get("confirm") and nxt not in st["approved"]:
