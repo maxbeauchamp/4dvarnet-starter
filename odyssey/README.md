@@ -39,7 +39,7 @@ Commands: `status`, `next`, `submit <id>`, `tick`, `approve <id>`, `retry`, `pau
 | `config.env` (+ `config.local.env`, not committed) | Mac | SSH alias, remote paths, Slurm settings |
 | `plan.json` | Mac | ordered steps: shell command, time limit, gate, `confirm` |
 | `pilot.py` | Mac | sync, submit, poll, fetch, gate, push; state in `.pilot/state.json`, log in `RUNLOG.md` |
-| `job.sbatch` | Odyssey | one step on one H100 (conda env put on `PATH`, `BASH_ENV=` empty) |
+| `job.sbatch` | Odyssey | one step on one GPU (A100 by default) (conda env put on `PATH`, `BASH_ENV=` empty) |
 | `run_step.py` | Odyssey | runs the command, writes `run.json` and `metrics.json` (rows of the CSVs written during the step) |
 | `inventory.sh` | Odyssey | step `p0_inventory`: lists the existing checkpoints and metrics CSVs (read only) |
 

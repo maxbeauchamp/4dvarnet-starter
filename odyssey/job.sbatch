@@ -1,5 +1,5 @@
 #!/bin/bash
-# One step of the rebuttal plan, on one H100. Submitted by pilot.py, never chained:
+# One step of the rebuttal plan, on one GPU (gres from config.env). Submitted by pilot.py, never chained:
 #   sbatch --job-name icl-<id> --time ... --export=ALL,BASH_ENV=,... job.sbatch <run_dir> --cmd "<command>"
 #SBATCH --mem=64G
 #SBATCH --output=runs/slurm-%x-%j.out
