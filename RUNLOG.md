@@ -30,3 +30,4 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-09 22:03 submitted `gp_eval_old` as job 71527 -> `runs/20261109-220342_gp_eval_old`
 - 2026-11-09 23:04 `gp_eval_old` ended FAILED after 00:45:00; retrying once
 - 2026-11-09 23:04 submitted `gp_eval_old` as job 71583 -> `runs/20261109-230428_gp_eval_old`
+- 2026-11-10 00:05 `gp_eval_old` done in 00:53:20, gate passed
