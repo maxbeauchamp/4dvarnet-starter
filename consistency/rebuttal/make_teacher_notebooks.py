@@ -83,6 +83,46 @@ def build(spec):
     print(f"wrote {spec['dst'].relative_to(NB.parent)}")
 
 
+def build_varcmt():
+    """GP VarCM -> VarCMT: same training plus the tangent condition (lambda_tan), warm-started from VarCM."""
+    src = NB / "Notebooks_GP" / "Notebook_consistency_model_VarCM_spde.ipynb"
+    dst = NB / "Notebooks_GP" / "Notebook_consistency_model_VarCMT_spde.ipynb"
+    nb = json.load(open(src))
+    done = set()
+    for c in nb["cells"]:
+        if c["cell_type"] != "code":
+            continue
+        s = "".join(c["source"])
+        if s.lstrip().startswith("# --- parameters"):
+            s += ("WARM_START = True        # VarCMT: start from the submitted VarCM checkpoint\n"
+                  "LAMBDA_TAN = 1.0         # weight of the tangent condition (0 = submitted VarCM)\n")
+            done.add("params")
+        if "\nct = VarCMTraining(" in s:
+            s = sub(s, 'LOG_DIR     = f"logs_CT_VarCM_spde_{COND_MODE.replace(\'+\', \'_\')}"',
+                    'LOG_DIR     = "logs_VarCMT_spde_grad"', "LOG_DIR")
+            s = sub(s, "    conditioning_mode = COND_MODE,\n)",
+                    "    conditioning_mode = COND_MODE,\n    lambda_tan        = LAMBDA_TAN,\n)", "lambda_tan")
+            s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
+                    "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
+                    "if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
+                    "    _old = find_best_valid_checkpoint(os.path.join('logs_CT_VarCM_spde_grad', 'checkpoints'))\n"
+                    "    if _old is None:\n"
+                    "        raise RuntimeError('WARM_START=True but no submitted checkpoint in logs_CT_VarCM_spde_grad')\n"
+                    "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
+                    "    print(f'[VarCMT] warm start from {_old}', flush=True)", "warm start")
+            done.add("training")
+        if "write_calibration_csv(_calib_csv," in s:
+            s = s.replace("write_calibration_csv(_calib_csv, 'VarCM_spde'", "write_calibration_csv(_calib_csv, 'VarCMT_spde'")
+        c["source"] = s.splitlines(keepends=True)
+    if {"params", "training"} - done:
+        raise SystemExit(f"VarCMT: anchors not found for {({'params', 'training'} - done)}")
+    with open(dst, "w") as f:
+        json.dump(nb, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print(f"wrote {dst.relative_to(NB.parent)}")
+
+
 if __name__ == "__main__":
     for spec in SPECS:
         build(spec)
+    build_varcmt()

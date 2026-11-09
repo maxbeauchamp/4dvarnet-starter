@@ -104,6 +104,20 @@ methods:
         log_dir: logs_CT_VarCM_ssh_gf_grad
         status: generated
 
+  VarCMT:
+    # ICLR rebuttal: VarCM + tangent condition (lambda_tan, consistency_models_VarCM.py), warm-started from VarCM.
+    # Deterministic variational solver (VarCM-B). GP only for now.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      COND_MODE: grad
+      MAX_EPOCHS: 600
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarCMT_spde.ipynb
+        log_dir: logs_VarCMT_spde_grad
+        status: generated
+
   DynCM:
     generative: true
     n_samples_metrics: 20

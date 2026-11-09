@@ -383,6 +383,7 @@ class VarCMOutput:
     times:         Tensor   # full time grid (for logging)
     t_sampled:     Tensor   # t  (B,)
     t_p_sampled:   Tensor   # t' (B,)
+    l_tan:         Optional[Tensor] = None   # (rebuttal) tangent condition, 0 when lambda_tan = 0
 
 
 class VarCMTraining(nn.Module):
@@ -429,8 +430,12 @@ class VarCMTraining(nn.Module):
         schedule_power:     float = 1.0,
         conditioning_mode:  str   = "obs",
         pure_short:         bool  = True,
+        lambda_tan:         float = 0.0,   # ICLR rebuttal (XETn W2): tangent condition, 0 = submitted VarCM
+        tan_delta:          float = 0.02,  # solver-time step of the tangent finite difference
     ) -> None:
         super().__init__()
+        self.lambda_tan        = lambda_tan
+        self.tan_delta         = tan_delta
         self.initial_timesteps = initial_timesteps
         self.final_timesteps   = final_timesteps
         self.sigma_noise       = sigma_noise
@@ -566,16 +571,33 @@ class VarCMTraining(nn.Module):
         # L_anc = L_long + L_short  (anchoring terms combined)
         l_anc = l_long + l_short
 
+        # ── Term 6 (rebuttal, XETn W2): tangent condition ─────────────────────
+        # Pairwise composition + anchors admit maps that ignore J (e.g. linear interpolation towards
+        # E[x0 | .]). Requiring the short jump g(h_t, t, t-delta) - h_t to point along -grad J(h_t) makes
+        # g the flow map of the (normalised) gradient flow of J. Cosine form: scale-free, so the solver-time
+        # units need no calibration. Only meaningful when the network is conditioned on grad J.
+        l_tan = torch.zeros((), device=device)
+        if self.lambda_tan > 0:
+            if self.conditioning_mode != "grad":
+                raise ValueError("lambda_tan > 0 requires conditioning_mode='grad'")
+            t_d = (t_s - self.tan_delta).clamp(min=eps)
+            x_d, g_J = model_variational_forward_wrapper(
+                student, obs_cost, prior_cost, lambda_reg, h_t, y, t_s, t_d,
+                sigma_noise=self.sigma_noise, conditioning_mode=self.conditioning_mode)
+            step = (x_d - h_t).flatten(1).float()
+            l_tan = (1.0 - F.cosine_similarity(step, -g_J.flatten(1).float(), dim=1, eps=1e-8)).mean()
+
         loss = (self.lambda_pair * l_pair
               + self.lambda_anc  * l_anc
               + self.lambda_ae   * l_ae
-              + self.lambda_obs  * l_obs)
+              + self.lambda_obs  * l_obs
+              + self.lambda_tan  * l_tan)
 
         return VarCMOutput(
             loss=loss, l_pair=l_pair, l_anc=l_anc, l_ae=l_ae, l_obs=l_obs,
             l_long=l_long, l_short=l_short,
             num_timesteps=N, times=times,
-            t_sampled=t_s, t_p_sampled=t_p,
+            t_sampled=t_s, t_p_sampled=t_p, l_tan=l_tan,
         )
 
 
