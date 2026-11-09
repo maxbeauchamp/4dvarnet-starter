@@ -72,3 +72,13 @@ the new results, list what changed in the PDF with line references.
 | 16–17 Nov | SIC if possible; tables and figures | results into the paper; discussion |
 | 18 Nov | — | responses + AC note |
 | 19 Nov (morning) | — | page check, upload |
+
+## 7. Decisions and results log
+
+* 9 Nov — VarCM positioned as a deterministic (conditional-mean) variational solver, with the tangent condition
+  (VarCM-B, `VarCMT`). Uncertainty comes from the corrected CM / DynCM. Stochastic VarCM: existing checkpoints
+  evaluated (SSR 0.02–0.06, collapsed); stated as a limitation, Langevin anchor + energy-score composition as
+  future work (option B, only if time remains).
+* 9 Nov — GP, CMT (600 epochs, warm start from CM): RMSE 0.198 (CM 0.229, FM 0.198), CRPS on observed pixels
+  0.021 (CM 0.109, FM 0.016), SSR 0.82 (CM ≈ 0.11), CRPS all pixels 0.110. OI RMSE 0.225: not the exact posterior.
+* 9 Nov — DynCMT (DynFM teacher, no L2 data anchors) added for GP.
