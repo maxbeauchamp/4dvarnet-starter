@@ -27,11 +27,17 @@ nominal R); the final run replaces it and the reference becomes the tuned 4DVar 
 
 ## Overleaf
 
-- Simplest: upload `paper/` as a zip (New Project > Upload Project), main document `main.tex`.
-- Two-way link with this branch (Overleaf Git integration; may require a paid Overleaf plan): create the project,
-  copy its git URL (Menu > Git), then `OVERLEAF=<url> bash paper/sync_overleaf.sh push` to send `paper/`, and
-  `... pull` to bring Overleaf edits back into the branch. Overleaf's GitHub synchronisation links a whole
-  repository (default branch) to a project, so the subtree route is the one that keeps the paper next to the code
-  of this branch.
+The Overleaf project is linked (Overleaf GitHub synchronisation) to
+[maxbeauchamp/4dvarnet-qg2l-paper](https://github.com/maxbeauchamp/4dvarnet-qg2l-paper). `paper/` and that
+repository are kept in sync by `paper/sync_paper_repo.sh`, with fixed roles so that they never conflict:
+
+| files | written in | direction |
+|---|---|---|
+| `tables/`, `figures/`, `results/`, `scripts/`, `README.md` (generated / code-side) | this branch | `sync_paper_repo.sh push` -> paper repo -> Overleaf *Pull changes* |
+| `main.tex`, `refs.bib`, other text (writing) | Overleaf | Overleaf *Push to GitHub* -> `sync_paper_repo.sh pull` -> commit here |
+
+Typical cycle: sweep finished -> `make_paper_assets.py collect/render` (automatic in the Slurm job) -> commit ->
+`bash paper/sync_paper_repo.sh push` -> Overleaf: *Menu > GitHub > Pull changes*. After writing on Overleaf:
+*Push to GitHub* -> `bash paper/sync_paper_repo.sh pull` -> commit the code branch.
 
 Build locally: `cd paper && latexmk -pdf main.tex`.
