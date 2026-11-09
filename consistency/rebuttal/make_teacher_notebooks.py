@@ -122,7 +122,67 @@ def build_varcmt():
     print(f"wrote {dst.relative_to(NB.parent)}")
 
 
+def build_dyncmt():
+    """GP DynCM -> DynCMT: DynFM-teacher targets (TeacherDynamicalConsistencyTraining), no data anchors,
+    EMA 0.999, warm start from the submitted DynCM."""
+    src = NB / "Notebooks_GP" / "Notebook_consistency_model_DynCM_spde.ipynb"
+    dst = NB / "Notebooks_GP" / "Notebook_consistency_model_DynCMT_spde.ipynb"
+    nb = json.load(open(src))
+    done = set()
+    old_ct = """ct = ConsistencyTrainingDynamicalSystems(
+    sigma_min=0.002,
+    sigma_max=10.0,
+    rho=7.0,
+    initial_timesteps=5,
+    final_timesteps=50,
+)"""
+    for c in nb["cells"]:
+        if c["cell_type"] != "code":
+            continue
+        s = "".join(c["source"])
+        if s.lstrip().startswith("# --- parameters"):
+            s += ("WARM_START = True        # DynCMT: start from the submitted DynCM checkpoint\n"
+                  "P_LOCAL = 0.25\n"
+                  "N_GRID = 64             # fixed training grid (sampler grid is NSTEPS)\n")
+            done.add("params")
+        if "from consistency_models.utils import update_ema_model_" in s:
+            s = sub(s, "from consistency_models.utils import update_ema_model_",
+                    "from consistency_models.utils import update_ema_model_\n"
+                    "from consistency_models.teacher_targets import DynFMTeacher, TeacherDynamicalConsistencyTraining\n"
+                    "from flowmatching_models.flowmatching_models_FM import UNetFM", "imports")
+            done.add("imports")
+        if old_ct in s:
+            s = sub(s, 'LOG_DIR     = "logs_CT_DynCM_spde"', 'LOG_DIR     = "logs_DynCMT_spde"', "LOG_DIR")
+            s = sub(s, old_ct,
+                    "_dynfm = UNetFM.from_pretrained(os.path.join('logs_DynFM_spde', 'best_model')).cuda().eval()\n"
+                    "ct = TeacherDynamicalConsistencyTraining(\n"
+                    "    DynFMTeacher(_dynfm, spinup_boundary=0.7, sigma_min=0.002, sigma_max=10.0),\n"
+                    "    num_timesteps=N_GRID, p_local=P_LOCAL, sigma_min=0.002, sigma_max=10.0, rho=7.0)\n"
+                    "print('[DynCMT] DynFM-teacher targets from logs_DynFM_spde/best_model')", "ct")
+            s = sub(s, "        lambda_obs=0.1,\n    ),\n)",
+                    "        lambda_obs=0.0,              # DynCMT: no L2 data anchors (they pull towards the mean)\n"
+                    "        lambda_IC=0.0,\n"
+                    "        initial_ema_decay_rate=0.999,\n    ),\n)\n"
+                    "if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
+                    "    _old = find_resume_ckpt(os.path.join('logs_CT_DynCM_spde', 'checkpoints'))\n"
+                    "    if _old is None:\n"
+                    "        raise RuntimeError('WARM_START=True but no submitted checkpoint in logs_CT_DynCM_spde')\n"
+                    "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
+                    "    print(f'[DynCMT] warm start from {_old}', flush=True)", "lit config")
+            done.add("training")
+        if "write_calibration_csv(_calib_csv," in s:
+            s = s.replace("write_calibration_csv(_calib_csv, 'DynCM_spde'", "write_calibration_csv(_calib_csv, 'DynCMT_spde'")
+        c["source"] = s.splitlines(keepends=True)
+    if {"params", "imports", "training"} - done:
+        raise SystemExit(f"DynCMT: anchors not found for {({'params', 'imports', 'training'} - done)}")
+    with open(dst, "w") as f:
+        json.dump(nb, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print(f"wrote {dst.relative_to(NB.parent)}")
+
+
 if __name__ == "__main__":
     for spec in SPECS:
         build(spec)
     build_varcmt()
+    build_dyncmt()

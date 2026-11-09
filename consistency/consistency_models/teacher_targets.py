@@ -125,3 +125,109 @@ class TeacherPairwiseConsistencyTraining(ConsistencyTrainingFewSteps_TimeEmbeddi
         return ConsistencyTrainingOutputFewSteps(student, target.detach(), N, steps, diag=diag, noise=eps.detach(),
                                                  sigma_tgt=sigma_k.detach(), student_t1=t_n.detach(),
                                                  target_times=t_k.detach())
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# DynCM with a DynFM teacher
+# ════════════════════════════════════════════════════════════════════════════
+#
+# DynCM time t ∈ [0, 1] (1 = noise, 0 = last frame), spin-up for t > sb (= 1 - SF), physical for t <= sb.
+# DynFM time s ∈ [0, 1] (0 = noise, 1 = last frame), spin-up for s < SF.
+#   spin-up : DynCM state x = IC + sigma_sp(t) eps ; DynFM state z = (1 - tau) eps + tau IC, tau = s / SF.
+#             Exact correspondence: tau = 1 / (1 + sigma_sp(t)), z = tau x, s = SF * tau.
+#   physical: both are the linear interpolant between consecutive frames, s = 1 - t, z = x.
+# DynFM velocity: v = net(z, y, s) * c_out(s), c_out = 1/SF (spin-up), (C-1)/(1-SF) (physical).
+
+class DynFMTeacher:
+    """Probability-flow step of a trained DynFM network, expressed in DynCM's time and state."""
+
+    def __init__(self, dynfm_net: nn.Module, spinup_boundary: float = 0.7, sigma_min: float = 0.002,
+                 sigma_max: float = 10.0, rho: float = 7.0, n_sub: int = 2) -> None:
+        self.net = dynfm_net.eval()
+        for p in self.net.parameters():
+            p.requires_grad_(False)
+        self.sb, self.SF = spinup_boundary, 1.0 - spinup_boundary
+        self.sigma_min, self.sigma_max, self.rho, self.n_sub = sigma_min, sigma_max, rho, n_sub
+
+    def s_of_t(self, t: Tensor) -> Tensor:
+        from .consistency_models_DynCM import compute_sigma_spinup
+        sig = compute_sigma_spinup(t.float(), self.sigma_min, self.sigma_max, self.sb, self.rho)
+        return torch.where(t > self.sb, self.SF / (1.0 + sig), 1.0 - t.float())
+
+    def _velocity(self, z: Tensor, y: Tensor, s: Tensor, n_frames: int) -> Tensor:
+        c_out = torch.where(s < self.SF, torch.full_like(s, 1.0 / self.SF),
+                            torch.full_like(s, (n_frames - 1) / (1.0 - self.SF)))
+        mdtype = next(self.net.parameters()).dtype
+        v = self.net(z.to(mdtype), y.to(mdtype), s.to(mdtype)).float()
+        return v * pad_dims_like(c_out, z)
+
+    @torch.no_grad()
+    def step(self, x: Tensor, y: Tensor, t_from: Tensor, t_to: Tensor) -> Tensor:
+        """Heun integration of the DynFM ODE from DynCM time t_from to t_to (t_to < t_from), per sample."""
+        dtype, n_frames = x.dtype, y.shape[1]
+        s0, s1 = self.s_of_t(t_from), self.s_of_t(t_to)
+        tau0 = (s0 / self.SF).clamp(max=1.0)
+        z = torch.where(pad_dims_like(s0 < self.SF, x), pad_dims_like(tau0, x) * x.float(), x.float())
+        yf = y.float()
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            for i in range(self.n_sub):
+                sa = s0 + (s1 - s0) * (i / self.n_sub)
+                sb_ = s0 + (s1 - s0) * ((i + 1) / self.n_sub)
+                dt = pad_dims_like(sb_ - sa, z)
+                v0 = self._velocity(z, yf, sa, n_frames)
+                ze = z + dt * v0
+                v1 = self._velocity(ze, yf, sb_, n_frames)
+                z = z + dt * 0.5 * (v0 + v1)
+        tau1 = (s1 / self.SF).clamp(min=1e-6, max=1.0)
+        out = torch.where(pad_dims_like(s1 < self.SF, z), z / pad_dims_like(tau1, z), z)
+        return out.to(dtype)
+
+
+class TeacherDynamicalConsistencyTraining:
+    """Drop-in replacement of ConsistencyTrainingDynamicalSystems with DynFM-teacher targets.
+
+    Fixed uniform grid t_0 = 1 > t_1 > ... > t_{N-1} ~ 0 (the DynCM sampler's grid). For i ~ U{0..N-2},
+    k ~ U{i+1..N-1} (k = i+1 with probability p_local):
+        x_i     = regime input at t_i (spin-up: IC + sigma_sp eps; physical: frame interpolant)
+        xhat    = DynFM step t_i -> t_{i+1}
+        student = g(x_i; t_i -> t_k);   target = xhat if k = i+1 else g_ema(xhat; t_{i+1} -> t_k).
+    """
+
+    def __init__(self, teacher: DynFMTeacher, num_timesteps: int = 64, p_local: float = 0.25,
+                 sigma_min: float = 0.002, sigma_max: float = 10.0, rho: float = 7.0,
+                 spinup_boundary: float = 0.7) -> None:
+        self.teacher = teacher
+        self.sigma_min, self.sigma_max, self.rho = sigma_min, sigma_max, rho
+        self.spinup_boundary = spinup_boundary
+        self.initial_timesteps = self.final_timesteps = self.num_timesteps = num_timesteps
+        self.p_local = p_local
+
+    def __call__(self, student_model, teacher_model, x, y, current_training_step=0, total_training_steps=1,
+                 **kwargs):
+        from .consistency_models_DynCM import _make_regime_input, model_dynamical_systems_forward_wrapper
+        N, B, dev = self.num_timesteps, x.shape[0], x.device
+        sb = self.spinup_boundary
+        steps = torch.linspace(1.0, 1e-8, N, device=dev)
+        physical_steps = torch.linspace(0.0, sb, x.shape[1], device=dev)
+        phys_step_size = sb / max(x.shape[1] - 1, 1)
+        noise = torch.randn_like(x[:, [0], :, :])
+
+        i = torch.randint(0, N - 1, (B,), device=dev)
+        k = i + 1 + (torch.rand(B, device=dev) * (N - 1 - i)).long().clamp(max=N - 2 - i)
+        k = torch.where(torch.rand(B, device=dev) < self.p_local, i + 1, k)
+        t_i, t_m, t_k = steps[i], steps[i + 1], steps[k]
+
+        x_i = _make_regime_input(x, t_i, physical_steps, phys_step_size, sb, self.sigma_min, self.sigma_max, noise)
+        wrap = lambda m, xx, a, b: model_dynamical_systems_forward_wrapper(
+            m, xx, y, a, b, self.sigma_min, self.sigma_max, spinup_boundary=sb, **kwargs)
+
+        xhat = self.teacher.step(x_i, y, t_i, t_m)
+        student = wrap(student_model, x_i, t_i, t_k)
+        with torch.no_grad():
+            far = wrap(teacher_model, xhat, t_m, t_k)
+            is_local = pad_dims_like((k == i + 1).to(x.dtype), x_i)
+            target = is_local * xhat + (1 - is_local) * far
+        diag = dict(n_spinup=int((t_i > sb).sum()), n_phys=int((t_i <= sb).sum()),
+                    frac_local=float((k == i + 1).float().mean()), target_std=float(target.std()),
+                    input_std=float(x_i.std()))
+        return ConsistencyTrainingOutputFewSteps(student, target.detach(), N, steps, diag=diag)

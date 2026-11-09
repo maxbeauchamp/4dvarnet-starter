@@ -136,6 +136,19 @@ methods:
         log_dir: logs_CT_DynCM_ssh_gf
         status: generated
 
+  DynCMT:
+    # ICLR rebuttal: DynCM with DynFM-teacher targets (consistency_models/teacher_targets.py), no L2 data
+    # anchors, warm-started from the submitted DynCM. GP only for now.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_DynCMT_spde.ipynb
+        log_dir: logs_DynCMT_spde
+        status: generated
+
   VarDynCM:
     generative: true
     n_samples_metrics: 20
