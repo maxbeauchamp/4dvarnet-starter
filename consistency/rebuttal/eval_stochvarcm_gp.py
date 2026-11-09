@@ -58,20 +58,37 @@ def main():
     summary_rows = []
 
     for cond in a.cond:
-        mp = NB_DIR / f"logs_CT_VarCM_stoch_spde_{cond}" / "best_model"
-        if not mp.exists():
-            print(f"[skip] {mp} not found"); continue
-        unet = ns["UNet"].from_pretrained(str(mp)).eval().to(device=device, dtype=dtype)
-        costs = torch.load(mp / "costs.pt", map_location="cpu")
-        obs_cost = ns["BaseObsCost"](sigma_obs=1.0).to(device=device, dtype=dtype)
-        prior_cost = ns["BilinAEPriorCost"](dim_in=C).to(device=device, dtype=dtype)
-        obs_cost.load_state_dict(costs["obs_cost"]); prior_cost.load_state_dict(costs["prior_cost"])
+        log_dir = NB_DIR / f"logs_CT_VarCM_stoch_spde_{cond}"
+        mp = log_dir / "best_model"
+        obs_cost = ns["BaseObsCost"](sigma_obs=1.0)
+        prior_cost = ns["BilinAEPriorCost"](dim_in=C)
+        if (mp / "model.pt").exists() and (mp / "costs.pt").exists():
+            unet = ns["UNet"].from_pretrained(str(mp))
+            costs = torch.load(mp / "costs.pt", map_location="cpu")
+            obs_cost.load_state_dict(costs["obs_cost"]); prior_cost.load_state_dict(costs["prior_cost"])
+            src = str(mp)
+        else:
+            # best_model is only written at the end of trainer.fit; the June runs stopped before that,
+            # so take the EMA student and the costs from the last Lightning checkpoint instead.
+            ck = log_dir / "checkpoints" / "last.ckpt"
+            if not ck.exists():
+                print(f"[skip] no best_model nor {ck}"); continue
+            sd = torch.load(ck, map_location="cpu", weights_only=False)["state_dict"]
+            part = lambda pre: {k[len(pre):]: v for k, v in sd.items() if k.startswith(pre)}
+            unet = ns["UNet"](ns["UNetConfig"](channels=C, stoch=True))
+            unet.load_state_dict(part("ema_student_model."))
+            obs_cost.load_state_dict(part("obs_cost.")); prior_cost.load_state_dict(part("prior_cost."))
+            costs = dict(lambda_reg=sd["lambda_reg"], sigma_noise=10.0, schedule_power=1.0, conditioning_mode=cond)
+            src = f"{ck} (epoch {torch.load(ck, map_location='cpu', weights_only=False).get('epoch')})"
+        unet = unet.eval().to(device=device, dtype=dtype)
+        obs_cost = obs_cost.to(device=device, dtype=dtype)
+        prior_cost = prior_cost.to(device=device, dtype=dtype)
         obs_cost.eval(); prior_cost.eval()
         lam = nn.Parameter(costs["lambda_reg"].to(device=device, dtype=torch.float32))
         kw = dict(nsteps=a.nsteps, sigma_noise=costs.get("sigma_noise", 10.0),
                   schedule_power=costs.get("schedule_power", 1.0),
                   conditioning_mode=costs.get("conditioning_mode", cond))
-        print(f"[model] {mp}: {kw}", flush=True)
+        print(f"[model] {src}: {kw}", flush=True)
 
         for mode in ("ODE", "SDE"):
             ns["seed_everything"](42)
