@@ -35,3 +35,8 @@ consistency/cartopy/shapefiles/natural_earth/physical/10m_physical.zip
 consistency/cartopy/shapefiles/natural_earth/physical/ne_10m_rivers_north_america.dbf
 consistency/figs/data/ERA5_SST_2019.nc
 consistency/figs/data/GLO12_2019.nc
+
+# ICLR rebuttal pilot (Mac-side state, local overrides)
+.pilot/
+odyssey/config.local.env
+odyssey/COMMIT

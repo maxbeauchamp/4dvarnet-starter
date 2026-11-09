@@ -1,0 +1,10 @@
+{
+  "_doc": "Ordered plan driven by pilot.py, one Slurm job at a time. Each step runs `cmd` from the repository root on a GPU node ($ODY_REPO, $ODY_OLD, $ODY_DATA, $ODY_CONDA_ENV and $RUN_DIR are set; python is the conda env). 'gate' is a Python expression on status and on col('<xp>/<file>.csv', '<column>'), the mean of a column of a CSV written during the step under consistency/sbatch_submission/results/. A step with 'confirm': true waits for `pilot.py approve <id>`.",
+  "steps": [
+    {"id": "p0_env", "time": "00:20:00", "gate": "status == 'ok'",
+     "cmd": "python -c \"import torch, papermill, yaml, pandas; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')\" && ls -la $ODY_DATA"},
+
+    {"id": "p0_inventory", "time": "00:30:00", "gate": "status == 'ok'",
+     "cmd": "bash odyssey/inventory.sh > $RUN_DIR/inventory.txt; cat $RUN_DIR/inventory.txt"}
+  ]
+}
