@@ -1,0 +1,47 @@
+[job] 2026-11-09T20:45:25+01:00 host=sl-mee-br-206 job=71473 run_dir=runs/20261109-204521_gp_eval_stochvarcm args=--cmd for c in grad obs; do d=consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_$c; [ -e $d ] || cp -r $ODY_OLD/$d $d; done && python consistency/rebuttal/eval_stochvarcm_gp.py --cond grad obs --members 20 --nsteps 40
+NVIDIA A100-SXM4-80GB, 81920 MiB
+<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+[OK] UNet stoch=True, grad mode : mu torch.Size([2, 5, 100, 100])  alpha_raw torch.Size([2, 1])
+[OK] UNet stoch=True, obs  mode : mu torch.Size([2, 5, 100, 100])  alpha_raw torch.Size([2, 1])
+[CHECK] alpha at init: 1.0998  (expected ≈ 1.0 — linear profile)
+[CHECK] sigma(t=0.1) ≈ 0.7947  (linear ref: 1.0000)
+[CHECK] sigma(t=0.9) ≈ 8.9059  (linear ref: 9.0000)
+J_o = 99340.63
+J_b = 100773.59
+Phi(x) shape = torch.Size([2, 5, 100, 100])
+[OK] stoch=False  loss=1.5583  N=3
+  L_pair=0.0196  L_anc=1.0563  (L_long=1.0451  L_short=0.0112)  L_sigma=0.000000  L_ae=0.9647
+[OK] stoch=True   loss=7677.8823  N=3
+  L_pair=0.0202  L_anc=1.0587  (L_long=1.0474  L_short=0.0113)  L_sigma=7676.320801  L_ae=0.9647
+[model] /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_grad/checkpoints/last.ckpt (epoch 104): {'nsteps': 40, 'sigma_noise': 10.0, 'schedule_power': 1.0, 'conditioning_mode': 'grad'}
+[rank: 0] Global seed set to 42
+[StochVarCM_grad_ODE] method=StochVarCM_grad_ODE  windows=45  members=20  nsteps=40  rmse=0.2476  spread=0.005264  ssr=0.02179  crps_all=0.19  rank_dev=3.053  rmse_to_oi=0.1537  seconds=832.5
+[rank: 0] Global seed set to 42
+[StochVarCM_grad_SDE] method=StochVarCM_grad_SDE  windows=45  members=20  nsteps=40  rmse=0.248  spread=0.009424  ssr=0.03893  crps_all=0.1881  rank_dev=2.956  rmse_to_oi=0.1547  seconds=833.3
+[model] /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_obs/checkpoints/last.ckpt (epoch 1414): {'nsteps': 40, 'sigma_noise': 10.0, 'schedule_power': 1.0, 'conditioning_mode': 'obs'}
+[rank: 0] Global seed set to 42
+[StochVarCM_obs_ODE] method=StochVarCM_obs_ODE  windows=45  members=20  nsteps=40  rmse=0.2074  spread=0.00344  ssr=0.017  crps_all=0.1572  rank_dev=3.092  rmse_to_oi=0.1287  seconds=768.4
+[rank: 0] Global seed set to 42
+[StochVarCM_obs_SDE] method=StochVarCM_obs_SDE  windows=45  members=20  nsteps=40  rmse=0.2075  spread=0.01213  ssr=0.05991  crps_all=0.1529  rank_dev=2.837  rmse_to_oi=0.1291  seconds=777.8
+[run_step] ok in 3239.3 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261109-204521_gp_eval_stochvarcm
+[job] 2026-11-09T21:39:24+01:00 exit=0

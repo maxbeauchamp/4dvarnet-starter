@@ -1,0 +1,104 @@
+{
+ "GP/StochVarCM_grad_ODE_metrics_calibration.csv": [
+  {
+   "method": "StochVarCM_grad_ODE",
+   "members": 20,
+   "spread": 0.005264202017283366,
+   "rmse": 0.24757700389680604,
+   "ssr": 0.021787976283795616,
+   "crps_all": 0.1899648159922653,
+   "rank_dev": 3.053021175866074,
+   "ranks": "404297 3738 2184 1566 1464 1169 1109 1064 941 968 931 1055 1029 1078 1101 1218 1307 1632 2185 3639 466325"
+  }
+ ],
+ "GP/StochVarCM_grad_SDE_metrics_calibration.csv": [
+  {
+   "method": "StochVarCM_grad_SDE",
+   "members": 20,
+   "spread": 0.00942415186714165,
+   "rmse": 0.24802621176494355,
+   "ssr": 0.03893492526711079,
+   "crps_all": 0.18813799274085985,
+   "rank_dev": 2.9556243794067156,
+   "ranks": "390543 6706 4056 3082 2605 2247 1999 1911 1780 1763 1797 1798 1894 1944 2024 2185 2542 3053 4121 7256 454694"
+  }
+ ],
+ "GP/StochVarCM_metrics_summary.csv": [
+  {
+   "method": "StochVarCM_grad_ODE",
+   "windows": 45,
+   "members": 20,
+   "nsteps": 40,
+   "rmse": 0.24757700389680604,
+   "spread": 0.005264202017283366,
+   "ssr": 0.021787976283795616,
+   "crps_all": 0.1899648159922653,
+   "rank_dev": 3.053021175866074,
+   "rmse_to_oi": 0.15371320446332296,
+   "seconds": 832.5
+  },
+  {
+   "method": "StochVarCM_grad_SDE",
+   "windows": 45,
+   "members": 20,
+   "nsteps": 40,
+   "rmse": 0.24802621176494355,
+   "spread": 0.00942415186714165,
+   "ssr": 0.03893492526711079,
+   "crps_all": 0.18813799274085985,
+   "rank_dev": 2.9556243794067156,
+   "rmse_to_oi": 0.15467247161600325,
+   "seconds": 833.3
+  },
+  {
+   "method": "StochVarCM_obs_ODE",
+   "windows": 45,
+   "members": 20,
+   "nsteps": 40,
+   "rmse": 0.20737227005877656,
+   "spread": 0.0034404003928170616,
+   "ssr": 0.017000157943196738,
+   "crps_all": 0.15719515684424235,
+   "rank_dev": 3.0918670967371087,
+   "rmse_to_oi": 0.12869605051146613,
+   "seconds": 768.4
+  },
+  {
+   "method": "StochVarCM_obs_SDE",
+   "windows": 45,
+   "members": 20,
+   "nsteps": 40,
+   "rmse": 0.20753783374791926,
+   "spread": 0.012134398579196407,
+   "ssr": 0.05991224952583005,
+   "crps_all": 0.15288184099666532,
+   "rank_dev": 2.8373603895214923,
+   "rmse_to_oi": 0.12909012248118718,
+   "seconds": 777.8
+  }
+ ],
+ "GP/StochVarCM_obs_ODE_metrics_calibration.csv": [
+  {
+   "method": "StochVarCM_obs_ODE",
+   "members": 20,
+   "spread": 0.0034404003928170616,
+   "rmse": 0.20737227005877656,
+   "ssr": 0.017000157943196738,
+   "crps_all": 0.15719515684424235,
+   "rank_dev": 3.0918670967371087,
+   "ranks": "486459 2954 1750 1391 1123 979 887 834 765 737 746 732 683 764 849 905 975 1213 1518 2499 391237"
+  }
+ ],
+ "GP/StochVarCM_obs_SDE_metrics_calibration.csv": [
+  {
+   "method": "StochVarCM_obs_SDE",
+   "members": 20,
+   "spread": 0.012134398579196407,
+   "rmse": 0.20753783374791926,
+   "ssr": 0.05991224952583005,
+   "crps_all": 0.15288184099666532,
+   "rank_dev": 2.8373603895214923,
+   "ranks": "453948 11229 6743 5010 4299 3751 3548 3205 3051 2954 2900 2987 2989 3161 3338 3666 4107 4854 6446 10438 357376"
+  }
+ ]
+}

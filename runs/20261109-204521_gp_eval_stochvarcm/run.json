@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_eval_stochvarcm",
+  "cmd": "for c in grad obs; do d=consistency/Notebooks/Notebooks_GP/logs_CT_VarCM_stoch_spde_$c; [ -e $d ] || cp -r $ODY_OLD/$d $d; done && python consistency/rebuttal/eval_stochvarcm_gp.py --cond grad obs --members 20 --nsteps 40",
+  "commit": "ab144f3-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "71473",
+  "started": "2026-11-09T20:45:25",
+  "status": "ok",
+  "seconds": 3239.3,
+  "finished": "2026-11-09T21:39:24"
+}
