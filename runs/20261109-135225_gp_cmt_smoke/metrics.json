@@ -1,0 +1,28 @@
+{
+ "GP/CMT_metrics_train.csv": [
+  {
+   "Method": "CMT (ens. mean, full test set)",
+   "RMSE": "0.2299 $\\pm$ 0.0173",
+   "lambda_x": "51.4 $\\pm$ 43.8",
+   "CRPS": "0.1094 $\\pm$ 0.0334"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/CMT_metrics_train_calibration.csv": [
+  {
+   "method": "CMT_spde",
+   "members": 2,
+   "spread": 0.02163033668723948,
+   "rmse": 0.2305782918025261,
+   "ssr": 0.11489218571737056,
+   "crps_all": 0.17167821093642943,
+   "rank_dev": 0.7723606727070224,
+   "ranks": "429246 32497 438257"
+  }
+ ]
+}
