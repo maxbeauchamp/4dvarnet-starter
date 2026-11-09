@@ -35,6 +35,8 @@ Tests (numpy core always; torch / Lightning tests when available):
 cd contrib/qg2l/tests && python -m pytest -q
 ```
 
+Paper (LaTeX, conference format) generated from the results of this code: [`paper/`](paper/README.md).
+
 ## Files
 
 | file | content |

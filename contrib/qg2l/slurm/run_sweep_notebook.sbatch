@@ -50,6 +50,19 @@ fi
 rm -f "$tmp"
 
 echo "[sweep] notebook execution finished with status $status at $(date)"
+
+# refresh the paper assets (tables, figures, in-text numbers) from the cached results
+for size in small full; do
+    [ -d "data/qg2l_scenarios_$size/scenarios" ] && \
+        python paper/scripts/make_paper_assets.py collect --root "data/qg2l_scenarios_$size" \
+            --out "paper/results/results_$size.json" || true
+done
+if [ -f paper/results/results_full.json ]; then
+    python paper/scripts/make_paper_assets.py render --results paper/results/results_small.json \
+        --full paper/results/results_full.json || true
+else
+    python paper/scripts/make_paper_assets.py render --results paper/results/results_small.json || true
+fi
 python -m contrib.qg2l.pipeline data/qg2l_scenarios_small || true
 python -m contrib.qg2l.pipeline data/qg2l_scenarios_full || true
 
