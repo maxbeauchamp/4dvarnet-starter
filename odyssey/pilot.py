@@ -164,6 +164,7 @@ def fetch(run_dir):
     # small result files written by the sbatch_submission scripts (CSV, LaTeX, figures; no notebooks)
     res = "consistency/sbatch_submission/results/"
     (REPO / res).mkdir(parents=True, exist_ok=True)
+    ssh(f"mkdir -p {shlex.quote(remote_repo() + '/' + res)}")          # may not exist before the first training step
     rsync(f"{CFG['ODY_HOST']}:{remote_repo()}/{res}", f"{REPO / res}",
           ["--include", "*/", "--include", "*.csv", "--include", "*.tex", "--include", "*.json",
            "--include", "*.png", "--include", "*.pdf", "--exclude", "*"])
