@@ -17,3 +17,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-09 13:52 `gp_cmt_smoke` ended FAILED after 00:02:58; retrying once
 - 2026-11-09 13:52 submitted `gp_cmt_smoke` as job 71008 -> `runs/20261109-135225_gp_cmt_smoke`
 - 2026-11-09 14:00 `gp_cmt_smoke` done in 00:01:03, gate passed
+- 2026-11-09 14:00 `gp_cmt_smoke` done in 00:01:03, gate passed
+- 2026-11-09 14:00 submitted `gp_varcmt_smoke` as job 71010 -> `runs/20261109-140037_gp_varcmt_smoke`
+- 2026-11-09 14:30 `gp_varcmt_smoke` done in 00:04:58, gate passed
