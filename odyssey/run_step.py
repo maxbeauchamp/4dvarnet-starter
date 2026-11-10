@@ -48,7 +48,7 @@ def main():
     (run_dir / "run.json").write_text(json.dumps(meta, indent=2))
     t0 = time.time()
     env = dict(os.environ, RUN_DIR=str(run_dir))
-    rc = subprocess.run(a.cmd, shell=True, cwd=REPO, env=env).returncode
+    rc = subprocess.run(a.cmd, shell=True, executable="/bin/bash", cwd=REPO, env=env).returncode   # bash, not dash
     (run_dir / "metrics.json").write_text(json.dumps(harvest(t0 - 1), indent=1))
     meta.update(status="ok" if rc == 0 else f"exit {rc}", seconds=round(time.time() - t0, 1),
                 finished=time.strftime("%Y-%m-%dT%H:%M:%S"))
