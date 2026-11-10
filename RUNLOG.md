@@ -39,3 +39,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 11:16 approved `gp_varcm_train`
 - 2026-11-10 11:16 approved `gp_vardyncm_train`
 - 2026-11-10 11:36 `ssh_setup` done in 00:00:05, gate passed
+- 2026-11-10 11:36 submitted `ssh_cmt_smoke` as job 72424 -> `runs/20261110-113638_ssh_cmt_smoke`
+- 2026-11-10 11:38 `ssh_cmt_smoke` ended FAILED after 00:00:25; retrying once
+- 2026-11-10 11:38 submitted `ssh_cmt_smoke` as job 72429 -> `runs/20261110-113825_ssh_cmt_smoke`

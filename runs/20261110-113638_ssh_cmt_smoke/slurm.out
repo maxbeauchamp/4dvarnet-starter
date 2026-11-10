@@ -1,0 +1,60 @@
+[job] 2026-11-10T11:36:46+01:00 host=sl-mee-br-207 job=72424 run_dir=runs/20261110-113638_ssh_cmt_smoke args=--cmd cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING CMT / SSH_GF
+========================================================================================
+[run_training] CMT / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 3, 'N_SAMPLES': 2, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_metrics_train.csv'}
+Unable to parse line 20 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Executing:   0%|          | 0/31 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/31 [00:02<01:05,  2.18s/cell]Executing:  10%|▉         | 3/31 [00:16<02:41,  5.76s/cell]Tue Nov 10 11:37:05 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:CB:00.0 Off |                    0 |
+| N/A   38C    P0             90W /  400W |    1774MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          336507      C   ...s/4dvarnet-starter/bin/python        596MiB |
+|    0   N/A  N/A         1967956      C   ...s/4dvarnet-starter/bin/python        566MiB |
+|    0   N/A  N/A         2228228      C   ...s/4dvarnet-starter/bin/python        592MiB |
++-----------------------------------------------------------------------------------------+
+Executing:  16%|█▌        | 5/31 [00:16<01:15,  2.92s/cell]Executing:  23%|██▎       | 7/31 [00:19<00:53,  2.21s/cell]Executing:  23%|██▎       | 7/31 [00:20<01:09,  2.88s/cell]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 101, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 88, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [6]":
+---------------------------------------------------------------------------
+ImportError                               Traceback (most recent call last)
+Cell In[6], line 41
+     37     ema_decay_rate_schedule,
+     38 )
+     39 from consistency_models.utils import update_ema_model_
+     40 from consistency_models.teacher_targets import FMTeacherVE, TeacherPairwiseConsistencyTraining
+---> 41 from flowmatching_models.flowmatching_models_FM import UNetFM, pseudo_huber_loss
+     42 
+     43 try:
+     44     from properscoring import crps_ensemble
+
+ImportError: cannot import name 'pseudo_huber_loss' from 'flowmatching_models.flowmatching_models_FM' (/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SSH_GF/../../flowmatching_models/flowmatching_models_FM.py)
+
+[run_step] exit 1 in 22.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-113638_ssh_cmt_smoke
+[job] 2026-11-10T11:37:09+01:00 exit=1
