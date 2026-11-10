@@ -1,0 +1,2 @@
+/bin/sh: 1: Bad substitution
+[run_step] exit 2 in 0.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-114834_gp_rename_v1

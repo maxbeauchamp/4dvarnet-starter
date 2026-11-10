@@ -43,3 +43,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 11:38 `ssh_cmt_smoke` ended FAILED after 00:00:25; retrying once
 - 2026-11-10 11:38 submitted `ssh_cmt_smoke` as job 72429 -> `runs/20261110-113825_ssh_cmt_smoke`
 - 2026-11-10 11:45 **ATTENTION** `ssh_cmt_smoke` ended FAILED after 00:00:14; see `runs/20261110-113825_ssh_cmt_smoke`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
+- 2026-11-10 11:48 pilot resumed
+- 2026-11-10 11:48 plan.json changed; next is `gp_rename_v1`
+- 2026-11-10 11:48 submitted `gp_rename_v1` as job 72445 -> `runs/20261110-114834_gp_rename_v1`
+- 2026-11-10 12:08 **ATTENTION** `gp_rename_v1` ended FAILED after 00:00:02; see `runs/20261110-114834_gp_rename_v1`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).

@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_rename_v1",
+  "cmd": "cd consistency/sbatch_submission/results/GP && for n in VarCM VarDynCM; do for f in ${n}_metrics*.csv; do [ -e \"$f\" ] && mv \"$f\" \"${f/${n}_metrics/${n}_v1_metrics}\"; done; done; ls",
+  "commit": "e419aac-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "72445",
+  "started": "2026-11-10T11:48:38",
+  "status": "exit 2",
+  "seconds": 0.0,
+  "finished": "2026-11-10T11:48:39"
+}

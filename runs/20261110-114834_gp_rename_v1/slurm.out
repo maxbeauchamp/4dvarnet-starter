@@ -1,0 +1,5 @@
+[job] 2026-11-10T11:48:38+01:00 host=sl-mee-br-206 job=72445 run_dir=runs/20261110-114834_gp_rename_v1 args=--cmd cd consistency/sbatch_submission/results/GP && for n in VarCM VarDynCM; do for f in ${n}_metrics*.csv; do [ -e "$f" ] && mv "$f" "${f/${n}_metrics/${n}_v1_metrics}"; done; done; ls
+NVIDIA A100-SXM4-80GB, 81920 MiB
+/bin/sh: 1: Bad substitution
+[run_step] exit 2 in 0.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-114834_gp_rename_v1
+[job] 2026-11-10T11:48:39+01:00 exit=2
