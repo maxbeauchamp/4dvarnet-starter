@@ -1,0 +1,43 @@
+[job] 2026-11-10T14:18:43+01:00 host=sl-mee-br-207 job=72546 run_dir=runs/20261110-141838_gp_rename_v1 args=--cmd cd consistency/sbatch_submission/results/GP && for n in VarCM VarDynCM; do for f in ${n}_metrics*.csv; do [ -e "$f" ] && mv "$f" "${f/${n}_metrics/${n}_v1_metrics}"; done; done; ls
+NVIDIA A100-SXM4-80GB, 81920 MiB
+CM_metrics_calibration.csv
+CM_metrics.csv
+CM_metrics.ipynb
+CMT_metrics_calibration.csv
+CMT_metrics.csv
+CMT_metrics.ipynb
+CMT_metrics_train_calibration.csv
+CMT_metrics_train.csv
+CMT_train.ipynb
+comparison_table.tex
+DynCM_metrics_calibration.csv
+DynCM_metrics.csv
+DynCM_metrics.ipynb
+DynCMT_metrics_train_calibration.csv
+DynCMT_metrics_train.csv
+DynCMT_train.ipynb
+DynFM_metrics_calibration.csv
+DynFM_metrics.csv
+DynFM_metrics.ipynb
+FM_metrics_calibration.csv
+FM_metrics.csv
+FM_metrics.ipynb
+StochVarCM_grad_ODE_metrics_calibration.csv
+StochVarCM_grad_SDE_metrics_calibration.csv
+StochVarCM_metrics_summary.csv
+StochVarCM_obs_ODE_metrics_calibration.csv
+StochVarCM_obs_SDE_metrics_calibration.csv
+VarCM_metrics.ipynb
+VarCMT_metrics_calibration.csv
+VarCMT_metrics.csv
+VarCMT_metrics.ipynb
+VarCMT_metrics_train_calibration.csv
+VarCMT_metrics_train.csv
+VarCMT_train.ipynb
+VarCM_v1_metrics_calibration.csv
+VarCM_v1_metrics.csv
+VarDynCM_metrics.ipynb
+VarDynCM_v1_metrics_calibration.csv
+VarDynCM_v1_metrics.csv
+[run_step] ok in 0.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-141838_gp_rename_v1
+[job] 2026-11-10T14:18:45+01:00 exit=0
