@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_dyncmt_smoke",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method DynCMT",
+  "commit": "911a3f1",
+  "host": "sl-mee-br-207",
+  "slurm_job": "72302",
+  "started": "2026-11-10T10:51:09",
+  "status": "ok",
+  "seconds": 389.1,
+  "finished": "2026-11-10T10:57:38"
+}

@@ -1,0 +1,28 @@
+{
+ "GP/DynCMT_metrics_train.csv": [
+  {
+   "Method": "DynCM (ens. mean, full test set)",
+   "RMSE": "0.2352 $\\pm$ 0.0208",
+   "lambda_x": "56.1 $\\pm$ 54.9",
+   "CRPS": "0.0539 $\\pm$ 0.0317"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/DynCMT_metrics_train_calibration.csv": [
+  {
+   "method": "DynCMT_spde",
+   "members": 2,
+   "spread": 0.09638896655073464,
+   "rmse": 0.23612578778292914,
+   "ssr": 0.4999534085208558,
+   "crps_all": 0.16185392426707318,
+   "rank_dev": 0.47311249786211873,
+   "ranks": "397042 137101 365857"
+  }
+ ]
+}
