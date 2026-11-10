@@ -42,3 +42,4 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 11:36 submitted `ssh_cmt_smoke` as job 72424 -> `runs/20261110-113638_ssh_cmt_smoke`
 - 2026-11-10 11:38 `ssh_cmt_smoke` ended FAILED after 00:00:25; retrying once
 - 2026-11-10 11:38 submitted `ssh_cmt_smoke` as job 72429 -> `runs/20261110-113825_ssh_cmt_smoke`
+- 2026-11-10 11:45 **ATTENTION** `ssh_cmt_smoke` ended FAILED after 00:00:14; see `runs/20261110-113825_ssh_cmt_smoke`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
