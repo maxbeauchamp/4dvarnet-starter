@@ -346,6 +346,7 @@ def main():
         st["approved"].append(args[0]); st.pop("waiting", None); save_state(st); log(f"approved `{args[0]}`")
     elif cmd == "retry":                     # resubmit the failed step and resume the plan after it
         st["paused"] = False; st["retries"] = 0; save_state(st)
+        (REPO / "results" / "ATTENTION.md").unlink(missing_ok=True)
         submit(st.get("step") or st["next"], st)
     elif cmd == "watch":
         try:
@@ -356,6 +357,7 @@ def main():
         st["paused"] = True; save_state(st); log("pilot paused")
     elif cmd == "resume":
         st["paused"] = False; save_state(st); log("pilot resumed")
+        (REPO / "results" / "ATTENTION.md").unlink(missing_ok=True)
     elif cmd == "skip":
         log(f"skipped `{args[0]}`"); advance(st, args[0])
     elif cmd == "push":
