@@ -87,3 +87,10 @@ the new results, list what changed in the PDF with line references.
 * 10 Nov — User: a teacher-free, trajectory-free posterior sampler in the variational branch is needed to
   publish. VarCRPS: VarCM with fair-CRPS ensemble anchors (8 draws of x_T per (x0, y)), fixed grid, warm start.
   Same idea to be ported to VarDynCM if the GP result is good. Priority over DynCMT training.
+* 10 Nov — User: finish all methods on GP before SSH; keep the original method names. VarCM and VarDynCM are
+  now the corrected (CRPS) versions; the submitted ones are VarCM_v1 / VarDynCM_v1 (notebooks *_v1_spde, results
+  *_v1_metrics*). Spatial correlations: the CRPS anchor includes the fair CRPS of spatial increments at lags
+  1, 2, 4, 8 px (both axes) and of temporal increments (variogram-type terms), checked on synthetic fields:
+  pixel CRPS alone cannot tell correct from white/too-smooth fields with the same marginals, the increment
+  terms rank the correctly correlated field first. VarDynCM: CRPS of 8 rollouts on the sampler's frame grid +
+  self-consistency of each jump (no L2 anchors).

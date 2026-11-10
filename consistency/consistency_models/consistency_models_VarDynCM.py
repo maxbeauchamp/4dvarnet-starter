@@ -486,6 +486,82 @@ class VarDynCMTraining:
         return VarDynCMOutput(loss, loss_comp, loss_IC, loss_phys, loss_obs, l_ae, N, times)
 
 
+class VarDynCMCRPSTraining(VarDynCMTraining):
+    """Teacher-free, trajectory-free posterior sampler for VarDynCM (ICLR rebuttal).
+
+    The submitted objective anchors every jump on the ground truth with an L2 loss (L_comp in the physical
+    regime, L_IC, L_phys, L_obs): its optimum is the conditional mean of each frame, so samples have no spread.
+    Here the data enter only through a proper score of an ensemble of rollouts:
+
+      * rollout (few-step, exactly the sampler's frame grid): M draws z per (x, y);
+            x^(IC) = g(sigma_max z; 1 -> sb),  x^(k+1) = g(x^(k); t_k -> t_{k+1}),  k = 0..C-2
+      * L_traj = CRPS loss of the M trajectories against x (pixel values + spatial increments at several lags
+        + temporal increments), see consistency_models_VarCM.crps_field_loss;
+      * L_semi = pure self-consistency of each jump along the rollout (no data): g(u; t_a -> t_b) must match
+        g_ema(g_ema(u; t_a -> t_mid); t_mid -> t_b), t_mid uniform in (t_b, t_a), u the (detached) rollout state.
+        This keeps the operator consistent for finer sampling grids (any NFE);
+      * L_ae unchanged (trains the prior cost of J).
+    The fields of VarDynCMOutput are reused: loss_comp = L_semi, loss_phys = L_traj, loss_obs = CRPS on
+    observed pixels, loss_IC = 0.
+    """
+
+    def __init__(self, crps_members: int = 8, crps_lags=(1, 2, 4, 8), crps_w_inc: float = 1.0,
+                 lambda_semi: float = 1.0, lambda_traj: float = 1.0, **kw):
+        super().__init__(**kw)
+        self.crps_members, self.crps_lags, self.crps_w_inc = crps_members, crps_lags, crps_w_inc
+        self.lambda_semi, self.lambda_traj = lambda_semi, lambda_traj
+
+    def __call__(self, student, teacher, x, y, current_step, total_steps,
+                 obs_cost=None, prior_cost=None, lambda_reg=None, **kwargs) -> VarDynCMOutput:
+        from .consistency_models_VarCM import crps_field_loss, fair_crps
+        M = self.crps_members
+        B0, C, H, W = x.shape
+        xr, yr = x.repeat_interleave(M, 0), y.repeat_interleave(M, 0)
+        B, sb, dev = B0 * M, self.spinup_boundary, x.device
+        frame_t = [sb * (C - 1 - k) / max(C - 1, 1) for k in range(C)]
+        frame_t[-1] = max(frame_t[-1], 1e-8)
+        tvec = lambda v: torch.full((B,), float(v), device=dev, dtype=x.dtype)
+
+        def fwd(m, inp, tc, tn):
+            return _fwd(m, inp, yr, tvec(tc), tvec(tn), sb, obs_cost=obs_cost, prior_cost=prior_cost,
+                        lambda_reg=lambda_reg, conditioning_mode=self.conditioning_mode, **kwargs)
+
+        def semi(u, ta, tb, pred):
+            tm = tb + (ta - tb) * float(torch.rand(()))
+            with torch.no_grad():
+                tgt = fwd(teacher, fwd(teacher, u.detach(), ta, tm), tm, tb)
+            return pseudo_huber_loss(pred, tgt.to(pred.dtype)).mean()
+
+        z = torch.randn(B, 1, H, W, device=dev, dtype=x.dtype)
+        u = z * self.sigma_max
+        cur = fwd(student, u, 1.0, frame_t[0])
+        l_semi = semi(u, 1.0, frame_t[0], cur)
+        frames = [cur]
+        for k in range(C - 1):
+            nxt = fwd(student, cur, frame_t[k], frame_t[k + 1])
+            l_semi = l_semi + semi(cur, frame_t[k], frame_t[k + 1], nxt)
+            frames.append(nxt)
+            cur = nxt
+        l_semi = l_semi / C
+        traj = torch.cat(frames, dim=1)                                   # (B, C, H, W)
+        l_traj = crps_field_loss(traj, xr, M, self.crps_lags, self.crps_w_inc, time_dim=1)
+
+        mask = (~torch.isnan(yr)).to(traj.dtype)[::M]
+        l_obs = (fair_crps(traj, xr, M) * mask).sum() / mask.sum().clamp(min=1.0)
+
+        if prior_cost is not None and self.lambda_ae > 0.0:
+            x_flat = x.reshape(B0 * C, 1, H, W)
+            ae_dtype = next(prior_cost.parameters()).dtype
+            l_ae = F.mse_loss(prior_cost.forward_ae(x_flat.to(ae_dtype)), x_flat.to(ae_dtype)).float()
+        else:
+            l_ae = x.new_zeros(())
+
+        loss = (self.lambda_semi * l_semi + self.lambda_traj * l_traj
+                + self.lambda_obs * l_obs + self.lambda_ae * l_ae)
+        times = torch.tensor([1.0] + frame_t, device=dev)
+        return VarDynCMOutput(loss, l_semi, x.new_zeros(()), l_traj, l_obs, l_ae, self.final_timesteps, times)
+
+
 # ── Sampling ─────────────────────────────────────────────────────────────────
 
 class VarDynCMSamplingAndEditing:

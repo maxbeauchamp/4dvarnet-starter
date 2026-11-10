@@ -188,13 +188,36 @@ def build_dyncmt():
     print(f"wrote {dst.relative_to(NB.parent)}")
 
 
-def build_varcrps(xp_dir="Notebooks_GP", suffix="spde", old_log="logs_CT_VarCM_spde_grad"):
-    """VarCM -> VarCRPS: teacher-free posterior sampler. Same transport and self-consistency terms as VarCM, but
-    the data anchors (L_long, L_obs) are the fair CRPS of CRPS_MEMBERS draws of x_T per (x0, y) instead of a
-    pseudo-Huber regression on x0 (whose optimum is the conditional mean). Fixed time grid (no curriculum
-    restart), warm start from the submitted VarCM."""
-    src = NB / xp_dir / f"Notebook_consistency_model_VarCM_{suffix}.ipynb"
-    dst = NB / xp_dir / f"Notebook_consistency_model_VarCRPS_{suffix}.ipynb"
+def _v1(xp_dir, name):
+    """Keep the submitted notebook as <name with _v1>, once; return its path (the builder's source)."""
+    import shutil
+    cur = NB / xp_dir / name
+    v1 = NB / xp_dir / name.replace("_spde.", "_v1_spde.").replace("_ssh_gf.", "_v1_ssh_gf.").replace("_sic.", "_v1_sic.")
+    if not v1.exists():
+        shutil.copyfile(cur, v1)
+        print(f"kept submitted notebook as {v1.relative_to(NB.parent)}")
+    return v1
+
+
+def _warm(old_log, lit, finder):
+    return ("if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
+            f"    _old = {finder}(os.path.join('{old_log}', 'checkpoints'))\n"
+            "    if _old is None:\n"
+            f"        raise RuntimeError('WARM_START=True but no submitted checkpoint in {old_log}')\n"
+            f"    {lit}.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
+            "    print(f'[CRPS] warm start from {_old}', flush=True)\n")
+
+
+PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpoint\n"
+               "CRPS_MEMBERS = 8         # draws of the initial noise per (x0, y) in the CRPS anchor\n"
+               "CRPS_LAGS = (1, 2, 4, 8) # spatial lags of the increment CRPS (spatial correlations)\n")
+
+
+def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
+    """VarCM (submitted, kept as VarCM_v1) -> VarCM: data anchors = CRPS of 8 draws of x_T per (x0, y)
+    (pixels + spatial/temporal increments) instead of an L2 regression on x0; fixed grid; warm start."""
+    name = f"Notebook_consistency_model_VarCM_{suffix}.ipynb"
+    src = _v1(xp_dir, name)
     nb = json.load(open(src))
     done = set()
     for c in nb["cells"]:
@@ -202,31 +225,71 @@ def build_varcrps(xp_dir="Notebooks_GP", suffix="spde", old_log="logs_CT_VarCM_s
             continue
         s = "".join(c["source"])
         if s.lstrip().startswith("# --- parameters"):
-            s += ("WARM_START = True        # VarCRPS: start from the submitted VarCM checkpoint\n"
-                  "CRPS_MEMBERS = 8         # draws of x_T per (x0, y) in the fair-CRPS anchor\n")
+            s += PARAMS_CRPS
             done.add("params")
         if "\nct = VarCMTraining(" in s:
             i = s.index("LOG_DIR     = f")
             j = s.index("\n", i)
-            s = s[:i] + f'LOG_DIR     = "logs_VarCRPS_{suffix}_grad"' + s[j:]
-            s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # VarCRPS: fixed grid\n", "grid")
+            s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps_{suffix}_grad"' + s[j:]
+            s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # fixed grid (no curriculum)\n", "grid")
             s = sub(s, "    conditioning_mode = COND_MODE,\n)",
-                    "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n)", "crps")
+                    "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n"
+                    "    crps_lags         = CRPS_LAGS,\n)", "crps")
             s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
                     "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
-                    "if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
-                    f"    _old = find_best_valid_checkpoint(os.path.join('{old_log}', 'checkpoints'))\n"
-                    "    if _old is None:\n"
-                    f"        raise RuntimeError('WARM_START=True but no submitted checkpoint in {old_log}')\n"
-                    "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
-                    "    print(f'[VarCRPS] warm start from {_old}', flush=True)", "warm start")
+                    + _warm(f"logs_CT_VarCM_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint"), "warm start")
             done.add("training")
-        if "write_calibration_csv(_calib_csv," in s:
-            s = s.replace(f"write_calibration_csv(_calib_csv, 'VarCM_{suffix}'",
-                          f"write_calibration_csv(_calib_csv, 'VarCRPS_{suffix}'")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:
-        raise SystemExit(f"VarCRPS: anchors not found for {({'params', 'training'} - done)}")
+        raise SystemExit(f"VarCM CRPS: anchors not found for {({'params', 'training'} - done)}")
+    _write(nb, NB / xp_dir / name)
+
+
+def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
+    """VarDynCM (submitted, kept as VarDynCM_v1) -> VarDynCM: VarDynCMCRPSTraining (CRPS of 8 rollouts on the
+    sampler's frame grid + self-consistency of every jump, no L2 anchors); warm start."""
+    name = f"Notebook_consistency_model_VarDynCM_{suffix}.ipynb"
+    src = _v1(xp_dir, name)
+    nb = json.load(open(src))
+    done = set()
+    old_tr = """vdcm_training = VarDynCMTraining(
+    spinup_boundary   = SPINUP_BOUNDARY,
+    sigma_max=SIGMA_MAX,
+    initial_timesteps = 5, final_timesteps=50,
+    lambda_IC=1.0, lambda_phys=1.0, lambda_obs=1.0, lambda_ae=1.0,
+    conditioning_mode = COND_MODE,
+)"""
+    for c in nb["cells"]:
+        if c["cell_type"] != "code":
+            continue
+        s = "".join(c["source"])
+        if s.lstrip().startswith("# --- parameters"):
+            s += PARAMS_CRPS
+            done.add("params")
+        if old_tr in s:
+            i = s.index("LOG_DIR     = f")
+            j = s.index("\n", i)
+            s = s[:i] + f'LOG_DIR     = f"logs_VarDynCM_crps_{suffix}_{{COND_MODE.replace(\'+\', \'_\')}}"' + s[j:]
+            s = sub(s, "    VarDynCMTraining, VarDynCMObsCost,", "    VarDynCMTraining, VarDynCMCRPSTraining, VarDynCMObsCost,", "import")
+            s = sub(s, old_tr, """vdcm_training = VarDynCMCRPSTraining(
+    spinup_boundary   = SPINUP_BOUNDARY,
+    sigma_max=SIGMA_MAX,
+    initial_timesteps = 50, final_timesteps=50,      # fixed (no curriculum)
+    lambda_obs=1.0, lambda_ae=1.0,
+    conditioning_mode = COND_MODE,
+    crps_members=CRPS_MEMBERS, crps_lags=CRPS_LAGS,
+)""", "training")
+            s = sub(s, "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n",
+                    "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n"
+                    + _warm(f"logs_CT_VarDynCM_{suffix}_grad", "lit_model", "find_resume_ckpt"), "warm start")
+            done.add("training")
+        c["source"] = s.splitlines(keepends=True)
+    if {"params", "training"} - done:
+        raise SystemExit(f"VarDynCM CRPS: anchors not found for {({'params', 'training'} - done)}")
+    _write(nb, NB / xp_dir / name)
+
+
+def _write(nb, dst):
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")
@@ -238,4 +301,5 @@ if __name__ == "__main__":
         build(spec)
     build_varcmt()
     build_dyncmt()
-    build_varcrps()
+    build_varcm_crps()
+    build_vardyncm_crps()

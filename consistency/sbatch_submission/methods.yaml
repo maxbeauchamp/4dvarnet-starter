@@ -90,14 +90,17 @@ methods:
         status: generated
 
   VarCM:
+    # ICLR rebuttal (GP): CRPS ensemble anchors (pixels + spatial/temporal increments), fixed grid, warm start
+    # from the submitted model (now VarCM_v1). SSH/SIC entries are still the submitted models.
     generative: true
     n_samples_metrics: 20
     params:
+      MAX_EPOCHS: 200
       COND_MODE: grad
     xp:
       GP:
         notebook: Notebook_consistency_model_VarCM_spde.ipynb
-        log_dir: logs_CT_VarCM_spde_grad
+        log_dir: logs_VarCM_crps_spde_grad
         status: existing
       SIC:
         notebook: Notebook_consistency_model_VarCM_sic.ipynb
@@ -107,6 +110,18 @@ methods:
         notebook: Notebook_consistency_model_VarCM_ssh_gf.ipynb
         log_dir: logs_CT_VarCM_ssh_gf_grad
         status: generated
+
+  VarCM_v1:
+    # Submitted version (L2 anchors), kept for the comparison. GP only.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      COND_MODE: grad
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarCM_v1_spde.ipynb
+        log_dir: logs_CT_VarCM_spde_grad
+        status: existing
 
   VarCMT:
     # ICLR rebuttal: VarCM + tangent condition (lambda_tan, consistency_models_VarCM.py), warm-started from VarCM.
@@ -120,20 +135,6 @@ methods:
       GP:
         notebook: Notebook_consistency_model_VarCMT_spde.ipynb
         log_dir: logs_VarCMT_spde_grad
-        status: generated
-
-  VarCRPS:
-    # ICLR rebuttal: teacher-free VarCM posterior sampler. Fair-CRPS ensemble anchors (8 draws of x_T per
-    # (x0, y)) instead of L2 anchors; fixed grid; warm start from the submitted VarCM. GP only for now.
-    generative: true
-    n_samples_metrics: 20
-    params:
-      COND_MODE: grad
-      MAX_EPOCHS: 200
-    xp:
-      GP:
-        notebook: Notebook_consistency_model_VarCRPS_spde.ipynb
-        log_dir: logs_VarCRPS_spde_grad
         status: generated
 
   DynCM:
@@ -168,14 +169,17 @@ methods:
         status: generated
 
   VarDynCM:
+    # ICLR rebuttal (GP): CRPS ensemble anchors (pixels + spatial/temporal increments), fixed grid, warm start
+    # from the submitted model (now VarDynCM_v1). SSH/SIC entries are still the submitted models.
     generative: true
     n_samples_metrics: 20
     params:
+      MAX_EPOCHS: 100
       COND_MODE: grad
     xp:
       GP:
         notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
-        log_dir: logs_CT_VarDynCM_spde_grad
+        log_dir: logs_VarDynCM_crps_spde_grad
         status: existing
       SIC:
         notebook: Notebook_consistency_model_VarDynCM_sic.ipynb
@@ -185,6 +189,18 @@ methods:
         notebook: Notebook_consistency_model_VarDynCM_ssh_gf.ipynb
         log_dir: logs_CT_VarDynCM_ssh_gf_grad
         status: generated
+
+  VarDynCM_v1:
+    # Submitted version (L2 anchors), kept for the comparison. GP only.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      COND_MODE: grad
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_v1_spde.ipynb
+        log_dir: logs_CT_VarDynCM_spde_grad
+        status: existing
 
   FM:
     generative: true

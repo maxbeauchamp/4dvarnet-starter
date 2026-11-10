@@ -64,6 +64,45 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method DynCMT"
   },
   {
+   "id": "gp_rename_v1",
+   "time": "00:10:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission/results/GP && for n in VarCM VarDynCM; do for f in ${n}_metrics*.csv; do [ -e \"$f\" ] && mv \"$f\" \"${f/${n}_metrics/${n}_v1_metrics}\"; done; done; ls"
+  },
+  {
+   "id": "gp_varcm_smoke",
+   "time": "04:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=2 python run_training.py --xp GP --method VarCM"
+  },
+  {
+   "id": "gp_vardyncm_smoke",
+   "time": "04:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=2 python run_training.py --xp GP --method VarDynCM"
+  },
+  {
+   "id": "gp_varcm_train",
+   "time": "48:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM && python run_metrics.py --xp GP --method VarCM"
+  },
+  {
+   "id": "gp_vardyncm_train",
+   "time": "48:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM && python run_metrics.py --xp GP --method VarDynCM"
+  },
+  {
+   "id": "gp_dyncmt_train",
+   "time": "48:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method DynCMT && python run_metrics.py --xp GP --method DynCMT"
+  },
+  {
    "id": "ssh_setup",
    "time": "01:00:00",
    "gate": "status == 'ok'",
@@ -74,26 +113,6 @@
    "time": "04:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT"
-  },
-  {
-   "id": "gp_varcrps_smoke",
-   "time": "03:00:00",
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method VarCRPS"
-  },
-  {
-   "id": "gp_varcrps_train",
-   "time": "48:00:00",
-   "confirm": true,
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCRPS && python run_metrics.py --xp GP --method VarCRPS"
-  },
-  {
-   "id": "gp_dyncmt_train",
-   "time": "48:00:00",
-   "confirm": true,
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method DynCMT && python run_metrics.py --xp GP --method DynCMT"
   },
   {
    "id": "ssh_eval_old",

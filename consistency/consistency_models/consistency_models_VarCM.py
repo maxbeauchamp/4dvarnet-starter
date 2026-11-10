@@ -403,6 +403,47 @@ def fair_crps(ens: Tensor, x0: Tensor, M: int) -> Tensor:
     spread = (e.unsqueeze(1) - e.unsqueeze(2)).abs().sum((1, 2)) / (2 * M * (M - 1))
     return skill - spread
 
+
+def _shift_diff(a: Tensor, dim: int, h: int) -> Tensor:
+    n = a.shape[dim]
+    return a.narrow(dim, h, n - h) - a.narrow(dim, 0, n - h)
+
+
+def crps_field_loss(ens: Tensor, x0: Tensor, M: int, lags=(1, 2, 4, 8), w_inc: float = 1.0,
+                    time_dim: Optional[int] = 1) -> Tensor:
+    """Ensemble loss for fields: fair CRPS of the pixel values plus fair CRPS of the spatial increments
+    x(s + h) - x(s) at lags h along both spatial axes (and lag 1 along `time_dim`, if given and > 1 frame).
+
+    The pixel term is proper for each one-point marginal; the increment terms are proper for the law of
+    each increment, i.e. for the variogram / structure function at every lag (for a Gaussian field: its
+    covariance). Their sum is a proper scoring rule, minimised by members drawn from the conditional
+    distribution with the right spatial (and temporal) correlations. Missing values in x0 (NaN) are ignored.
+    ens, x0: (B*M, C, H, W) in repeat_interleave layout. Returns a scalar.
+    """
+    valid = torch.isfinite(x0)
+    x0c = torch.nan_to_num(x0)
+
+    def term(e, x, v):
+        c = fair_crps(e, x, M)
+        vm = v.reshape(-1, M, *v.shape[1:])[:, 0].to(c.dtype)
+        return (c * vm).sum() / vm.sum().clamp(min=1.0)
+
+    loss = term(ens, x0c, valid)
+    inc = []
+    dims = [ens.dim() - 1, ens.dim() - 2]
+    for h in (lags or ()):
+        for d in dims:
+            if ens.shape[d] > h:
+                v = valid.narrow(d, h, ens.shape[d] - h) & valid.narrow(d, 0, ens.shape[d] - h)
+                inc.append(term(_shift_diff(ens, d, h), _shift_diff(x0c, d, h), v))
+    if time_dim is not None and ens.shape[time_dim] > 1:
+        d = time_dim
+        v = valid.narrow(d, 1, ens.shape[d] - 1) & valid.narrow(d, 0, ens.shape[d] - 1)
+        inc.append(term(_shift_diff(ens, d, 1), _shift_diff(x0c, d, 1), v))
+    if inc and w_inc > 0:
+        loss = loss + w_inc * torch.stack(inc).mean()
+    return loss
+
 class VarCMTraining(nn.Module):
     """
     Deterministic pairwise VarCM training.
@@ -451,9 +492,13 @@ class VarCMTraining(nn.Module):
         tan_delta:          float = 0.02,  # solver-time step of the tangent finite difference
         crps_members:       int   = 1,     # ICLR rebuttal: >1 replaces the L2 data anchors by the fair CRPS
                                            # of `crps_members` draws of x_T per (x0, y) -> posterior sampler
+        crps_lags:          tuple = (1, 2, 4, 8),  # spatial lags of the increment CRPS (spatial correlations)
+        crps_w_inc:         float = 1.0,
     ) -> None:
         super().__init__()
         self.crps_members      = crps_members
+        self.crps_lags         = crps_lags
+        self.crps_w_inc        = crps_w_inc
         self.lambda_tan        = lambda_tan
         self.tan_delta         = tan_delta
         self.initial_timesteps = initial_timesteps
@@ -550,7 +595,7 @@ class VarCMTraining(nn.Module):
         # L_long  is part of L_anc: long-chain anchor student(t→0) ≈ x_0
         pred_long = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                               h_t, y, t_s, t0_vec)
-        l_long = (fair_crps(pred_long, x0, M).mean() if M > 1
+        l_long = (crps_field_loss(pred_long, x0, M, self.crps_lags, self.crps_w_inc) if M > 1
                   else pseudo_huber_loss(pred_long, x0).mean())
         l_pair = pseudo_huber_loss(pred_long, target_pair.detach()).mean()
 
