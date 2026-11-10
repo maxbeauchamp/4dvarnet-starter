@@ -82,3 +82,8 @@ the new results, list what changed in the PDF with line references.
 * 9 Nov — GP, CMT (600 epochs, warm start from CM): RMSE 0.198 (CM 0.229, FM 0.198), CRPS on observed pixels
   0.021 (CM 0.109, FM 0.016), SSR 0.82 (CM ≈ 0.11), CRPS all pixels 0.110. OI RMSE 0.225: not the exact posterior.
 * 9 Nov — DynCMT (DynFM teacher, no L2 data anchors) added for GP.
+* 10 Nov — VarCMT (tangent condition, lambda 1, warm start + curriculum restart from N = 5): RMSE 0.360 vs 0.230
+  for VarCM, lambda_x 130 vs 32. Not used. Cause not separated (curriculum restart vs tangent term).
+* 10 Nov — User: a teacher-free, trajectory-free posterior sampler in the variational branch is needed to
+  publish. VarCRPS: VarCM with fair-CRPS ensemble anchors (8 draws of x_T per (x0, y)), fixed grid, warm start.
+  Same idea to be ported to VarDynCM if the GP result is good. Priority over DynCMT training.
