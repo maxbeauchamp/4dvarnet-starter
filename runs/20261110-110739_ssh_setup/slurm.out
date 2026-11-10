@@ -1,0 +1,8 @@
+[job] 2026-11-10T11:07:43+01:00 host=sl-mee-br-207 job=72369 run_dir=runs/20261110-110739_ssh_setup args=--cmd for d in logs_FM_ssh_gf logs_CT_CM_ssh_gf logs_DynFM_ssh_gf logs_CT_DynCM_ssh_gf; do [ -e consistency/Notebooks/Notebooks_SSH_GF/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_SSH_GF/$d consistency/Notebooks/Notebooks_SSH_GF/; done && du -sh consistency/Notebooks/Notebooks_SSH_GF/logs_*
+NVIDIA A100-SXM4-80GB, 81920 MiB
+5,1G	consistency/Notebooks/Notebooks_SSH_GF/logs_CT_CM_ssh_gf
+2,7G	consistency/Notebooks/Notebooks_SSH_GF/logs_CT_DynCM_ssh_gf
+2,1G	consistency/Notebooks/Notebooks_SSH_GF/logs_DynFM_ssh_gf
+5,5G	consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf
+[run_step] ok in 4.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-110739_ssh_setup
+[job] 2026-11-10T11:07:47+01:00 exit=0

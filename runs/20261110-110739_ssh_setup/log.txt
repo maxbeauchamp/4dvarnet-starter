@@ -1,0 +1,5 @@
+5,1G	consistency/Notebooks/Notebooks_SSH_GF/logs_CT_CM_ssh_gf
+2,7G	consistency/Notebooks/Notebooks_SSH_GF/logs_CT_DynCM_ssh_gf
+2,1G	consistency/Notebooks/Notebooks_SSH_GF/logs_DynFM_ssh_gf
+5,5G	consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf
+[run_step] ok in 4.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-110739_ssh_setup

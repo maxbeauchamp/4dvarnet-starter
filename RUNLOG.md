@@ -35,3 +35,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 10:50 `gp_varcmt_train` done in 10:34:03, gate passed
 - 2026-11-10 10:51 submitted `gp_dyncmt_smoke` as job 72302 -> `runs/20261110-105105_gp_dyncmt_smoke`
 - 2026-11-10 11:07 `gp_dyncmt_smoke` done in 00:06:29, gate passed
+- 2026-11-10 11:07 submitted `ssh_setup` as job 72369 -> `runs/20261110-110739_ssh_setup`
+- 2026-11-10 11:16 approved `gp_varcm_train`
+- 2026-11-10 11:16 approved `gp_vardyncm_train`
+- 2026-11-10 11:36 `ssh_setup` done in 00:00:05, gate passed

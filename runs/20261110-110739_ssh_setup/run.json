@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_setup",
+  "cmd": "for d in logs_FM_ssh_gf logs_CT_CM_ssh_gf logs_DynFM_ssh_gf logs_CT_DynCM_ssh_gf; do [ -e consistency/Notebooks/Notebooks_SSH_GF/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_SSH_GF/$d consistency/Notebooks/Notebooks_SSH_GF/; done && du -sh consistency/Notebooks/Notebooks_SSH_GF/logs_*",
+  "commit": "d90b259",
+  "host": "sl-mee-br-207",
+  "slurm_job": "72369",
+  "started": "2026-11-10T11:07:43",
+  "status": "ok",
+  "seconds": 4.1,
+  "finished": "2026-11-10T11:07:47"
+}
