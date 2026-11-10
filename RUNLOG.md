@@ -49,3 +49,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 12:08 **ATTENTION** `gp_rename_v1` ended FAILED after 00:00:02; see `runs/20261110-114834_gp_rename_v1`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
 - 2026-11-10 14:18 submitted `gp_rename_v1` as job 72546 -> `runs/20261110-141838_gp_rename_v1`
 - 2026-11-10 14:39 `gp_rename_v1` done in 00:00:02, gate passed
+- 2026-11-10 16:35 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-10 17:03 pilot resumed
+- 2026-11-10 17:03 submitted `gp_varcm_smoke` as job 72702 -> `runs/20261110-170347_gp_varcm_smoke`
+- 2026-11-10 17:30 `gp_varcm_smoke` done in 00:04:41, gate passed
