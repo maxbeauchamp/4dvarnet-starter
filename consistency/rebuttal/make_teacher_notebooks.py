@@ -39,6 +39,16 @@ def sub(src, old, new, what):
     return src.replace(old, new)
 
 
+def add_after_line(src, start, new):
+    """Insert `new` on its own line(s) after the (single) line that starts with `start`."""
+    lines = src.split("\n")
+    idx = [i for i, l in enumerate(lines) if l.startswith(start)]
+    if len(idx) != 1:
+        raise SystemExit(f"line starting with {start!r} found {len(idx)} times")
+    lines.insert(idx[0] + 1, new)
+    return "\n".join(lines)
+
+
 def build(spec):
     nb = json.load(open(spec["src"]))
     cells = nb["cells"]
@@ -53,10 +63,9 @@ def build(spec):
                   "P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)\n")
             done.add("params")
         if "from consistency_models.utils import update_ema_model_" in s:
-            s = sub(s, "from consistency_models.utils import update_ema_model_",
-                    "from consistency_models.utils import update_ema_model_\n"
-                    "from consistency_models.teacher_targets import FMTeacherVE, TeacherPairwiseConsistencyTraining\n"
-                    "from flowmatching_models.flowmatching_models_FM import UNetFM", "imports")
+            s = add_after_line(s, "from consistency_models.utils import update_ema_model_",
+                               "from consistency_models.teacher_targets import FMTeacherVE, TeacherPairwiseConsistencyTraining\n"
+                               "from flowmatching_models.flowmatching_models_FM import UNetFM")
             done.add("imports")
         if spec["ct_line"] in s:
             s = sub(s, f"'{spec['old_log']}'", f"'{spec['new_log']}'", "LOG_DIR")
@@ -92,7 +101,7 @@ def build(spec):
 
 def build_varcmt():
     """GP VarCM -> VarCMT: same training plus the tangent condition (lambda_tan), warm-started from VarCM."""
-    src = NB / "Notebooks_GP" / "Notebook_consistency_model_VarCM_spde.ipynb"
+    src = NB / "Notebooks_GP" / "Notebook_consistency_model_VarCM_v1_spde.ipynb"   # the submitted VarCM
     dst = NB / "Notebooks_GP" / "Notebook_consistency_model_VarCMT_spde.ipynb"
     nb = json.load(open(src))
     done = set()
@@ -119,7 +128,7 @@ def build_varcmt():
                     "    print(f'[VarCMT] warm start from {_old}', flush=True)", "warm start")
             done.add("training")
         if "write_calibration_csv(_calib_csv," in s:
-            s = s.replace("write_calibration_csv(_calib_csv, 'VarCM_spde'", "write_calibration_csv(_calib_csv, 'VarCMT_spde'")
+            s = s.replace("write_calibration_csv(_calib_csv, 'VarCM_v1_spde'", "write_calibration_csv(_calib_csv, 'VarCMT_spde'")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:
         raise SystemExit(f"VarCMT: anchors not found for {({'params', 'training'} - done)}")
@@ -153,10 +162,9 @@ def build_dyncmt():
                   "N_GRID = 64             # fixed training grid (sampler grid is NSTEPS)\n")
             done.add("params")
         if "from consistency_models.utils import update_ema_model_" in s:
-            s = sub(s, "from consistency_models.utils import update_ema_model_",
-                    "from consistency_models.utils import update_ema_model_\n"
-                    "from consistency_models.teacher_targets import DynFMTeacher, TeacherDynamicalConsistencyTraining\n"
-                    "from flowmatching_models.flowmatching_models_FM import UNetFM", "imports")
+            s = add_after_line(s, "from consistency_models.utils import update_ema_model_",
+                               "from consistency_models.teacher_targets import DynFMTeacher, TeacherDynamicalConsistencyTraining\n"
+                               "from flowmatching_models.flowmatching_models_FM import UNetFM")
             done.add("imports")
         if old_ct in s:
             s = sub(s, 'LOG_DIR     = "logs_CT_DynCM_spde"', 'LOG_DIR     = "logs_DynCMT_spde"', "LOG_DIR")
@@ -290,6 +298,12 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
 
 
 def _write(nb, dst):
+    stem = dst.stem.replace("Notebook_consistency_model_", "")          # e.g. VarCM_spde
+    m, sfx = stem.split("_", 1)
+    for c in nb["cells"]:                                                  # label of the calibration CSV
+        src = "".join(c["source"])
+        if f"'{m}_v1_{sfx}'" in src:
+            c["source"] = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'").splitlines(keepends=True)
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")
