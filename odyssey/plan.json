@@ -64,11 +64,36 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp GP --method DynCMT"
   },
   {
+   "id": "ssh_setup",
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "for d in logs_FM_ssh_gf logs_CT_CM_ssh_gf logs_DynFM_ssh_gf logs_CT_DynCM_ssh_gf; do [ -e consistency/Notebooks/Notebooks_SSH_GF/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_SSH_GF/$d consistency/Notebooks/Notebooks_SSH_GF/; done && du -sh consistency/Notebooks/Notebooks_SSH_GF/logs_*"
+  },
+  {
+   "id": "ssh_cmt_smoke",
+   "time": "04:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT"
+  },
+  {
    "id": "gp_dyncmt_train",
    "time": "48:00:00",
    "confirm": true,
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method DynCMT && python run_metrics.py --xp GP --method DynCMT"
+  },
+  {
+   "id": "ssh_eval_old",
+   "time": "24:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && for m in FM CM DynFM DynCM; do [ -f results/SSH_GF/${m}_metrics_calibration.csv ] && { echo \"[skip] $m\"; continue; }; python run_metrics.py --xp SSH_GF --method $m || exit 1; done"
+  },
+  {
+   "id": "ssh_cmt_train",
+   "time": "72:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT && python run_metrics.py --xp SSH_GF --method CMT"
   }
  ]
 }

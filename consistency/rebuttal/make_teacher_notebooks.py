@@ -3,7 +3,7 @@
 
     python consistency/rebuttal/make_teacher_notebooks.py
 
-Currently: GP CM -> Notebook_consistency_model_CMT_spde.ipynb (method `CMT` in methods.yaml).
+CM -> CMT for GP and SSH_GF (method `CMT` in methods.yaml), VarCM -> VarCMT and DynCM -> DynCMT for GP.
 Changes, and nothing else:
   * training object: TeacherPairwiseConsistencyTraining with the trained FM (logs_FM_spde/best_model) as teacher;
   * EMA of the target network 0.999 (CTM-style) instead of the CT schedule's 0.95;
@@ -23,7 +23,13 @@ SPECS = [
          old_log="logs_CT_CM_spde", new_log="logs_CMT_spde", fm_log="logs_FM_spde",
          ct_line="ct = ConsistencyTrainingFewSteps_TimeEmbedding(final_timesteps=17)",
          lit_cfg="LitConsistencyModelConfig(lr_scheduler_iters=1000),\n)",
-         lit_name="lit_cm"),
+         lit_name="lit_cm", label="CM_spde", new_label="CMT_spde"),
+    dict(src=NB / "Notebooks_SSH_GF" / "Notebook_consistency_model_CM_ssh_gf.ipynb",
+         dst=NB / "Notebooks_SSH_GF" / "Notebook_consistency_model_CMT_ssh_gf.ipynb",
+         old_log="logs_CT_CM_ssh_gf", new_log="logs_CMT_ssh_gf", fm_log="logs_FM_ssh_gf",
+         ct_line="ct = ConsistencyTrainingFewSteps_TimeEmbedding(\n    final_timesteps=17, sigma_max=10, pairwise=PAIRWISE,\n)",
+         lit_cfg="LitConsistencyModelConfig(lr_scheduler_iters=1000),\n)",
+         lit_name="lit_cm", label="CM_ssh_gf", new_label="CMT_ssh_gf"),
 ]
 
 
@@ -71,7 +77,8 @@ def build(spec):
                     "lit config")
             done.add("training")
         if "write_calibration_csv(_calib_csv," in s:
-            s = s.replace("write_calibration_csv(_calib_csv, 'CM_spde'", "write_calibration_csv(_calib_csv, 'CMT_spde'")
+            s = s.replace(f"write_calibration_csv(_calib_csv, '{spec['label']}'",
+                          f"write_calibration_csv(_calib_csv, '{spec['new_label']}'")
             s = s.replace("'CM (ens. mean, full test set)'", "'CMT (ens. mean, full test set)'")
         c["source"] = s.splitlines(keepends=True)
     missing = {"params", "imports", "training"} - done

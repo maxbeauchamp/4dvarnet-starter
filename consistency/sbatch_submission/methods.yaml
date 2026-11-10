@@ -84,6 +84,10 @@ methods:
         notebook: Notebook_consistency_model_CMT_spde.ipynb
         log_dir: logs_CMT_spde
         status: generated
+      SSH_GF:
+        notebook: Notebook_consistency_model_CMT_ssh_gf.ipynb
+        log_dir: logs_CMT_ssh_gf
+        status: generated
 
   VarCM:
     generative: true
