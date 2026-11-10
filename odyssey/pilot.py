@@ -344,7 +344,8 @@ def main():
         tick(st)
     elif cmd == "approve":
         st["approved"].append(args[0]); st.pop("waiting", None); save_state(st); log(f"approved `{args[0]}`")
-    elif cmd == "retry":
+    elif cmd == "retry":                     # resubmit the failed step and resume the plan after it
+        st["paused"] = False; st["retries"] = 0; save_state(st)
         submit(st.get("step") or st["next"], st)
     elif cmd == "watch":
         try:
