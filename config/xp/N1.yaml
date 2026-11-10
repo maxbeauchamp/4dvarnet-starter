@@ -79,6 +79,10 @@ model:
   drift_init: [0.015, 15.0]  # free drift: alpha (ice / wind speed), theta (deg to the right), learned
   warp_mode: bilinear  # interpolation of the free-drift move (N1g: bicubic, less diffusive)
   tobit: false         # Tobit censoring of the targets at a bound (N1h); false: former CROSCIM rule
+  dense_targets: false # N1m: N0 analysis of the day as target wherever no strict target
+  dense_members: 2     # samples averaged per dense target
+  dense_steps: 8       # Heun steps of those samples
+  dense_sigma: 0.05    # floor of the dense targets (normalised)
 
 entrypoints:
   - _target_: croscim.train.base_training

@@ -217,6 +217,28 @@ def test_n1k_weak_cimr_sic_target_only_when_seen(days):
     assert torch.equal(seen[:, 1:], unseen[:, 1:])  # thin SIT and the rest untouched
 
 
+def test_n1m_dense_targets_from_the_n0_analysis(days, monkeypatch):
+    torch.manual_seed(0)
+    kw = dict(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2)
+    z_s, m_s, f_s = LitCascadeN1(**kw).target(days[1])
+    n1m = LitCascadeN1(**kw, increment=True, inc_scale=0.2, bg_advect=True, tobit=True,
+                       dense_targets=True, dense_members=2, dense_steps=1, dense_sigma=0.05)
+    a = torch.rand(1, N_Z, 64, 64)
+    monkeypatch.setattr(n1m.n0, "sample_c", lambda *args, **kwargs: a)
+    z, m, floor = n1m.target(days[1])
+    ocean = (days[1]["omega_c"] > 0)[:, None].expand(-1, N_Z, -1, -1)
+    assert torch.all(m[:, :N_Z][ocean])                                   # dense on the whole ocean
+    strict = m_s[:, :N_Z] & (f_s[:, :N_Z] < 0.1 / n1m.nrm.z_std)         # ASIP / CRISTAL / open-water zeros
+    strict[:, 0] &= days[1]["tgt_C_sigma"][:, 0] != 0.15
+    assert torch.equal(z[:, :N_Z][strict], z_s[:, :N_Z][strict])
+    weak = days[1]["tgt_C_m"][:, 0] & (days[1]["tgt_C_sigma"][:, 0] > 0.1) & ocean[:, 0]
+    assert weak.any()
+    assert torch.allclose(z[:, 0][weak], n1m.nrm.z(a)[:, 0][weak])       # weak CIMR -> N0 analysis
+    assert torch.allclose(floor[:, 0][weak], torch.tensor(0.05))
+    monkeypatch.setattr(n1m, "k_now", lambda n: 2)
+    assert torch.isfinite(n1m.losses(days)["loss"])
+
+
 def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
     torch.manual_seed(0)
     n1f = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,

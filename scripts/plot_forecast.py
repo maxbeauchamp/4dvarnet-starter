@@ -169,6 +169,14 @@ def main():
                     d = (f - cimr)[m_cimr]
                     row[f"{key}_rmse_vs_cimr_SIC"] = round(float((d ** 2).mean().sqrt()), 5)
                     row[f"{key}_bias_vs_cimr_SIC"] = round(float(d.mean()), 5)
+            # tile integrals (long rollouts): ice area, extent (SIC > 0.15), volume per ocean cell
+            oc = (b["omega_c"][0] > 0).cpu()
+            for key, f in (("fc", traj[:, k].mean(0)), ("pers", traj[:, 0].mean(0)), ("ana", ana[:, k].mean(0)))\
+                    + ((("drift", drift[k]),) if drift is not None else ()):
+                sic, sit = f[0][oc].clamp(0, 1), f[1][oc].clamp_min(0)
+                row[f"{key}_area"] = round(float(sic.mean()), 5)
+                row[f"{key}_extent"] = round(float((sic > 0.15).float().mean()), 5)
+                row[f"{key}_vol"] = round(float((sic * sit).mean()), 5)
             m_date[f"lead{k}"] = row
         metrics[date] = m_date
 

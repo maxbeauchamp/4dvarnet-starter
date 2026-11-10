@@ -57,6 +57,17 @@ Options (v6, N1b; all False for the former checkpoints):
                "seen" (N1k): the weak CIMR SIC target only in the steps whose
                conditioning has the observations of the day (group h kept):
                N1j ignored them (w = 1 = w = 0); without them, the background.
+               It overshot CIMR (~0.03 below the ASIP-consistent state): the
+               model learnt "see CIMR -> lower SIC", w = 0 degraded too.
+  dense_targets  (N1m) wherever no strict target (ASIP, CRISTAL, open-water
+               zeros), the target at t+k is the N0 (EMA) analysis of that day
+               with all its observations: mean of dense_members samples
+               (dense_steps Heun steps, the day-to-day sample noise averaged
+               out), floor dense_sigma; replaces the weak CIMR targets and the
+               background. Dense, ASIP-consistent targets: the tendency
+               (freeze-up, melt, SIT growth) is learnt where it is observed,
+               for long rollouts (N1j only learnt the drift: zero increment
+               off the ASIP passes).
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -168,7 +179,8 @@ class LitCascadeN1(pl.LightningModule):
                  score_every=5, n_score_batches=10, increment=False, state_input=False, raw_obs=False,
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
                  inc_scale_sic=None, weak_sic=True,
-                 drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False):
+                 drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False,
+                 dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -274,10 +286,22 @@ class LitCascadeN1(pl.LightningModule):
         else:
             drop_sic = no
         drop_sit = sg[:, 1] == D.CIMR_SIT_TGT_SIGMA if not self.hparams.weak_targets else no
+        dense = self.hparams.get("dense_targets", False)
+        if dense:  # the N0 analysis replaces the weak CIMR targets
+            drop_sic, drop_sit = sic, sg[:, 1] == D.CIMR_SIT_TGT_SIGMA
         if drop_sic.any() or drop_sit.any():  # drop weak CIMR targets; keep the open-water zeros
             weak = torch.stack([drop_sic, drop_sit, no], 1)
             m = torch.cat([m[:, :N_X] & ~weak, m[:, N_X:]], 1)
         ctx = self.n0.encode(self.n0.ema.module, b)
+        if dense:  # N1m: the N0 analysis of the day (mean of a few samples, all observations) wherever no strict target
+            hp, n0 = self.hparams, self.n0
+            kp = n0.keep_groups(z.shape[0], z.device, drop=False)
+            a = torch.stack([n0.sample_c(n0.ema.module, ctx, b, kp, hp.dense_steps)
+                             for _ in range(hp.dense_members)]).mean(0)
+            fill = (b["omega_c"] > 0)[:, None] & ~m
+            z = torch.where(fill, self.nrm.z(a), z)
+            floor = torch.where(fill, torch.full_like(floor, hp.dense_sigma), floor)
+            m = m | fill
         m_psi = ctx["m_C"][:, None].expand(-1, self.d_psi, -1, -1)
         return (torch.cat([z, ctx["psi"]], 1), torch.cat([m, m_psi], 1),
                 torch.cat([floor, torch.zeros_like(ctx["psi"])], 1))
