@@ -129,7 +129,8 @@ def sync_code():
 
 
 def our_jobs():
-    out = ssh(f"squeue -h -u {CFG['ODY_USER']} -o '%i %j %T'", check=False)
+    # check=True: if SSH fails we must NOT conclude that the job has finished
+    out = ssh(f"squeue -h -u {CFG['ODY_USER']} -o '%i %j %T'", check=True)
     return [l.split() for l in out.splitlines() if len(l.split()) == 3 and l.split()[1].startswith("icl-")]
 
 
@@ -238,6 +239,12 @@ def advance(st, sid):
 
 def tick(st):
     git_pull(); reload_plan()          # Claude may have pushed code or a reordered plan
+    r = subprocess.run(["ssh", *SSH_OPTS, "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", CFG["ODY_HOST"], "true"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"cannot reach {CFG['ODY_HOST']} without a password: {(r.stderr or '').strip()[:200]}\n"
+              "nothing changed; fix SSH (key loaded? network?) and tick again")
+        return
     if st.get("job"):
         if any(j[0] == st["job"] for j in our_jobs()):
             print(f"job {st['job']} ({st['step']}) still running")
