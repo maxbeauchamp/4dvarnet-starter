@@ -53,3 +53,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-10 17:03 pilot resumed
 - 2026-11-10 17:03 submitted `gp_varcm_smoke` as job 72702 -> `runs/20261110-170347_gp_varcm_smoke`
 - 2026-11-10 17:30 `gp_varcm_smoke` done in 00:04:41, gate passed
+- 2026-11-10 17:31 submitted `gp_vardyncm_smoke` as job 72742 -> `runs/20261110-173109_gp_vardyncm_smoke`
+- 2026-11-10 18:22 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-10 18:32 `gp_vardyncm_smoke` done in 00:09:01, gate passed

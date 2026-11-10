@@ -1,0 +1,186 @@
+[job] 2026-11-10T17:33:24+01:00 host=sl-mee-br-207 job=72742 run_dir=runs/20261110-173109_gp_vardyncm_smoke args=--cmd cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=2 python run_training.py --xp GP --method VarDynCM
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING VarDynCM / GP
+========================================================================================
+[run_training] VarDynCM / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 2, 'N_SAMPLES': 2, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_metrics_train.csv', 'COND_MODE': 'grad'}
+Passed unknown parameter: COND_MODE
+Executing:   0%|          | 0/40 [00:00<?, ?cell/s]Executing:   2%|▎         | 1/40 [00:05<03:19,  5.11s/cell]Executing:   8%|▊         | 3/40 [00:27<05:59,  9.71s/cell]Tue Nov 10 17:34:03 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:C8:00.0 Off |                    0 |
+| N/A   33C    P0             68W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  15%|█▌        | 6/40 [00:28<02:12,  3.90s/cell]Executing:  25%|██▌       | 10/40 [00:34<01:17,  2.57s/cell]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  30%|███       | 12/40 [00:42<01:24,  3.01s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size C      = 5
+t_IC (transition)  = 0.2000  (= 1/C)
+Spatial size       = 128 x 128
+TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
+Executing:  32%|███▎      | 13/40 [00:43<01:12,  2.68s/cell][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
+[OK] Parameters: 32,997,889
+
+w_obs sanity check (C=5, spinup_boundary=0.7):
+  t=0.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
+  t=0.100  →  w=[0.0, 0.0, 0.0, 0.5714285969734192, 0.4285714030265808]  (sum=1.000)
+  t=0.350  →  w=[0.0, 0.0, 1.0, 0.0, 0.0]  (sum=1.000)
+  t=0.690  →  w=[0.9428572058677673, 0.05714280530810356, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.700  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.710  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.900  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=1.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+Executing:  42%|████▎     | 17/40 [00:44<00:33,  1.46s/cell][RESUME] last checkpoint: logs_CT_VarDynCM_spde_grad/checkpoints/last.ckpt
+[CRPS] warm start from logs_CT_VarDynCM_spde_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=2
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+
+Loading `train_dataloader` to estimate number of stepping batches.
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name          | Type              | Params
+----------------------------------------------------
+0 | student_model | UNet              | 33.0 M
+1 | teacher_model | UNet              | 33.0 M
+2 | obs_cost      | VarDynCMObsCost   | 0     
+3 | prior_cost    | VarDynCMPriorCost | 28.6 K
+----------------------------------------------------
+33.0 M    Trainable params
+33.0 M    Non-trainable params
+66.0 M    Total params
+264.103   Total estimated model params size (MB)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name          | Type              | Params
+----------------------------------------------------
+0 | student_model | UNet              | 33.0 M
+1 | teacher_model | UNet              | 33.0 M
+2 | obs_cost      | VarDynCMObsCost   | 0     
+3 | prior_cost    | VarDynCMPriorCost | 28.6 K
+----------------------------------------------------
+33.0 M    Trainable params
+33.0 M    Non-trainable params
+66.0 M    Total params
+264.103   Total estimated model params size (MB)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+[progress] epoch 1/2 | L_IC=0.0000 | L_ae=0.0000 | L_comp=6.1614 | L_obs=4.2085 | L_phys=5.7671 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=16.1370 | val_loss=0.4842
+[progress] epoch 2/2 | L_IC=0.0000 | L_ae=0.0000 | L_comp=1.8333 | L_obs=1.9448 | L_phys=2.3223 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=6.1005 | val_loss=0.5161
+`Trainer.fit` stopped: `max_epochs=2` reached.
+
+`Trainer.fit` stopped: `max_epochs=2` reached.
+Executing:  60%|██████    | 24/40 [07:45<08:58, 33.68s/cell]Loading checkpoint: logs_VarDynCM_crps_spde_grad/checkpoints/last.ckpt
+Executing:  65%|██████▌   | 26/40 [07:46<06:26, 27.63s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  70%|███████   | 28/40 [07:46<04:23, 21.93s/cell]
+[OK] 2 ensemble members generated  (nsteps=25)
+Physical frame indices (IC→last): [7, 11, 16, 20, 24]
+  → solver_times: ['0.29', '0.46', '0.67', '0.83', '1.00']
+  IC expected at s ≈ 0.30  (step ~7)
+Process shape: torch.Size([25, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
+Executing:  75%|███████▌  | 30/40 [07:48<02:50, 17.04s/cell]  Saved: figures/VarDynCM_spde/VarDynCM_spde_obs.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_gt.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_oi.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_vardyncm_mean.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_vardyncm_spread.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_member0.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_member1.png
+Executing:  85%|████████▌ | 34/40 [07:49<01:02, 10.49s/cell]step_indices (13 cols) = [0, 2, 4, 6, 7, 9, 11, 13, 16, 18, 20, 22, 24]
+phys_col                   = [4, 6, 8, 10, 12]
+spinup_cols                = [0, 1, 2, 3]
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_transport.png
+  Saved: figures/VarDynCM_spde/VarDynCM_spde_variance_collapse.png
+Std step 0 (noise): 2.9907   Std last step: 0.2047   GT std: 0.9939
+Executing:  90%|█████████ | 36/40 [07:51<00:33,  8.35s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (2 members): SSR 0.022  spread 0.0041  RMSE 0.2288  CRPS(all px) 0.1732  rank dev 0.98 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_metrics_train_calibration.csv
+Executing:  95%|█████████▌| 38/40 [08:47<00:26, 13.01s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_metrics_train.csv
+Executing: 100%|██████████| 40/40 [08:49<00:00, 13.25s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_train.ipynb
+[run_step] ok in 539.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261110-173109_gp_vardyncm_smoke
+[job] 2026-11-10T17:42:25+01:00 exit=0

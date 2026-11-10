@@ -1,0 +1,28 @@
+{
+ "GP/VarDynCM_metrics_train.csv": [
+  {
+   "Method": "VarDynCM (ens. mean, full test set)",
+   "RMSE": "0.2239 $\\pm$ 0.0472",
+   "lambda_x": "40.7 $\\pm$ 48.9",
+   "CRPS": "0.0905 $\\pm$ 0.0489"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarDynCM_metrics_train_calibration.csv": [
+  {
+   "method": "VarDynCM_spde",
+   "members": 2,
+   "spread": 0.004053187106422076,
+   "rmse": 0.22884617420136538,
+   "ssr": 0.021691951542143515,
+   "crps_all": 0.17315725529956807,
+   "rank_dev": 0.9813672182272603,
+   "ranks": "297891 6650 595459"
+  }
+ ]
+}
