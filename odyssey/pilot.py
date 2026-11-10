@@ -217,14 +217,27 @@ def push():
         attention(f"git push failed, results not on GitHub: {(r.stderr or '').strip()[:300]}")
 
 
+def reload_plan():
+    """Re-read plan.json (it may have changed with the last git pull)."""
+    global PLAN, IDS
+    PLAN = json.loads((HERE / "plan.json").read_text())["steps"]
+    IDS = [s["id"] for s in PLAN]
+
+
+def first_pending(st):
+    """First step of plan.json, in its current order, that has not completed yet."""
+    done = {h["step"] for h in st.get("history", []) if str(h.get("state", "")).startswith("COMPLETED")}
+    return next((i for i in IDS if i not in done), None)
+
+
 def advance(st, sid):
-    i = IDS.index(sid)
-    st["next"] = IDS[i + 1] if i + 1 < len(IDS) else None
+    st["next"] = first_pending(st)
     st.update(job=None, run_dir=None, step=None, retries=0)
     save_state(st)
 
 
 def tick(st):
+    git_pull(); reload_plan()          # Claude may have pushed code or a reordered plan
     if st.get("job"):
         if any(j[0] == st["job"] for j in our_jobs()):
             print(f"job {st['job']} ({st['step']}) still running")
@@ -255,12 +268,11 @@ def tick(st):
         push()
     if st.get("paused"):
         print("pilot paused"); return
-    nxt = st.get("next")
-    if not nxt:                       # steps may have been appended to plan.json since the plan last finished
-        done = {h["step"] for h in st.get("history", []) if str(h.get("state", "")).startswith("COMPLETED")}
-        nxt = next((i for i in IDS if i not in done), None)
+    nxt = first_pending(st)           # always follow the current order of plan.json
+    if nxt != st.get("next"):
+        st["next"] = nxt; save_state(st)
         if nxt:
-            st["next"] = nxt; save_state(st); log(f"new steps in plan.json; next is `{nxt}`")
+            log(f"plan.json changed; next is `{nxt}`")
     if not nxt:
         print("plan complete"); return
     if step(nxt).get("confirm") and nxt not in st["approved"]:
