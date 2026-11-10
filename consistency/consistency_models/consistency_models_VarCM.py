@@ -386,6 +386,23 @@ class VarCMOutput:
     l_tan:         Optional[Tensor] = None   # (rebuttal) tangent condition, 0 when lambda_tan = 0
 
 
+
+def fair_crps(ens: Tensor, x0: Tensor, M: int) -> Tensor:
+    """Fair (unbiased) ensemble CRPS per pixel. ens: (B*M, ...) with the M members of each sample contiguous
+    (repeat_interleave layout); x0: same layout (copies identical). Returns (B, ...).
+
+        CRPS_fair = mean_m |X_m - x| - 1/(2 M (M-1)) sum_{m != m'} |X_m - X_m'|
+
+    A strictly proper score for each marginal: its expectation is minimised by members drawn from the
+    conditional distribution of x given y, not by its mean (the L2 optimum), so it does not collapse the
+    ensemble (Gneiting & Raftery 2007; fair version: Ferro 2014; used for ensemble training in AIFS-CRPS).
+    """
+    e = ens.float().reshape(-1, M, *ens.shape[1:])
+    x = x0.float().reshape(-1, M, *x0.shape[1:])[:, 0]
+    skill = (e - x.unsqueeze(1)).abs().mean(1)
+    spread = (e.unsqueeze(1) - e.unsqueeze(2)).abs().sum((1, 2)) / (2 * M * (M - 1))
+    return skill - spread
+
 class VarCMTraining(nn.Module):
     """
     Deterministic pairwise VarCM training.
@@ -432,8 +449,11 @@ class VarCMTraining(nn.Module):
         pure_short:         bool  = True,
         lambda_tan:         float = 0.0,   # ICLR rebuttal (XETn W2): tangent condition, 0 = submitted VarCM
         tan_delta:          float = 0.02,  # solver-time step of the tangent finite difference
+        crps_members:       int   = 1,     # ICLR rebuttal: >1 replaces the L2 data anchors by the fair CRPS
+                                           # of `crps_members` draws of x_T per (x0, y) -> posterior sampler
     ) -> None:
         super().__init__()
+        self.crps_members      = crps_members
         self.lambda_tan        = lambda_tan
         self.tan_delta         = tan_delta
         self.initial_timesteps = initial_timesteps
@@ -464,6 +484,12 @@ class VarCMTraining(nn.Module):
         total_steps: int,
     ) -> "VarCMOutput":
         device = x0.device
+        M = self.crps_members
+        if M > 1:
+            # M independent draws of x_T for each (x0, y): every copy follows the same deterministic,
+            # self-consistent transport; only the data anchors couple the copies (fair CRPS below).
+            x0 = x0.repeat_interleave(M, 0)
+            y = y.repeat_interleave(M, 0)
         B = x0.shape[0]
 
         # ── Time grid ─────────────────────────────────────────────────────────
@@ -524,7 +550,8 @@ class VarCMTraining(nn.Module):
         # L_long  is part of L_anc: long-chain anchor student(t→0) ≈ x_0
         pred_long = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                               h_t, y, t_s, t0_vec)
-        l_long = pseudo_huber_loss(pred_long, x0).mean()
+        l_long = (fair_crps(pred_long, x0, M).mean() if M > 1
+                  else pseudo_huber_loss(pred_long, x0).mean())
         l_pair = pseudo_huber_loss(pred_long, target_pair.detach()).mean()
 
         # ── Term 3: L_short ───────────────────────────────────────────────────
@@ -564,8 +591,14 @@ class VarCMTraining(nn.Module):
         # x0 is always the ground-truth target, regardless of pure_short mode.
         mask_obs = (~torch.isnan(y)).to(dtype=pred_long.dtype)
         n_obs = mask_obs.sum().clamp(min=1.0)
-        l_obs_long  = (pseudo_huber_loss(pred_long,  x0) * mask_obs).sum() / n_obs
-        l_obs_short = (pseudo_huber_loss(pred_short, x0) * mask_obs).sum() / n_obs
+        if M > 1:
+            m_obs = mask_obs[::M]
+            n_obs = m_obs.sum().clamp(min=1.0)
+            l_obs_long  = (fair_crps(pred_long,  x0, M) * m_obs).sum() / n_obs
+            l_obs_short = (fair_crps(pred_short, x0, M) * m_obs).sum() / n_obs
+        else:
+            l_obs_long  = (pseudo_huber_loss(pred_long,  x0) * mask_obs).sum() / n_obs
+            l_obs_short = (pseudo_huber_loss(pred_short, x0) * mask_obs).sum() / n_obs
         l_obs = (l_obs_long + l_obs_short) / 2.0
 
         # L_anc = L_long + L_short  (anchoring terms combined)

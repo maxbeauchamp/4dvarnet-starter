@@ -122,6 +122,20 @@ methods:
         log_dir: logs_VarCMT_spde_grad
         status: generated
 
+  VarCRPS:
+    # ICLR rebuttal: teacher-free VarCM posterior sampler. Fair-CRPS ensemble anchors (8 draws of x_T per
+    # (x0, y)) instead of L2 anchors; fixed grid; warm start from the submitted VarCM. GP only for now.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      COND_MODE: grad
+      MAX_EPOCHS: 200
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarCRPS_spde.ipynb
+        log_dir: logs_VarCRPS_spde_grad
+        status: generated
+
   DynCM:
     generative: true
     n_samples_metrics: 20

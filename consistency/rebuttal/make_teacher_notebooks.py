@@ -188,8 +188,54 @@ def build_dyncmt():
     print(f"wrote {dst.relative_to(NB.parent)}")
 
 
+def build_varcrps(xp_dir="Notebooks_GP", suffix="spde", old_log="logs_CT_VarCM_spde_grad"):
+    """VarCM -> VarCRPS: teacher-free posterior sampler. Same transport and self-consistency terms as VarCM, but
+    the data anchors (L_long, L_obs) are the fair CRPS of CRPS_MEMBERS draws of x_T per (x0, y) instead of a
+    pseudo-Huber regression on x0 (whose optimum is the conditional mean). Fixed time grid (no curriculum
+    restart), warm start from the submitted VarCM."""
+    src = NB / xp_dir / f"Notebook_consistency_model_VarCM_{suffix}.ipynb"
+    dst = NB / xp_dir / f"Notebook_consistency_model_VarCRPS_{suffix}.ipynb"
+    nb = json.load(open(src))
+    done = set()
+    for c in nb["cells"]:
+        if c["cell_type"] != "code":
+            continue
+        s = "".join(c["source"])
+        if s.lstrip().startswith("# --- parameters"):
+            s += ("WARM_START = True        # VarCRPS: start from the submitted VarCM checkpoint\n"
+                  "CRPS_MEMBERS = 8         # draws of x_T per (x0, y) in the fair-CRPS anchor\n")
+            done.add("params")
+        if "\nct = VarCMTraining(" in s:
+            i = s.index("LOG_DIR     = f")
+            j = s.index("\n", i)
+            s = s[:i] + f'LOG_DIR     = "logs_VarCRPS_{suffix}_grad"' + s[j:]
+            s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # VarCRPS: fixed grid\n", "grid")
+            s = sub(s, "    conditioning_mode = COND_MODE,\n)",
+                    "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n)", "crps")
+            s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
+                    "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
+                    "if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
+                    f"    _old = find_best_valid_checkpoint(os.path.join('{old_log}', 'checkpoints'))\n"
+                    "    if _old is None:\n"
+                    f"        raise RuntimeError('WARM_START=True but no submitted checkpoint in {old_log}')\n"
+                    "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
+                    "    print(f'[VarCRPS] warm start from {_old}', flush=True)", "warm start")
+            done.add("training")
+        if "write_calibration_csv(_calib_csv," in s:
+            s = s.replace(f"write_calibration_csv(_calib_csv, 'VarCM_{suffix}'",
+                          f"write_calibration_csv(_calib_csv, 'VarCRPS_{suffix}'")
+        c["source"] = s.splitlines(keepends=True)
+    if {"params", "training"} - done:
+        raise SystemExit(f"VarCRPS: anchors not found for {({'params', 'training'} - done)}")
+    with open(dst, "w") as f:
+        json.dump(nb, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print(f"wrote {dst.relative_to(NB.parent)}")
+
+
 if __name__ == "__main__":
     for spec in SPECS:
         build(spec)
     build_varcmt()
     build_dyncmt()
+    build_varcrps()
