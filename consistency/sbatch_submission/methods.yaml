@@ -95,12 +95,12 @@ methods:
     generative: true
     n_samples_metrics: 20
     params:
-      MAX_EPOCHS: 200
+      MAX_EPOCHS: 150
       COND_MODE: grad
     xp:
       GP:
         notebook: Notebook_consistency_model_VarCM_spde.ipynb
-        log_dir: logs_VarCM_crps_spde_grad
+        log_dir: logs_VarCM_crps2_spde_grad
         status: existing
       SIC:
         notebook: Notebook_consistency_model_VarCM_sic.ipynb
@@ -174,7 +174,7 @@ methods:
     generative: true
     n_samples_metrics: 20
     params:
-      MAX_EPOCHS: 100
+      MAX_EPOCHS: 200
       COND_MODE: grad
     xp:
       GP:

@@ -223,7 +223,10 @@ PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpo
 
 def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     """VarCM (submitted, kept as VarCM_v1) -> VarCM: data anchors = CRPS of 8 draws of x_T per (x0, y)
-    (pixels + spatial/temporal increments) instead of an L2 regression on x0; fixed grid; warm start."""
+    (pixels + spatial/temporal increments) instead of an L2 regression on x0, applied both after the teacher's
+    intermediate state and to the student's direct jump from x_T (crps_direct); fixed grid.
+    Second run (crps2): warm start from the first CRPS run (logs_VarCM_crps_*), which had no crps_direct and
+    stayed collapsed (SSR 0.08) because its CRPS gradient never reached the processing of x_T."""
     name = f"Notebook_consistency_model_VarCM_{suffix}.ipynb"
     src = _v1(xp_dir, name)
     nb = json.load(open(src))
@@ -238,14 +241,14 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
         if "\nct = VarCMTraining(" in s:
             i = s.index("LOG_DIR     = f")
             j = s.index("\n", i)
-            s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps_{suffix}_grad"' + s[j:]
+            s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps2_{suffix}_grad"' + s[j:]
             s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # fixed grid (no curriculum)\n", "grid")
             s = sub(s, "    conditioning_mode = COND_MODE,\n)",
                     "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n"
-                    "    crps_lags         = CRPS_LAGS,\n)", "crps")
+                    "    crps_lags         = CRPS_LAGS,\n    crps_direct       = True,\n)", "crps")
             s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
                     "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
-                    + _warm(f"logs_CT_VarCM_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint"), "warm start")
+                    + _warm(f"logs_VarCM_crps_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint"), "warm start")
             done.add("training")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:

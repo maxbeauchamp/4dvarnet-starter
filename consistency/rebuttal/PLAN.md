@@ -94,3 +94,10 @@ the new results, list what changed in the PDF with line references.
   pixel CRPS alone cannot tell correct from white/too-smooth fields with the same marginals, the increment
   terms rank the correctly correlated field first. VarDynCM: CRPS of 8 rollouts on the sampler's frame grid +
   self-consistency of each jump (no L2 anchors).
+* 11 Nov — GP, CRPS versions (20 members, full test set):
+  VarDynCM (CRPS rollouts, 100 ep): RMSE 0.231 (v1 0.271), SSR 0.45 (v1 0.03), CRPS all px 0.145 (v1 0.165),
+  rank dev 1.48 (v1 3.02); training CRPS still decreasing -> continued to 200 epochs (gp_vardyncm_more).
+  VarCM (CRPS anchor after the teacher's h_t, 200 ep): SSR 0.08 (v1 0.05), RMSE 0.236 (v1 0.230), L_long flat
+  from epoch ~20 -> still collapsed. Cause: the CRPS acts on student(h_t) where h_t comes from the EMA teacher
+  without gradient; a collapsed teacher gives h_t without information on x_T. Fix: also score the student's
+  direct jump x_T -> 0 (crps_direct); run crps2 warm-started from crps1. crps1 results kept as VarCM_crps1_*.

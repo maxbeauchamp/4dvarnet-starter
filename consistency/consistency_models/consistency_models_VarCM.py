@@ -494,11 +494,13 @@ class VarCMTraining(nn.Module):
                                            # of `crps_members` draws of x_T per (x0, y) -> posterior sampler
         crps_lags:          tuple = (1, 2, 4, 8),  # spatial lags of the increment CRPS (spatial correlations)
         crps_w_inc:         float = 1.0,
+        crps_direct:        bool  = False,  # also score the one-jump map from x_T (see __call__)
     ) -> None:
         super().__init__()
         self.crps_members      = crps_members
         self.crps_lags         = crps_lags
         self.crps_w_inc        = crps_w_inc
+        self.crps_direct       = crps_direct
         self.lambda_tan        = lambda_tan
         self.tan_delta         = tan_delta
         self.initial_timesteps = initial_timesteps
@@ -597,6 +599,12 @@ class VarCMTraining(nn.Module):
                               h_t, y, t_s, t0_vec)
         l_long = (crps_field_loss(pred_long, x0, M, self.crps_lags, self.crps_w_inc) if M > 1
                   else pseudo_huber_loss(pred_long, x0).mean())
+        if M > 1 and self.crps_direct:
+            # The student above starts from the EMA teacher's h_t (no gradient): if the teacher has collapsed,
+            # h_t carries no information about x_T and the CRPS cannot create spread. Score the student's own
+            # one-jump map from the noise as well, so the gradient reaches the processing of x_T.
+            pred_direct = self._fwd(student, obs_cost, prior_cost, lambda_reg, x_T, y, T_vec, t0_vec)
+            l_long = 0.5 * (l_long + crps_field_loss(pred_direct, x0, M, self.crps_lags, self.crps_w_inc))
         l_pair = pseudo_huber_loss(pred_long, target_pair.detach()).mean()
 
         # ── Term 3: L_short ───────────────────────────────────────────────────
