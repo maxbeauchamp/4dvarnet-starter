@@ -83,3 +83,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-12 04:16 `gp_varcm_crps1_keep` done in 00:00:01, gate passed
 - 2026-11-12 04:17 submitted `gp_varcm2_smoke` as job 73999 -> `runs/20261112-041709_gp_varcm2_smoke`
 - 2026-11-12 04:47 `gp_varcm2_smoke` done in 00:05:11, gate passed
+- 2026-11-12 04:47 submitted `gp_varcm2_train` as job 74009 -> `runs/20261112-044752_gp_varcm2_train`
+- 2026-11-12 09:38 `gp_varcm2_train` done in 04:27:13, gate passed

@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_varcm2_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM && python run_metrics.py --xp GP --method VarCM",
+  "commit": "3bb0e0a-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "74009",
+  "started": "2026-11-12T04:48:01",
+  "status": "ok",
+  "seconds": 16031.8,
+  "finished": "2026-11-12T09:15:13"
+}
