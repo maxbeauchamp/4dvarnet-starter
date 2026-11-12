@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_dyncmt_eval",
+  "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp GP --method DynCMT",
+  "commit": "b5408e2-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "74078",
+  "started": "2026-11-12T09:38:43",
+  "status": "ok",
+  "seconds": 461.0,
+  "finished": "2026-11-12T09:46:24"
+}
