@@ -185,11 +185,16 @@ def build_dyncmt():
                     "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
                     "    print(f'[DynCMT] warm start from {_old}', flush=True)", "lit config")
             done.add("training")
+        if 'MODEL_PATH = os.path.join("logs_CT_DynCM_spde", "best_model")' in s:
+            # the sampling cell of the DynCM notebook hard-codes the submitted model: evaluate DynCMT's own
+            s = s.replace('MODEL_PATH = os.path.join("logs_CT_DynCM_spde", "best_model")',
+                          'MODEL_PATH = os.path.join(LOG_DIR, "best_model")')
+            done.add("model_path")
         if "write_calibration_csv(_calib_csv," in s:
             s = s.replace("write_calibration_csv(_calib_csv, 'DynCM_spde'", "write_calibration_csv(_calib_csv, 'DynCMT_spde'")
         c["source"] = s.splitlines(keepends=True)
-    if {"params", "imports", "training"} - done:
-        raise SystemExit(f"DynCMT: anchors not found for {({'params', 'imports', 'training'} - done)}")
+    if {"params", "imports", "training", "model_path"} - done:
+        raise SystemExit(f"DynCMT: anchors not found for {({'params', 'imports', 'training', 'model_path'} - done)}")
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")
