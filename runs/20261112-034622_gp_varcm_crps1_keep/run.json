@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_varcm_crps1_keep",
+  "cmd": "cd consistency/sbatch_submission/results/GP && for f in VarCM_metrics*.csv; do mv \"$f\" \"${f/VarCM_metrics/VarCM_crps1_metrics}\"; done; ls VarCM*",
+  "commit": "2a73555-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "73971",
+  "started": "2026-11-12T03:46:27",
+  "status": "ok",
+  "seconds": 0.0,
+  "finished": "2026-11-12T03:46:27"
+}

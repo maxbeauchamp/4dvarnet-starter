@@ -79,3 +79,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-11 13:22 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-11 19:44 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-12 03:46 `gp_dyncmt_train` done in 17:57:46, gate passed
+- 2026-11-12 03:46 submitted `gp_varcm_crps1_keep` as job 73971 -> `runs/20261112-034622_gp_varcm_crps1_keep`
+- 2026-11-12 04:16 `gp_varcm_crps1_keep` done in 00:00:01, gate passed
