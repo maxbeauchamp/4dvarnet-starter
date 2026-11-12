@@ -83,6 +83,7 @@ model:
   dense_members: 2     # samples averaged per dense target
   dense_steps: 8       # Heun steps of those samples
   dense_sigma: 0.05    # floor of the dense targets (normalised)
+  dense_paired: false  # N1n: same initial noise for the initial analysis and the dense targets of a rollout
 
 entrypoints:
   - _target_: croscim.train.base_training

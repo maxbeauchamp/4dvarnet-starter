@@ -239,6 +239,22 @@ def test_n1m_dense_targets_from_the_n0_analysis(days, monkeypatch):
     assert torch.isfinite(n1m.losses(days)["loss"])
 
 
+def test_n1n_paired_dense_targets(days):
+    torch.manual_seed(0)
+    n1n = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, inc_scale=0.2, dense_targets=True, dense_members=1, dense_steps=1,
+                       dense_paired=True, analysis_steps=1)
+    n1n._dense_seed = 123
+    # same day, same seed: the dense target is the initial analysis drawn with that noise
+    z0, _ = n1n.analysis(days[0], 1, torch.Generator("cpu").manual_seed(123))
+    z, m, _ = n1n.target(days[0])
+    ocean = (days[0]["omega_c"] > 0)
+    fill = ocean & ~n1n.n0.target_c(days[0])[1][:, 0]
+    assert fill.any() and torch.allclose(z[:, 0][fill], n1n.nrm.z(z0)[:, 0][fill], atol=1e-5)
+    assert torch.equal(n1n.target(days[0])[0], z)                      # deterministic given the seed
+    assert torch.isfinite(n1n.losses(days)["loss"])
+
+
 def test_n1f_scaled_increment_on_the_moved_state(days, monkeypatch):
     torch.manual_seed(0)
     n1f = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,

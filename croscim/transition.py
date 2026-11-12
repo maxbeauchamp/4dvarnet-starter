@@ -68,6 +68,12 @@ Options (v6, N1b; all False for the former checkpoints):
                (freeze-up, melt, SIT growth) is learnt where it is observed,
                for long rollouts (N1j only learnt the drift: zero increment
                off the ASIP passes).
+  dense_paired (N1n) the initial analysis and the dense targets of one
+               rollout drawn from the same initial noise: independent samples
+               differ from one day to the next by the N0 uncertainty (SIT:
+               tens of cm), N1m learnt it as daily increments, a random walk
+               pushed up at 0 (SIT, snow, open-water SIC) and down at 1 (pack):
+               volume x1.5-2 in 30 days, ice appearing in open water.
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -180,7 +186,7 @@ class LitCascadeN1(pl.LightningModule):
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
                  inc_scale_sic=None, weak_sic=True,
                  drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False,
-                 dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05):
+                 dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05, dense_paired=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -296,8 +302,10 @@ class LitCascadeN1(pl.LightningModule):
         if dense:  # N1m: the N0 analysis of the day (mean of a few samples, all observations) wherever no strict target
             hp, n0 = self.hparams, self.n0
             kp = n0.keep_groups(z.shape[0], z.device, drop=False)
-            a = torch.stack([n0.sample_c(n0.ema.module, ctx, b, kp, hp.dense_steps)
-                             for _ in range(hp.dense_members)]).mean(0)
+            seed = getattr(self, "_dense_seed", None) if hp.get("dense_paired", False) else None
+            gens = [torch.Generator(z.device).manual_seed(seed + i) if seed is not None else None
+                    for i in range(hp.dense_members)]
+            a = torch.stack([n0.sample_c(n0.ema.module, ctx, b, kp, hp.dense_steps, gn) for gn in gens]).mean(0)
             fill = (b["omega_c"] > 0)[:, None] & ~m
             z = torch.where(fill, self.nrm.z(a), z)
             floor = torch.where(fill, torch.full_like(floor, hp.dense_sigma), floor)
@@ -358,7 +366,11 @@ class LitCascadeN1(pl.LightningModule):
     def losses(self, days: list[dict], train: bool = True) -> dict:
         hp = self.hparams
         bsz, dev = days[0]["omega_c"].shape[0], days[0]["omega_c"].device
-        z, psi = self.analysis(days[0], hp.analysis_steps or hp.push_steps)
+        gen = None
+        if hp.get("dense_paired", False):  # one noise for the initial analysis and every dense target of the rollout
+            self._dense_seed = int(torch.randint(0, 2 ** 31 - 1, ()).item())
+            gen = torch.Generator(dev).manual_seed(self._dense_seed)
+        z, psi = self.analysis(days[0], hp.analysis_steps or hp.push_steps, gen)
         total, out = 0.0, {}
         for k in range(1, self.k_now(len(days)) + 1):
             keep = self.keep(bsz, dev, train)
