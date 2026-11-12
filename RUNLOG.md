@@ -72,3 +72,10 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-11 08:32 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-11 09:02 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-11 09:16 `gp_vardyncm_train` done in 05:48:12, gate passed
+- 2026-11-11 09:16 **ATTENTION** next step `gp_dyncmt_train` needs approval (`python3 odyssey/pilot.py approve gp_dyncmt_train`).
+- 2026-11-11 09:18 submitted `gp_dyncmt_train` as job 73302 -> `runs/20261111-091805_gp_dyncmt_train`
+- 2026-11-11 10:08 approved `gp_varcm2_train`
+- 2026-11-11 10:08 approved `gp_vardyncm_more`
+- 2026-11-11 13:22 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-11 19:44 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-12 03:46 `gp_dyncmt_train` done in 17:57:46, gate passed
