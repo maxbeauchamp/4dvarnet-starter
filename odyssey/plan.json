@@ -135,6 +135,12 @@
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM && python run_metrics.py --xp GP --method VarDynCM"
   },
   {
+   "id": "gp_varcm_more",
+   "time": "48:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && (cd results/GP && for f in VarCM_metrics*.csv; do cp \"$f\" \"${f/VarCM_metrics/VarCM_crps2_metrics}\"; done) && python run_training.py --xp GP --method VarCM && python run_metrics.py --xp GP --method VarCM"
+  },
+  {
    "id": "ssh_setup",
    "time": "01:00:00",
    "gate": "status == 'ok'",

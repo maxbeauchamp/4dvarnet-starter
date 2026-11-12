@@ -101,3 +101,6 @@ the new results, list what changed in the PDF with line references.
   from epoch ~20 -> still collapsed. Cause: the CRPS acts on student(h_t) where h_t comes from the EMA teacher
   without gradient; a collapsed teacher gives h_t without information on x_T. Fix: also score the student's
   direct jump x_T -> 0 (crps_direct); run crps2 warm-started from crps1. crps1 results kept as VarCM_crps1_*.
+* 12 Nov — DynCMT (DynFM teacher): RMSE 0.229, CRPS all 0.127, SSR 0.96, rank dev 0.07 (= DynFM). VarCM crps2
+  (direct CRPS term, 150 ep): RMSE 0.219, lambda_x 21, CRPS all 0.147, SSR 0.18; L_long still decreasing.
+  User: option A, continue VarCM to 300 epochs (gp_varcm_more) after VarDynCM, then SSH.

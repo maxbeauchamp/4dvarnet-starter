@@ -95,7 +95,7 @@ methods:
     generative: true
     n_samples_metrics: 20
     params:
-      MAX_EPOCHS: 150
+      MAX_EPOCHS: 300
       COND_MODE: grad
     xp:
       GP:
