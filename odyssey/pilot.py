@@ -125,6 +125,8 @@ def sync_code():
           ["--delete", "--exclude", ".git/", "--exclude", "/data", "--exclude", "runs/", "--exclude", ".pilot/",
            "--exclude", "results/", "--exclude", "logs*", "--exclude", "lightning_logs", "--exclude", "*.ckpt",
            "--exclude", "consistency/sbatch_submission/figures/", "--exclude", "consistency/cartopy/",
+           "--exclude", "/consistency/Notebooks/*/figures/",          # figures made on Odyssey: never overwrite
+           "--exclude", "/consistency/Notebooks/*/*.ipynb_out",
            "--exclude", "__pycache__/", "--exclude", "*.pyc", "--exclude", "*.ipynb_checkpoints"])
 
 
@@ -172,6 +174,16 @@ def fetch(run_dir):
     job_out = ssh(f"ls {shlex.quote(remote_repo())}/runs/slurm-icl-*-{load_state().get('job')}.out 2>/dev/null", check=False)
     if job_out:
         rsync(f"{CFG['ODY_HOST']}:{job_out.splitlines()[0]}", f"{local}/slurm.out")
+    # figures written by the notebooks on Odyssey since the rebuttal started -> results/figures/<xp>/<tag>/
+    figs = ssh(f"cd {shlex.quote(remote_repo())}/consistency/Notebooks && "
+               "find . -path '*/figures/*' -name '*.png' -newermt 2026-11-09 2>/dev/null", check=False)
+    if figs.strip():
+        lst = HERE / ".figlist"
+        lst.write_text(figs)
+        dst = REPO / "consistency/sbatch_submission/results/figures"
+        dst.mkdir(parents=True, exist_ok=True)
+        rsync(f"{CFG['ODY_HOST']}:{remote_repo()}/consistency/Notebooks/", f"{dst}/", ["--files-from", str(lst)])
+        lst.unlink(missing_ok=True)
     # small result files written by the sbatch_submission scripts (CSV, LaTeX, figures; no notebooks)
     res = "consistency/sbatch_submission/results/"
     (REPO / res).mkdir(parents=True, exist_ok=True)

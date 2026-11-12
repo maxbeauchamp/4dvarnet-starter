@@ -93,10 +93,7 @@ def build(spec):
     missing = {"params", "imports", "training"} - done
     if missing:
         raise SystemExit(f"{spec['src'].name}: anchors not found for {missing}")
-    with open(spec["dst"], "w") as f:
-        json.dump(nb, f, indent=1, ensure_ascii=False)
-        f.write("\n")
-    print(f"wrote {spec['dst'].relative_to(NB.parent)}")
+    _write(nb, spec["dst"])
 
 
 def build_varcmt():
@@ -132,10 +129,7 @@ def build_varcmt():
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:
         raise SystemExit(f"VarCMT: anchors not found for {({'params', 'training'} - done)}")
-    with open(dst, "w") as f:
-        json.dump(nb, f, indent=1, ensure_ascii=False)
-        f.write("\n")
-    print(f"wrote {dst.relative_to(NB.parent)}")
+    _write(nb, dst)
 
 
 def build_dyncmt():
@@ -195,10 +189,7 @@ def build_dyncmt():
         c["source"] = s.splitlines(keepends=True)
     if {"params", "imports", "training", "model_path"} - done:
         raise SystemExit(f"DynCMT: anchors not found for {({'params', 'imports', 'training', 'model_path'} - done)}")
-    with open(dst, "w") as f:
-        json.dump(nb, f, indent=1, ensure_ascii=False)
-        f.write("\n")
-    print(f"wrote {dst.relative_to(NB.parent)}")
+    _write(nb, dst)
 
 
 def _v1(xp_dir, name):
@@ -305,13 +296,24 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     _write(nb, NB / xp_dir / name)
 
 
+FIG_TAGS = {  # figures of the rebuttal models go to their own folders (never over the submitted ones)
+    "CMT_spde": ("CM_spde", "CMT_spde"), "CMT_ssh_gf": ("CM_ssh_gf", "CMT_ssh_gf"),
+    "DynCMT_spde": ("DynCM_spde", "DynCMT_spde"), "VarCMT_spde": ("VarCM_spde", "VarCMT_spde"),
+    "VarCM_spde": ("VarCM_spde", "VarCM_crps_spde"), "VarDynCM_spde": ("VarDynCM_spde", "VarDynCM_crps_spde"),
+}
+
+
 def _write(nb, dst):
     stem = dst.stem.replace("Notebook_consistency_model_", "")          # e.g. VarCM_spde
     m, sfx = stem.split("_", 1)
     for c in nb["cells"]:                                                  # label of the calibration CSV
         src = "".join(c["source"])
         if f"'{m}_v1_{sfx}'" in src:
-            c["source"] = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'").splitlines(keepends=True)
+            src = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'")
+        if stem in FIG_TAGS:
+            old, new = FIG_TAGS[stem]
+            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'")
+        c["source"] = src.splitlines(keepends=True)
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")

@@ -40,3 +40,4 @@ consistency/figs/data/GLO12_2019.nc
 .pilot/
 odyssey/config.local.env
 odyssey/COMMIT
+odyssey/.figlist
