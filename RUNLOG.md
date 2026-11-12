@@ -87,3 +87,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-12 09:38 `gp_varcm2_train` done in 04:27:13, gate passed
 - 2026-11-12 09:38 submitted `gp_dyncmt_eval` as job 74078 -> `runs/20261112-093839_gp_dyncmt_eval`
 - 2026-11-12 10:13 `gp_dyncmt_eval` done in 00:07:42, gate passed
+- 2026-11-12 10:13 submitted `gp_vardyncm_more` as job 74092 -> `runs/20261112-101339_gp_vardyncm_more`
+- 2026-11-12 16:20 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-12 16:22 `gp_vardyncm_more` done in 05:58:40, gate passed
