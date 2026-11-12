@@ -1,0 +1,351 @@
+
+========================================================================================
+[run_training] STARTING VarCM / GP
+========================================================================================
+[run_training] VarCM / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 2, 'N_SAMPLES': 2, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_metrics_train.csv', 'COND_MODE': 'grad'}
+Passed unknown parameter: COND_MODE
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:03<02:04,  3.56s/cell]Executing:   8%|▊         | 3/36 [00:27<05:22,  9.76s/cell]Thu Nov 12 04:17:48 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:0B:00.0 Off |                    0 |
+| N/A   46C    P0             71W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:28<02:32,  4.91s/cell]Executing:  19%|█▉        | 7/36 [00:31<01:44,  3.61s/cell]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  25%|██▌       | 9/36 [00:33<01:09,  2.56s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+TrainingItem shapes -- input (y): (5, 128, 128), tgt (x): (5, 128, 128)
+Executing:  28%|██▊       | 10/36 [00:34<01:00,  2.34s/cell][OK] UNet stoch=True: mu torch.Size([1, 5, 100, 100])  log_sigma torch.Size([1, 1])
+Executing:  39%|███▉      | 14/36 [00:37<00:30,  1.39s/cell]J_o = 99860.3359375
+J_b = 100800.4296875
+Phi(x) shape = torch.Size([2, 5, 100, 100])
+Executing:  44%|████▍     | 16/36 [00:37<00:21,  1.06s/cell][OK] VarCMTraining (L_pair + L_anc + L_ae):
+  loss=1.8761  N=3
+  L_pair=0.5719  L_anc=0.7945  (L_long=0.6947  L_short=0.0998)  L_ae=1.0195
+Executing:  50%|█████     | 18/36 [00:40<00:20,  1.15s/cell][INFO] No checkpoint dir found at 'logs_VarCM_crps2_spde_grad/checkpoints' — starting from scratch.
+[RESUME] last checkpoint: logs_VarCM_crps_spde_grad/checkpoints/last.ckpt
+[CRPS] warm start from logs_VarCM_crps_spde_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=2
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+
+Loading `train_dataloader` to estimate number of stepping batches.
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | BaseObsCost      | 0     
+5 | prior_cost        | BilinAEPriorCost | 32.1 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.0 M    Total params
+396.160   Total estimated model params size (MB)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | BaseObsCost      | 0     
+5 | prior_cost        | BilinAEPriorCost | 32.1 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.0 M    Total params
+396.160   Total estimated model params size (MB)
+[LitVarCM] Dynamic total_training_steps = 104  (config fallback was 5000)
+[Epoch 0] N=50  λ_reg=1.0000
+[Ep 0 | step 0]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.081  t'=0.006
+  L=0.5251  L_pair=0.0181  L_anc=0.4896  (L_long=0.4748  L_short=0.0148)  L_ae=0.0002  L_obs=0.0172
+[Ep 0 | step 2]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.013  t'=0.000
+  L=0.6942  L_pair=0.1833  L_anc=0.4911  (L_long=0.4507  L_short=0.0404)  L_ae=0.0002  L_obs=0.0196
+[Ep 0 | step 5]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.904  t'=0.060
+  L=0.5603  L_pair=0.0463  L_anc=0.4608  (L_long=0.4536  L_short=0.0072)  L_ae=0.0002  L_obs=0.0530
+[Ep 0 | step 7]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.815  t'=0.183
+  L=0.5443  L_pair=0.0383  L_anc=0.4464  (L_long=0.4425  L_short=0.0039)  L_ae=0.0002  L_obs=0.0595
+[Ep 0 | step 10]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.019  t'=0.005
+  L=0.4862  L_pair=0.0061  L_anc=0.4584  (L_long=0.4487  L_short=0.0097)  L_ae=0.0002  L_obs=0.0216
+[Ep 0 | step 12]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.161  t'=0.044
+  L=0.4981  L_pair=0.0102  L_anc=0.4646  (L_long=0.4577  L_short=0.0069)  L_ae=0.0002  L_obs=0.0231
+[Ep 0 | step 15]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.003  t'=0.000
+  L=0.6347  L_pair=0.1653  L_anc=0.4506  (L_long=0.4184  L_short=0.0322)  L_ae=0.0002  L_obs=0.0187
+[Ep 0 | step 17]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.016  t'=0.011
+  L=0.4536  L_pair=0.0017  L_anc=0.4335  (L_long=0.4306  L_short=0.0030)  L_ae=0.0002  L_obs=0.0182
+[Ep 0 | step 20]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.235  t'=0.123
+  L=0.4563  L_pair=0.0073  L_anc=0.4184  (L_long=0.4150  L_short=0.0034)  L_ae=0.0002  L_obs=0.0304
+[Ep 0 | step 22]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.107  t'=0.001
+  L=0.5333  L_pair=0.0884  L_anc=0.4278  (L_long=0.4109  L_short=0.0169)  L_ae=0.0002  L_obs=0.0169
+[Ep 0 | step 25]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.003
+  L=0.4763  L_pair=0.0308  L_anc=0.4228  (L_long=0.4082  L_short=0.0146)  L_ae=0.0002  L_obs=0.0225
+[Ep 0 | step 27]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.266  t'=0.003
+  L=0.4866  L_pair=0.0364  L_anc=0.4227  (L_long=0.4075  L_short=0.0152)  L_ae=0.0002  L_obs=0.0272
+[Ep 0 | step 30]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.052  t'=0.009
+  L=0.4475  L_pair=0.0112  L_anc=0.4179  (L_long=0.4071  L_short=0.0107)  L_ae=0.0002  L_obs=0.0183
+[Ep 0 | step 32]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.161  t'=0.038
+  L=0.4318  L_pair=0.0107  L_anc=0.4004  (L_long=0.3932  L_short=0.0071)  L_ae=0.0002  L_obs=0.0206
+[Ep 0 | step 35]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.208  t'=0.060
+  L=0.4754  L_pair=0.0130  L_anc=0.4347  (L_long=0.4279  L_short=0.0068)  L_ae=0.0002  L_obs=0.0275
+[Ep 0 | step 37]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.735  t'=0.000
+  L=0.6380  L_pair=0.1667  L_anc=0.4227  (L_long=0.3987  L_short=0.0240)  L_ae=0.0002  L_obs=0.0484
+[Ep 0 | step 40]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.038
+  L=0.4349  L_pair=0.0128  L_anc=0.4001  (L_long=0.3927  L_short=0.0073)  L_ae=0.0002  L_obs=0.0219
+[Ep 0 | step 42]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.123
+  L=0.4138  L_pair=0.0040  L_anc=0.3815  (L_long=0.3792  L_short=0.0023)  L_ae=0.0002  L_obs=0.0281
+[Ep 0 | step 45]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.208  t'=0.093
+  L=0.4259  L_pair=0.0095  L_anc=0.3872  (L_long=0.3827  L_short=0.0045)  L_ae=0.0002  L_obs=0.0290
+[Ep 0 | step 47]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.005  t'=0.003
+  L=0.4336  L_pair=0.0039  L_anc=0.4025  (L_long=0.3965  L_short=0.0059)  L_ae=0.0002  L_obs=0.0271
+[Ep 0 | step 50]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.044  t'=0.003
+  L=0.4298  L_pair=0.0192  L_anc=0.3898  (L_long=0.3769  L_short=0.0129)  L_ae=0.0002  L_obs=0.0206
+[progress] epoch 1/2 | L_ae=0.0002 | L_anc=0.3743 | L_long=0.3703 | L_obs=0.0215 | L_pair=0.0025 | L_short=0.0040 | ema_decay_rate=0.9500 | lambda_reg=1.0000 | num_timesteps=50.0000 | train_loss=0.3985
+[Epoch 1] N=50  λ_reg=1.0000
+[Ep 1 | step 52]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.266  t'=0.016
+  L=0.4392  L_pair=0.0259  L_anc=0.3836  (L_long=0.3714  L_short=0.0122)  L_ae=0.0002  L_obs=0.0295
+[Ep 1 | step 54]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.379  t'=0.001
+  L=0.5104  L_pair=0.0932  L_anc=0.3807  (L_long=0.3652  L_short=0.0155)  L_ae=0.0002  L_obs=0.0363
+[Ep 1 | step 57]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.052  t'=0.009
+  L=0.4118  L_pair=0.0124  L_anc=0.3784  (L_long=0.3663  L_short=0.0121)  L_ae=0.0002  L_obs=0.0208
+[Ep 1 | step 59]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.379  t'=0.027
+  L=0.4273  L_pair=0.0271  L_anc=0.3657  (L_long=0.3559  L_short=0.0098)  L_ae=0.0002  L_obs=0.0344
+[Ep 1 | step 62]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.594  t'=0.070
+  L=0.4573  L_pair=0.0353  L_anc=0.3774  (L_long=0.3714  L_short=0.0060)  L_ae=0.0002  L_obs=0.0444
+[Ep 1 | step 64]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.476  t'=0.379
+  L=0.4119  L_pair=0.0041  L_anc=0.3522  (L_long=0.3504  L_short=0.0017)  L_ae=0.0002  L_obs=0.0555
+[Ep 1 | step 67]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.060  t'=0.016
+  L=0.3935  L_pair=0.0087  L_anc=0.3683  (L_long=0.3593  L_short=0.0090)  L_ae=0.0002  L_obs=0.0164
+[Ep 1 | step 69]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.107  t'=0.001
+  L=0.4519  L_pair=0.0557  L_anc=0.3791  (L_long=0.3608  L_short=0.0183)  L_ae=0.0002  L_obs=0.0170
+[Ep 1 | step 72]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.235  t'=0.038
+  L=0.3977  L_pair=0.0188  L_anc=0.3525  (L_long=0.3441  L_short=0.0084)  L_ae=0.0002  L_obs=0.0263
+[Ep 1 | step 74]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.093  t'=0.009
+  L=0.3935  L_pair=0.0175  L_anc=0.3590  (L_long=0.3455  L_short=0.0134)  L_ae=0.0002  L_obs=0.0168
+[Ep 1 | step 77]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.027  t'=0.001
+  L=0.4201  L_pair=0.0364  L_anc=0.3660  (L_long=0.3493  L_short=0.0167)  L_ae=0.0002  L_obs=0.0175
+[Ep 1 | step 79]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.476  t'=0.060
+  L=0.4196  L_pair=0.0295  L_anc=0.3508  (L_long=0.3447  L_short=0.0061)  L_ae=0.0002  L_obs=0.0391
+[Ep 1 | step 82]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.023  t'=0.016
+  L=0.3619  L_pair=0.0019  L_anc=0.3381  (L_long=0.3349  L_short=0.0032)  L_ae=0.0002  L_obs=0.0217
+[Ep 1 | step 84]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.300  t'=0.000
+  L=0.5680  L_pair=0.1673  L_anc=0.3666  (L_long=0.3419  L_short=0.0247)  L_ae=0.0002  L_obs=0.0340
+[Ep 1 | step 87]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.661  t'=0.141
+  L=0.4380  L_pair=0.0354  L_anc=0.3503  (L_long=0.3461  L_short=0.0042)  L_ae=0.0002  L_obs=0.0521
+[Ep 1 | step 89]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.019  t'=0.006
+  L=0.3737  L_pair=0.0057  L_anc=0.3513  (L_long=0.3415  L_short=0.0098)  L_ae=0.0002  L_obs=0.0165
+[Ep 1 | step 92]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.379  t'=0.001
+  L=0.5281  L_pair=0.1337  L_anc=0.3590  (L_long=0.3394  L_short=0.0196)  L_ae=0.0002  L_obs=0.0352
+[Ep 1 | step 94]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.027  t'=0.004
+  L=0.3932  L_pair=0.0150  L_anc=0.3572  (L_long=0.3414  L_short=0.0158)  L_ae=0.0002  L_obs=0.0208
+[Ep 1 | step 97]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.904  t'=0.161
+  L=0.4693  L_pair=0.0525  L_anc=0.3508  (L_long=0.3447  L_short=0.0062)  L_ae=0.0002  L_obs=0.0658
+[Ep 1 | step 99]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.044  t'=0.008
+  L=0.3952  L_pair=0.0151  L_anc=0.3567  (L_long=0.3415  L_short=0.0152)  L_ae=0.0002  L_obs=0.0233
+[Ep 1 | step 102]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.661  t'=0.183
+  L=0.4244  L_pair=0.0303  L_anc=0.3413  (L_long=0.3376  L_short=0.0037)  L_ae=0.0002  L_obs=0.0526
+[progress] epoch 2/2 | L_ae=0.0002 | L_anc=0.3457 | L_long=0.3289 | L_obs=0.0156 | L_pair=0.0248 | L_short=0.0167 | ema_decay_rate=0.9500 | lambda_reg=1.0000 | num_timesteps=50.0000 | train_loss=0.3863
+`Trainer.fit` stopped: `max_epochs=2` reached.
+
+`Trainer.fit` stopped: `max_epochs=2` reached.
+[OK] EMA UNet saved via save_pretrained to: logs_VarCM_crps2_spde_grad/best_model
+[OK] Costs saved to: logs_VarCM_crps2_spde_grad/best_model/costs.pt
+Executing:  61%|██████    | 22/36 [04:21<05:57, 25.53s/cell][OK] Model loaded from: logs_VarCM_crps2_spde_grad/best_model
+   lambda_reg = 1.0000
+Executing:  67%|██████▋   | 24/36 [04:22<03:52, 19.39s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  72%|███████▏  | 26/36 [04:22<02:24, 14.41s/cell]  Sample 1/2 done  Sample 2/2 done
+2 ensemble members generated
+Executing:  78%|███████▊  | 28/36 [04:23<01:25, 10.64s/cell]  Saved: figures/VarCM_spde/VarCM_spde_obs.png
+  Saved: figures/VarCM_spde/VarCM_spde_gt.png
+  Saved: figures/VarCM_spde/VarCM_spde_oi.png
+  Saved: figures/VarCM_spde/VarCM_spde_varcm_mean.png
+  Saved: figures/VarCM_spde/VarCM_spde_varcm_spread.png
+  Saved: figures/VarCM_spde/VarCM_spde_member0.png
+  Saved: figures/VarCM_spde/VarCM_spde_member1.png
+Executing:  83%|████████▎ | 30/36 [04:25<00:47,  7.94s/cell]  Saved: figures/VarCM_spde/VarCM_spde_transport.png
+Executing:  89%|████████▉ | 32/36 [04:26<00:23,  5.81s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (2 members): SSR 0.093  spread 0.0179  RMSE 0.2362  CRPS(all px) 0.1747  rank dev 0.77 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_metrics_train_calibration.csv
+Executing:  94%|█████████▍| 34/36 [05:02<00:18,  9.33s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_metrics_train.csv
+Executing: 100%|██████████| 36/36 [05:04<00:00,  8.47s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_train.ipynb
+[run_step] ok in 309.4 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261112-041709_gp_varcm2_smoke

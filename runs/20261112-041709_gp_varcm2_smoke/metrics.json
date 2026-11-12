@@ -1,0 +1,28 @@
+{
+ "GP/VarCM_metrics_train.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2355 $\\pm$ 0.0185",
+   "lambda_x": "44.1 $\\pm$ 42.9",
+   "CRPS": "0.0152 $\\pm$ 0.0037"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_metrics_train_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 2,
+   "spread": 0.017864334673642332,
+   "rmse": 0.2362421744822358,
+   "ssr": 0.0926136593532396,
+   "crps_all": 0.17465221908865253,
+   "rank_dev": 0.7667652214842413,
+   "ranks": "377997 41113 480890"
+  }
+ ]
+}

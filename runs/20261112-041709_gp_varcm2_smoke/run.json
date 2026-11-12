@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_varcm2_smoke",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=2 python run_training.py --xp GP --method VarCM",
+  "commit": "182e08f-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "73999",
+  "started": "2026-11-12T04:17:16",
+  "status": "ok",
+  "seconds": 309.4,
+  "finished": "2026-11-12T04:22:26"
+}
