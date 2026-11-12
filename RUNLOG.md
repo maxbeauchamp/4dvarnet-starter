@@ -90,3 +90,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-12 10:13 submitted `gp_vardyncm_more` as job 74092 -> `runs/20261112-101339_gp_vardyncm_more`
 - 2026-11-12 16:20 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-12 16:22 `gp_vardyncm_more` done in 05:58:40, gate passed
+- 2026-11-12 16:23 submitted `gp_figs` as job 74413 -> `runs/20261112-162328_gp_figs`
+- 2026-11-12 23:19 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-12 23:21 `gp_figs` done in 00:12:19, gate passed

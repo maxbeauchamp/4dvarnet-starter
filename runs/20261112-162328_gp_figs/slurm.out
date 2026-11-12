@@ -1,0 +1,256 @@
+[job] 2026-11-12T16:23:47+01:00 host=sl-mee-br-206 job=74413 run_dir=runs/20261112-162328_gp_figs args=--cmd cd consistency/sbatch_submission && for m in CMT DynCMT; do python run_metrics.py --xp GP --method $m || exit 1; done
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_metrics] STARTING CMT / GP
+========================================================================================
+[run_metrics] CMT / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics.csv', 'SKIP_TRAINING': True}
+Unable to parse line 20 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Executing:   0%|          | 0/32 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/32 [00:03<01:43,  3.34s/cell]Executing:   9%|▉         | 3/32 [00:14<02:23,  4.96s/cell]Thu Nov 12 16:24:06 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:0B:00.0 Off |                    0 |
+| N/A   37C    P0             67W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  16%|█▌        | 5/32 [00:15<01:09,  2.58s/cell]Executing:  22%|██▏       | 7/32 [00:20<01:03,  2.54s/cell]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  28%|██▊       | 9/32 [00:23<00:51,  2.23s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+TrainingItem shapes — input (y): (5, 128, 128), tgt (x): (5, 128, 128)
+Executing:  31%|███▏      | 10/32 [00:23<00:40,  1.85s/cell]Executing:  44%|████▍     | 14/32 [00:25<00:18,  1.01s/cell]Valid checkpoint: logs_CMT_spde/checkpoints/last.ckpt
+[CMT] ODE-teacher targets from logs_FM_spde/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_CMT_spde/checkpoints/last.ckpt directly (trainer.fit() not called)
+EMA model saved to: logs_CMT_spde/best_model
+Executing:  56%|█████▋    | 18/32 [00:29<00:14,  1.05s/cell]✅ Model loaded from: logs_CMT_spde/best_model
+Executing:  62%|██████▎   | 20/32 [00:30<00:10,  1.17cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  69%|██████▉   | 22/32 [00:30<00:06,  1.52cell/s]  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+✅ 20 ensemble members generated
+Executing:  75%|███████▌  | 24/32 [00:36<00:10,  1.30s/cell]  Saved: figures/CMT_spde/CMT_spde_obs.png
+  Saved: figures/CMT_spde/CMT_spde_gt.png
+  Saved: figures/CMT_spde/CMT_spde_oi.png
+  Saved: figures/CMT_spde/CMT_spde_cm_mean.png
+  Saved: figures/CMT_spde/CMT_spde_cm_spread.png
+  Saved: figures/CMT_spde/CMT_spde_member0.png
+  Saved: figures/CMT_spde/CMT_spde_member1.png
+Executing:  81%|████████▏ | 26/32 [00:37<00:06,  1.16s/cell]  Saved: figures/CMT_spde/CMT_spde_transport.png
+Executing:  88%|████████▊ | 28/32 [00:38<00:03,  1.06cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (20 members): SSR 0.817  spread 0.1591  RMSE 0.1995  CRPS(all px) 0.1099  rank dev 0.25 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics_calibration.csv
+Executing:  94%|█████████▍| 30/32 [05:07<01:18, 39.29s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics.csv
+Executing: 100%|██████████| 32/32 [05:09<00:00,  9.69s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/CMT_metrics.csv
+
+========================================================================================
+[run_metrics] STARTING DynCMT / GP
+========================================================================================
+[run_metrics] DynCMT / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/DynCMT_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/DynCMT_metrics.csv', 'SKIP_TRAINING': True}
+Executing:   0%|          | 0/41 [00:00<?, ?cell/s]Executing:   2%|▏         | 1/41 [00:01<00:46,  1.17s/cell]Executing:   7%|▋         | 3/41 [00:05<01:17,  2.05s/cell]Thu Nov 12 16:29:08 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:0B:00.0 Off |                    0 |
+| N/A   44C    P0             70W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  20%|█▉        | 8/41 [00:06<00:21,  1.54cell/s]Executing:  27%|██▋       | 11/41 [00:07<00:15,  1.99cell/s]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  32%|███▏      | 13/41 [00:08<00:16,  1.69cell/s][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size C      = 5
+t_IC (transition)  = 0.2000  (= 1/C)
+Spatial size       = 128 x 128
+TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
+Executing:  34%|███▍      | 14/41 [00:09<00:15,  1.76cell/s][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
+[OK] Parameters: 32,997,889
+
+w_obs sanity check (C=5, t_IC=0.200):
+  t=0.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.100  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.200  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.210  →  w=[0.9500000476837158, 0.04999995231628418, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.500  →  w=[0.0, 0.5000000596046448, 0.4999999403953552, 0.0, 0.0]  (sum=1.000)
+  t=1.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
+Executing:  44%|████▍     | 18/41 [00:10<00:09,  2.51cell/s]Executing:  54%|█████▎    | 22/41 [00:11<00:06,  3.13cell/s][OK] Resuming from: logs_DynCMT_spde/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[DynCMT] DynFM-teacher targets from logs_DynFM_spde/best_model
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_DynCMT_spde/checkpoints/last.ckpt directly (trainer.fit() not called)
+[OK] EMA model saved → logs_DynCMT_spde/best_model
+Executing:  61%|██████    | 25/41 [00:16<00:11,  1.39cell/s][OK] Model loaded from: logs_DynCMT_spde/best_model
+     Input channels: 3*C+1 = 16  (x | y_filled | mask_y | w_obs)
+Executing:  66%|██████▌   | 27/41 [00:16<00:08,  1.62cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  71%|███████   | 29/41 [00:16<00:05,  2.05cell/s]  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+[OK] 20 ensemble members generated  (nsteps=21)
+Physical frame indices IC→last: [6, 10, 13, 17, 20]
+  → solver_times: ['0.30', '0.50', '0.65', '0.85', '1.00']
+  IC expected at s ≈ 0.30  (step ~6)
+
+Sample shape: torch.Size([1, 1, 128, 128])
+Process shape: torch.Size([21, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
+Executing:  76%|███████▌  | 31/41 [00:25<00:15,  1.52s/cell]  Saved: figures/DynCMT_spde/DynCMT_spde_obs.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_gt.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_oi.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_dyncm_mean.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_dyncm_spread.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_member0.png
+  Saved: figures/DynCMT_spde/DynCMT_spde_member1.png
+Executing:  85%|████████▌ | 35/41 [00:27<00:06,  1.06s/cell]step_indices (13 cols) = [0, 2, 3, 5, 6, 8, 10, 11, 13, 15, 17, 18, 20]
+phys_col                   = [4, 6, 8, 10, 12]
+spinup_cols                = [0, 1, 2, 3]
+  Saved: figures/DynCMT_spde/DynCM_spde_transport.png
+  Saved: figures/DynCMT_spde/DynCM_spde_variance_collapse.png
+Std step 0 (noise): 9.9679   Std last step: 1.0467   GT std: 0.9939
+Executing:  90%|█████████ | 37/41 [00:28<00:03,  1.01cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (20 members): SSR 0.961  spread 0.2149  RMSE 0.2291  CRPS(all px) 0.1265  rank dev 0.07 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/DynCMT_metrics_calibration.csv
+Executing:  95%|█████████▌| 39/41 [06:59<01:38, 49.46s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/DynCMT_metrics.csv
+Executing: 100%|██████████| 41/41 [07:02<00:00, 10.31s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/DynCMT_metrics.csv
+[run_step] ok in 738.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261112-162328_gp_figs
+[job] 2026-11-12T16:36:05+01:00 exit=0
