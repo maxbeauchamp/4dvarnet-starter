@@ -123,7 +123,7 @@ class TeacherPairwiseConsistencyTraining(ConsistencyTrainingFewSteps_TimeEmbeddi
         diag = dict(frac_local=(k == n - 1).float().mean().detach(),
                     teacher_step_absmax=xhat.detach().abs().max(),
                     # keys read by the notebooks' logging of the original training (kept for compatibility)
-                    sigma_s=s_n.detach(), sigma_t=s_m.detach(),
+                    sigma_s=s_n.detach().mean(), sigma_t=s_m.detach().mean(), sigma_tgt=sigma_k.detach().mean(),
                     c_out_s=z0, c_out_t=z0,
                     student_input_absmax=x_n.detach().abs().max(), teacher_input_absmax=xhat.detach().abs().max(),
                     student_out_absmax=student.detach().abs().max(), teacher_out_absmax=far.detach().abs().max(),
