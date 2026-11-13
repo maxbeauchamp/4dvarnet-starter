@@ -119,9 +119,16 @@ class TeacherPairwiseConsistencyTraining(ConsistencyTrainingFewSteps_TimeEmbeddi
             target = is_local * xhat + (1 - is_local) * far
 
         sigma_k = compute_sigma(t_k, self.sigma_min, self.sigma_max, self.rho)
+        z0 = torch.zeros((), device=dev)
         diag = dict(frac_local=(k == n - 1).float().mean().detach(),
                     teacher_step_absmax=xhat.detach().abs().max(),
-                    student_out_absmax=student.detach().abs().max())
+                    # keys read by the notebooks' logging of the original training (kept for compatibility)
+                    sigma_s=s_n.detach(), sigma_t=s_m.detach(),
+                    c_out_s=z0, c_out_t=z0,
+                    student_input_absmax=x_n.detach().abs().max(), teacher_input_absmax=xhat.detach().abs().max(),
+                    student_out_absmax=student.detach().abs().max(), teacher_out_absmax=far.detach().abs().max(),
+                    raw_student_absmax=student.detach().abs().max(), raw_teacher_absmax=target.detach().abs().max(),
+                    raw_student_nan=torch.isnan(student).any().detach(), raw_teacher_nan=torch.isnan(target).any().detach())
         return ConsistencyTrainingOutputFewSteps(student, target.detach(), N, steps, diag=diag, noise=eps.detach(),
                                                  sigma_tgt=sigma_k.detach(), student_t1=t_n.detach(),
                                                  target_times=t_k.detach())
