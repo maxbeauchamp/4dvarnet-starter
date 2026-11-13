@@ -1,0 +1,54 @@
+{
+ "GP/VarCM_ls01_metrics_train.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2226 $\\pm$ 0.0244",
+   "lambda_x": "21.7 $\\pm$ 21.7",
+   "CRPS": "0.0122 $\\pm$ 0.0035"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_ls01_metrics_train_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 2,
+   "spread": 0.04243874177313734,
+   "rmse": 0.2239447541584081,
+   "ssr": 0.23209577527409325,
+   "crps_all": 0.15788208599365489,
+   "rank_dev": 0.616357051400494,
+   "ranks": "406099 86489 407412"
+  }
+ ],
+ "GP/VarDynCM_ls01_metrics_train.csv": [
+  {
+   "Method": "VarDynCM (ens. mean, full test set)",
+   "RMSE": "0.2382 $\\pm$ 0.0879",
+   "lambda_x": "39.0 $\\pm$ 47.7",
+   "CRPS": "0.1344 $\\pm$ 0.1856"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarDynCM_ls01_metrics_train_calibration.csv": [
+  {
+   "method": "VarDynCM_spde",
+   "members": 2,
+   "spread": 0.007162558798213861,
+   "rmse": 0.2539052328456655,
+   "ssr": 0.034549532736433644,
+   "crps_all": 0.16612234100331943,
+   "rank_dev": 0.8620016872051031,
+   "ranks": "382477 10221 507302"
+  }
+ ]
+}

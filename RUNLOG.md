@@ -99,3 +99,8 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-13 04:20 `ssh_cmt_smoke` ended FAILED after 00:00:40; retrying once
 - 2026-11-13 04:20 submitted `ssh_cmt_smoke` as job 74637 -> `runs/20261113-042053_ssh_cmt_smoke`
 - 2026-11-13 04:51 **ATTENTION** `ssh_cmt_smoke` ended FAILED after 00:00:46; see `runs/20261113-042053_ssh_cmt_smoke`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
+- 2026-11-13 06:36 pilot resumed
+- 2026-11-13 06:36 plan.json changed; next is `gp_ls01_smoke`
+- 2026-11-13 06:36 submitted `gp_ls01_smoke` as job 74647 -> `runs/20261113-063614_gp_ls01_smoke`
+- 2026-11-13 08:26 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-13 08:27 `gp_ls01_smoke` done in 00:08:39, gate passed
