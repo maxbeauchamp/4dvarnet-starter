@@ -115,3 +115,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-13 19:03 submitted `ssh_cmt_smoke` as job 74828 -> `runs/20261113-190312_ssh_cmt_smoke`
 - 2026-11-13 19:05 pilot resumed
 - 2026-11-13 19:05 **ATTENTION** `ssh_cmt_smoke` ended FAILED after 00:00:30; see `runs/20261113-190312_ssh_cmt_smoke`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
+- 2026-11-13 19:08 pilot resumed
+- 2026-11-13 19:08 plan.json changed; next is `gp_nfe_diag`
+- 2026-11-13 19:08 submitted `gp_nfe_diag` as job 74830 -> `runs/20261113-190841_gp_nfe_diag`
+- 2026-11-13 19:19 `gp_nfe_diag` done in 00:04:06, gate passed

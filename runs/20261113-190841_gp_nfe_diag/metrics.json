@@ -1,0 +1,168 @@
+{
+ "GP/VarCM_metrics_nfe_placeholder.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2226 $\\pm$ 0.0244",
+   "lambda_x": "22.6 $\\pm$ 24.9",
+   "CRPS": "0.0124 $\\pm$ 0.0035"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_metrics_nfe_placeholder_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 2,
+   "spread": 0.04255825640660897,
+   "rmse": 0.22395924074363108,
+   "ssr": 0.2327343408394049,
+   "crps_all": 0.15787727922669742,
+   "rank_dev": 0.615952175019385,
+   "ranks": "406858 86628 406514"
+  }
+ ],
+ "GP/VarCM_nfe_sweep.csv": [
+  {
+   "method": "VarCM",
+   "N": 1,
+   "nfe": 3.0,
+   "rmse": 0.22355516850948334,
+   "crps": 0.015903175168939583,
+   "spread": 0.0522544512496321,
+   "ssr": 0.23748213684246397,
+   "wall_clock_s_per_sample": 0.0762640923804914,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 2,
+   "nfe": 3.0,
+   "rmse": 0.2235709846019745,
+   "crps": 0.016406256090187157,
+   "spread": 0.05257139835765924,
+   "ssr": 0.23890377803013504,
+   "wall_clock_s_per_sample": 0.07037487134803086,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 4,
+   "nfe": 4.0,
+   "rmse": 0.2242124060789744,
+   "crps": 0.01576151456202146,
+   "spread": 0.04800568392454968,
+   "ssr": 0.2175264141240105,
+   "wall_clock_s_per_sample": 0.0925592102187996,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 8,
+   "nfe": 8.0,
+   "rmse": 0.2239716172218323,
+   "crps": 0.012446236934873659,
+   "spread": 0.042365591884013974,
+   "ssr": 0.19221157563968586,
+   "wall_clock_s_per_sample": 0.18164650718681513,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 15,
+   "nfe": 15.0,
+   "rmse": 0.22381231089433035,
+   "crps": 0.009488638357466621,
+   "spread": 0.0425258666113945,
+   "ssr": 0.19307119268677575,
+   "wall_clock_s_per_sample": 0.3422820083874588,
+   "n_pairs": 15
+  }
+ ],
+ "GP/VarDynCM_metrics_nfe_placeholder.csv": [
+  {
+   "Method": "VarDynCM (ens. mean, full test set)",
+   "RMSE": "0.2435 $\\pm$ 0.0661",
+   "lambda_x": "56.7 $\\pm$ 57.9",
+   "CRPS": "0.0895 $\\pm$ 0.0655"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarDynCM_metrics_nfe_placeholder_calibration.csv": [
+  {
+   "method": "VarDynCM_spde",
+   "members": 2,
+   "spread": 0.05109573979211761,
+   "rmse": 0.2523011570465969,
+   "ssr": 0.2480339210208123,
+   "crps_all": 0.17707227164847364,
+   "rank_dev": 0.6445418755209005,
+   "ranks": "358596 84117 457287"
+  }
+ ],
+ "GP/VarDynCM_nfe_sweep.csv": [
+  {
+   "method": "VarDynCM",
+   "N": 2,
+   "nfe": 1.0,
+   "rmse": 0.2407300333182017,
+   "crps": 0.0971263836452992,
+   "spread": 0.23963811324145254,
+   "ssr": 1.0183983908556498,
+   "wall_clock_s_per_sample": 0.023562229246211548,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarDynCM",
+   "N": 3,
+   "nfe": 2.0,
+   "rmse": 0.2433205634355545,
+   "crps": 0.09840948817306225,
+   "spread": 0.13785195785585394,
+   "ssr": 0.5802755178421743,
+   "wall_clock_s_per_sample": 0.04724042506422847,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarDynCM",
+   "N": 5,
+   "nfe": 4.0,
+   "rmse": 0.238485320409139,
+   "crps": 0.0893495033781421,
+   "spread": 0.0846727732636631,
+   "ssr": 0.3636547666801267,
+   "wall_clock_s_per_sample": 0.09197516986945023,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarDynCM",
+   "N": 10,
+   "nfe": 9.0,
+   "rmse": 0.2529286940892537,
+   "crps": 0.09362343649353182,
+   "spread": 0.2979445994838119,
+   "ssr": 1.2027793194967993,
+   "wall_clock_s_per_sample": 0.208691692748107,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarDynCM",
+   "N": 20,
+   "nfe": 19.0,
+   "rmse": 0.20627297560373942,
+   "crps": 0.06679343726017158,
+   "spread": 0.028645219844828772,
+   "ssr": 0.13935238883311268,
+   "wall_clock_s_per_sample": 0.43852940017047026,
+   "n_pairs": 15
+  }
+ ]
+}
