@@ -107,3 +107,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-13 08:28 submitted `gp_vardyncm_ls01_train` as job 74651 -> `runs/20261113-082801_gp_vardyncm_ls01_train`
 - 2026-11-13 14:27 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
 - 2026-11-13 15:28 `gp_vardyncm_ls01_train` done in 06:37:57, gate passed
+- 2026-11-13 15:28 submitted `gp_varcm_ls01_train` as job 74795 -> `runs/20261113-152850_gp_varcm_ls01_train`
+- 2026-11-13 16:59 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Error in the HTTP2 framing layer
+- 2026-11-13 18:52 `gp_varcm_ls01_train` done in 03:20:01, gate passed
