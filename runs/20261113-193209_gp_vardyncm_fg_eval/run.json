@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_vardyncm_fg_eval",
+  "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp GP --method VarDynCM_ls01_fg && python run_metrics.py --xp GP --method VarDynCM_fg",
+  "commit": "cd72287",
+  "host": "sl-mee-br-207",
+  "slurm_job": "74832",
+  "started": "2026-11-13T19:32:14",
+  "status": "ok",
+  "seconds": 268.4,
+  "finished": "2026-11-13T19:36:43"
+}
