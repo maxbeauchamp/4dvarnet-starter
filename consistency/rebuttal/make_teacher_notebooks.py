@@ -253,7 +253,8 @@ PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpo
                "LAMBDA_SELF = 1.0        # weight of the self-consistency term (rebuttal run 'ls01': 0.1)\n"
                "RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run (e.g. '_ls01')\n"
                "WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)\n"
-               "SELECT_BY_VAL = False    # validation CRPS of the ensemble each epoch; keep the best checkpoint\n")
+               "SELECT_BY_VAL = False    # validation CRPS of the ensemble each epoch; keep the best checkpoint\n"
+               "EVAL_TAG = ''            # suffix of the figure folder for an evaluation variant (e.g. '_fg')\n")
 
 
 PARAMS_V3 = ("SHORT_CRPS = False       # v3: CRPS instead of L2 in the short anchor (last L2 target on the interpolant)\n"
@@ -330,7 +331,8 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
             continue
         s = "".join(c["source"])
         if s.lstrip().startswith("# --- parameters"):
-            s += PARAMS_CRPS
+            s += PARAMS_CRPS + ("FRAME_GRID = False       # sample on the training frame grid (1 -> IC, then one jump "
+                                "per frame) instead of NSTEPS uniform steps\n")
             done.add("params")
         if old_tr in s:
             i = s.index("LOG_DIR     = f")
@@ -346,6 +348,8 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     crps_members=CRPS_MEMBERS, crps_lags=CRPS_LAGS,
     lambda_semi=LAMBDA_SELF,
 )""", "training")
+            s = sub(s, "consistency_sampling = VarDynCMSamplingAndEditing(\n",
+                    "consistency_sampling = VarDynCMSamplingAndEditing(\n    frame_grid=FRAME_GRID,\n", "frame grid")
             s = sub(s, "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n",
                     "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n"
                     + _warm(f"logs_CT_VarDynCM_{suffix}_grad", "lit_model", "find_resume_ckpt")
@@ -384,7 +388,7 @@ def _write(nb, dst):
             src = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'")
         if stem in FIG_TAGS:
             old, new = FIG_TAGS[stem]
-            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG" if "crps" in new else ""))
+            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG + EVAL_TAG" if "crps" in new else ""))
         c["source"] = src.splitlines(keepends=True)
     _sweep_spread(nb)
     with open(dst, "w") as f:

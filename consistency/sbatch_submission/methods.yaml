@@ -245,6 +245,40 @@ methods:
         log_dir: logs_VarDynCM_crps_spde_grad_ls01
         status: existing
 
+  VarDynCM_fg:
+    # Evaluation variant of VarDynCM (CRPS, 200 epochs): sampled on the frame grid it is trained on
+    # (1 -> IC, then one jump per frame, C network calls) instead of 25 uniform steps.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 200
+      COND_MODE: grad
+      FRAME_GRID: true
+      EVAL_TAG: _fg
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad
+        status: existing
+
+  VarDynCM_ls01_fg:
+    # Same for VarDynCM_ls01 (best validation-CRPS checkpoint, which was scored on that frame grid).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 100
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      RUN_TAG: _ls01
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+      EVAL_TAG: _fg
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_ls01
+        status: existing
+
   VarDynCM_v1:
     # Submitted version (L2 anchors), kept for the comparison. GP only.
     generative: true

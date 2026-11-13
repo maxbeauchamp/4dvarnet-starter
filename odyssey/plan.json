@@ -183,6 +183,12 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarCM_v3 --reset"
   },
   {
+   "id": "gp_vardyncm_fg_eval",
+   "time": "04:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp GP --method VarDynCM_ls01_fg && python run_metrics.py --xp GP --method VarDynCM_fg"
+  },
+  {
    "id": "gp_varcm_v3_train",
    "time": "12:00:00",
    "confirm": true,

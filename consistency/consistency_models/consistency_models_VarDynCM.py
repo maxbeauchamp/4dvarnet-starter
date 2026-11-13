@@ -586,10 +586,14 @@ class VarDynCMSamplingAndEditing:
         sigma_max:         float = 3.0,
         spinup_boundary:   float = 0.7,
         conditioning_mode: str   = "none",
+        frame_grid:        bool  = False,
     ):
         self.sigma_max         = sigma_max
         self.spinup_boundary   = spinup_boundary
         self.conditioning_mode = conditioning_mode
+        # (rebuttal) frame_grid=True: one jump 1 -> sb (initial condition), then one jump per frame, i.e. the
+        # grid VarDynCMCRPSTraining is trained and scored on (C network calls); `nsteps` is then ignored.
+        self.frame_grid        = frame_grid
 
     def __call__(
         self,
@@ -606,7 +610,14 @@ class VarDynCMSamplingAndEditing:
         sb    = self.spinup_boundary
         dev   = noise.device
         dtype = noise.dtype
-        times = torch.linspace(1.0, 1e-8, nsteps, device=dev, dtype=dtype)
+        if getattr(self, "frame_grid", False):
+            C = y.shape[1]
+            frame_t = [sb * (C - 1 - k) / max(C - 1, 1) for k in range(C)]
+            frame_t[-1] = max(frame_t[-1], 1e-8)
+            times = torch.tensor([1.0] + frame_t, device=dev, dtype=dtype)
+            nsteps = len(times)
+        else:
+            times = torch.linspace(1.0, 1e-8, nsteps, device=dev, dtype=dtype)
 
         x      = noise * self.sigma_max
         all_xs = [x]
