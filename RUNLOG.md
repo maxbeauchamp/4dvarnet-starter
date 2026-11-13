@@ -110,3 +110,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-13 15:28 submitted `gp_varcm_ls01_train` as job 74795 -> `runs/20261113-152850_gp_varcm_ls01_train`
 - 2026-11-13 16:59 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Error in the HTTP2 framing layer
 - 2026-11-13 18:52 `gp_varcm_ls01_train` done in 03:20:01, gate passed
+- 2026-11-13 18:52 submitted `ssh_cmt_smoke` as job 74823 -> `runs/20261113-185225_ssh_cmt_smoke`
+- 2026-11-13 19:02 `ssh_cmt_smoke` ended FAILED after 00:00:34; retrying once
+- 2026-11-13 19:03 submitted `ssh_cmt_smoke` as job 74828 -> `runs/20261113-190312_ssh_cmt_smoke`

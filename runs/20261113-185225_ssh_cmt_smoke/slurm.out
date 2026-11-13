@@ -1,0 +1,272 @@
+[job] 2026-11-13T18:52:29+01:00 host=sl-mee-br-207 job=74823 run_dir=runs/20261113-185225_ssh_cmt_smoke args=--cmd cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING CMT / SSH_GF
+========================================================================================
+[run_training] CMT / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 3, 'N_SAMPLES': 2, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_metrics_train.csv'}
+Unable to parse line 20 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Executing:   0%|          | 0/31 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/31 [00:01<00:33,  1.12s/cell]Executing:  10%|▉         | 3/31 [00:05<00:55,  1.97s/cell]Fri Nov 13 18:52:36 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
+| N/A   41C    P0             71W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  16%|█▌        | 5/31 [00:06<00:28,  1.10s/cell]Executing:  23%|██▎       | 7/31 [00:07<00:21,  1.13cell/s]Norm stats (0.3047108663749711, 0.3879814586804132)
+window_size (C) = 9
+TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
+Executing:  29%|██▉       | 9/31 [00:19<01:03,  2.87s/cell]Executing:  42%|████▏     | 13/31 [00:20<00:27,  1.53s/cell][CMT] ODE-teacher targets from logs_FM_ssh_gf/best_model
+Valid checkpoint: logs_CT_CM_ssh_gf/checkpoints/last.ckpt
+[CMT] warm start from logs_CT_CM_ssh_gf/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=3
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.6 M    Total params
+394.525   Total estimated model params size (MB)
+
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.6 M    Total params
+394.525   Total estimated model params size (MB)
+✅ Val batch loaded: tgt=torch.Size([1, 9, 128, 128])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[Epoch 0] num_timesteps=18
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+Executing:  55%|█████▍    | 17/31 [00:31<00:27,  1.98s/cell]Executing:  55%|█████▍    | 17/31 [00:32<00:27,  1.94s/cell]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 101, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 88, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [11]":
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+Cell In[11], line 99
+     95     _ckpt_state = torch.load(resume_ckpt, map_location='cpu')
+     96     lit_cm.load_state_dict(_ckpt_state['state_dict'])
+     97 else:
+     98     print(f'[TRAINING] resume_ckpt={resume_ckpt!r} | MAX_EPOCHS={MAX_EPOCHS}', flush=True)
+---> 99     trainer.fit(lit_cm, datamodule, ckpt_path=resume_ckpt)
+    100 
+    101 lit_cm.ema_student_model.save_pretrained(MODEL_PATH)
+    102 print(f'EMA model saved to: {MODEL_PATH}')
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:532, in Trainer.fit(self, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path)
+    530 self.strategy._lightning_module = model
+    531 _verify_strategy_supports_compile(model, self.strategy)
+--> 532 call._call_and_handle_interrupt(
+    533     self, self._fit_impl, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path
+    534 )
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py:43, in _call_and_handle_interrupt(trainer, trainer_fn, *args, **kwargs)
+     41     if trainer.strategy.launcher is not None:
+     42         return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+---> 43     return trainer_fn(*args, **kwargs)
+     45 except _TunerExitException:
+     46     _call_teardown_hook(trainer)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:571, in Trainer._fit_impl(self, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path)
+    561 self._data_connector.attach_data(
+    562     model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders, datamodule=datamodule
+    563 )
+    565 ckpt_path = self._checkpoint_connector._select_ckpt_path(
+    566     self.state.fn,
+    567     ckpt_path,
+    568     model_provided=True,
+    569     model_connected=self.lightning_module is not None,
+    570 )
+--> 571 self._run(model, ckpt_path=ckpt_path)
+    573 assert self.state.stopped
+    574 self.training = False
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:980, in Trainer._run(self, model, ckpt_path)
+    975 self._signal_connector.register_signal_handlers()
+    977 # ----------------------------
+    978 # RUN THE TRAINER
+    979 # ----------------------------
+--> 980 results = self._run_stage()
+    982 # ----------------------------
+    983 # POST-Training CLEAN UP
+    984 # ----------------------------
+    985 log.debug(f"{self.__class__.__name__}: trainer tearing down")
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:1023, in Trainer._run_stage(self)
+   1021         self._run_sanity_check()
+   1022     with torch.autograd.set_detect_anomaly(self._detect_anomaly):
+-> 1023         self.fit_loop.run()
+   1024     return None
+   1025 raise RuntimeError(f"Unexpected state {self.state}")
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:202, in _FitLoop.run(self)
+    200 try:
+    201     self.on_advance_start()
+--> 202     self.advance()
+    203     self.on_advance_end()
+    204     self._restarting = False
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:355, in _FitLoop.advance(self)
+    353 self._data_fetcher.setup(combined_loader)
+    354 with self.trainer.profiler.profile("run_training_epoch"):
+--> 355     self.epoch_loop.run(self._data_fetcher)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py:133, in _TrainingEpochLoop.run(self, data_fetcher)
+    131 while not self.done:
+    132     try:
+--> 133         self.advance(data_fetcher)
+    134         self.on_advance_end()
+    135         self._restarting = False
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py:219, in _TrainingEpochLoop.advance(self, data_fetcher)
+    216 with trainer.profiler.profile("run_training_batch"):
+    217     if trainer.lightning_module.automatic_optimization:
+    218         # in automatic optimization, there can only be one optimizer
+--> 219         batch_output = self.automatic_optimization.run(trainer.optimizers[0], kwargs)
+    220     else:
+    221         batch_output = self.manual_optimization.run(kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py:181, in _AutomaticOptimization.run(self, optimizer, kwargs)
+    169 if (
+    170     # when the strategy handles accumulation, we want to always call the optimizer step
+    171     not self.trainer.strategy.handles_gradient_accumulation
+   (...)    178     # -------------------
+    179     # automatic_optimization=True: perform ddp sync only when performing optimizer_step
+    180     with _block_parallel_sync_behavior(self.trainer.strategy, block=True):
+--> 181         closure()
+    183 # ------------------------------
+    184 # BACKWARD PASS
+    185 # ------------------------------
+    186 # gradient update with accumulated gradients
+    187 else:
+    188     self._optimizer_step(kwargs.get("batch_idx", 0), closure)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py:142, in Closure.__call__(self, *args, **kwargs)
+    141 def __call__(self, *args: Any, **kwargs: Any) -> Optional[Tensor]:
+--> 142     self._result = self.closure(*args, **kwargs)
+    143     return self._result.loss
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/utils/_contextlib.py:124, in context_decorator.<locals>.decorate_context(*args, **kwargs)
+    120 @functools.wraps(func)
+    121 def decorate_context(*args, **kwargs):
+    122     # pyrefly: ignore [bad-context-manager]
+    123     with ctx_factory():
+--> 124         return func(*args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py:128, in Closure.closure(self, *args, **kwargs)
+    126 @torch.enable_grad()
+    127 def closure(self, *args: Any, **kwargs: Any) -> ClosureResult:
+--> 128     step_output = self._step_fn()
+    130     if step_output.closure_loss is None:
+    131         self.warning_cache.warn("`training_step` returned `None`. If this was on purpose, ignore this warning...")
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py:315, in _AutomaticOptimization._training_step(self, kwargs)
+    312 trainer = self.trainer
+    314 # manually capture logged metrics
+--> 315 training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+    316 self.trainer.strategy.post_training_step()
+    318 return self.output_result_cls.from_training_step_output(training_step_output, trainer.accumulate_grad_batches)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py:293, in _call_strategy_hook(trainer, hook_name, *args, **kwargs)
+    290     return None
+    292 with trainer.profiler.profile(f"[Strategy]{trainer.strategy.__class__.__name__}.{hook_name}"):
+--> 293     output = fn(*args, **kwargs)
+    295 # restore current_fx when nested context
+    296 pl_module._current_fx_name = prev_fx_name
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py:380, in Strategy.training_step(self, *args, **kwargs)
+    378 with self.precision_plugin.train_step_context():
+    379     assert isinstance(self.model, TrainingStep)
+--> 380     return self.model.training_step(*args, **kwargs)
+
+Cell In[10], line 70, in LitConsistencyModel.training_step(self, batch, batch_idx)
+     66         # ── Diagnostics (first batch of each epoch) ──
+     67         if batch_idx == 0 and output.diag is not None:
+     68             d = output.diag
+     69             print(f"[E{self.current_epoch}] "
+---> 70                   f"σ_s={d['sigma_s'].item():.4f} σ_t={d['sigma_t'].item():.4f} σ_tgt={d['sigma_tgt'].item():.4f} | "
+     71                   f"c_out_s={d['c_out_s'].item():.4f} c_out_t={d['c_out_t'].item():.4f} | "
+     72                   f"raw_S |max|={d['raw_student_absmax'].item():.2f} "
+     73                   f"raw_T |max|={d['raw_teacher_absmax'].item():.2f} | "
+
+KeyError: 'sigma_tgt'
+
+[run_step] exit 1 in 34.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261113-185225_ssh_cmt_smoke
+[job] 2026-11-13T18:53:03+01:00 exit=1
