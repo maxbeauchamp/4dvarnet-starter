@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_cmt_smoke",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT",
+  "commit": "9cd73a8-dirty",
+  "host": "sl-mee-br-207",
+  "slurm_job": "74637",
+  "started": "2026-11-13T04:20:54",
+  "status": "exit 1",
+  "seconds": 45.4,
+  "finished": "2026-11-13T04:21:39"
+}
