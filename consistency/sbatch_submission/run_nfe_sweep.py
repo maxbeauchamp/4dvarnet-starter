@@ -70,6 +70,9 @@ NFE_GRIDS = {
     "FM":            [n // 2 for n in _TARGET_NFE_CM_FM],
     "DynFM":         [5, 8, 12, 16, 21, 30, 42],
     "4dvarnet_lstm": [15],   # fixed by training (n_solver) -- single reference point
+    # ICLR rebuttal: corrected models (same notebooks/sweep cells as CM / DynCM)
+    "CMT":           [n + 1 for n in _TARGET_NFE_CM_FM],
+    "DynCMT":        [2, 3, 4, 5, 6, 8, 10, 15, 20],
 }
 
 
@@ -85,7 +88,7 @@ def load_methods():
 # so this is checked explicitly instead of failing downstream in
 # plot_nfe_efficiency.py with a cryptic "missing file" warning.
 INSTRUMENTED_XP_METHODS = {
-    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm"},
+    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm", "CMT", "DynCMT"},
     "SSH_GF": {"CM", "FM", "4dvarnet_lstm"},
     "SIC":    set(),
 }

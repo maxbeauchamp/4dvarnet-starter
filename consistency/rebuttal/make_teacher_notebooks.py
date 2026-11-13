@@ -380,10 +380,36 @@ def _write(nb, dst):
             old, new = FIG_TAGS[stem]
             src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG" if "crps" in new else ""))
         c["source"] = src.splitlines(keepends=True)
+    _sweep_spread(nb)
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")
     print(f"wrote {dst.relative_to(NB.parent)}")
+
+
+def _sweep_spread(nb):
+    """NFE sweep cell: also record the ensemble spread and the spread-skill ratio at each step count
+    (rebuttal: does the multi-step chain of the sampler contract the ensemble?)."""
+    for c in nb["cells"]:
+        src = "".join(c["source"])
+        if "if RUN_NFE_SWEEP" not in src or "_vars" in src:
+            continue
+        src = src.replace("_rmses, _crps_vals = [], []", "_rmses, _crps_vals, _vars, _mses = [], [], [], []")
+        key = "_rmses.append(float(np.sqrt(np.mean((_pred_v - _gt_v) ** 2))))\n"
+        i = src.index(key)
+        ind = src[src.rfind("\n", 0, i) + 1:i]
+        src = src.replace(key, key
+            + ind + "_vars.append(float(np.mean(np.var(_ens_p[:, _valid_t], axis=0, ddof=1))))\n"
+            + ind + "_mses.append(float(np.mean((_pred_v - _gt_v) ** 2)))\n")
+        key2 = "'crps': float(np.mean(_crps_vals)) if _crps_vals else float('nan'),\n"
+        j = src.index(key2)
+        ind2 = src[src.rfind("\n", 0, j) + 1:j]
+        src = src.replace(key2, key2
+            + ind2 + "'spread': float(np.sqrt(np.mean(_vars))) if _vars else float('nan'),\n"
+            + ind2 + "'ssr': float(np.sqrt(np.mean(_vars) / np.mean(_mses))"
+                     " * np.sqrt((NFE_N_SAMPLES_SWEEP + 1) / NFE_N_SAMPLES_SWEEP)) if _vars else float('nan'),\n")
+        src = src.replace("CRPS={_row['crps']:.4f}  wall=", "CRPS={_row['crps']:.4f}  SSR={_row['ssr']:.3f}  wall=")
+        c["source"] = src.splitlines(keepends=True)
 
 
 if __name__ == "__main__":
