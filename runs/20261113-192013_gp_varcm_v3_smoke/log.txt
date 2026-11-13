@@ -1,0 +1,269 @@
+
+========================================================================================
+[run_training] STARTING VarCM_v3 / GP
+========================================================================================
+[run_training] VarCM_v3 / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_v3_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 1, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_v3_metrics_train.csv', 'COND_MODE': 'grad', 'RUN_TAG': '_v3', 'WARM_FROM': 'logs_VarCM_crps2_spde_grad', 'SELECT_BY_VAL': True, 'SHORT_CRPS': True, 'ROLLOUT_STEPS': [3, 5, 8, 15]}
+Unable to parse line 23 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Passed unknown parameter: WARM_FROM
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:01<00:39,  1.13s/cell]Executing:   8%|▊         | 3/36 [00:05<01:06,  2.03s/cell]Fri Nov 13 19:20:24 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:8B:00.0 Off |                    0 |
+| N/A   47C    P0             74W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:06<00:35,  1.14s/cell]Executing:  19%|█▉        | 7/36 [00:07<00:25,  1.13cell/s]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  25%|██▌       | 9/36 [00:09<00:23,  1.17cell/s][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size (C) = 5
+TrainingItem shapes -- input (y): (5, 128, 128), tgt (x): (5, 128, 128)
+Executing:  28%|██▊       | 10/36 [00:09<00:19,  1.30cell/s][OK] UNet stoch=True: mu torch.Size([1, 5, 100, 100])  log_sigma torch.Size([1, 1])
+Executing:  39%|███▉      | 14/36 [00:11<00:13,  1.66cell/s]J_o = 99766.640625
+J_b = 100600.984375
+Phi(x) shape = torch.Size([2, 5, 100, 100])
+[OK] VarCMTraining (L_pair + L_anc + L_ae):
+  loss=1.8413  N=3
+  L_pair=0.5701  L_anc=0.7856  (L_long=0.6760  L_short=0.1097)  L_ae=0.9711
+Executing:  50%|█████     | 18/36 [00:13<00:11,  1.64cell/s][RESET] Starting from scratch.
+[RESUME] last checkpoint: logs_VarCM_crps2_spde_grad/checkpoints/last.ckpt
+[CRPS] warm start from logs_VarCM_crps2_spde_grad/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=1
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+
+Loading `train_dataloader` to estimate number of stepping batches.
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | BaseObsCost      | 0     
+5 | prior_cost        | BilinAEPriorCost | 32.1 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.0 M    Total params
+396.160   Total estimated model params size (MB)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | BaseObsCost      | 0     
+5 | prior_cost        | BilinAEPriorCost | 32.1 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.0 M    Total params
+396.160   Total estimated model params size (MB)
+[LitVarCM] Dynamic total_training_steps = 52  (config fallback was 5000)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+[Epoch 0] N=50  λ_reg=1.0000
+[Ep 0 | step 0]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.081  t'=0.006
+  L=0.3919  L_pair=0.0462  L_anc=0.3314  (L_long=0.2872  L_short=0.0443)  L_ae=0.0002  L_obs=0.0141
+[Ep 0 | step 2]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.013  t'=0.000
+  L=0.3300  L_pair=0.0126  L_anc=0.3065  (L_long=0.2902  L_short=0.0164)  L_ae=0.0002  L_obs=0.0107
+[Ep 0 | step 5]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.904  t'=0.060
+  L=0.3694  L_pair=0.0366  L_anc=0.2815  (L_long=0.2789  L_short=0.0026)  L_ae=0.0002  L_obs=0.0512
+[Ep 0 | step 7]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.815  t'=0.183
+  L=0.3924  L_pair=0.0442  L_anc=0.2917  (L_long=0.2901  L_short=0.0016)  L_ae=0.0002  L_obs=0.0563
+[Ep 0 | step 10]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.019  t'=0.005
+  L=0.3230  L_pair=0.0111  L_anc=0.3009  (L_long=0.2891  L_short=0.0117)  L_ae=0.0001  L_obs=0.0109
+[Ep 0 | step 12]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.161  t'=0.044
+  L=0.3559  L_pair=0.0231  L_anc=0.3113  (L_long=0.2933  L_short=0.0180)  L_ae=0.0001  L_obs=0.0213
+[Ep 0 | step 15]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.003  t'=0.000
+  L=0.3023  L_pair=0.0043  L_anc=0.2870  (L_long=0.2780  L_short=0.0089)  L_ae=0.0001  L_obs=0.0109
+[Ep 0 | step 17]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.016  t'=0.011
+  L=0.2922  L_pair=0.0024  L_anc=0.2783  (L_long=0.2755  L_short=0.0028)  L_ae=0.0001  L_obs=0.0114
+[Ep 0 | step 20]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.235  t'=0.123
+  L=0.3132  L_pair=0.0079  L_anc=0.2778  (L_long=0.2747  L_short=0.0031)  L_ae=0.0001  L_obs=0.0273
+[Ep 0 | step 22]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.107  t'=0.001
+  L=0.4137  L_pair=0.0615  L_anc=0.3387  (L_long=0.2825  L_short=0.0562)  L_ae=0.0001  L_obs=0.0133
+[Ep 0 | step 25]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.003
+  L=0.4116  L_pair=0.0580  L_anc=0.3344  (L_long=0.2830  L_short=0.0514)  L_ae=0.0001  L_obs=0.0191
+[Ep 0 | step 27]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.266  t'=0.003
+  L=0.4115  L_pair=0.0633  L_anc=0.3261  (L_long=0.2721  L_short=0.0540)  L_ae=0.0001  L_obs=0.0220
+[Ep 0 | step 30]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.052  t'=0.009
+  L=0.3524  L_pair=0.0331  L_anc=0.3080  (L_long=0.2760  L_short=0.0320)  L_ae=0.0001  L_obs=0.0112
+[Ep 0 | step 32]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.161  t'=0.038
+  L=0.3515  L_pair=0.0280  L_anc=0.3045  (L_long=0.2812  L_short=0.0233)  L_ae=0.0001  L_obs=0.0188
+[Ep 0 | step 35]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.208  t'=0.060
+  L=0.3726  L_pair=0.0223  L_anc=0.3249  (L_long=0.3101  L_short=0.0148)  L_ae=0.0002  L_obs=0.0251
+[Ep 0 | step 37]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.735  t'=0.000
+  L=0.3839  L_pair=0.0334  L_anc=0.3080  (L_long=0.2915  L_short=0.0166)  L_ae=0.0001  L_obs=0.0423
+[Ep 0 | step 40]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.038
+  L=0.3577  L_pair=0.0249  L_anc=0.3124  (L_long=0.2903  L_short=0.0221)  L_ae=0.0001  L_obs=0.0202
+[Ep 0 | step 42]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.183  t'=0.123
+  L=0.3163  L_pair=0.0042  L_anc=0.2861  (L_long=0.2840  L_short=0.0021)  L_ae=0.0001  L_obs=0.0259
+[Ep 0 | step 45]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.208  t'=0.093
+  L=0.3350  L_pair=0.0110  L_anc=0.2991  (L_long=0.2936  L_short=0.0054)  L_ae=0.0001  L_obs=0.0248
+[Ep 0 | step 47]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.005  t'=0.003
+  L=0.2949  L_pair=0.0017  L_anc=0.2800  (L_long=0.2770  L_short=0.0030)  L_ae=0.0001  L_obs=0.0131
+[Ep 0 | step 50]  N=50
+  grid    : [1.000  0.904  0.815  0.735  0.661  0.594  0.532  0.476  0.426  0.379  0.338  0.300  0.266  0.235  0.208  0.183  0.161  0.141  0.123  0.107  0.093  0.081  0.070  0.060  0.052  0.044  0.038  0.032  0.027  0.023  0.019  0.016  0.013  0.011  0.009  0.008  0.006  0.005  0.004  0.003  0.003  0.002  0.002  0.001  0.001  0.001  0.001  0.000  0.000  0.000]
+  sampled : t=0.044  t'=0.003
+  L=0.3659  L_pair=0.0413  L_anc=0.3121  (L_long=0.2721  L_short=0.0400)  L_ae=0.0001  L_obs=0.0124
+[progress] epoch 1/1 | L_ae=0.0001 | L_anc=0.2800 | L_long=0.2776 | L_obs=0.0123 | L_pair=0.0014 | L_short=0.0025 | ema_decay_rate=0.9500 | lambda_reg=1.0000 | num_timesteps=50.0000 | train_loss=0.2939 | val_crps=1.2589
+`Trainer.fit` stopped: `max_epochs=1` reached.
+
+`Trainer.fit` stopped: `max_epochs=1` reached.
+[SELECT] best validation CRPS checkpoint: logs_VarCM_crps2_spde_grad_v3/checkpoints/val_crps=1.25894-epoch=000.ckpt
+[OK] EMA UNet saved via save_pretrained to: logs_VarCM_crps2_spde_grad_v3/best_model
+[OK] Costs saved to: logs_VarCM_crps2_spde_grad_v3/best_model/costs.pt
+Executing:  61%|██████    | 22/36 [03:52<05:00, 21.44s/cell][OK] Model loaded from: logs_VarCM_crps2_spde_grad_v3/best_model
+   lambda_reg = 1.0000
+Executing:  67%|██████▋   | 24/36 [03:53<03:22, 16.87s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  72%|███████▏  | 26/36 [03:53<02:09, 12.91s/cell]  Sample 1/2 done  Sample 2/2 done
+2 ensemble members generated
+Executing:  78%|███████▊  | 28/36 [03:53<01:18,  9.76s/cell]  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_obs.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_gt.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_oi.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_varcm_mean.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_varcm_spread.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_member0.png
+  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_member1.png
+Executing:  83%|████████▎ | 30/36 [03:55<00:44,  7.40s/cell]  Saved: figures/VarCM_crps_spde_v3/VarCM_crps_spde_v3_transport.png
+Executing:  89%|████████▉ | 32/36 [03:56<00:21,  5.48s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (2 members): SSR 0.232  spread 0.0424  RMSE 0.2239  CRPS(all px) 0.1579  rank dev 0.62 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_v3_metrics_train_calibration.csv
+Executing:  94%|█████████▍| 34/36 [04:32<00:18,  9.06s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_v3_metrics_train.csv
+Executing: 100%|██████████| 36/36 [04:35<00:00,  7.65s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarCM_v3_train.ipynb
+[run_step] ok in 276.6 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261113-192013_gp_varcm_v3_smoke
