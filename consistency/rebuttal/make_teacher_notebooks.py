@@ -205,16 +205,55 @@ def _v1(xp_dir, name):
 
 def _warm(old_log, lit, finder):
     return ("if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
-            f"    _old = {finder}(os.path.join('{old_log}', 'checkpoints'))\n"
+            f"    _warm_dir = WARM_FROM or '{old_log}'\n"
+            f"    _old = {finder}(os.path.join(_warm_dir, 'checkpoints'))\n"
             "    if _old is None:\n"
-            f"        raise RuntimeError('WARM_START=True but no submitted checkpoint in {old_log}')\n"
+            "        raise RuntimeError(f'WARM_START=True but no checkpoint in {_warm_dir}')\n"
             f"    {lit}.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
             "    print(f'[CRPS] warm start from {_old}', flush=True)\n")
 
 
+# Validation CRPS (rebuttal): the training score of the ensemble (pixels + increments) on validation batches,
+# with a fixed seed per batch so that epochs are comparable; the checkpoints are ranked by it.
+VAL_CRPS = """
+def _val_crps_step(self, batch, batch_idx):
+    if isinstance(batch, list):
+        batch = batch[0]
+    _devs = [torch.cuda.current_device()] if torch.cuda.is_available() else []
+    with torch.random.fork_rng(devices=_devs), torch.enable_grad():
+        torch.manual_seed(1234 + batch_idx)
+        out = {CALL}
+    self.log("val_crps", {TERM}.detach().float(), prog_bar=True, on_epoch=True, on_step=False, batch_size=batch.tgt.shape[0])
+if SELECT_BY_VAL:
+    {LIT}.validation_step = _val_crps_step
+"""
+
+SELECT_BEST = """
+_best_val = None
+if SELECT_BY_VAL:
+    _vc = [p for p in glob.glob(os.path.join(CKPT_DIR, '*val_crps=*.ckpt')) if _is_valid_ckpt(p)]
+    if _vc:
+        _best_val = min(_vc, key=lambda p: float(p.split('val_crps=')[1].split('-')[0].replace('.ckpt', '')))
+        {LIT_OBJ}.load_state_dict(torch.load(_best_val, map_location='cpu')['state_dict'])
+        print(f'[SELECT] best validation CRPS checkpoint: {_best_val}', flush=True)
+    else:
+        print('[SELECT] no val_crps checkpoint found, keeping the current weights', flush=True)
+"""
+
+VARCM_CALL = ("self.var_cm_training(self.student_model, self.teacher_model, self.obs_cost, self.prior_cost, "
+              "self.lambda_reg, batch.tgt, batch.input, self.global_step, self._total_training_steps)")
+VARDYNCM_CALL = ("self.training_module(self.student_model, self.teacher_model, batch.tgt, batch.input, "
+                 "self.global_step, self._total_steps, obs_cost=self.obs_cost, prior_cost=self.prior_cost, "
+                 "lambda_reg=self.lambda_reg)")
+
+
 PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpoint\n"
                "CRPS_MEMBERS = 8         # draws of the initial noise per (x0, y) in the CRPS anchor\n"
-               "CRPS_LAGS = (1, 2, 4, 8) # spatial lags of the increment CRPS (spatial correlations)\n")
+               "CRPS_LAGS = (1, 2, 4, 8) # spatial lags of the increment CRPS (spatial correlations)\n"
+               "LAMBDA_SELF = 1.0        # weight of the self-consistency term (rebuttal run 'ls01': 0.1)\n"
+               "RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run (e.g. '_ls01')\n"
+               "WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)\n"
+               "SELECT_BY_VAL = False    # validation CRPS of the ensemble each epoch; keep the best checkpoint\n")
 
 
 def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
@@ -237,14 +276,28 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
         if "\nct = VarCMTraining(" in s:
             i = s.index("LOG_DIR     = f")
             j = s.index("\n", i)
-            s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps2_{suffix}_grad"' + s[j:]
+            s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps2_{suffix}_grad" + RUN_TAG' + s[j:]
             s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # fixed grid (no curriculum)\n", "grid")
+            s = sub(s, "    lambda_pair       = 1.0,    # Term 1: pairwise consistency\n",
+                    "    lambda_pair       = LAMBDA_SELF,    # Term 1: pairwise (self-)consistency\n", "lambda_pair")
             s = sub(s, "    conditioning_mode = COND_MODE,\n)",
                     "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n"
                     "    crps_lags         = CRPS_LAGS,\n    crps_direct       = True,\n)", "crps")
             s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
                     "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
-                    + _warm(f"logs_VarCM_crps_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint"), "warm start")
+                    + _warm(f"logs_VarCM_crps_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint")
+                    + VAL_CRPS.replace("{CALL}", VARCM_CALL).replace("{TERM}", "out.l_long").replace("{LIT}", "LitVarCM"),
+                    "warm start")
+            s = sub(s, '            monitor    = "train_loss",\n',
+                    '            monitor    = "val_crps" if SELECT_BY_VAL else "train_loss",\n', "monitor")
+            s = sub(s, '            filename   = "{epoch:03d}-{step}-{train_loss:.4f}",\n',
+                    '            filename   = "{val_crps:.5f}-{epoch:03d}" if SELECT_BY_VAL else "{epoch:03d}-{step}-{train_loss:.4f}",\n',
+                    "filename")
+            s = sub(s, '    gradient_clip_algorithm = "norm",\n',
+                    '    gradient_clip_algorithm = "norm",\n    inference_mode          = False,   # the grad conditioning needs autograd in validation\n'
+                    '    limit_val_batches       = 50,\n', "trainer")
+            s = sub(s, "# ── Save EMA UNet via save_pretrained",
+                    SELECT_BEST.replace("{LIT_OBJ}", "lit_cm") + "\n# ── Save EMA UNet via save_pretrained", "select")
             done.add("training")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:
@@ -276,7 +329,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
         if old_tr in s:
             i = s.index("LOG_DIR     = f")
             j = s.index("\n", i)
-            s = s[:i] + f'LOG_DIR     = f"logs_VarDynCM_crps_{suffix}_{{COND_MODE.replace(\'+\', \'_\')}}"' + s[j:]
+            s = s[:i] + f'LOG_DIR     = f"logs_VarDynCM_crps_{suffix}_{{COND_MODE.replace(\'+\', \'_\')}}" + RUN_TAG' + s[j:]
             s = sub(s, "    VarDynCMTraining, VarDynCMObsCost,", "    VarDynCMTraining, VarDynCMCRPSTraining, VarDynCMObsCost,", "import")
             s = sub(s, old_tr, """vdcm_training = VarDynCMCRPSTraining(
     spinup_boundary   = SPINUP_BOUNDARY,
@@ -285,14 +338,27 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     lambda_obs=1.0, lambda_ae=1.0,
     conditioning_mode = COND_MODE,
     crps_members=CRPS_MEMBERS, crps_lags=CRPS_LAGS,
+    lambda_semi=LAMBDA_SELF,
 )""", "training")
             s = sub(s, "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n",
                     "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n"
-                    + _warm(f"logs_CT_VarDynCM_{suffix}_grad", "lit_model", "find_resume_ckpt"), "warm start")
+                    + _warm(f"logs_CT_VarDynCM_{suffix}_grad", "lit_model", "find_resume_ckpt")
+                    + VAL_CRPS.replace("{CALL}", VARDYNCM_CALL).replace("{TERM}", "out.loss_phys").replace("{LIT}", "LitVarDynCM"),
+                    "warm start")
+            s = sub(s, '            monitor="val_loss", save_top_k=3, save_last=True,\n            filename="{val_loss:.5f}-{epoch:03d}",\n',
+                    '            monitor="val_crps" if SELECT_BY_VAL else "val_loss", save_top_k=3, save_last=True,\n'
+                    '            filename="{val_crps:.5f}-{epoch:03d}" if SELECT_BY_VAL else "{val_loss:.5f}-{epoch:03d}",\n', "monitor")
+            s = sub(s, "    trainer.fit(lit_model, datamodule=datamodule, ckpt_path=resume_ckpt)\n",
+                    "    trainer.fit(lit_model, datamodule=datamodule, ckpt_path=resume_ckpt)\n"
+                    + SELECT_BEST.replace("{LIT_OBJ}", "lit_model"), "select")
             done.add("training")
+        if 'ckpts    = sorted(glob.glob(os.path.join(ckpt_dir, "*.ckpt")))' in s:
+            s = s.replace('ckpts    = sorted(glob.glob(os.path.join(ckpt_dir, "*.ckpt")))',
+                          'ckpts    = [_best_val] if _best_val else sorted(glob.glob(os.path.join(ckpt_dir, "*.ckpt")))')
+            done.add("eval")
         c["source"] = s.splitlines(keepends=True)
-    if {"params", "training"} - done:
-        raise SystemExit(f"VarDynCM CRPS: anchors not found for {({'params', 'training'} - done)}")
+    if {"params", "training", "eval"} - done:
+        raise SystemExit(f"VarDynCM CRPS: anchors not found for {({'params', 'training', 'eval'} - done)}")
     _write(nb, NB / xp_dir / name)
 
 
@@ -312,7 +378,7 @@ def _write(nb, dst):
             src = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'")
         if stem in FIG_TAGS:
             old, new = FIG_TAGS[stem]
-            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'")
+            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG" if "crps" in new else ""))
         c["source"] = src.splitlines(keepends=True)
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)

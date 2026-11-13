@@ -104,3 +104,13 @@ the new results, list what changed in the PDF with line references.
 * 12 Nov — DynCMT (DynFM teacher): RMSE 0.229, CRPS all 0.127, SSR 0.96, rank dev 0.07 (= DynFM). VarCM crps2
   (direct CRPS term, 150 ep): RMSE 0.219, lambda_x 21, CRPS all 0.147, SSR 0.18; L_long still decreasing.
   User: option A, continue VarCM to 300 epochs (gp_varcm_more) after VarDynCM, then SSH.
+
+### 2026-11-13 — second CRPS stage for VarCM and VarDynCM (user decision: levers 2 + 3, SSH after)
+* Self-consistency weight 0.1 instead of 1 (`LAMBDA_SELF`; VarCM `lambda_pair`, VarDynCM `lambda_semi`): in the
+  VarDynCM run, L_comp reached 0.33, oscillated and fought the CRPS (IC collapse and checkerboard at 200 epochs).
+* Checkpoint chosen on the **validation CRPS** of the ensemble (`SELECT_BY_VAL`, the training score on 50–100
+  validation batches with a fixed seed per batch), not on the last epoch nor on VarDynCM's old `val_loss`
+  (deterministic IC MSE, which rewards collapse).
+* VarDynCM_ls01: 100 epochs from the submitted VarDynCM. VarCM_ls01: 100 epochs from VarCM (crps2, 300 epochs).
+  Same notebooks (`RUN_TAG=_ls01`, own LOG_DIR and figure folder); methods.yaml entries `*_ls01`.
+* Plan: gp_ls01_smoke → gp_vardyncm_ls01_train (~7 h) → gp_varcm_ls01_train (~4 h) → SSH.

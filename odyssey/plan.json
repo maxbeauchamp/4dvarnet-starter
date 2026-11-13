@@ -153,6 +153,24 @@
    "cmd": "for d in logs_FM_ssh_gf logs_CT_CM_ssh_gf logs_DynFM_ssh_gf logs_CT_DynCM_ssh_gf; do [ -e consistency/Notebooks/Notebooks_SSH_GF/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_SSH_GF/$d consistency/Notebooks/Notebooks_SSH_GF/; done && du -sh consistency/Notebooks/Notebooks_SSH_GF/logs_*"
   },
   {
+   "id": "gp_ls01_smoke",
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarDynCM_ls01 --reset && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarCM_ls01 --reset"
+  },
+  {
+   "id": "gp_vardyncm_ls01_train",
+   "time": "14:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM_ls01 --reset && python run_metrics.py --xp GP --method VarDynCM_ls01"
+  },
+  {
+   "id": "gp_varcm_ls01_train",
+   "time": "10:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM_ls01 --reset && python run_metrics.py --xp GP --method VarCM_ls01"
+  },
+  {
    "id": "ssh_cmt_smoke",
    "time": "04:00:00",
    "gate": "status == 'ok'",
