@@ -177,6 +177,19 @@
    "cmd": "ls -la consistency/Notebooks/Notebooks_GP/logs_VarDynCM_crps_spde_grad/checkpoints; cd consistency/sbatch_submission && python run_nfe_sweep.py --method VarCM --grid 1,2,4,8,15 && python run_nfe_sweep.py --method VarDynCM --grid 2,3,5,10,20 && cat results/GP/VarCM_nfe_sweep.csv results/GP/VarDynCM_nfe_sweep.csv"
   },
   {
+   "id": "gp_varcm_v3_smoke",
+   "time": "02:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarCM_v3 --reset"
+  },
+  {
+   "id": "gp_varcm_v3_train",
+   "time": "12:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM_v3 --reset && python run_metrics.py --xp GP --method VarCM_v3 && python run_nfe_sweep.py --method VarCM_v3 --grid 1,2,4,8,15"
+  },
+  {
    "id": "ssh_cmt_smoke",
    "time": "04:00:00",
    "gate": "status == 'ok'",

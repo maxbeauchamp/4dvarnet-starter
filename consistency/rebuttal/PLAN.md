@@ -114,3 +114,13 @@ the new results, list what changed in the PDF with line references.
 * VarDynCM_ls01: 100 epochs from the submitted VarDynCM. VarCM_ls01: 100 epochs from VarCM (crps2, 300 epochs).
   Same notebooks (`RUN_TAG=_ls01`, own LOG_DIR and figure folder); methods.yaml entries `*_ls01`.
 * Plan: gp_ls01_smoke → gp_vardyncm_ls01_train (~7 h) → gp_varcm_ls01_train (~4 h) → SSH.
+
+### 2026-11-13 evening — ls01 runs: no gain; diagnosis and VarCM v3
+* VarCM_ls01: validation CRPS flat for 100 epochs (best epoch 43); test identical to VarCM (SSR 0.20).
+  VarDynCM_ls01: validation CRPS still decreasing at epoch 99; test worse (SSR 0.08). Not used in the paper.
+* Two suspects in VarCM: (i) CRPS on 1- and 2-jump maps, but evaluation with a 15-step deterministic chain;
+  (ii) L_short is still an L2 (pseudo-Huber) regression on x0 from the forward interpolant (mean collapse).
+* gp_nfe_diag: spread/SSR versus the number of sampler steps (VarCM, VarDynCM).
+* VarCM_v3: SHORT_CRPS (no L2 target left) + ROLLOUT_STEPS (CRPS on the sampler's own K-step chain,
+  K in {3,5,8,15}, gradient through the last jump), 100 epochs from crps2, validation-CRPS selection.
+  gp_varcm_v3_smoke runs automatically; gp_varcm_v3_train waits for approval after the diagnostic.

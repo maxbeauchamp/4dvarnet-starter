@@ -256,6 +256,10 @@ PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpo
                "SELECT_BY_VAL = False    # validation CRPS of the ensemble each epoch; keep the best checkpoint\n")
 
 
+PARAMS_V3 = ("SHORT_CRPS = False       # v3: CRPS instead of L2 in the short anchor (last L2 target on the interpolant)\n"
+             "ROLLOUT_STEPS = []       # v3: also score the sampler's K-step chain, K drawn from this list\n")
+
+
 def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     """VarCM (submitted, kept as VarCM_v1) -> VarCM: data anchors = CRPS of 8 draws of x_T per (x0, y)
     (pixels + spatial/temporal increments) instead of an L2 regression on x0, applied both after the teacher's
@@ -271,7 +275,7 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
             continue
         s = "".join(c["source"])
         if s.lstrip().startswith("# --- parameters"):
-            s += PARAMS_CRPS
+            s += PARAMS_CRPS + PARAMS_V3
             done.add("params")
         if "\nct = VarCMTraining(" in s:
             i = s.index("LOG_DIR     = f")
@@ -282,7 +286,9 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
                     "    lambda_pair       = LAMBDA_SELF,    # Term 1: pairwise (self-)consistency\n", "lambda_pair")
             s = sub(s, "    conditioning_mode = COND_MODE,\n)",
                     "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n"
-                    "    crps_lags         = CRPS_LAGS,\n    crps_direct       = True,\n)", "crps")
+                    "    crps_lags         = CRPS_LAGS,\n    crps_direct       = True,\n"
+                    "    short_crps        = SHORT_CRPS,\n    rollout_steps     = tuple(ROLLOUT_STEPS),\n"
+                    "    rollout_schedule  = \"cosine\",   # = varcm_sampler's noise_schedule\n)", "crps")
             s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
                     "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
                     + _warm(f"logs_VarCM_crps_{suffix}_grad", "lit_cm", "find_best_valid_checkpoint")

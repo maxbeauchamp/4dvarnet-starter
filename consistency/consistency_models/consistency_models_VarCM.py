@@ -495,12 +495,18 @@ class VarCMTraining(nn.Module):
         crps_lags:          tuple = (1, 2, 4, 8),  # spatial lags of the increment CRPS (spatial correlations)
         crps_w_inc:         float = 1.0,
         crps_direct:        bool  = False,  # also score the one-jump map from x_T (see __call__)
+        short_crps:         bool  = False,  # (v3) L_short scored by the CRPS instead of an L2 regression on x0
+        rollout_steps:      tuple = (),     # (v3) also score the sampler's own K-step chain, K drawn from this set
+        rollout_schedule:   str   = "cosine",  # time grid of that chain = the evaluation sampler's
     ) -> None:
         super().__init__()
         self.crps_members      = crps_members
         self.crps_lags         = crps_lags
         self.crps_w_inc        = crps_w_inc
         self.crps_direct       = crps_direct
+        self.short_crps        = short_crps
+        self.rollout_steps     = tuple(rollout_steps)
+        self.rollout_schedule  = rollout_schedule
         self.lambda_tan        = lambda_tan
         self.tan_delta         = tan_delta
         self.initial_timesteps = initial_timesteps
@@ -605,6 +611,22 @@ class VarCMTraining(nn.Module):
             # one-jump map from the noise as well, so the gradient reaches the processing of x_T.
             pred_direct = self._fwd(student, obs_cost, prior_cost, lambda_reg, x_T, y, T_vec, t0_vec)
             l_long = 0.5 * (l_long + crps_field_loss(pred_direct, x0, M, self.crps_lags, self.crps_w_inc))
+        if M > 1 and self.rollout_steps:
+            # (v3) The evaluation draws come from the K-step chain of the sampler, not from one or two jumps:
+            # if each jump contracts the ensemble a little, the chain collapses even when the jumps scored
+            # above are calibrated. Run the sampler's chain with the student (first K-1 jumps without
+            # gradient, to bound the memory) and score its output with the same CRPS.
+            K = int(self.rollout_steps[torch.randint(len(self.rollout_steps), (1,)).item()])
+            ts = sampler_times(K, self.sigma_noise, self.rollout_schedule, 0.5, device, x0.dtype)
+            x_r = x_T
+            with torch.no_grad():
+                for i in range(len(ts) - 2):
+                    x_r = self._fwd(student, obs_cost, prior_cost, lambda_reg, x_r, y,
+                                    ts[i].expand(B), ts[i + 1].expand(B))
+            pred_roll = self._fwd(student, obs_cost, prior_cost, lambda_reg, x_r.detach(), y,
+                                  ts[-2].expand(B), ts[-1].clamp(min=eps).expand(B))
+            l_roll = crps_field_loss(pred_roll, x0, M, self.crps_lags, self.crps_w_inc)
+            l_long = (2.0 * l_long + l_roll) / 3.0 if self.crps_direct else 0.5 * (l_long + l_roll)
         l_pair = pseudo_huber_loss(pred_long, target_pair.detach()).mean()
 
         # ── Term 3: L_short ───────────────────────────────────────────────────
@@ -626,7 +648,8 @@ class VarCMTraining(nn.Module):
                                   x_t_interp, y, t_s, t_p)
             pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
                                    x_mid, y, t_p, t0_vec)
-            l_short = pseudo_huber_loss(pred_short, x0).mean()
+            l_short = (crps_field_loss(pred_short, x0, M, self.crps_lags, self.crps_w_inc)
+                       if (M > 1 and self.short_crps) else pseudo_huber_loss(pred_short, x0).mean())
 
         # ── Term 4: AE reconstruction — trains prior_cost directly ────────────
         # prior_cost parameters receive zero gradient from the consistency terms
@@ -857,6 +880,43 @@ except ImportError:
 # Sampling / inference
 # ---------------------------------------------------------------------------
 
+def sampler_times(nsteps, sigma_noise, noise_schedule, schedule_power, device, dtype):
+    """Descending time sequence of VariationalConsistencySampling (N+1 values, last = 0)."""
+    N = max(nsteps, 3)
+    k = torch.linspace(0.0, 1.0, N, device=device)   # k in [0,1], k=0 at T=1
+
+    ns = noise_schedule
+    if ns == "linear":
+        # uniform: sigma decreases linearly
+        sigma_k = sigma_noise * (1.0 - k)
+    elif ns == "cosine":
+        # cosine: fast initial drop, slow final refinement
+        sigma_k = sigma_noise * torch.cos(math.pi / 2.0 * k)
+    elif ns == "power":
+        # power: (1-k)^p  -- p<1 for fast-then-slow, p>1 for slow-then-fast
+        sigma_k = sigma_noise * (1.0 - k) ** schedule_power
+    elif ns == "edm":
+        # geometric (Karras-style): log-uniform in sigma
+        sigma_min = sigma_noise * 1e-3
+        log_min = math.log(sigma_min)
+        log_max = math.log(sigma_noise)
+        sigma_k = torch.exp(torch.linspace(log_max, log_min, N, device=device))
+    else:
+        raise ValueError(f"Unknown noise_schedule='{ns}'. "
+                         "Choose from: 'linear', 'cosine', 'power', 'edm'.")
+
+    # Build times: N-1 intermediate steps + final step to exactly 0.
+    # times[0]=1 (start), times[1..N-2]=intermediate, times[N-1]=eps (near 0).
+    # We then append a hard 0 so the last call is always g(x, t_eps, 0),
+    # ensuring c_skip→0, c_out→1 and the network outputs F_theta directly.
+    sigma_k = sigma_k.clamp(min=sigma_noise * 1e-4,
+                             max=sigma_noise).to(dtype=dtype)
+    times_inner = sigma_k / sigma_noise       # (N,) descending: [1, ..., ~1e-4]
+    t_zero = torch.zeros(1, device=device, dtype=dtype)
+    times = torch.cat([times_inner, t_zero], dim=0)  # (N+1,), last=0
+    return times
+
+
 class VariationalConsistencySampling:
     """
     Iterative sampling using the learned transport operator g_phi.
@@ -962,38 +1022,7 @@ class VariationalConsistencySampling:
         # The shape of sigma(k) controls the std collapse curve -- this is
         # independent of the training time grid.
         # ----------------------------------------------------------------
-        N = max(nsteps, 3)
-        k = torch.linspace(0.0, 1.0, N, device=device)   # k in [0,1], k=0 at T=1
-
-        ns = self.noise_schedule
-        if ns == "linear":
-            # uniform: sigma decreases linearly
-            sigma_k = self.sigma_noise * (1.0 - k)
-        elif ns == "cosine":
-            # cosine: fast initial drop, slow final refinement
-            sigma_k = self.sigma_noise * torch.cos(math.pi / 2.0 * k)
-        elif ns == "power":
-            # power: (1-k)^p  -- p<1 for fast-then-slow, p>1 for slow-then-fast
-            sigma_k = self.sigma_noise * (1.0 - k) ** self.schedule_power
-        elif ns == "edm":
-            # geometric (Karras-style): log-uniform in sigma
-            sigma_min = self.sigma_noise * 1e-3
-            log_min = math.log(sigma_min)
-            log_max = math.log(self.sigma_noise)
-            sigma_k = torch.exp(torch.linspace(log_max, log_min, N, device=device))
-        else:
-            raise ValueError(f"Unknown noise_schedule='{ns}'. "
-                             "Choose from: 'linear', 'cosine', 'power', 'edm'.")
-
-        # Build times: N-1 intermediate steps + final step to exactly 0.
-        # times[0]=1 (start), times[1..N-2]=intermediate, times[N-1]=eps (near 0).
-        # We then append a hard 0 so the last call is always g(x, t_eps, 0),
-        # ensuring c_skip→0, c_out→1 and the network outputs F_theta directly.
-        sigma_k = sigma_k.clamp(min=self.sigma_noise * 1e-4,
-                                 max=self.sigma_noise).to(dtype=dtype)
-        times_inner = sigma_k / self.sigma_noise       # (N,) descending: [1, ..., ~1e-4]
-        t_zero = torch.zeros(1, device=device, dtype=dtype)
-        times = torch.cat([times_inner, t_zero], dim=0)  # (N+1,), last=0
+        times = sampler_times(nsteps, self.sigma_noise, self.noise_schedule, self.schedule_power, device, dtype)
 
         # x_T = sigma_noise * z
         x = noise * self.sigma_noise

@@ -208,6 +208,26 @@ methods:
         log_dir: logs_VarCM_crps2_spde_grad_ls01
         status: existing
 
+  VarCM_v3:
+    # ICLR rebuttal (GP), VarCM v3: no L2 target left (short anchor scored by the CRPS) and the CRPS also applied
+    # to the evaluation sampler's own K-step chain (K in {3,5,8,15}); 100 epochs from VarCM (crps2, 300 epochs),
+    # checkpoint chosen on the validation CRPS. Same notebook as VarCM.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 100
+      COND_MODE: grad
+      RUN_TAG: _v3
+      WARM_FROM: logs_VarCM_crps2_spde_grad
+      SELECT_BY_VAL: true
+      SHORT_CRPS: true
+      ROLLOUT_STEPS: [3, 5, 8, 15]
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarCM_spde.ipynb
+        log_dir: logs_VarCM_crps2_spde_grad_v3
+        status: existing
+
   VarDynCM_ls01:
     # ICLR rebuttal (GP): self-consistency weight 0.1 (was 1; L_comp fought the CRPS and the 200-epoch run
     # degraded), 100 epochs from the submitted VarDynCM, checkpoint chosen on the validation CRPS. Same notebook.
