@@ -133,3 +133,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-14 04:38 `ssh_eval_old` done in 01:28:34, gate passed
 - 2026-11-14 13:56 submitted `gp_varcm_scratch_smoke` as job 74947 -> `runs/20261114-135608_gp_varcm_scratch_smoke` (lane 2)
 - 2026-11-14 14:11 lane 2: `gp_varcm_scratch_smoke` done in 00:03:33, gate passed
+- 2026-11-14 14:11 submitted `gp_varcm_scratch_train` as job 74948 -> `runs/20261114-141137_gp_varcm_scratch_train` (lane 2)
+- 2026-11-14 16:13 `gp_vardyncm_ls01b_train` done in 06:30:04, gate passed
