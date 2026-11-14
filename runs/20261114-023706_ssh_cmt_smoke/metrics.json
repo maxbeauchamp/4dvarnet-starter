@@ -1,0 +1,22 @@
+{
+ "SSH_GF/CMT_metrics_train.csv": [
+  {
+   "Method": "CMT (ens. mean, full test set)",
+   "RMSE": "0.0665 $\\pm$ 0.0157",
+   "lambda_x": "1.27 $\\pm$ 0.20",
+   "CRPS": "0.0378 $\\pm$ 0.0124"
+  }
+ ],
+ "SSH_GF/CMT_metrics_train_calibration.csv": [
+  {
+   "method": "CMT_ssh_gf",
+   "members": 2,
+   "spread": 0.00418528617467004,
+   "rmse": 0.06832591862072715,
+   "ssr": 0.07502142497617693,
+   "crps_all": 0.04583573776989313,
+   "rank_dev": 0.976432402254431,
+   "ranks": "807939 56709 1763352"
+  }
+ ]
+}

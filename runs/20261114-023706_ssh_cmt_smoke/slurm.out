@@ -1,0 +1,152 @@
+[job] 2026-11-14T02:37:10+01:00 host=sl-mee-br-207 job=74863 run_dir=runs/20261114-023706_ssh_cmt_smoke args=--cmd cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=3 python run_training.py --xp SSH_GF --method CMT
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING CMT / SSH_GF
+========================================================================================
+[run_training] CMT / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 3, 'N_SAMPLES': 2, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_metrics_train.csv'}
+Unable to parse line 20 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Executing:   0%|          | 0/31 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/31 [00:03<01:40,  3.37s/cell]Executing:  10%|▉         | 3/31 [00:36<06:06, 13.10s/cell]Sat Nov 14 02:37:57 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:0B:00.0 Off |                    0 |
+| N/A   37C    P0             68W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  16%|█▌        | 5/31 [00:37<02:50,  6.56s/cell]Executing:  23%|██▎       | 7/31 [00:46<02:19,  5.81s/cell]Norm stats (0.3047108663749711, 0.3879814586804132)
+window_size (C) = 9
+TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
+Executing:  29%|██▉       | 9/31 [01:03<02:28,  6.74s/cell]Executing:  42%|████▏     | 13/31 [01:04<01:01,  3.41s/cell][CMT] ODE-teacher targets from logs_FM_ssh_gf/best_model
+Valid checkpoint: logs_CT_CM_ssh_gf/checkpoints/last.ckpt
+[CMT] warm start from logs_CT_CM_ssh_gf/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=3
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.6 M    Total params
+394.525   Total estimated model params size (MB)
+
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.6 M    Total params
+394.525   Total estimated model params size (MB)
+✅ Val batch loaded: tgt=torch.Size([1, 9, 128, 128])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[Epoch 0] num_timesteps=18
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+[E0] σ_s=10.0000 σ_t=7.4381 σ_tgt=7.4381 | c_out_s=0.0000 c_out_t=0.0000 | raw_S |max|=35.59 raw_T |max|=35.57 | out_S |max|=35.59 out_T |max|=35.57 | nan_S=False nan_T=False | in_S |max|=47.43 in_T |max|=35.57
+[E0] loss=0.000223 pred=[-35.59,33.74] tgt=[-35.57,33.75]
+[progress] epoch 1/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0001
+[Epoch 0]  Val RMSE (10 steps, EMA) = 0.1590
+[Epoch 1] num_timesteps=18
+[E1] σ_s=2.8159 σ_t=1.9720 σ_tgt=0.0448 | c_out_s=0.0000 c_out_t=0.0000 | raw_S |max|=2.60 raw_T |max|=2.61 | out_S |max|=2.60 out_T |max|=2.61 | nan_S=False nan_T=False | in_S |max|=13.36 in_T |max|=9.71
+[E1] loss=0.000074 pred=[-2.30,2.60] tgt=[-2.29,2.61]
+[progress] epoch 2/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0001 | val_rmse_ema=0.1590
+[Epoch 1]  Val RMSE (10 steps, EMA) = 0.1590
+[Epoch 2] num_timesteps=18
+[E2] σ_s=0.3826 σ_t=0.2373 σ_tgt=0.2373 | c_out_s=0.0000 c_out_t=0.0000 | raw_S |max|=3.16 raw_T |max|=3.19 | out_S |max|=3.16 out_T |max|=3.19 | nan_S=False nan_T=False | in_S |max|=3.80 in_T |max|=3.19
+[E2] loss=0.000144 pred=[-2.92,3.16] tgt=[-2.91,3.19]
+[progress] epoch 3/3 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1590
+[Epoch 2]  Val RMSE (10 steps, EMA) = 0.1578
+`Trainer.fit` stopped: `max_epochs=3` reached.
+
+`Trainer.fit` stopped: `max_epochs=3` reached.
+EMA model saved to: logs_CMT_ssh_gf/best_model
+Executing:  55%|█████▍    | 17/31 [03:05<03:27, 14.83s/cell]✅ Model loaded from: logs_CMT_ssh_gf/best_model
+Executing:  61%|██████▏   | 19/31 [03:07<02:19, 11.60s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  68%|██████▊   | 21/31 [03:07<01:27,  8.72s/cell]  Sample 1/2 done  Sample 2/2 done
+✅ 2 ensemble members generated
+Executing:  74%|███████▍  | 23/31 [03:08<00:52,  6.51s/cell]  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_obs.png
+  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_gt.png
+  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_cm_mean.png
+  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_cm_spread.png
+  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_member0.png
+  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_member1.png
+Executing:  81%|████████  | 25/31 [03:10<00:30,  5.10s/cell]  Saved: figures/CMT_ssh_gf/CMT_ssh_gf_transport.png
+Executing:  87%|████████▋ | 27/31 [03:11<00:15,  3.75s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 657 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=657 (sample,t) pairs
+
+Calibration (2 members): SSR 0.075  spread 0.0042  RMSE 0.0683  CRPS(all px) 0.0458  rank dev 0.98 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_metrics_train_calibration.csv
+Executing:  94%|█████████▎| 29/31 [03:49<00:16,  8.07s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_metrics_train.csv
+Executing: 100%|██████████| 31/31 [03:52<00:00,  7.49s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/CMT_train.ipynb
+[run_step] ok in 242.2 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261114-023706_ssh_cmt_smoke
+[job] 2026-11-14T02:41:13+01:00 exit=0
