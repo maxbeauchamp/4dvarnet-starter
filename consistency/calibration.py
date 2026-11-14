@@ -10,6 +10,7 @@ The notebooks call ``calib_stats`` once per (test sample, timestep) on the de-no
 * rank histogram of the truth among the members, summarised by its normalised deviation from flat
   (0 = flat; > 0 = under/over-dispersion or bias).
 """
+import sys
 import numpy as np
 
 MAX_PIXELS = 4000  # pixels drawn per field for CRPS and ranks (keeps the full test set affordable)
@@ -43,12 +44,23 @@ def calib_stats(ens, gt, valid, rng=None):
     out["crps_all"] = float(_crps_sorted(es, g[idx]).mean())
     ranks = (es < g[idx][None]).sum(0)
     out["ranks"] = np.bincount(ranks, minlength=m + 1).astype(np.int64)
+    # frame index of the window: the notebooks call this inside `for _t in range(C)`; read it from the caller
+    # (no change to the 24 notebooks) so that write_calibration_csv can also report SSR frame by frame.
+    try:
+        t = sys._getframe(1).f_locals.get("_t")
+        out["frame"] = int(t) if t is not None else None
+    except Exception:
+        out["frame"] = None
     return out
 
 
-def calib_summary(stats):
-    """Aggregate a list of calib_stats outputs. Returns dict of floats + the rank histogram."""
+def calib_summary(stats, by_frame=True):
+    """Aggregate a list of calib_stats outputs. Returns dict of floats + the rank histogram
+    (+ 'frames': one summary per frame index of the window, when the frames are known)."""
     stats = [s for s in stats if s]
+    frames = sorted({s.get("frame") for s in stats if s.get("frame") is not None})
+    per_frame = ({f: calib_summary([s for s in stats if s.get("frame") == f], by_frame=False) for f in frames}
+                 if by_frame and len(frames) > 1 else {})
     if not stats:
         return dict(spread=np.nan, rmse=np.nan, ssr=np.nan, crps_all=np.nan, rank_dev=np.nan, ranks=[],
                     bias=np.nan, ssr_debiased=np.nan)
@@ -60,7 +72,7 @@ def calib_summary(stats):
     rank_dev = float(np.sqrt(((p - 1.0 / (m + 1)) ** 2).sum()) * (m + 1) / np.sqrt(m))
     bias = float(np.mean([s.get("bias", np.nan) for s in stats]))
     mse_db = float(np.mean([s.get("mse_db", np.nan) for s in stats]))
-    return dict(spread=float(np.sqrt(var)), rmse=float(np.sqrt(mse)),
+    return dict(frames=per_frame, spread=float(np.sqrt(var)), rmse=float(np.sqrt(mse)),
                 bias=bias, ssr_debiased=float(np.sqrt(var / mse_db) * np.sqrt((m + 1) / m)) if mse_db > 0 else np.nan,
                 ssr=float(np.sqrt(var / mse) * np.sqrt((m + 1) / m)) if mse > 0 else np.nan,
                 crps_all=float(np.mean([s["crps_all"] for s in stats])), rank_dev=rank_dev,
@@ -77,4 +89,10 @@ def write_calibration_csv(path, method, summary, n_members):
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(row))
         w.writeheader(); w.writerow(row)
+    if summary.get("frames"):
+        keys = ("spread", "rmse", "ssr", "crps_all", "rank_dev", "bias")
+        with open(os.path.splitext(path)[0] + "_frames.csv", "w", newline="") as f:
+            w = csv.writer(f); w.writerow(("method", "frame") + keys)
+            for fr, sm in summary["frames"].items():
+                w.writerow((method, fr) + tuple(sm.get(k, np.nan) for k in keys))
     return row
