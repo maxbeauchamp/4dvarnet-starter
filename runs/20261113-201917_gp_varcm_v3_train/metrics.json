@@ -1,0 +1,137 @@
+{
+ "GP/VarCM_v3_metrics.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2216 $\\pm$ 0.0244",
+   "lambda_x": "21.9 $\\pm$ 22.6",
+   "CRPS": "0.0101 $\\pm$ 0.0030"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_v3_metrics_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 20,
+   "spread": 0.042238894758427445,
+   "rmse": 0.22291200710228573,
+   "ssr": 0.19416624551747483,
+   "crps_all": 0.14850503621943129,
+   "rank_dev": 2.0982840855947034,
+   "ranks": "312611 29959 19374 15142 12898 11771 10896 10545 10178 9829 9847 9945 10149 10573 11258 12072 13208 15727 20035 31145 312838"
+  }
+ ],
+ "GP/VarCM_v3_metrics_nfe_placeholder.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2234 $\\pm$ 0.0244",
+   "lambda_x": "22.8 $\\pm$ 26.4",
+   "CRPS": "0.0125 $\\pm$ 0.0036"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_v3_metrics_nfe_placeholder_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 2,
+   "spread": 0.042276541619840735,
+   "rmse": 0.22474295443364226,
+   "ssr": 0.23038754500471337,
+   "crps_all": 0.15851360875207327,
+   "rank_dev": 0.6181835156147224,
+   "ranks": "405564 85862 408574"
+  }
+ ],
+ "GP/VarCM_v3_metrics_train.csv": [
+  {
+   "Method": "VarCM (ens. mean, full test set)",
+   "RMSE": "0.2234 $\\pm$ 0.0244",
+   "lambda_x": "22.8 $\\pm$ 26.4",
+   "CRPS": "0.0125 $\\pm$ 0.0036"
+  },
+  {
+   "Method": "OI baseline (full test set)",
+   "RMSE": "0.2253 $\\pm$ 0.0040",
+   "lambda_x": "43.1 $\\pm$ 35.9",
+   "CRPS": "--"
+  }
+ ],
+ "GP/VarCM_v3_metrics_train_calibration.csv": [
+  {
+   "method": "VarCM_spde",
+   "members": 2,
+   "spread": 0.042276541619840735,
+   "rmse": 0.22474295443364226,
+   "ssr": 0.23038754500471337,
+   "crps_all": 0.15851360875207327,
+   "rank_dev": 0.6181835156147224,
+   "ranks": "405564 85862 408574"
+  }
+ ],
+ "GP/VarCM_v3_nfe_sweep.csv": [
+  {
+   "method": "VarCM",
+   "N": 1,
+   "nfe": 3.0,
+   "rmse": 0.2243565062681834,
+   "crps": 0.014614177724165763,
+   "spread": 0.05219889303132085,
+   "ssr": 0.23642094234317965,
+   "wall_clock_s_per_sample": 0.06914379266090691,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 2,
+   "nfe": 3.0,
+   "rmse": 0.22435881594816845,
+   "crps": 0.015563986155401584,
+   "spread": 0.05244092310606531,
+   "ssr": 0.23751897266119362,
+   "wall_clock_s_per_sample": 0.06866706041619182,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 4,
+   "nfe": 4.0,
+   "rmse": 0.22495111922423044,
+   "crps": 0.016573313069900016,
+   "spread": 0.04797212227861014,
+   "ssr": 0.21668811566333884,
+   "wall_clock_s_per_sample": 0.08997350606756906,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 8,
+   "nfe": 8.0,
+   "rmse": 0.22467010815938313,
+   "crps": 0.01294790982501893,
+   "spread": 0.041975670345797716,
+   "ssr": 0.18987521946947325,
+   "wall_clock_s_per_sample": 0.17691756328567862,
+   "n_pairs": 15
+  },
+  {
+   "method": "VarCM",
+   "N": 15,
+   "nfe": 15.0,
+   "rmse": 0.22454565068085988,
+   "crps": 0.009714819328217288,
+   "spread": 0.042284739042959395,
+   "ssr": 0.19137251598194932,
+   "wall_clock_s_per_sample": 0.3255675074333946,
+   "n_pairs": 15
+  }
+ ]
+}
