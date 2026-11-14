@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_eval_old",
+  "cmd": "cd consistency/sbatch_submission && for m in FM CM DynFM DynCM; do [ -f results/SSH_GF/${m}_metrics_calibration.csv ] && { echo \"[skip] $m\"; continue; }; python run_metrics.py --xp SSH_GF --method $m || exit 1; done",
+  "commit": "fde15bd",
+  "host": "sl-mee-br-207",
+  "slurm_job": "74866",
+  "started": "2026-11-14T03:07:53",
+  "status": "ok",
+  "seconds": 5314.1,
+  "finished": "2026-11-14T04:36:27"
+}

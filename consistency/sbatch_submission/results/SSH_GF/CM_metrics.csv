@@ -1,0 +1,2 @@
+Method,RMSE,lambda_x,CRPS
+"CM (ens. mean, full test set)",0.0665 $\pm$ 0.0156,1.27 $\pm$ 0.20,0.0373 $\pm$ 0.0124
