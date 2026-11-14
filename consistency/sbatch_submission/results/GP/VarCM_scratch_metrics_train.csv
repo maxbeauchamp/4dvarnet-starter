@@ -1,0 +1,3 @@
+Method,RMSE,lambda_x,CRPS
+"VarCM (ens. mean, full test set)",0.2567 $\pm$ 0.0087,194.8 $\pm$ 41.7,0.1889 $\pm$ 0.0368
+OI baseline (full test set),0.2253 $\pm$ 0.0040,43.1 $\pm$ 35.9,--
