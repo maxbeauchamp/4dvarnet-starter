@@ -239,8 +239,7 @@
    "time": "72:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT && python run_metrics.py --xp SSH_GF --method CMT",
-   "confirm": true,
-   "note": "on hold (2026-11-14): decide after ssh_teacher_diag whether the FM teacher is retrained first"
+   "approved_by": "user 2026-11-14 (\"approuve tout\"); hold lifted after ssh_teacher_diag (bias explains little, retraining FM with the same recipe would not fix its spread)"
   }
  ]
 }
