@@ -253,6 +253,27 @@
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM_ic --reset && python run_metrics.py --xp GP --method VarDynCM_ic && cat results/GP/VarDynCM_ic_metrics_calibration_frames.csv"
   },
   {
+   "id": "ssh_fm_lastv2_eval",
+   "lane": 2,
+   "time": "02:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method FM_lastv2"
+  },
+  {
+   "id": "gp_vardyncm_scratch_smoke",
+   "lane": 2,
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarDynCM_scratch --reset"
+  },
+  {
+   "id": "gp_vardyncm_scratch_train",
+   "lane": 2,
+   "time": "20:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM_scratch --reset && python run_metrics.py --xp GP --method VarDynCM_scratch && cat results/GP/VarDynCM_scratch_metrics_calibration_frames.csv"
+  },
+  {
    "id": "ssh_fm_diag",
    "time": "03:00:00",
    "gate": "status == 'ok'",

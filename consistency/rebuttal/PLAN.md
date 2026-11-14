@@ -142,3 +142,11 @@ the new results, list what changed in the PDF with line references.
 * Test VarDynCM_ic: W_IC=4 (extra CRPS on the first frame), 100 epochs from ls01b. Main lane, before the SSH FM
   diagnostic. VarCM_scratch (lane 2) tests the "dead noise pathway after a collapsed warm start" hypothesis,
   which would also apply to the VarDynCM IC.
+
+### 2026-11-14 night — VarCM from scratch works
+* VarCM_scratch (v3 objective without rollout, from scratch, 250 epochs): RMSE 0.192, CRPS 0.107, SSR 0.81,
+  rank dev 0.28, bias ~0; SSR 0.78–0.85 on every frame. Better than CMT (0.199 / 0.110 / 0.82) on RMSE and CRPS.
+  The collapsed v1 warm start was the blocker (all warm-started variants: SSR ~0.2).
+* Same test for VarDynCM: VarDynCM_scratch on lane 2 (200 epochs).
+* SSH FM: evaluation loads last.ckpt, which has the size of the ~200-epoch checkpoints, while a ~1974-epoch run
+  exists (last-v2.ckpt). ssh_fm_lastv2_eval (lane 2, first). FM SSH NFE sweep: SSR 0.41 (10 steps) -> 0.27 (80).

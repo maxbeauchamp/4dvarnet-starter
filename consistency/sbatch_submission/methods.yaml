@@ -190,6 +190,19 @@ methods:
         log_dir: logs_CT_VarDynCM_ssh_gf_grad
         status: generated
 
+  FM_lastv2:
+    # SSH teacher check: last.ckpt of logs_FM_ssh_gf has the size of the ~200-epoch checkpoints, while a run to
+    # ~1974 epochs exists (last-v2.ckpt). Evaluate FM SSH with last-v2.ckpt (no retraining).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      CKPT_FILE: last-v2.ckpt
+    xp:
+      SSH_GF:
+        notebook: Notebook_flowmatching_model_FM_ssh_gf.ipynb
+        log_dir: logs_FM_ssh_gf
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.
@@ -337,6 +350,25 @@ methods:
       GP:
         notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
         log_dir: logs_VarDynCM_crps_spde_grad_ic
+        status: existing
+
+  VarDynCM_scratch:
+    # VarCM from scratch reached SSR 0.81 (vs 0.20 warm-started from the collapsed v1): same test for VarDynCM,
+    # whose IC is collapsed (SSR 0.20 at frame 0). From scratch, weight 0.1, frame grid, validation selection.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 200
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      RUN_TAG: _scratch
+      WARM_START: false
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_scratch
         status: existing
 
   VarDynCM_v1:
