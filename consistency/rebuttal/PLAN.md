@@ -124,3 +124,11 @@ the new results, list what changed in the PDF with line references.
 * VarCM_v3: SHORT_CRPS (no L2 target left) + ROLLOUT_STEPS (CRPS on the sampler's own K-step chain,
   K in {3,5,8,15}, gradient through the last jump), 100 epochs from crps2, validation-CRPS selection.
   gp_varcm_v3_smoke runs automatically; gp_varcm_v3_train waits for approval after the diagnostic.
+
+### 2026-11-14 — results of v3 and of the frame-grid evaluation
+* VarCM_v3 (CRPS short anchor + CRPS on the sampler chain): no change (SSR 0.19, CRPS 0.149); validation CRPS
+  flat at ~1.25 as in crps2 and ls01. Three objectives, same plateau: the limit is not in the loss terms.
+* VarDynCM sampled on its training frame grid (1 -> IC, one jump per frame): VarDynCM_fg RMSE 0.173, CRPS 0.100,
+  SSR 0.36; VarDynCM_ls01_fg RMSE 0.180, CRPS 0.100, SSR 0.53, rank dev 0.91 (vs SSR 0.08 on 25 uniform steps).
+  Spread grows along the window (small at the IC). Not consistent across grids (NFE sweep): to be stated.
+* gp_vardyncm_ls01b_train (confirm): 100 more epochs of ls01 on the frame grid.

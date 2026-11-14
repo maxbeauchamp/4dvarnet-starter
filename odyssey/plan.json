@@ -208,6 +208,13 @@
    "cmd": "cd consistency/sbatch_submission && for m in FM CM DynFM DynCM; do [ -f results/SSH_GF/${m}_metrics_calibration.csv ] && { echo \"[skip] $m\"; continue; }; python run_metrics.py --xp SSH_GF --method $m || exit 1; done"
   },
   {
+   "id": "gp_vardyncm_ls01b_train",
+   "time": "10:00:00",
+   "confirm": true,
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM_ls01b --reset && python run_metrics.py --xp GP --method VarDynCM_ls01b"
+  },
+  {
    "id": "ssh_cmt_train",
    "time": "72:00:00",
    "confirm": true,
