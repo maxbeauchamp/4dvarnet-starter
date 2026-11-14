@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_vardyncm_ic_smoke",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarDynCM_ic --reset",
+  "commit": "8c0006e",
+  "host": "sl-mee-br-206",
+  "slurm_job": "75112",
+  "started": "2026-11-14T20:03:01",
+  "status": "ok",
+  "seconds": 282.6,
+  "finished": "2026-11-14T20:07:44"
+}
