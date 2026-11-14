@@ -138,3 +138,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-14 16:13 submitted `ssh_teacher_diag` as job 75041 -> `runs/20261114-161326_ssh_teacher_diag`
 - 2026-11-14 17:44 `ssh_teacher_diag` done in 01:06:10, gate passed
 - 2026-11-14 19:31 **ATTENTION** `ssh_fm_diag` ended CANCELLED by 264082 after 00:00:00; see `runs/20261114-191144_ssh_fm_diag`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
+- 2026-11-14 19:31 pilot resumed
+- 2026-11-14 19:31 plan.json changed; next is `gp_vardyncm_frames`
+- 2026-11-14 19:31 submitted `gp_vardyncm_frames` as job 75107 -> `runs/20261114-193133_gp_vardyncm_frames`
+- 2026-11-14 19:45 `gp_vardyncm_frames` done in 00:02:44, gate passed
