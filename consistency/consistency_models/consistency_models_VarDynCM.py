@@ -506,10 +506,13 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
     """
 
     def __init__(self, crps_members: int = 8, crps_lags=(1, 2, 4, 8), crps_w_inc: float = 1.0,
-                 lambda_semi: float = 1.0, lambda_traj: float = 1.0, **kw):
+                 lambda_semi: float = 1.0, lambda_traj: float = 1.0, w_ic: float = 0.0, **kw):
         super().__init__(**kw)
         self.crps_members, self.crps_lags, self.crps_w_inc = crps_members, crps_lags, crps_w_inc
         self.lambda_semi, self.lambda_traj = lambda_semi, lambda_traj
+        # (rebuttal) extra weight on the CRPS of the first frame (initial condition): frame by frame, the spread
+        # is smallest there (SSR 0.20 at the IC vs 0.63 at the last frame for VarDynCM_ls01b).
+        self.w_ic = w_ic
 
     def __call__(self, student, teacher, x, y, current_step, total_steps,
                  obs_cost=None, prior_cost=None, lambda_reg=None, **kwargs) -> VarDynCMOutput:
@@ -545,6 +548,9 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
         l_semi = l_semi / C
         traj = torch.cat(frames, dim=1)                                   # (B, C, H, W)
         l_traj = crps_field_loss(traj, xr, M, self.crps_lags, self.crps_w_inc, time_dim=1)
+        if self.w_ic > 0:
+            l_traj = l_traj + self.w_ic * crps_field_loss(traj[:, :1], xr[:, :1], M, self.crps_lags,
+                                                          self.crps_w_inc, time_dim=None)
 
         mask = (~torch.isnan(yr)).to(traj.dtype)[::M]
         l_obs = (fair_crps(traj, xr, M) * mask).sum() / mask.sum().clamp(min=1.0)

@@ -318,6 +318,27 @@ methods:
         log_dir: logs_VarDynCM_crps_spde_grad_ls01b
         status: existing
 
+  VarDynCM_ic:
+    # VarDynCM_ls01b frame by frame: SSR 0.20 at the IC rising to 0.63 at the last frame. Test: extra CRPS
+    # weight on the first frame (W_IC=4, i.e. about as much as the rest of the window), 100 epochs from ls01b,
+    # frame grid, validation-CRPS selection.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 100
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      W_IC: 4.0
+      RUN_TAG: _ic
+      WARM_FROM: logs_VarDynCM_crps_spde_grad_ls01b
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_ic
+        status: existing
+
   VarDynCM_v1:
     # Submitted version (L2 anchors), kept for the comparison. GP only.
     generative: true

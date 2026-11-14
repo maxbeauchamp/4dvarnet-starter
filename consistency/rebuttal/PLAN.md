@@ -135,3 +135,10 @@ the new results, list what changed in the PDF with line references.
 * 2026-11-14, user: "approuve tout". Order: gp_vardyncm_ls01b_train → VarCM_scratch (smoke, train: v3 objective
   without rollout, from scratch, 250 epochs; hypothesis: the collapsed v1 start traps every warm-started VarCM)
   → ssh_cmt_train. Confirm flags removed on the user's approval.
+
+### 2026-11-14 evening — VarDynCM frame by frame
+* VarDynCM_ls01b (frame grid), SSR by frame: 0.20, 0.28, 0.46, 0.57, 0.63; spread 0.03 at the IC vs 0.12 at the
+  last frame; RMSE 0.150 -> 0.195. The IC (spin-up jump, from noise, conditioned through y only) is collapsed.
+* Test VarDynCM_ic: W_IC=4 (extra CRPS on the first frame), 100 epochs from ls01b. Main lane, before the SSH FM
+  diagnostic. VarCM_scratch (lane 2) tests the "dead noise pathway after a collapsed warm start" hypothesis,
+  which would also apply to the VarDynCM IC.
