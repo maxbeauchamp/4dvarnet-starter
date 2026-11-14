@@ -182,6 +182,7 @@ def submit(sid, st):
 def fetch(run_dir, job=None):
     local = REPO / run_dir
     local.mkdir(parents=True, exist_ok=True)
+    ssh(f"mkdir -p {shlex.quote(remote_repo() + '/' + run_dir)}")   # a job cancelled before it started has no run dir
     rsync(f"{CFG['ODY_HOST']}:{remote_repo()}/{run_dir}/", f"{local}/",
           ["--exclude", "*.pt", "--exclude", "*.npz", "--exclude", "*.nc", "--exclude", "_source.py"])
     job_out = ssh(f"ls {shlex.quote(remote_repo())}/runs/slurm-icl-*-{job or load_state().get('job')}.out 2>/dev/null", check=False)
