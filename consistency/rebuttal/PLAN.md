@@ -132,3 +132,6 @@ the new results, list what changed in the PDF with line references.
   SSR 0.36; VarDynCM_ls01_fg RMSE 0.180, CRPS 0.100, SSR 0.53, rank dev 0.91 (vs SSR 0.08 on 25 uniform steps).
   Spread grows along the window (small at the IC). Not consistent across grids (NFE sweep): to be stated.
 * gp_vardyncm_ls01b_train (confirm): 100 more epochs of ls01 on the frame grid.
+* 2026-11-14, user: "approuve tout". Order: gp_vardyncm_ls01b_train → VarCM_scratch (smoke, train: v3 objective
+  without rollout, from scratch, 250 epochs; hypothesis: the collapsed v1 start traps every warm-started VarCM)
+  → ssh_cmt_train. Confirm flags removed on the user's approval.
