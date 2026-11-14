@@ -145,3 +145,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-14 20:02 `ssh_fm_diag` done in 00:08:40, gate passed
 - 2026-11-14 20:02 submitted `gp_vardyncm_ic_smoke` as job 75112 -> `runs/20261114-200255_gp_vardyncm_ic_smoke`
 - 2026-11-14 20:16 `gp_vardyncm_ic_smoke` done in 00:04:44, gate passed
+- 2026-11-14 20:16 submitted `gp_vardyncm_ic_train` as job 75116 -> `runs/20261114-201647_gp_vardyncm_ic_train`
+- 2026-11-14 22:48 lane 2: `gp_varcm_scratch_train` done in 08:20:12, gate passed
