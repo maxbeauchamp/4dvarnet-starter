@@ -12,7 +12,8 @@
     python3 odyssey/pilot.py push             # commit and push results/ and paper/results/ to GitHub
     python3 odyssey/pilot.py watch [sec]      # live dashboard: plan progress, current job, log tail (default 60 s)
 
-Rules: never more than one icl job in the queue; no dependency chains; a failed job is retried once,
+Rules: never more than one icl job in the queue (plus one job of the second lane: steps marked "lane": 2 run on a
+second GPU, in parallel with the main lane, by the user's decision of 2026-11-14); no dependency chains; a failed job is retried once,
 then the pilot pauses; a failed gate pauses; steps marked "confirm" wait for `approve`. Every action is
 appended to RUNLOG.md, and anything needing a human writes results/ATTENTION.md and posts a macOS
 notification. Standard library only.
@@ -143,10 +144,19 @@ def job_state(job):
 
 
 # ----------------------------------------------------------------------------- actions
+def lane_of(sid):
+    return 2 if step(sid).get("lane") == 2 else 1
+
+
 def submit(sid, st):
-    if our_jobs():
-        sys.exit("an icl job is already in the queue: one job at a time")
     s = step(sid)
+    lane = lane_of(sid)
+    l2 = st.get("lane2") or {}
+    others = [j for j in our_jobs() if j[0] != l2.get("job")] if lane == 1 else []
+    if lane == 1 and others:
+        sys.exit("an icl job is already in the main lane: one job at a time per lane")
+    if lane == 2 and l2.get("job"):
+        sys.exit(f"lane 2 is busy with job {l2['job']} ({l2.get('step')})")
     sync_code()
     run_id = time.strftime("%Y%m%d-%H%M%S") + "_" + sid
     run_dir = f"runs/{run_id}"
@@ -161,17 +171,20 @@ def submit(sid, st):
           "--export=" + ",".join(exports), "odyssey/job.sbatch", run_dir]
     sb += ["--cmd", s["cmd"]]
     job = ssh(f"cd {shlex.quote(remote_repo())} && " + " ".join(shlex.quote(a) for a in sb)).split(";")[0]
-    st.update(job=job, run_dir=run_dir, step=sid)
+    if lane == 2:
+        st["lane2"] = dict(job=job, run_dir=run_dir, step=sid, retries=l2.get("retries", 0) if l2.get("step") == sid else 0)
+    else:
+        st.update(job=job, run_dir=run_dir, step=sid)
     save_state(st)
-    log(f"submitted `{sid}` as job {job} -> `{run_dir}`")
+    log(f"submitted `{sid}` as job {job} -> `{run_dir}`" + (" (lane 2)" if lane == 2 else ""))
 
 
-def fetch(run_dir):
+def fetch(run_dir, job=None):
     local = REPO / run_dir
     local.mkdir(parents=True, exist_ok=True)
     rsync(f"{CFG['ODY_HOST']}:{remote_repo()}/{run_dir}/", f"{local}/",
           ["--exclude", "*.pt", "--exclude", "*.npz", "--exclude", "*.nc", "--exclude", "_source.py"])
-    job_out = ssh(f"ls {shlex.quote(remote_repo())}/runs/slurm-icl-*-{load_state().get('job')}.out 2>/dev/null", check=False)
+    job_out = ssh(f"ls {shlex.quote(remote_repo())}/runs/slurm-icl-*-{job or load_state().get('job')}.out 2>/dev/null", check=False)
     if job_out:
         rsync(f"{CFG['ODY_HOST']}:{job_out.splitlines()[0]}", f"{local}/slurm.out")
     # figures written by the notebooks on Odyssey since the rebuttal started -> results/figures/<xp>/<tag>/
@@ -237,10 +250,52 @@ def reload_plan():
     IDS = [s["id"] for s in PLAN]
 
 
-def first_pending(st):
-    """First step of plan.json, in its current order, that has not completed yet."""
+def first_pending(st, lane=1):
+    """First step of plan.json, in its current order, of the given lane that has not completed yet."""
     done = {h["step"] for h in st.get("history", []) if str(h.get("state", "")).startswith("COMPLETED")}
-    return next((i for i in IDS if i not in done), None)
+    busy = {(st.get("lane2") or {}).get("step"), st.get("step") if st.get("job") else None}
+    return next((i for i in IDS if i not in done and lane_of(i) == lane and (lane == 1 or i not in busy)), None)
+
+
+def tick_lane2(st):
+    """Second GPU: poll / fetch / gate the lane-2 job, then submit the next lane-2 step. Never pauses the main lane."""
+    l2 = st.get("lane2") or {}
+    if l2.get("job"):
+        if any(j[0] == l2["job"] for j in our_jobs()):
+            print(f"lane 2: job {l2['job']} ({l2['step']}) still running")
+            return
+        state, elapsed, code = job_state(l2["job"])
+        sid, run_dir = l2["step"], l2["run_dir"]
+        fetch(run_dir, l2["job"])
+        st["history"].append(dict(step=sid, job=l2["job"], state=state, elapsed=elapsed, run_dir=run_dir, lane=2))
+        st["lane2"] = dict(step=sid, retries=l2.get("retries", 0)); save_state(st)
+        ok, err = (False, None)
+        if state.startswith("COMPLETED"):
+            ok, err = evaluate(step(sid).get("gate", "status == 'ok'"), run_dir)
+        if not ok:
+            if not state.startswith("COMPLETED"):
+                st["history"][-1]["state"] = state
+            st["lane2_paused"] = True; save_state(st)
+            attention(f"lane 2: `{sid}` ended {state} after {elapsed}"
+                      f"{' (gate failed: ' + str(err) + ')' if err else ''}; see `{run_dir}`. Lane 2 paused "
+                      f"(`pilot.py resume` re-enables it; the failed step is resubmitted).")
+            if state.startswith("COMPLETED"):         # gate failed: do not count the step as done
+                st["history"][-1]["state"] = "GATE_FAILED"; save_state(st)
+            push(); return
+        log(f"lane 2: `{sid}` done in {elapsed}, gate passed")
+        st["lane2"] = None; save_state(st)
+        push()
+    if st.get("paused") or st.get("lane2_paused"):
+        return
+    nxt = first_pending(st, lane=2)
+    if not nxt:
+        return
+    if step(nxt).get("confirm") and nxt not in st["approved"]:
+        if st.get("waiting") != nxt:
+            st["waiting"] = nxt; save_state(st)
+            attention(f"next lane-2 step `{nxt}` needs approval (`python3 odyssey/pilot.py approve {nxt}`).")
+        return
+    submit(nxt, st)
 
 
 def advance(st, sid):
@@ -257,13 +312,14 @@ def tick(st):
         print(f"cannot reach {CFG['ODY_HOST']} without a password: {(r.stderr or '').strip()[:200]}\n"
               "nothing changed; fix SSH (key loaded? network?) and tick again")
         return
+    tick_lane2(st)
     if st.get("job"):
         if any(j[0] == st["job"] for j in our_jobs()):
             print(f"job {st['job']} ({st['step']}) still running")
             return
         state, elapsed, code = job_state(st["job"])
         sid, run_dir = st["step"], st["run_dir"]
-        fetch(run_dir)
+        fetch(run_dir, st["job"])
         st["history"].append(dict(step=sid, job=st["job"], state=state, elapsed=elapsed, run_dir=run_dir))
         st["job"] = None; save_state(st)
         if not state.startswith("COMPLETED"):
@@ -351,7 +407,9 @@ def main():
         ssh("hostname", interactive=True); print("SSH connection open (kept 8 h)")
     elif cmd == "status":
         print(json.dumps({k: st[k] for k in ("next", "job", "step", "run_dir", "retries", "paused")}, indent=1))
-        if st.get("job"):
+        if st.get("lane2") or st.get("lane2_paused"):
+            print("lane 2:", json.dumps(st.get("lane2")), "PAUSED" if st.get("lane2_paused") else "")
+        if st.get("job") or (st.get("lane2") or {}).get("job"):
             print("queue:", our_jobs())
     elif cmd == "next":
         if not st["next"]:
@@ -375,7 +433,7 @@ def main():
     elif cmd == "pause":
         st["paused"] = True; save_state(st); log("pilot paused")
     elif cmd == "resume":
-        st["paused"] = False; save_state(st); log("pilot resumed")
+        st["paused"] = False; st["lane2_paused"] = False; save_state(st); log("pilot resumed")
         (REPO / "results" / "ATTENTION.md").unlink(missing_ok=True)
     elif cmd == "skip":
         log(f"skipped `{args[0]}`"); advance(st, args[0])

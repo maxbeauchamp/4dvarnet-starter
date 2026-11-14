@@ -224,13 +224,15 @@
    "id": "gp_varcm_scratch_smoke",
    "time": "02:00:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarCM_scratch --reset"
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarCM_scratch --reset",
+   "lane": 2
   },
   {
    "id": "gp_varcm_scratch_train",
    "time": "14:00:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM_scratch --reset && python run_metrics.py --xp GP --method VarCM_scratch"
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM_scratch --reset && python run_metrics.py --xp GP --method VarCM_scratch",
+   "lane": 2
   },
   {
    "id": "ssh_cmt_train",
