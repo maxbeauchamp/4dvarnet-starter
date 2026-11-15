@@ -74,6 +74,10 @@ NFE_GRIDS = {
     "CMT":           [n + 1 for n in _TARGET_NFE_CM_FM],
     "DynCMT":        [2, 3, 4, 5, 6, 8, 10, 15, 20],
     "VarCM_v3":      [1, 2, 3, 5, 8, 12, 15, 20, 30],
+    "CMT_det":          [n + 1 for n in _TARGET_NFE_CM_FM],
+    "VarCM_scratch2":   [1, 2, 3, 5, 8, 12, 15, 20, 30],
+    "VarDynCM_scratch": [5],                       # frame grid: N+1 frames -> N+1 calls (N ignored)
+    "VarDynCM_scratch_uni": [2, 3, 5, 8, 10, 15, 20],
 }
 
 
@@ -89,7 +93,7 @@ def load_methods():
 # so this is checked explicitly instead of failing downstream in
 # plot_nfe_efficiency.py with a cryptic "missing file" warning.
 INSTRUMENTED_XP_METHODS = {
-    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm", "CMT", "DynCMT", "VarCM_v3"},
+    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm", "CMT", "DynCMT", "VarCM_v3", "CMT_det", "VarCM_scratch2", "VarDynCM_scratch", "VarDynCM_scratch_uni"},
     "SSH_GF": {"CM", "FM", "4dvarnet_lstm"},
     "SIC":    set(),
 }

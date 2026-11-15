@@ -1,7 +1,7 @@
 # ICLR 2027 rebuttal — Submission 31739 (Pairwise Consistency Models)
 
 Deadline for the revised PDF and the responses: **19 Nov 2026, 12:59 CET**. Scores: qyTj 1, XETn 1, aayn 2.
-Main-text limit for the revision: **9 pages** (10 only for a camera-ready).
+Main-text limit for the revision: **10 pages** (user, 15 Nov). SIC kept for now (user).
 
 ## 1. Diagnosis (confirmed)
 
@@ -166,3 +166,6 @@ the new results, list what changed in the PDF with line references.
 * Main lane: ssh_teach_smoke -> ssh_fm_v2_train -> ssh_cmt_v2_train -> ssh_dynfm_v2_train.
   Lane 2: ssh_var_smoke -> ssh_varcm_train -> ssh_vardyncm_train -> ssh_var_v1_eval.
   ssh_cmt_train (old FM teacher) kept as a confirm-gated fallback.
+* 15 Nov — gp_nfe_final (main lane, before FM_v2): NFE sweeps of CMT (re-noised and deterministic), DynCMT,
+  VarCM, DynVarCM (uniform grids, not the training frame grid), FM, DynFM; sweep cells now use the same initial
+  noises for every N and report the composition gap RMS(x_N - x_Nref)/spread (semigroup test, aayn Q4).

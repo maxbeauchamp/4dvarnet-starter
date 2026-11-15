@@ -244,6 +244,39 @@ methods:
         log_dir: logs_CMT_ssh_gf_v2
         status: existing
 
+  CMT_det:
+    # Evaluation variant of CMT (GP) for the NFE sweep: deterministic pairwise chain instead of re-noised
+    # multistep sampling (SWEEP_STOCHASTIC=False); used for the composition-gap test.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      SWEEP_STOCHASTIC: false
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_CMT_spde.ipynb
+        log_dir: logs_CMT_spde
+        status: existing
+
+  VarDynCM_scratch_uni:
+    # Evaluation variant of VarDynCM_scratch: uniform grids of N steps instead of the frame grid (NFE sweep and
+    # composition gap on grids not seen in training).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 200
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      RUN_TAG: _scratch
+      SELECT_BY_VAL: true
+      FRAME_GRID: false
+      EVAL_TAG: _uni
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_scratch
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.

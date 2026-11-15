@@ -292,6 +292,12 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method FM_v2 --reset && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method CMT_v2 --reset && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method DynFM_v2 --reset"
   },
   {
+   "id": "gp_nfe_final",
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --method CMT --grid 2,3,5,9,16 ; python run_nfe_sweep.py --method CMT_det --grid 2,3,5,9,16 ; python run_nfe_sweep.py --method DynCMT --grid 3,5,8,12,20 ; python run_nfe_sweep.py --method VarCM_scratch2 --grid 1,2,4,8,15 ; python run_nfe_sweep.py --method VarDynCM_scratch_uni --grid 2,3,5,10,20 ; python run_nfe_sweep.py --method FM --grid 5,10,20 ; python run_nfe_sweep.py --method DynFM --grid 5,12,21 ; ls -la results/GP/*nfe_sweep.csv"
+  },
+  {
    "id": "ssh_fm_v2_train",
    "time": "30:00:00",
    "gate": "status == 'ok'",

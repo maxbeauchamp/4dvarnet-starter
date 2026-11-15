@@ -396,6 +396,7 @@ def _write(nb, dst):
             src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG + EVAL_TAG" if "crps" in new else " + RUN_TAG" if new.startswith("CMT_") else ""))
         c["source"] = src.splitlines(keepends=True)
     _sweep_spread(nb)
+    _sweep_gap(nb)
     with open(dst, "w") as f:
         json.dump(nb, f, indent=1, ensure_ascii=False)
         f.write("\n")
@@ -425,6 +426,53 @@ def _sweep_spread(nb):
                      " * np.sqrt((NFE_N_SAMPLES_SWEEP + 1) / NFE_N_SAMPLES_SWEEP)) if _vars else float('nan'),\n")
         src = src.replace("CRPS={_row['crps']:.4f}  wall=", "CRPS={_row['crps']:.4f}  SSR={_row['ssr']:.3f}  wall=")
         c["source"] = src.splitlines(keepends=True)
+
+
+def _sweep_gap(nb):
+    """NFE sweep cell: same initial noises for every step count (seed per test item), and the composition gap
+    RMS(x_N - x_Nref) / ensemble spread at Nref = NFE_GRID[-1] for the first test batch. For a deterministic
+    pairwise transport that is a semigroup the samples do not depend on the grid: gap ~ 0 (rebuttal, aayn Q4).
+    CM notebooks: SWEEP_STOCHASTIC chooses re-noised multistep sampling (as in the evaluation) or the
+    deterministic pairwise chain."""
+    for c in nb["cells"]:
+        src = "".join(c["source"])
+        if "if RUN_NFE_SWEEP" not in src or "_gap_store" in src:
+            continue
+        src = src.replace("for _tb in _test_batches:", "for _tbi, _tb in enumerate(_test_batches):")
+        key = "for _bi in range(_Bb):\n"
+        i = src.index(key)
+        ind = src[src.rfind("\n", 0, i) + 1:i] + "    "
+        src = src.replace(key, key + ind + "torch.manual_seed(1000 * _tbi + _bi)   # same initial noises for every N\n", 1)
+        j = src.index("_ens_b ", i) if "_ens_b " in src[i:] else src.index("_ens_b", i)
+        ls = src.rfind("\n", 0, j) + 1
+        le = src.index("\n", j)
+        ind2 = src[ls:j]
+        src = (src[:le + 1] + ind2 + "if _tbi == 0:\n" + ind2 + "    _gap_store.setdefault(_N, []).append("
+               "_ens_b.float().cpu().numpy() if torch.is_tensor(_ens_b) else np.asarray(_ens_b, dtype=np.float32))\n"
+               + src[le + 1:])
+        src = src.replace("    _sweep_rows = []\n", "    _sweep_rows = []\n    _gap_store = {}\n", 1)
+        k = src.index("    pd.DataFrame(_sweep_rows).to_csv(NFE_SWEEP_CSV")
+        src = (src[:k]
+               + "    _Nref = NFE_GRID[-1]\n"
+               "    for _row in _sweep_rows:\n"
+               "        _a, _b = _gap_store.get(_row['N']), _gap_store.get(_Nref)\n"
+               "        if _a and _b:\n"
+               "            _row['gap_rel_spread'] = float(np.mean([\n"
+               "                np.sqrt(np.nanmean((_x - _r) ** 2)) / max(float(np.sqrt(np.nanmean(np.nanvar(_r, axis=0)))), 1e-12)\n"
+               "                for _x, _r in zip(_a, _b)]))\n"
+               "    print('[NFE sweep] composition gap (RMS difference to N=%s, in units of the spread):' % _Nref,\n"
+               "          {r['N']: round(r.get('gap_rel_spread', float('nan')), 3) for r in _sweep_rows})\n"
+               + src[k:])
+        if "stochastic=True,\n" in src and "nsteps=_N" in src:
+            src = src.replace("nsteps=_N, clip_denoised=False, verbose=False, stochastic=True,",
+                              "nsteps=_N, clip_denoised=False, verbose=False, stochastic=SWEEP_STOCHASTIC,")
+        c["source"] = src.splitlines(keepends=True)
+    for c in nb["cells"]:
+        src = "".join(c["source"])
+        if src.lstrip().startswith("# --- parameters") and "SWEEP_STOCHASTIC" not in src and any(
+                "stochastic=SWEEP_STOCHASTIC" in "".join(d["source"]) for d in nb["cells"]):
+            c["source"] = (src + "SWEEP_STOCHASTIC = True   # NFE sweep of CM: re-noised multistep (as in the evaluation)"
+                           " or deterministic pairwise chain\n").splitlines(keepends=True)
 
 
 if __name__ == "__main__":
