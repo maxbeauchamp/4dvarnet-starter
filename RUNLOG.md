@@ -156,3 +156,8 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-15 09:22 submitted `gp_varcm_scratch2_train` as job 75231 -> `runs/20261115-092223_gp_varcm_scratch2_train`
 - 2026-11-15 14:36 lane 2: `gp_vardyncm_scratch_train` done in 12:57:25, gate passed
 - 2026-11-15 14:36 `gp_varcm_scratch2_train` done in 05:01:39, gate passed
+- 2026-11-15 14:51 submitted `ssh_var_smoke` as job 75318 -> `runs/20261115-145150_ssh_var_smoke` (lane 2)
+- 2026-11-15 14:51 plan.json changed; next is `ssh_teach_smoke`
+- 2026-11-15 14:52 submitted `ssh_teach_smoke` as job 75319 -> `runs/20261115-145159_ssh_teach_smoke`
+- 2026-11-15 14:56 `ssh_teach_smoke` ended FAILED after 00:00:30; retrying once
+- 2026-11-15 14:57 submitted `ssh_teach_smoke` as job 75326 -> `runs/20261115-145707_ssh_teach_smoke`
