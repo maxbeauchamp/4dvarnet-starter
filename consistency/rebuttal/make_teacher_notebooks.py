@@ -335,7 +335,8 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
         if s.lstrip().startswith("# --- parameters"):
             s += PARAMS_CRPS + ("FRAME_GRID = False       # sample on the training frame grid (1 -> IC, then one jump "
                                 "per frame) instead of NSTEPS uniform steps\n"
-                                "W_IC = 0.0               # extra weight of the CRPS of the first frame (initial condition)\n")
+                                "W_IC = 0.0               # extra weight of the CRPS of the first frame (initial condition)\n"
+                                "GRID_REFINE = []         # e.g. [1, 2, 3, 4]: train on random refinements of the frame grid\n")
             done.add("params")
         if old_tr in s:
             i = s.index("\nLOG_DIR     = ") + 1
@@ -351,6 +352,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     crps_members=CRPS_MEMBERS, crps_lags=CRPS_LAGS,
     lambda_semi=LAMBDA_SELF,
     w_ic=W_IC,
+    grid_refine=tuple(GRID_REFINE),
 )""", "training")
             s = sub(s, "consistency_sampling = VarDynCMSamplingAndEditing(\n",
                     "consistency_sampling = VarDynCMSamplingAndEditing(\n    frame_grid=FRAME_GRID,\n", "frame grid")

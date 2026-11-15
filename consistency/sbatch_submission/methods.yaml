@@ -281,6 +281,47 @@ methods:
         log_dir: logs_VarDynCM_crps_spde_grad_scratch
         status: existing
 
+  VarDynCM_grid:
+    # DynVarCM is not consistent on grids it was not trained on (NFE sweep: composition gap ~2 spreads). Fine-tune
+    # VarDynCM_scratch (healthy, not collapsed) with rollouts on random refinements of the frame grid (K in 1..4
+    # jumps per segment, random times), 40 epochs, validation-CRPS selection. Evaluated on the frame grid.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 40
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      GRID_REFINE: [1, 2, 3, 4]
+      RUN_TAG: _grid
+      WARM_FROM: logs_VarDynCM_crps_spde_grad_scratch
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_grid
+        status: existing
+
+  VarDynCM_grid_uni:
+    # Same model on uniform grids (NFE sweep, composition gap).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 40
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      GRID_REFINE: [1, 2, 3, 4]
+      RUN_TAG: _grid
+      WARM_FROM: logs_VarDynCM_crps_spde_grad_scratch
+      SELECT_BY_VAL: true
+      FRAME_GRID: false
+      EVAL_TAG: _uni
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_grid
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.

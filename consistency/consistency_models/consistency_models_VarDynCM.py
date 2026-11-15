@@ -506,13 +506,19 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
     """
 
     def __init__(self, crps_members: int = 8, crps_lags=(1, 2, 4, 8), crps_w_inc: float = 1.0,
-                 lambda_semi: float = 1.0, lambda_traj: float = 1.0, w_ic: float = 0.0, **kw):
+                 lambda_semi: float = 1.0, lambda_traj: float = 1.0, w_ic: float = 0.0,
+                 grid_refine: tuple = (), **kw):
         super().__init__(**kw)
         self.crps_members, self.crps_lags, self.crps_w_inc = crps_members, crps_lags, crps_w_inc
         self.lambda_semi, self.lambda_traj = lambda_semi, lambda_traj
         # (rebuttal) extra weight on the CRPS of the first frame (initial condition): frame by frame, the spread
         # is smallest there (SSR 0.20 at the IC vs 0.63 at the last frame for VarDynCM_ls01b).
         self.w_ic = w_ic
+        # (rebuttal) grid_refine=(1, 2, 3, 4): each segment of the frame grid (1 -> sb, then frame to frame) is
+        # split into K jumps at random sorted times, K drawn from this set at every step, so that the frames are
+        # scored for many sampling grids, not only the frame grid. With K > 1 the state is detached at the start
+        # of each segment (memory). Empty: the frame grid only.
+        self.grid_refine = tuple(grid_refine)
 
     def __call__(self, student, teacher, x, y, current_step, total_steps,
                  obs_cost=None, prior_cost=None, lambda_reg=None, **kwargs) -> VarDynCMOutput:
@@ -537,15 +543,33 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
 
         z = torch.randn(B, 1, H, W, device=dev, dtype=x.dtype)
         u = z * self.sigma_max
-        cur = fwd(student, u, 1.0, frame_t[0])
-        l_semi = semi(u, 1.0, frame_t[0], cur)
-        frames = [cur]
-        for k in range(C - 1):
-            nxt = fwd(student, cur, frame_t[k], frame_t[k + 1])
-            l_semi = l_semi + semi(cur, frame_t[k], frame_t[k + 1], nxt)
-            frames.append(nxt)
-            cur = nxt
-        l_semi = l_semi / C
+        K = int(self.grid_refine[torch.randint(len(self.grid_refine), (1,)).item()]) if self.grid_refine else 1
+        if K == 1:
+            cur = fwd(student, u, 1.0, frame_t[0])
+            l_semi = semi(u, 1.0, frame_t[0], cur)
+            frames = [cur]
+            for k in range(C - 1):
+                nxt = fwd(student, cur, frame_t[k], frame_t[k + 1])
+                l_semi = l_semi + semi(cur, frame_t[k], frame_t[k + 1], nxt)
+                frames.append(nxt)
+                cur = nxt
+            l_semi = l_semi / C
+        else:
+            def segment(state, ta, tb):
+                inner = sorted((ta - (ta - tb) * torch.rand(K - 1)).tolist(), reverse=True)
+                ts, ls = [ta] + inner + [tb], 0.0
+                for a, b in zip(ts[:-1], ts[1:]):
+                    nxt = fwd(student, state, a, b)
+                    ls = ls + semi(state, a, b, nxt)
+                    state = nxt
+                return state, ls / K
+            cur, l_semi = segment(u, 1.0, frame_t[0])
+            frames = [cur]
+            for k in range(C - 1):
+                cur, ls = segment(cur.detach(), frame_t[k], frame_t[k + 1])
+                l_semi = l_semi + ls
+                frames.append(cur)
+            l_semi = l_semi / C
         traj = torch.cat(frames, dim=1)                                   # (B, C, H, W)
         l_traj = crps_field_loss(traj, xr, M, self.crps_lags, self.crps_w_inc, time_dim=1)
         if self.w_ic > 0:
