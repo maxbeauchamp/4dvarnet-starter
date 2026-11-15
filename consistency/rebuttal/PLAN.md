@@ -156,3 +156,13 @@ the new results, list what changed in the PDF with line references.
 * FM SSH with last-v2.ckpt (~1974-epoch run): SSR 0.15 (vs 0.27 with last.ckpt, ~200 epochs): longer FM training
   makes the SSH teacher more over-confident; retraining FM longer is not the fix.
 * VarCM_scratch val CRPS still decreasing at epoch 249 -> VarCM_scratch2 (+150 epochs) on the main lane.
+
+### 2026-11-15 — SSH chain (user: retrain the SSH teachers; Var* SSH from scratch)
+* patch_ssh_teachers.py: FM / DynFM SSH notebooks get RUN_TAG and SELECT_BY_VAL (validation CRPS of an
+  8-member ensemble every 10 epochs, best checkpoint -> best_model). FM_v2, DynFM_v2: from scratch, 400 epochs.
+* CMT SSH: RUN_TAG + FM_TEACHER_LOG; CMT_v2 distils FM_v2, from scratch.
+* VarCM / VarDynCM SSH notebooks built with the GP recipe (builder, suffix ssh_gf); methods VarCM_scratch and
+  VarDynCM_scratch get an SSH_GF xp; submitted SSH models are VarCM_v1 / VarDynCM_v1 (SSH_GF).
+* Main lane: ssh_teach_smoke -> ssh_fm_v2_train -> ssh_cmt_v2_train -> ssh_dynfm_v2_train.
+  Lane 2: ssh_var_smoke -> ssh_varcm_train -> ssh_vardyncm_train -> ssh_var_v1_eval.
+  ssh_cmt_train (old FM teacher) kept as a confirm-gated fallback.

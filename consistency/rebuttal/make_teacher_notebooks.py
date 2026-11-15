@@ -58,7 +58,9 @@ def build(spec):
             continue
         s = "".join(c["source"])
         if s.lstrip().startswith("# --- parameters"):
-            s += ("WARM_START = True        # CMT: start from the submitted checkpoint when no CMT checkpoint exists\n"
+            s += ("RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run\n"
+                  f"FM_TEACHER_LOG = '{spec['fm_log']}'  # log dir of the FM teacher (best_model)\n"
+                  "WARM_START = True        # CMT: start from the submitted checkpoint when no CMT checkpoint exists\n"
                   "TEACHER_HEUN_SUBSTEPS = 1\n"
                   "P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)\n")
             done.add("params")
@@ -68,12 +70,12 @@ def build(spec):
                                "from flowmatching_models.flowmatching_models_FM import UNetFM")
             done.add("imports")
         if spec["ct_line"] in s:
-            s = sub(s, f"'{spec['old_log']}'", f"'{spec['new_log']}'", "LOG_DIR")
+            s = sub(s, f"'{spec['old_log']}'", f"'{spec['new_log']}' + RUN_TAG", "LOG_DIR")
             s = sub(s, spec["ct_line"],
-                    f"_fm_teacher = UNetFM.from_pretrained(os.path.join('{spec['fm_log']}', 'best_model')).cuda().eval()\n"
+                    "_fm_teacher = UNetFM.from_pretrained(os.path.join(FM_TEACHER_LOG, 'best_model')).cuda().eval()\n"
                     "ct = TeacherPairwiseConsistencyTraining(\n"
                     "    FMTeacherVE(_fm_teacher, n_sub=TEACHER_HEUN_SUBSTEPS), num_timesteps=18, p_local=P_LOCAL)\n"
-                    "print('[CMT] ODE-teacher targets from', os.path.join(" f"'{spec['fm_log']}'" ", 'best_model'))",
+                    "print('[CMT] ODE-teacher targets from', os.path.join(FM_TEACHER_LOG, 'best_model'))",
                     "ct")
             s = sub(s, spec["lit_cfg"],
                     "LitConsistencyModelConfig(lr_scheduler_iters=1000, initial_ema_decay_rate=0.999),\n)\n"
@@ -279,7 +281,7 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
             s += PARAMS_CRPS + PARAMS_V3
             done.add("params")
         if "\nct = VarCMTraining(" in s:
-            i = s.index("LOG_DIR     = f")
+            i = s.index("\nLOG_DIR     = ") + 1
             j = s.index("\n", i)
             s = s[:i] + f'LOG_DIR     = "logs_VarCM_crps2_{suffix}_grad" + RUN_TAG' + s[j:]
             s = sub(s, "    initial_timesteps = 5,\n", "    initial_timesteps = 50,   # fixed grid (no curriculum)\n", "grid")
@@ -336,7 +338,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
                                 "W_IC = 0.0               # extra weight of the CRPS of the first frame (initial condition)\n")
             done.add("params")
         if old_tr in s:
-            i = s.index("LOG_DIR     = f")
+            i = s.index("\nLOG_DIR     = ") + 1
             j = s.index("\n", i)
             s = s[:i] + f'LOG_DIR     = f"logs_VarDynCM_crps_{suffix}_{{COND_MODE.replace(\'+\', \'_\')}}" + RUN_TAG' + s[j:]
             s = sub(s, "    VarDynCMTraining, VarDynCMObsCost,", "    VarDynCMTraining, VarDynCMCRPSTraining, VarDynCMObsCost,", "import")
@@ -378,6 +380,7 @@ FIG_TAGS = {  # figures of the rebuttal models go to their own folders (never ov
     "CMT_spde": ("CM_spde", "CMT_spde"), "CMT_ssh_gf": ("CM_ssh_gf", "CMT_ssh_gf"),
     "DynCMT_spde": ("DynCM_spde", "DynCMT_spde"), "VarCMT_spde": ("VarCM_spde", "VarCMT_spde"),
     "VarCM_spde": ("VarCM_spde", "VarCM_crps_spde"), "VarDynCM_spde": ("VarDynCM_spde", "VarDynCM_crps_spde"),
+    "VarCM_ssh_gf": ("VarCM_ssh_gf", "VarCM_crps_ssh_gf"), "VarDynCM_ssh_gf": ("VarDynCM_ssh_gf", "VarDynCM_crps_ssh_gf"),
 }
 
 
@@ -390,7 +393,7 @@ def _write(nb, dst):
             src = src.replace(f"'{m}_v1_{sfx}'", f"'{stem}'")
         if stem in FIG_TAGS:
             old, new = FIG_TAGS[stem]
-            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG + EVAL_TAG" if "crps" in new else ""))
+            src = src.replace(f"FIG_TAG = '{old}'", f"FIG_TAG = '{new}'" + (" + RUN_TAG + EVAL_TAG" if "crps" in new else " + RUN_TAG" if new.startswith("CMT_") else ""))
         c["source"] = src.splitlines(keepends=True)
     _sweep_spread(nb)
     with open(dst, "w") as f:
@@ -431,3 +434,5 @@ if __name__ == "__main__":
     build_dyncmt()
     build_varcm_crps()
     build_vardyncm_crps()
+    build_varcm_crps("Notebooks_SSH_GF", "ssh_gf")
+    build_vardyncm_crps("Notebooks_SSH_GF", "ssh_gf")
