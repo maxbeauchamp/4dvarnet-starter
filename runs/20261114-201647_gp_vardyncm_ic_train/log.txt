@@ -1,0 +1,425 @@
+
+========================================================================================
+[run_training] STARTING VarDynCM_ic / GP
+========================================================================================
+[run_training] VarDynCM_ic / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 100, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics_train.csv', 'COND_MODE': 'grad', 'LAMBDA_SELF': 0.1, 'W_IC': 4.0, 'RUN_TAG': '_ic', 'WARM_FROM': 'logs_VarDynCM_crps_spde_grad_ls01b', 'SELECT_BY_VAL': True, 'FRAME_GRID': True}
+Unable to parse line 23 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Passed unknown parameter: WARM_FROM
+Executing:   0%|          | 0/40 [00:00<?, ?cell/s]Executing:   2%|▎         | 1/40 [00:01<01:15,  1.93s/cell]Executing:   8%|▊         | 3/40 [00:13<02:53,  4.69s/cell]Sat Nov 14 20:17:08 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:88:00.0 Off |                    0 |
+| N/A   40C    P0             69W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  15%|█▌        | 6/40 [00:13<01:06,  1.94s/cell]Executing:  25%|██▌       | 10/40 [00:14<00:29,  1.02cell/s]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  30%|███       | 12/40 [00:16<00:27,  1.01cell/s][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size C      = 5
+t_IC (transition)  = 0.2000  (= 1/C)
+Spatial size       = 128 x 128
+TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
+Executing:  32%|███▎      | 13/40 [00:17<00:24,  1.10cell/s][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
+[OK] Parameters: 32,997,889
+
+w_obs sanity check (C=5, spinup_boundary=0.7):
+  t=0.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
+  t=0.100  →  w=[0.0, 0.0, 0.0, 0.5714285969734192, 0.4285714030265808]  (sum=1.000)
+  t=0.350  →  w=[0.0, 0.0, 1.0, 0.0, 0.0]  (sum=1.000)
+  t=0.690  →  w=[0.9428572058677673, 0.05714280530810356, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.700  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.710  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.900  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=1.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+Executing:  42%|████▎     | 17/40 [00:22<00:25,  1.09s/cell]RESET_TRAINING=True -- starting from scratch
+[RESUME] last checkpoint: logs_VarDynCM_crps_spde_grad_ls01b/checkpoints/last.ckpt
+[CRPS] warm start from logs_VarDynCM_crps_spde_grad_ls01b/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=100
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/loggers/csv_logs.py:195: UserWarning: Experiment logs directory logs_VarDynCM_crps_spde_grad_ic/ exists and is not empty. Previous log files in this directory will be deleted when the new ones are saved!
+  rank_zero_warn(
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/loggers/csv_logs.py:195: UserWarning: Experiment logs directory logs_VarDynCM_crps_spde_grad_ic/ exists and is not empty. Previous log files in this directory will be deleted when the new ones are saved!
+  rank_zero_warn(
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+
+Loading `train_dataloader` to estimate number of stepping batches.
+[SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name          | Type              | Params
+----------------------------------------------------
+0 | student_model | UNet              | 33.0 M
+1 | teacher_model | UNet              | 33.0 M
+2 | obs_cost      | VarDynCMObsCost   | 0     
+3 | prior_cost    | VarDynCMPriorCost | 28.6 K
+----------------------------------------------------
+33.0 M    Trainable params
+33.0 M    Non-trainable params
+66.0 M    Total params
+264.103   Total estimated model params size (MB)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name          | Type              | Params
+----------------------------------------------------
+0 | student_model | UNet              | 33.0 M
+1 | teacher_model | UNet              | 33.0 M
+2 | obs_cost      | VarDynCMObsCost   | 0     
+3 | prior_cost    | VarDynCMPriorCost | 28.6 K
+----------------------------------------------------
+33.0 M    Trainable params
+33.0 M    Non-trainable params
+66.0 M    Total params
+264.103   Total estimated model params size (MB)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+[progress] epoch 1/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1005 | L_obs=0.0074 | L_phys=0.7158 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7332 | val_crps=3.6781
+[progress] epoch 2/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2439 | L_obs=0.0076 | L_phys=0.6508 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6827 | val_crps=3.6941
+[progress] epoch 3/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1701 | L_obs=0.0092 | L_phys=0.5947 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6210 | val_crps=3.6981
+[progress] epoch 4/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1241 | L_obs=0.0088 | L_phys=0.5884 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6096 | val_crps=3.7196
+[progress] epoch 5/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1415 | L_obs=0.0083 | L_phys=0.5715 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5940 | val_crps=3.7303
+[progress] epoch 6/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1853 | L_obs=0.0100 | L_phys=0.5563 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5848 | val_crps=3.7436
+[progress] epoch 7/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2909 | L_obs=0.0089 | L_phys=0.5978 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6358 | val_crps=3.7586
+[progress] epoch 8/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3145 | L_obs=0.0104 | L_phys=0.5672 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6091 | val_crps=3.7680
+[progress] epoch 9/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2249 | L_obs=0.0091 | L_phys=0.5059 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5375 | val_crps=3.7729
+[progress] epoch 10/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2461 | L_obs=0.0085 | L_phys=0.5979 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6310 | val_crps=3.8036
+[progress] epoch 11/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1600 | L_obs=0.0108 | L_phys=0.5376 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5643 | val_crps=3.7779
+[progress] epoch 12/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2010 | L_obs=0.0086 | L_phys=0.5153 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5440 | val_crps=3.8024
+[progress] epoch 13/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2703 | L_obs=0.0098 | L_phys=0.6143 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6512 | val_crps=3.8066
+[progress] epoch 14/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2426 | L_obs=0.0091 | L_phys=0.5686 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6020 | val_crps=3.8021
+[progress] epoch 15/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2396 | L_obs=0.0076 | L_phys=0.5594 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5910 | val_crps=3.7861
+[progress] epoch 16/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2231 | L_obs=0.0082 | L_phys=0.5386 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5692 | val_crps=3.7810
+[progress] epoch 17/100 | L_IC=0.0000 | L_ae=0.0001 | L_comp=0.2356 | L_obs=0.0092 | L_phys=0.5704 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6032 | val_crps=3.7828
+[progress] epoch 18/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2057 | L_obs=0.0088 | L_phys=0.6089 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6382 | val_crps=3.7773
+[progress] epoch 19/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1839 | L_obs=0.0088 | L_phys=0.6049 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6321 | val_crps=3.7872
+[progress] epoch 20/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2831 | L_obs=0.0099 | L_phys=0.5708 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6090 | val_crps=3.7790
+[progress] epoch 21/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1700 | L_obs=0.0093 | L_phys=0.5598 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.5861 | val_crps=3.7766
+[progress] epoch 22/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2564 | L_obs=0.0086 | L_phys=0.6417 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6760 | val_crps=3.8098
+[progress] epoch 23/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1161 | L_obs=0.0094 | L_phys=0.6261 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6471 | val_crps=3.7602
+[progress] epoch 24/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2821 | L_obs=0.0099 | L_phys=0.8939 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.9320 | val_crps=3.7838
+[progress] epoch 25/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2668 | L_obs=0.0091 | L_phys=0.6728 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7086 | val_crps=3.7506
+[progress] epoch 26/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1417 | L_obs=0.0103 | L_phys=0.6828 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7073 | val_crps=3.7576
+[progress] epoch 27/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3794 | L_obs=0.0089 | L_phys=0.6727 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7196 | val_crps=3.7564
+[progress] epoch 28/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2885 | L_obs=0.0094 | L_phys=0.7817 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8200 | val_crps=3.7896
+[progress] epoch 29/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.0727 | L_obs=0.0107 | L_phys=0.7470 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7650 | val_crps=3.7090
+[progress] epoch 30/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2755 | L_obs=0.0089 | L_phys=0.8573 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8938 | val_crps=3.8098
+[progress] epoch 31/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1602 | L_obs=0.0114 | L_phys=0.7190 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7464 | val_crps=3.7821
+[progress] epoch 32/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2938 | L_obs=0.0095 | L_phys=0.6364 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6753 | val_crps=3.7890
+[progress] epoch 33/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.0706 | L_obs=0.0098 | L_phys=0.6314 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6483 | val_crps=3.8224
+[progress] epoch 34/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2272 | L_obs=0.0116 | L_phys=0.7233 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7576 | val_crps=3.8489
+[progress] epoch 35/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2348 | L_obs=0.0098 | L_phys=0.7002 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7335 | val_crps=3.8021
+[progress] epoch 36/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1378 | L_obs=0.0096 | L_phys=0.7386 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7620 | val_crps=3.7733
+[progress] epoch 37/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1843 | L_obs=0.0094 | L_phys=0.7919 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8197 | val_crps=3.8051
+[progress] epoch 38/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1669 | L_obs=0.0096 | L_phys=0.6907 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7170 | val_crps=3.8496
+[progress] epoch 39/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3370 | L_obs=0.0089 | L_phys=0.7781 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8208 | val_crps=3.8335
+[progress] epoch 40/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2631 | L_obs=0.0095 | L_phys=0.7203 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7562 | val_crps=3.7829
+[progress] epoch 41/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2612 | L_obs=0.0114 | L_phys=0.7069 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7445 | val_crps=3.8266
+[progress] epoch 42/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1952 | L_obs=0.0116 | L_phys=0.9641 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.9952 | val_crps=3.8394
+[progress] epoch 43/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1991 | L_obs=0.0108 | L_phys=0.7263 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7570 | val_crps=3.8778
+[progress] epoch 44/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1261 | L_obs=0.0104 | L_phys=0.7017 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7248 | val_crps=3.8274
+[progress] epoch 45/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2833 | L_obs=0.0109 | L_phys=0.6157 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6549 | val_crps=3.8378
+[progress] epoch 46/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1644 | L_obs=0.0088 | L_phys=0.6699 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6952 | val_crps=3.8686
+[progress] epoch 47/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2269 | L_obs=0.0107 | L_phys=0.6382 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6716 | val_crps=3.8424
+[progress] epoch 48/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2049 | L_obs=0.0139 | L_phys=0.8046 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8390 | val_crps=3.8443
+[progress] epoch 49/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3306 | L_obs=0.0095 | L_phys=0.6917 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7343 | val_crps=3.8810
+[progress] epoch 50/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1900 | L_obs=0.0099 | L_phys=0.6591 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6880 | val_crps=3.8633
+[progress] epoch 51/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3336 | L_obs=0.0098 | L_phys=0.7210 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7641 | val_crps=3.8702
+[progress] epoch 52/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2540 | L_obs=0.0118 | L_phys=0.6458 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6830 | val_crps=3.8412
+[progress] epoch 53/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1969 | L_obs=0.0092 | L_phys=0.7765 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8054 | val_crps=3.8598
+[progress] epoch 54/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2586 | L_obs=0.0088 | L_phys=0.8251 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8598 | val_crps=3.8428
+[progress] epoch 55/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1602 | L_obs=0.0103 | L_phys=0.6730 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6993 | val_crps=3.8690
+[progress] epoch 56/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3198 | L_obs=0.0100 | L_phys=0.8458 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8878 | val_crps=3.8388
+[progress] epoch 57/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2640 | L_obs=0.0093 | L_phys=0.7627 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7984 | val_crps=3.8594
+[progress] epoch 58/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1974 | L_obs=0.0085 | L_phys=0.6175 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6457 | val_crps=3.8917
+[progress] epoch 59/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2824 | L_obs=0.0090 | L_phys=0.6879 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7251 | val_crps=3.8873
+[progress] epoch 60/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3192 | L_obs=0.0120 | L_phys=0.7850 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8289 | val_crps=3.8849
+[progress] epoch 61/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2304 | L_obs=0.0115 | L_phys=0.7015 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7360 | val_crps=3.8832
+[progress] epoch 62/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3024 | L_obs=0.0090 | L_phys=0.7446 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7839 | val_crps=3.8818
+[progress] epoch 63/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2503 | L_obs=0.0089 | L_phys=0.6474 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6814 | val_crps=3.8605
+[progress] epoch 64/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2646 | L_obs=0.0097 | L_phys=0.6930 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7292 | val_crps=3.8938
+[progress] epoch 65/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2564 | L_obs=0.0086 | L_phys=0.7649 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7991 | val_crps=3.8867
+[progress] epoch 66/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2876 | L_obs=0.0137 | L_phys=0.8318 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8742 | val_crps=3.9013
+[progress] epoch 67/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1878 | L_obs=0.0119 | L_phys=0.6332 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6639 | val_crps=3.8969
+[progress] epoch 68/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2109 | L_obs=0.0111 | L_phys=0.7568 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7890 | val_crps=3.9307
+[progress] epoch 69/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1524 | L_obs=0.0102 | L_phys=0.7695 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7950 | val_crps=3.8792
+[progress] epoch 70/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1854 | L_obs=0.0122 | L_phys=0.6710 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7018 | val_crps=3.9203
+[progress] epoch 71/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3139 | L_obs=0.0107 | L_phys=0.6007 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6428 | val_crps=3.9065
+[progress] epoch 72/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2873 | L_obs=0.0097 | L_phys=0.7256 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7641 | val_crps=3.9208
+[progress] epoch 73/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1808 | L_obs=0.0099 | L_phys=0.6343 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6622 | val_crps=3.9416
+[progress] epoch 74/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1533 | L_obs=0.0112 | L_phys=0.6942 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7208 | val_crps=3.9473
+[progress] epoch 75/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3093 | L_obs=0.0113 | L_phys=0.7080 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7502 | val_crps=4.0078
+[progress] epoch 76/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1742 | L_obs=0.0097 | L_phys=0.6222 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6493 | val_crps=3.9084
+[progress] epoch 77/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1623 | L_obs=0.0098 | L_phys=0.7263 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7524 | val_crps=3.8974
+[progress] epoch 78/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1780 | L_obs=0.0090 | L_phys=0.6565 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6833 | val_crps=3.9072
+[progress] epoch 79/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2484 | L_obs=0.0113 | L_phys=0.6987 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7348 | val_crps=3.9472
+[progress] epoch 80/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1822 | L_obs=0.0099 | L_phys=0.7039 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7320 | val_crps=3.8994
+[progress] epoch 81/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1841 | L_obs=0.0085 | L_phys=0.6624 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6893 | val_crps=3.9476
+[progress] epoch 82/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2416 | L_obs=0.0090 | L_phys=0.7523 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7855 | val_crps=3.9141
+[progress] epoch 83/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1690 | L_obs=0.0092 | L_phys=0.8894 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.9155 | val_crps=4.0104
+[progress] epoch 84/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1652 | L_obs=0.0095 | L_phys=0.8301 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8561 | val_crps=3.9026
+[progress] epoch 85/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.0744 | L_obs=0.0109 | L_phys=0.6898 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7082 | val_crps=3.9535
+[progress] epoch 86/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1551 | L_obs=0.0113 | L_phys=0.6306 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6575 | val_crps=3.9218
+[progress] epoch 87/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1839 | L_obs=0.0088 | L_phys=0.6985 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7258 | val_crps=3.9605
+[progress] epoch 88/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1982 | L_obs=0.0096 | L_phys=0.7908 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8202 | val_crps=3.9550
+[progress] epoch 89/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2582 | L_obs=0.0111 | L_phys=0.6504 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6873 | val_crps=3.9406
+[progress] epoch 90/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2048 | L_obs=0.0123 | L_phys=0.5867 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6195 | val_crps=3.9782
+[progress] epoch 91/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.3510 | L_obs=0.0092 | L_phys=0.5817 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6260 | val_crps=3.9889
+[progress] epoch 92/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2014 | L_obs=0.0099 | L_phys=0.6551 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6852 | val_crps=3.9469
+[progress] epoch 93/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2425 | L_obs=0.0089 | L_phys=0.7815 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8146 | val_crps=3.9481
+[progress] epoch 94/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2084 | L_obs=0.0098 | L_phys=0.6663 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6969 | val_crps=3.9163
+[progress] epoch 95/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1873 | L_obs=0.0117 | L_phys=0.6618 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6922 | val_crps=3.9715
+[progress] epoch 96/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1956 | L_obs=0.0103 | L_phys=0.7384 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7682 | val_crps=3.9405
+[progress] epoch 97/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.1931 | L_obs=0.0102 | L_phys=0.7983 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.8278 | val_crps=3.9641
+[progress] epoch 98/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2116 | L_obs=0.0098 | L_phys=0.6614 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6924 | val_crps=3.9697
+[progress] epoch 99/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2756 | L_obs=0.0089 | L_phys=0.7240 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.7604 | val_crps=3.8879
+[progress] epoch 100/100 | L_IC=0.0000 | L_ae=0.0000 | L_comp=0.2651 | L_obs=0.0102 | L_phys=0.6436 | N_steps=50.0000 | lambda_reg=1.0000 | train_loss=0.6803 | val_crps=3.9638
+`Trainer.fit` stopped: `max_epochs=100` reached.
+
+`Trainer.fit` stopped: `max_epochs=100` reached.
+[SELECT] best validation CRPS checkpoint: logs_VarDynCM_crps_spde_grad_ic/checkpoints/val_crps=3.67814-epoch=000.ckpt
+Executing:  60%|██████    | 24/40 [6:27:47<8:05:59, 1822.46s/cell]Loading checkpoint: logs_VarDynCM_crps_spde_grad_ic/checkpoints/val_crps=3.67814-epoch=000.ckpt
+Executing:  65%|██████▌   | 26/40 [6:27:47<5:47:26, 1489.06s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  70%|███████   | 28/40 [6:27:48<3:56:06, 1180.52s/cell]
+[OK] 2 ensemble members generated  (nsteps=25)
+Physical frame indices (IC→last): [1, 2, 3, 4, 5]
+  → solver_times: ['0.04', '0.08', '0.12', '0.17', '0.21']
+  IC expected at s ≈ 0.30  (step ~7)
+Process shape: torch.Size([6, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
+Executing:  75%|███████▌  | 30/40 [6:27:48<2:31:49, 910.91s/cell]   Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_obs.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_gt.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_oi.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_vardyncm_mean.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_vardyncm_spread.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_member0.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_member1.png
+Executing:  85%|████████▌ | 34/40 [6:27:50<55:08, 551.38s/cell]  step_indices (10 cols) = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5]
+phys_col                   = [1, 3, 5, 7, 9]
+spinup_cols                = [0]
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_spde_transport.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_spde_variance_collapse.png
+Std step 0 (noise): 2.9907   Std last step: 0.8458   GT std: 0.9939
+Executing:  90%|█████████ | 36/40 [6:27:51<28:40, 430.22s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (2 members): SSR 0.525  spread 0.0779  RMSE 0.1817  CRPS(all px) 0.1134  rank dev 0.34 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics_train_calibration.csv
+Executing:  95%|█████████▌| 38/40 [6:28:08<10:58, 329.36s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics_train.csv
+Executing: 100%|██████████| 40/40 [6:28:11<00:00, 582.30s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_train.ipynb
+
+========================================================================================
+[run_metrics] STARTING VarDynCM_ic / GP
+========================================================================================
+[run_metrics] VarDynCM_ic / GP -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 100, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics.csv', 'SKIP_TRAINING': True, 'COND_MODE': 'grad', 'LAMBDA_SELF': 0.1, 'W_IC': 4.0, 'RUN_TAG': '_ic', 'WARM_FROM': 'logs_VarDynCM_crps_spde_grad_ls01b', 'SELECT_BY_VAL': True, 'FRAME_GRID': True}
+Unable to parse line 23 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Passed unknown parameter: WARM_FROM
+Executing:   0%|          | 0/40 [00:00<?, ?cell/s]Executing:   2%|▎         | 1/40 [00:05<03:52,  5.97s/cell]Executing:   8%|▊         | 3/40 [00:29<06:20, 10.29s/cell]Sun Nov 15 02:45:46 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:88:00.0 Off |                    0 |
+| N/A   33C    P0             66W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  15%|█▌        | 6/40 [00:30<02:20,  4.12s/cell]Executing:  25%|██▌       | 10/40 [00:36<01:23,  2.77s/cell]<xarray.Dataset>
+Dimensions:    (time: 300, lat: 128, lon: 128)
+Coordinates:
+  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
+  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
+Data variables:
+    x          (time, lat, lon) float32 ...
+    y          (time, lat, lon) float32 ...
+    OI         (time, lat, lon) float64 ...
+    H11        (lat, lon) float32 ...
+    H22        (lat, lon) float32 ...
+    H12        (lat, lon) float32 ...
+    Time       (time) int64 ...
+    longitude  (lon) int64 ...
+    latitude   (lat) int64 ...
+Attributes:
+    description:  SPDE-based diffusion GP
+
+Variables:
+  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
+  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
+  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
+  Time: ('time',)  shape=(300,)  dtype=int64
+  longitude: ('lon',)  shape=(128,)  dtype=int64
+  latitude: ('lat',)  shape=(128,)  dtype=int64
+Executing:  30%|███       | 12/40 [00:46<01:32,  3.32s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
+[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
+window_size C      = 5
+t_IC (transition)  = 0.2000  (= 1/C)
+Spatial size       = 128 x 128
+TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
+Executing:  32%|███▎      | 13/40 [00:46<01:16,  2.84s/cell][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
+[OK] Parameters: 32,997,889
+
+w_obs sanity check (C=5, spinup_boundary=0.7):
+  t=0.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
+  t=0.100  →  w=[0.0, 0.0, 0.0, 0.5714285969734192, 0.4285714030265808]  (sum=1.000)
+  t=0.350  →  w=[0.0, 0.0, 1.0, 0.0, 0.0]  (sum=1.000)
+  t=0.690  →  w=[0.9428572058677673, 0.05714280530810356, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.700  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.710  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=0.900  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+  t=1.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
+Executing:  42%|████▎     | 17/40 [00:48<00:37,  1.64s/cell]Executing:  57%|█████▊    | 23/40 [00:48<00:13,  1.23cell/s]/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[RESUME] last checkpoint: logs_VarDynCM_crps_spde_grad_ic/checkpoints/last.ckpt
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_VarDynCM_crps_spde_grad_ic/checkpoints/last.ckpt directly (trainer.fit() not called)
+[SELECT] best validation CRPS checkpoint: logs_VarDynCM_crps_spde_grad_ic/checkpoints/val_crps=3.67814-epoch=000.ckpt
+Executing:  62%|██████▎   | 25/40 [00:50<00:13,  1.11cell/s]Loading checkpoint: logs_VarDynCM_crps_spde_grad_ic/checkpoints/val_crps=3.67814-epoch=000.ckpt
+Executing:  68%|██████▊   | 27/40 [00:51<00:10,  1.27cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  70%|███████   | 28/40 [00:51<00:08,  1.43cell/s]
+[OK] 20 ensemble members generated  (nsteps=25)
+Physical frame indices (IC→last): [1, 2, 3, 4, 5]
+  → solver_times: ['0.04', '0.08', '0.12', '0.17', '0.21']
+  IC expected at s ≈ 0.30  (step ~7)
+Process shape: torch.Size([6, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
+Executing:  75%|███████▌  | 30/40 [00:54<00:09,  1.07cell/s]Executing:  80%|████████  | 32/40 [00:55<00:05,  1.42cell/s]  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_obs.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_gt.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_oi.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_vardyncm_mean.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_vardyncm_spread.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_member0.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_crps_spde_ic_member1.png
+Executing:  85%|████████▌ | 34/40 [00:56<00:04,  1.42cell/s]step_indices (10 cols) = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5]
+phys_col                   = [1, 3, 5, 7, 9]
+spinup_cols                = [0]
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_spde_transport.png
+  Saved: figures/VarDynCM_crps_spde_ic/VarDynCM_spde_variance_collapse.png
+Std step 0 (noise): 2.9907   Std last step: 0.8458   GT std: 0.9939
+Executing:  90%|█████████ | 36/40 [00:57<00:02,  1.44cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 225 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
+
+Calibration (20 members): SSR 0.458  spread 0.0778  RMSE 0.1739  CRPS(all px) 0.0967  rank dev 1.06 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics_calibration.csv
+Executing:  95%|█████████▌| 38/40 [02:48<00:33, 16.73s/cell][NFE sweep] RUN_NFE_SWEEP=False -- skipped
+Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics.csv
+Executing: 100%|██████████| 40/40 [02:50<00:00,  4.26s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_ic_metrics.csv
+method,frame,spread,rmse,ssr,crps_all,rank_dev,bias
+VarDynCM_spde,0,0.026457275174412077,0.14978894218959946,0.18099226294721102,0.08512475947863815,1.6640731502601283,-0.0010854439737936893
+VarDynCM_spde,1,0.040347233338706816,0.16218047069182379,0.25492348850684127,0.0899433047560756,1.3541703110104808,-0.0009834633037718713
+VarDynCM_spde,2,0.07335352117318125,0.1774820188767072,0.4235076458610254,0.10026315241216792,1.0125501435457132,-0.00032708393926633223
+VarDynCM_spde,3,0.09667843719323527,0.1825225481167859,0.5427598925559226,0.10039103299584065,0.69851086313433,0.0005035007761387491
+VarDynCM_spde,4,0.11476720260190253,0.19424492616853653,0.6054283619167677,0.1079312931381488,0.6008322930411705,-0.0032905998485351484
+[run_step] ok in 23473.7 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261114-201647_gp_vardyncm_ic_train
