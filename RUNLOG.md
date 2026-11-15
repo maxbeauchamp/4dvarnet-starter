@@ -163,3 +163,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-15 14:57 submitted `ssh_teach_smoke` as job 75326 -> `runs/20261115-145707_ssh_teach_smoke`
 - 2026-11-15 15:01 submitted `ssh_teach_smoke` as job 75328 -> `runs/20261115-150131_ssh_teach_smoke`
 - 2026-11-15 15:07 lane 2: `ssh_var_smoke` done in 00:12:52, gate passed
+- 2026-11-15 15:07 submitted `ssh_varcm_train` as job 75332 -> `runs/20261115-150742_ssh_varcm_train` (lane 2)
+- 2026-11-15 15:38 `ssh_teach_smoke` done in 00:10:24, gate passed
