@@ -167,3 +167,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-15 15:38 `ssh_teach_smoke` done in 00:10:24, gate passed
 - 2026-11-15 15:38 submitted `ssh_fm_v2_train` as job 75334 -> `runs/20261115-153836_ssh_fm_v2_train`
 - 2026-11-15 18:10 `ssh_fm_v2_train` done in 02:16:48, gate passed
+- 2026-11-15 18:10 submitted `gp_nfe_final` as job 75534 -> `runs/20261115-181020_gp_nfe_final`
+- 2026-11-15 18:41 `gp_nfe_final` done in 00:16:18, gate passed

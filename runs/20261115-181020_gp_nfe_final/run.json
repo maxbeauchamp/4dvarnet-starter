@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_nfe_final",
+  "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --method CMT --grid 2,3,5,9,16 ; python run_nfe_sweep.py --method CMT_det --grid 2,3,5,9,16 ; python run_nfe_sweep.py --method DynCMT --grid 3,5,8,12,20 ; python run_nfe_sweep.py --method VarCM_scratch2 --grid 1,2,4,8,15 ; python run_nfe_sweep.py --method VarDynCM_scratch_uni --grid 2,3,5,10,20 ; python run_nfe_sweep.py --method FM --grid 5,10,20 ; python run_nfe_sweep.py --method DynFM --grid 5,12,21 ; ls -la results/GP/*nfe_sweep.csv",
+  "commit": "5f77bce",
+  "host": "sl-mee-br-206",
+  "slurm_job": "75534",
+  "started": "2026-11-15T18:10:24",
+  "status": "ok",
+  "seconds": 977.2,
+  "finished": "2026-11-15T18:26:41"
+}
