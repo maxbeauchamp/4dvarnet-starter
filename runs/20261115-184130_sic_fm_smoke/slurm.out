@@ -1,0 +1,143 @@
+[job] 2026-11-15T18:41:34+01:00 host=sl-mee-br-206 job=75570 run_dir=runs/20261115-184130_sic_fm_smoke args=--cmd ls -la data/ | head -30; cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method FM_v2 --reset
+NVIDIA A100-SXM4-80GB, 81920 MiB
+total 54712572
+drwx------ 2 m19beauc mee-perm         209 juil. 18 12:17 .
+drwx------ 5 m19beauc mee-perm         177 sept.  9 11:55 ..
+-rw------- 1 m19beauc mee-perm 13582444107 juin  18  2025 asip_database_daw15_sparse.nc
+-rw------- 1 m19beauc mee-perm 41351055360 juil. 18 13:23 deepchimere_export_256_2019.tar
+-rw------- 1 m19beauc mee-perm   934419608 oct.   7  2024 natl_gf_w_5nadirs_swot.nc
+-rw------- 1 m19beauc mee-perm    78862083 juil.  3 21:52 SPDE_diffusion_dataset_1.nc
+-rw------- 1 m19beauc mee-perm    78862083 juil.  3 21:52 SPDE_diffusion_dataset_2.nc
+
+========================================================================================
+[run_training] STARTING FM_v2 / SIC
+========================================================================================
+[run_training] FM_v2 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 1, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train.csv', 'RUN_TAG': '_v2', 'SELECT_BY_VAL': True}
+Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:01<00:44,  1.65s/cell]Executing:  11%|█         | 3/28 [00:08<01:10,  2.81s/cell]Sun Nov 15 18:41:44 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:88:00.0 Off |                    0 |
+| N/A   30C    P0             65W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  18%|█▊        | 5/28 [00:08<00:34,  1.51s/cell]Executing:  25%|██▌       | 7/28 [00:10<00:25,  1.21s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  32%|███▏      | 9/28 [00:13<00:24,  1.31s/cell]Executing:  39%|███▉      | 11/28 [00:14<00:18,  1.08s/cell]LitFlowMatchingSIC defined
+RESET_TRAINING=True -- starting from scratch
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=1
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name      | Type          | Params
+--------------------------------------------
+0 | network   | UNetFM        | 32.3 M
+1 | log_scale | LogScaleModel | 17.7 K
+2 | ema_model | AveragedModel | 32.3 M
+--------------------------------------------
+32.3 M    Trainable params
+32.3 M    Non-trainable params
+64.6 M    Total params
+258.386   Total estimated model params size (MB)
+
+
+  | Name      | Type          | Params
+--------------------------------------------
+0 | network   | UNetFM        | 32.3 M
+1 | log_scale | LogScaleModel | 17.7 K
+2 | ema_model | AveragedModel | 32.3 M
+--------------------------------------------
+32.3 M    Trainable params
+32.3 M    Non-trainable params
+64.6 M    Total params
+258.386   Total estimated model params size (MB)
+Val batch cached: asip=torch.Size([2, 9, 240, 240])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[progress] epoch 1/1 | train_loss=1.6541 | train_loss_epoch=1.6541 | train_loss_step=1.6629
+`Trainer.fit` stopped: `max_epochs=1` reached.
+
+`Trainer.fit` stopped: `max_epochs=1` reached.
+[Epoch 0]  Val RMSE (masked, EMA) = 1.3546
+[SELECT] no val_crps checkpoint found, keeping the current weights
+EMA model saved to: logs_FM_sic_v2/best_model
+Executing:  54%|█████▎    | 15/28 [01:30<02:10, 10.04s/cell]EMA UNetFM loaded from logs_FM_sic_v2/best_model
+  Params : 32,289,417
+Executing:  61%|██████    | 17/28 [01:30<01:22,  7.46s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+Executing:  68%|██████▊   | 19/28 [01:32<00:50,  5.64s/cell]  member 1/2 done  member 2/2 done
+Ensemble: (2, 2, 9, 240, 240)
+Executing:  75%|███████▌  | 21/28 [01:39<00:34,  4.99s/cell]Masked-out fraction (no ASIP obs in window): 14.8%
+  Saved: figures/FM_sic_v2/FM_sic_v2_asip_gt.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_input.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_osisaf.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_mean.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_spread.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_member0.png
+Executing:  82%|████████▏ | 23/28 [01:40<00:18,  3.77s/cell]  Saved: figures/FM_sic_v2/FM_sic_v2_transport.png
+Executing:  89%|████████▉ | 25/28 [01:43<00:09,  3.06s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (2 members): SSR 1.352  spread 1.0223  RMSE 0.9263  CRPS(all px) 0.6496  rank dev 0.47 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train_calibration.csv
+Executing:  96%|█████████▋| 27/28 [04:13<00:24, 24.19s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train.csv
+Executing: 100%|██████████| 28/28 [04:15<00:00,  9.12s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_train.ipynb
+[run_step] ok in 257.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261115-184130_sic_fm_smoke
+[job] 2026-11-15T18:45:52+01:00 exit=0
