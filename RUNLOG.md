@@ -152,3 +152,6 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-15 00:20 lane 2: `gp_vardyncm_scratch_smoke` done in 00:04:32, gate passed
 - 2026-11-15 00:21 submitted `gp_vardyncm_scratch_train` as job 75136 -> `runs/20261115-002058_gp_vardyncm_scratch_train` (lane 2)
 - 2026-11-15 02:52 `gp_vardyncm_ic_train` done in 06:31:15, gate passed
+- 2026-11-15 09:22 plan.json changed; next is `gp_varcm_scratch2_train`
+- 2026-11-15 09:22 submitted `gp_varcm_scratch2_train` as job 75231 -> `runs/20261115-092223_gp_varcm_scratch2_train`
+- 2026-11-15 14:36 lane 2: `gp_vardyncm_scratch_train` done in 12:57:25, gate passed

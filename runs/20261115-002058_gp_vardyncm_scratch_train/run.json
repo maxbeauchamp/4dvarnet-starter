@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_vardyncm_scratch_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarDynCM_scratch --reset && python run_metrics.py --xp GP --method VarDynCM_scratch && cat results/GP/VarDynCM_scratch_metrics_calibration_frames.csv",
+  "commit": "17a192d",
+  "host": "sl-mee-br-207",
+  "slurm_job": "75136",
+  "started": "2026-11-15T00:21:01",
+  "status": "ok",
+  "seconds": 46643.8,
+  "finished": "2026-11-15T13:18:25"
+}
