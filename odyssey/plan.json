@@ -280,6 +280,12 @@
    "cmd": "ls -la consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf/checkpoints consistency/Notebooks/Notebooks_SSH_GF/logs_DynFM_ssh_gf/checkpoints; (ls -d consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf/version_* consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf/lightning_logs/version_* 2>/dev/null; find consistency/Notebooks/Notebooks_SSH_GF/logs_FM_ssh_gf -name 'metrics.csv' -exec sh -c 'echo {}; head -1 {}; tail -3 {}' \\;) ; cd consistency/sbatch_submission && python run_nfe_sweep.py --xp SSH_GF --method FM --grid 10,20,40,80 && cat results/SSH_GF/FM_nfe_sweep.csv"
   },
   {
+   "id": "gp_varcm_scratch2_train",
+   "time": "10:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp GP --method VarCM_scratch2 --reset && python run_metrics.py --xp GP --method VarCM_scratch2"
+  },
+  {
    "id": "ssh_cmt_train",
    "time": "72:00:00",
    "gate": "status == 'ok'",

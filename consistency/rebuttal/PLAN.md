@@ -150,3 +150,9 @@ the new results, list what changed in the PDF with line references.
 * Same test for VarDynCM: VarDynCM_scratch on lane 2 (200 epochs).
 * SSH FM: evaluation loads last.ckpt, which has the size of the ~200-epoch checkpoints, while a ~1974-epoch run
   exists (last-v2.ckpt). ssh_fm_lastv2_eval (lane 2, first). FM SSH NFE sweep: SSR 0.41 (10 steps) -> 0.27 (80).
+
+### 2026-11-15
+* VarDynCM_ic (W_IC=4 from ls01b): no gain (IC SSR 0.18); warm start from the collapsed lineage again.
+* FM SSH with last-v2.ckpt (~1974-epoch run): SSR 0.15 (vs 0.27 with last.ckpt, ~200 epochs): longer FM training
+  makes the SSH teacher more over-confident; retraining FM longer is not the fix.
+* VarCM_scratch val CRPS still decreasing at epoch 249 -> VarCM_scratch2 (+150 epochs) on the main lane.
