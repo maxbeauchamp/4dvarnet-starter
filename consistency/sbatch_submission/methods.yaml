@@ -214,6 +214,10 @@ methods:
         notebook: Notebook_flowmatching_model_FM_ssh_gf.ipynb
         log_dir: logs_FM_ssh_gf_v2
         status: existing
+      SIC:
+        notebook: Notebook_flowmatching_model_FM_sic.ipynb
+        log_dir: logs_FM_sic_v2
+        status: existing
 
   DynFM_v2:
     # Same for the DynFM teacher on SSH.

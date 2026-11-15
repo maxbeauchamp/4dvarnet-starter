@@ -169,3 +169,7 @@ the new results, list what changed in the PDF with line references.
 * 15 Nov — gp_nfe_final (main lane, before FM_v2): NFE sweeps of CMT (re-noised and deterministic), DynCMT,
   VarCM, DynVarCM (uniform grids, not the training frame grid), FM, DynFM; sweep cells now use the same initial
   noises for every N and report the composition gap RMS(x_N - x_Nref)/spread (semigroup test, aayn Q4).
+* 15 Nov evening — FM_v2 SSH (val-CRPS selection, best epoch 59): RMSE 0.074, CRPS 0.039 (0.043), SSR 0.72
+  (0.27), rank dev 0.89 (2.05). 400 epochs in 2 h 17. User: no real SIC results exist (table values are
+  placeholders) -> prepare SIC, starting with FM: FM SIC patched (patch_ssh_teachers.py, SIC data: asip target,
+  input + osisaf conditioning); sic_fm_smoke after gp_nfe_final, sic_fm_v2_train after ssh_cmt_v2_train.

@@ -1,4 +1,4 @@
-"""Rebuttal: SSH teachers (FM, DynFM) with checkpoint selection on the validation CRPS of the ensemble.
+"""Rebuttal: SSH (and SIC) teachers (FM, DynFM) with checkpoint selection on the validation CRPS of the ensemble.
 
 The SSH training set is small (one 128x128 patch, Feb-Sep 2013): the submitted teachers were trained for
 ~2000 epochs on the training loss only, and longer training makes them over-confident on the test period
@@ -14,7 +14,7 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-XP = os.path.join(HERE, "..", "Notebooks", "Notebooks_SSH_GF")
+NB = os.path.join(HERE, "..", "Notebooks")
 MARK = "(rebuttal) SELECT_BY_VAL"
 
 PARAMS = ("RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run\n"
@@ -33,7 +33,7 @@ def _val_crps_step(self, batch, batch_idx):
         batch = batch[0]
     M = VAL_MEMBERS
     dtype = next(self.network.parameters()).dtype
-    x0, y = batch.tgt.to(dtype=dtype), batch.input.to(dtype=dtype)
+{DATA}
     net = self.ema_model.module.to(device=self.device, dtype=dtype).eval()
     _devs = [torch.cuda.current_device()] if torch.cuda.is_available() else []
     with torch.random.fork_rng(devices=_devs), torch.no_grad():
@@ -61,11 +61,18 @@ if SELECT_BY_VAL:
 
 '''
 
+SSH_DATA = "    x0, y = batch.tgt.to(dtype=dtype), batch.input.to(dtype=dtype)"
+SIC_DATA = ("    x0 = batch.asip.to(dtype=dtype)                                   # NaN on land: masked in the score\n"
+            "    y = torch.cat((batch.input, batch.osisaf), dim=1).to(dtype=dtype)")
+
 SPECS = {
-    "Notebook_flowmatching_model_FM_ssh_gf.ipynb": dict(
+    ("Notebooks_SIC", "Notebook_flowmatching_model_FM_sic.ipynb"): dict(
+        log="logs_FM_sic", tag="FM_sic", lit="LitFlowMatchingSIC", obj="lit_fm", steps=10, data=SIC_DATA,
+        sample="        ens, _ = heun_sample(net, torch.randn_like(xr), yr, n_steps=VAL_STEPS)"),
+    ("Notebooks_SSH_GF", "Notebook_flowmatching_model_FM_ssh_gf.ipynb"): dict(
         log="logs_FM_ssh_gf", tag="FM_ssh_gf", lit="LitFlowMatchingModel", obj="lit_fm", steps=10,
         sample="        ens, _ = heun_sample(net, torch.randn_like(xr), yr, n_steps=VAL_STEPS)"),
-    "Notebook_flowmatching_model_DynFM_ssh_gf.ipynb": dict(
+    ("Notebooks_SSH_GF", "Notebook_flowmatching_model_DynFM_ssh_gf.ipynb"): dict(
         log="logs_DynFM_ssh_gf", tag="DynFM_ssh_gf", lit="LitDynFM", obj="lit_dynfm", steps=19,
         sample=("        _nz = torch.randn(xr.shape[0], 1, *xr.shape[-2:], device=xr.device, dtype=xr.dtype)\n"
                 "        _, _tr, _tt = dynfm_heun_sample(net, _nz, yr, n_steps=VAL_STEPS,\n"
@@ -80,8 +87,9 @@ def sub(s, old, new, what, name):
     return s.replace(old, new)
 
 
-def patch(name, sp):
-    path = os.path.join(XP, name)
+def patch(key, sp):
+    xp, name = key
+    path = os.path.join(NB, xp, name)
     nb = json.load(open(path))
     if any(MARK in "".join(c["source"]) for c in nb["cells"]):
         print(f"{name}: already patched"); return
@@ -95,6 +103,7 @@ def patch(name, sp):
         if f'LOG_DIR     = "{sp["log"]}"' in s and "trainer = Trainer(" in s:
             s = sub(s, f'LOG_DIR     = "{sp["log"]}"', f'LOG_DIR     = "{sp["log"]}" + RUN_TAG', "log", name)
             s = sub(s, "trainer = Trainer(", VAL.replace("{SAMPLE}", sp["sample"]).replace("{LIT}", sp["lit"])
+                    .replace("{DATA}", sp.get("data", SSH_DATA))
                     + "trainer = Trainer(", "val", name)
             s = sub(s, "    log_every_n_steps=1,\n",
                     "    log_every_n_steps=1,\n"
