@@ -40,7 +40,7 @@ def _val_crps_step(self, batch, batch_idx):
         torch.manual_seed(1234 + batch_idx)
         xr, yr = x0.repeat_interleave(M, 0), y.repeat_interleave(M, 0)
 {SAMPLE}
-        score = crps_field_loss(ens.float(), x0.float(), M, (1, 2, 4, 8), 1.0)
+        score = crps_field_loss(ens.float(), xr.float(), M, (1, 2, 4, 8), 1.0)  # targets in the members' layout
     self.log("val_crps", score, on_epoch=True, on_step=False, prog_bar=True, batch_size=x0.shape[0])
 
 if SELECT_BY_VAL:
