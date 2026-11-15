@@ -290,8 +290,7 @@
    "time": "72:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT && python run_metrics.py --xp SSH_GF --method CMT",
-   "confirm": true,
-   "note": "on hold (2026-11-14 19:00): user asks whether FM SSH is undertrained; decide after ssh_fm_diag"
+   "approved_by": "user 2026-11-14 (\"approuve tout\"); FM SSH kept as teacher (longer FM training worsens its SSR)"
   }
  ]
 }
