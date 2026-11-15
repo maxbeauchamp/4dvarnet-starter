@@ -161,3 +161,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-15 14:52 submitted `ssh_teach_smoke` as job 75319 -> `runs/20261115-145159_ssh_teach_smoke`
 - 2026-11-15 14:56 `ssh_teach_smoke` ended FAILED after 00:00:30; retrying once
 - 2026-11-15 14:57 submitted `ssh_teach_smoke` as job 75326 -> `runs/20261115-145707_ssh_teach_smoke`
+- 2026-11-15 15:01 submitted `ssh_teach_smoke` as job 75328 -> `runs/20261115-150131_ssh_teach_smoke`
+- 2026-11-15 15:07 lane 2: `ssh_var_smoke` done in 00:12:52, gate passed
