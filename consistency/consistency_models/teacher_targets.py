@@ -218,6 +218,8 @@ class TeacherDynamicalConsistencyTraining:
         physical_steps = torch.linspace(0.0, sb, x.shape[1], device=dev)
         phys_step_size = sb / max(x.shape[1] - 1, 1)
         noise = torch.randn_like(x[:, [0], :, :])
+        x_raw = x
+        x = torch.nan_to_num(x)          # (rebuttal, SIC) gappy targets: filled inputs, masked targets below
 
         i = torch.randint(0, N - 1, (B,), device=dev)
         k = i + 1 + (torch.rand(B, device=dev) * (N - 1 - i)).long().clamp(max=N - 2 - i)
@@ -234,6 +236,11 @@ class TeacherDynamicalConsistencyTraining:
             far = wrap(teacher_model, xhat, t_m, t_k)
             is_local = pad_dims_like((k == i + 1).to(x.dtype), x_i)
             target = is_local * xhat + (1 - is_local) * far
+            if torch.isnan(x_raw).any():
+                # no information where the reference state at t_k is unobserved: target := prediction (zero loss)
+                ref_k = _make_regime_input(x_raw, t_k, physical_steps, phys_step_size, sb, self.sigma_min,
+                                           self.sigma_max, noise)
+                target = torch.where(torch.isfinite(ref_k), target, student.detach())
         diag = dict(n_spinup=int((t_i > sb).sum()), n_phys=int((t_i <= sb).sum()),
                     frac_local=float((k == i + 1).float().mean()), target_std=float(target.std()),
                     input_std=float(x_i.std()))

@@ -204,3 +204,13 @@ SIC has 300 training windows (vs ~210 on SSH) and larger fields: equal epochs wo
 but trainer.fit bounded by the SSH training time (MAX_TIME, Lightning max_time; per-xp params in methods.yaml):
 FM_v2 SIC 2h45, CMT SIC 4h45. Checkpoint still selected on validation CRPS (FM) as on SSH.
 sic_fm_v2_train (job 76482) already ran ~7h -> cancel it and evaluate its best validation checkpoint (sic_fm_v2_eval).
+
+## 2026-11-16 23:30 — full SIC chain (user: adapt all SIC codes, semi-supervised masked losses, then prepare the jobs)
+The SIC DynFM/DynCM/VarCM/VarDynCM notebooks (generated from GP) had never run (batch.tgt absent from SIC items).
+rebuttal/make_sic_chain.py: same builders as GP/SSH + SIC adaptation (tgt = asip with gaps; input = fused SAR/OSI SAF
+for DynFM/DynCM, cat(SAR, OSI SAF) for VarCM/DynVarCM; J_o = SAR misfit + OSI SAF misfit on 16x16 blocks,
+consistency_models/sic_costs.py; masked DynFM loss; DynCMT targets masked in teacher_targets.py; VarCM/VarDynCM
+l_obs and l_ae masked; batch 1 for the Var models). MAX_TIME ~ SSH training times. Plan: lane 3 sic_chain_smoke
+(non-blocking, grep 'SMOKE FAIL') -> sic_cmt_train -> sic_dynfm_train -> sic_dyncmt_train; lane 4 sic_varcm_train;
+lane 2 sic_vardyncm_train -> sic_vardyncm_grid.
+FM_v2 SIC (400 epochs, 6h30, best val epoch 389): RMSE 0.144 (MIZ) / 0.096 (all), CRPS 0.046, SSR 0.57, rank dev 0.41.

@@ -215,7 +215,7 @@ def _compute_physical_grad_J(
     # frame to t (from _get_start), so the gradient must compare against that
     # same frame's observation only — using interpolated weights mixes two
     # different frames and breaks temporal coherence.
-    C_y = y.shape[1]
+    C_y = getattr(obs_cost, "n_frames", None) or y.shape[1]   # (rebuttal, SIC) y may carry extra channels
     phys_grid = torch.linspace(0.0, spinup_boundary, C_y, device=xl_Jo.device, dtype=torch.float32)
     t_snap = phys_grid[
         (phys_grid.unsqueeze(0) - t_f.clamp(0.0, float(spinup_boundary)).unsqueeze(1))
@@ -581,13 +581,16 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
             l_traj = l_traj + self.w_ic * crps_field_loss(traj[:, :1], xr[:, :1], M, self.crps_lags,
                                                           self.crps_w_inc, time_dim=None)
 
-        mask = (~torch.isnan(yr)).to(traj.dtype)[::M]
-        l_obs = (fair_crps(traj, xr, M) * mask).sum() / mask.sum().clamp(min=1.0)
+        # y may carry extra channels after the C frames (SIC: cat(sar, osisaf)); targets may have gaps (SIC)
+        mask = (~torch.isnan(yr[:, :C]) & torch.isfinite(xr)).to(traj.dtype)[::M]
+        l_obs = (fair_crps(traj, torch.nan_to_num(xr), M) * mask).sum() / mask.sum().clamp(min=1.0)
 
         if prior_cost is not None and self.lambda_ae > 0.0:
             x_flat = x.reshape(B0 * C, 1, H, W)
             ae_dtype = next(prior_cost.parameters()).dtype
-            l_ae = F.mse_loss(prior_cost.forward_ae(x_flat.to(ae_dtype)), x_flat.to(ae_dtype)).float()
+            v_ae = torch.isfinite(x_flat)
+            x_flat = torch.nan_to_num(x_flat).to(ae_dtype)
+            l_ae = ((prior_cost.forward_ae(x_flat) - x_flat).pow(2) * v_ae).sum().float() / v_ae.sum().clamp(min=1)
         else:
             l_ae = x.new_zeros(())
 
@@ -645,8 +648,9 @@ class VarDynCMSamplingAndEditing:
         sb    = self.spinup_boundary
         dev   = noise.device
         dtype = noise.dtype
+        n_frames = getattr(self, "n_frames", None) or y.shape[1]   # (rebuttal, SIC) y may carry extra channels
         if getattr(self, "frame_grid", False):
-            C = y.shape[1]
+            C = n_frames
             frame_t = [sb * (C - 1 - k) / max(C - 1, 1) for k in range(C)]
             frame_t[-1] = max(frame_t[-1], 1e-8)
             # (rebuttal) refine_by_nsteps: every segment of the frame grid split into K = nsteps uniform jumps
@@ -678,7 +682,7 @@ class VarDynCMSamplingAndEditing:
             all_xs.append(x)
 
         # Physical frame indices — IC first (same convention as DynCM sampler)
-        phys_steps = torch.linspace(0.0, sb, y.shape[1]).tolist()
+        phys_steps = torch.linspace(0.0, sb, n_frames).tolist()
         times_cpu  = times.cpu()
         phys_frame_indices = [
             max(1, torch.argmin(torch.abs(times_cpu - t_k)).item())

@@ -370,6 +370,13 @@
    "cmd": "for d in logs_CT_VarCM_ssh_gf_grad logs_CT_VarDynCM_ssh_gf_grad; do [ -e consistency/Notebooks/Notebooks_SSH_GF/$d ] || cp -r $ODY_OLD/consistency/Notebooks/Notebooks_SSH_GF/$d consistency/Notebooks/Notebooks_SSH_GF/; done; ls -d consistency/Notebooks/Notebooks_SSH_GF/logs_CT_Var*; cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_v1 ; python run_metrics.py --xp SSH_GF --method VarDynCM_v1"
   },
   {
+   "id": "sic_varcm_train",
+   "lane": 4,
+   "time": "10:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarCM_aug_student --reset && python run_metrics.py --xp SIC --method VarCM_aug_student"
+  },
+  {
    "id": "ssh_dynfm_v2_train",
    "time": "30:00:00",
    "gate": "status == 'ok'",
@@ -410,6 +417,20 @@
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method VarDynCM_grid_ssh --reset && python run_metrics.py --xp SSH_GF --method VarDynCM_grid_ssh"
   },
   {
+   "id": "sic_vardyncm_train",
+   "lane": 2,
+   "time": "12:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarDynCM_scratch --reset && python run_metrics.py --xp SIC --method VarDynCM_scratch"
+  },
+  {
+   "id": "sic_vardyncm_grid",
+   "lane": 2,
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarDynCM_grid_sic --reset && python run_metrics.py --xp SIC --method VarDynCM_grid_sic"
+  },
+  {
    "id": "sic_fm_v2_train",
    "time": "30:00:00",
    "gate": "status == 'ok'",
@@ -424,11 +445,32 @@
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method FM_v2"
   },
   {
+   "id": "sic_chain_smoke",
+   "lane": 3,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && (MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method DynFM_v2 --reset || echo 'SMOKE FAIL DynFM_v2') ; (MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method DynCMT --reset || echo 'SMOKE FAIL DynCMT') ; (MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method VarCM_aug_student --reset || echo 'SMOKE FAIL VarCM_aug_student') ; (MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method VarDynCM_scratch --reset || echo 'SMOKE FAIL VarDynCM_scratch')"
+  },
+  {
    "id": "sic_cmt_train",
    "lane": 3,
    "time": "30:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method CMT --reset && python run_training.py --xp SIC --method CMT --reset && python run_metrics.py --xp SIC --method CMT"
+  },
+  {
+   "id": "sic_dynfm_train",
+   "lane": 3,
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v2 --reset && python run_metrics.py --xp SIC --method DynFM_v2"
+  },
+  {
+   "id": "sic_dyncmt_train",
+   "lane": 3,
+   "time": "09:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT --reset && python run_metrics.py --xp SIC --method DynCMT"
   },
   {
    "id": "ssh_cmt_train",

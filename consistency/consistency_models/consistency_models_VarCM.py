@@ -675,23 +675,31 @@ class VarCMTraining(nn.Module):
         # gives prior_cost a direct supervised signal in BOTH modes.
         # L_ae = MSE(prior_cost.forward_ae(x_gt), x_gt)  where x_gt = x0 = batch.tgt
         x_gt = x0.to(dtype=next(prior_cost.parameters()).dtype, non_blocking=True)
-        l_ae = F.mse_loss(prior_cost.forward_ae(x_gt), x_gt).float()
+        if torch.isnan(x_gt).any():
+            # (rebuttal, SIC) partially observed targets: AE loss on the observed pixels only
+            v_gt = torch.isfinite(x_gt)
+            x_gt = torch.nan_to_num(x_gt)
+            l_ae = ((prior_cost.forward_ae(x_gt) - x_gt).pow(2) * v_gt).sum().float() / v_gt.sum().clamp(min=1)
+        else:
+            l_ae = F.mse_loss(prior_cost.forward_ae(x_gt), x_gt).float()
 
         # ── Term 5: L_obs — MSE at observed locations only ────────────────────
         # Applied to BOTH pred_long and pred_short (each predicts x0 from a
         # different starting point). Averaging halves the effective weight per
         # path while doubling the gradient signal on observation fidelity.
         # x0 is always the ground-truth target, regardless of pure_short mode.
-        mask_obs = (~torch.isnan(y)).to(dtype=pred_long.dtype)
+        # y may carry extra channels after the C state channels (SIC: cat(sar, osisaf)); targets may have gaps
+        mask_obs = (~torch.isnan(y[:, :x0.shape[1]]) & torch.isfinite(x0)).to(dtype=pred_long.dtype)
+        x0_f = torch.nan_to_num(x0)
         n_obs = mask_obs.sum().clamp(min=1.0)
         if M > 1:
             m_obs = mask_obs[::M]
             n_obs = m_obs.sum().clamp(min=1.0)
-            l_obs_long  = (fair_crps(pred_long,  x0, M) * m_obs).sum() / n_obs
-            l_obs_short = (fair_crps(pred_short, x0, M) * m_obs).sum() / n_obs
+            l_obs_long  = (fair_crps(pred_long,  x0_f, M) * m_obs).sum() / n_obs
+            l_obs_short = (fair_crps(pred_short, x0_f, M) * m_obs).sum() / n_obs
         else:
-            l_obs_long  = (pseudo_huber_loss(pred_long,  x0) * mask_obs).sum() / n_obs
-            l_obs_short = (pseudo_huber_loss(pred_short, x0) * mask_obs).sum() / n_obs
+            l_obs_long  = (pseudo_huber_loss(pred_long,  x0_f) * mask_obs).sum() / n_obs
+            l_obs_short = (pseudo_huber_loss(pred_short, x0_f) * mask_obs).sum() / n_obs
         l_obs = (l_obs_long + l_obs_short) / 2.0
 
         # L_anc = L_long + L_short  (anchoring terms combined)
