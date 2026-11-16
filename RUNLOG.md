@@ -206,3 +206,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 23:00 lane 3: `sic_fm_v2_eval` done in 00:26:03, gate passed
 - 2026-11-16 23:00 submitted `sic_cmt_train` as job 76748 -> `runs/20261116-230026_sic_cmt_train` (lane 3) [gpu:a100:1]
 - 2026-11-17 00:01 lane 4: `ssh_varcm_aug_resume` done in 04:06:50, gate passed
+- 2026-11-17 00:02 submitted `ssh_var_v1_eval` as job 76790 -> `runs/20261117-000153_ssh_var_v1_eval` (lane 4) [gpu:a100:1]
+- 2026-11-17 00:32 **ATTENTION** lane 4: `ssh_var_v1_eval` ended FAILED after 00:10:39; see `runs/20261117-000153_ssh_var_v1_eval`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
