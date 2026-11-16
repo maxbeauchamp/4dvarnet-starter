@@ -194,3 +194,7 @@ FM/CMT SSH notebooks computed lambda_x with DX=0.1 (degrees); DynFM, DynCMT, Var
 i.e. values 10x larger. All SSH notebooks now use 0.1 (degrees). Runs evaluated before this commit
 (DynFM_v2, VarCM_aug/scratch student, ssh_vardyncm_train, ssh_dyncmt_train): divide their lambda_x by 10.
 GP VarCM student weights: RMSE 0.184, lambda_x 21.6, CRPS 0.101, SSR 0.80, rank dev 0.26 (EMA: 0.181/20.3/0.101/0.79) -> paper uses student.
+- VarCM notebooks never pass pure_short -> default True: SHORT_CRPS has no effect (short path = two-jump self-consistency
+  to the EMA target r, pseudo-Huber). Paper App. B now describes the code as run: L_self = rho(p,r)+rho(s,r),
+  L_S = 1/2[S(p)+S(q)] + 1/2[S_Omega(p)+S_Omega(s)], + L_AE. lambda_reg unused in grad mode (normalised sum of grads).
+- DynVarCM: network also receives y_{0:N}; grad conditioning only in the physical regime; evaluated with EMA weights.
