@@ -183,3 +183,8 @@ the new results, list what changed in the PDF with line references.
   calls (VarDynCM_scratch degrades to 0.224 / 0.63); sample-wise gap stays 1.3-1.6 spreads. User: VarDynCM_grid is
   the paper's DynVarCM; SSH must follow the same recipes as GP -> ssh_vardyncm_grid (lane 2, after
   ssh_vardyncm_train). Deviation: VarCM SSH uses D4 augmentation (over-fitting on the small SSH set).
+* 16 Nov 18:20 — SSH VarCM explained: the saved EMA student (decay 0.99993, ~10k-step half-life) is still mostly the
+  random initialisation after ~7-15k steps on the small SSH set. Student weights: VarCM_scratch RMSE 0.098, CRPS
+  0.043, SSR 1.28; VarCM_aug RMSE 0.095, CRPS 0.042, SSR 1.44, rank dev 0.39 (EMA: 0.28/0.21/0.18). Protocol:
+  VarCM evaluated with the student weights (as VarDynCM; checkpoint selection is on the student). Lane 4:
+  gp_varcm_student_eval, ssh_varcm_aug_resume (to 250 epochs, student), ssh_var_v1_eval.

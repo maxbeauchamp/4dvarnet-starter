@@ -349,6 +349,20 @@
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug_student ; python run_metrics.py --xp SSH_GF --method VarCM_scratch_student"
   },
   {
+   "id": "gp_varcm_student_eval",
+   "lane": 4,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp GP --method VarCM_scratch2_student"
+  },
+  {
+   "id": "ssh_varcm_aug_resume",
+   "lane": 4,
+   "time": "14:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method VarCM_aug_student && python run_metrics.py --xp SSH_GF --method VarCM_aug_student"
+  },
+  {
    "id": "ssh_var_v1_eval",
    "lane": 4,
    "time": "06:00:00",
