@@ -179,3 +179,7 @@ the new results, list what changed in the PDF with line references.
 * 16 Nov 15:20, user: stop VarCM_aug (time); finish the GP evaluations; paper; then all power on SSH, then SIC.
   Main lane: gp_vardyncm_fr_sweep -> ssh_dynfm_v2_train -> ssh_dyncmt_train (DynCMT SSH, DynFM_v2 teacher, from
   scratch). Lane 2: ssh_vardyncm_train (running) -> ssh_var_v1_eval -> sic_fm_v2_train.
+* 16 Nov 16:10 — refined-frame-grid sweep: VarDynCM_grid keeps RMSE 0.198-0.203 and SSR 0.75-0.81 from 5 to 30
+  calls (VarDynCM_scratch degrades to 0.224 / 0.63); sample-wise gap stays 1.3-1.6 spreads. User: VarDynCM_grid is
+  the paper's DynVarCM; SSH must follow the same recipes as GP -> ssh_vardyncm_grid (lane 2, after
+  ssh_vardyncm_train). Deviation: VarCM SSH uses D4 augmentation (over-fitting on the small SSH set).
