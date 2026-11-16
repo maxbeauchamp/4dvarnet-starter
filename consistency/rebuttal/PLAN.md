@@ -188,3 +188,9 @@ the new results, list what changed in the PDF with line references.
   0.043, SSR 1.28; VarCM_aug RMSE 0.095, CRPS 0.042, SSR 1.44, rank dev 0.39 (EMA: 0.28/0.21/0.18). Protocol:
   VarCM evaluated with the student weights (as VarDynCM; checkpoint selection is on the student). Lane 4:
   gp_varcm_student_eval, ssh_varcm_aug_resume (to 250 epochs, student), ssh_var_v1_eval.
+
+## 2026-11-16 — SSH lambda_x units
+FM/CMT SSH notebooks computed lambda_x with DX=0.1 (degrees); DynFM, DynCMT, VarCM, VarDynCM SSH used DX=1 (pixels),
+i.e. values 10x larger. All SSH notebooks now use 0.1 (degrees). Runs evaluated before this commit
+(DynFM_v2, VarCM_aug/scratch student, ssh_vardyncm_train, ssh_dyncmt_train): divide their lambda_x by 10.
+GP VarCM student weights: RMSE 0.184, lambda_x 21.6, CRPS 0.101, SSR 0.80, rank dev 0.26 (EMA: 0.181/20.3/0.101/0.79) -> paper uses student.
