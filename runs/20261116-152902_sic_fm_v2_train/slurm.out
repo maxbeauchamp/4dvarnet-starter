@@ -1,0 +1,1024 @@
+[job] 2026-11-16T15:29:07+01:00 host=sl-mee-br-207 job=76482 run_dir=runs/20261116-152902_sic_fm_v2_train args=--cmd cd consistency/sbatch_submission && python run_training.py --xp SIC --method FM_v2 --reset && python run_metrics.py --xp SIC --method FM_v2
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_training] STARTING FM_v2 / SIC
+========================================================================================
+[run_training] FM_v2 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 400, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train.csv', 'RUN_TAG': '_v2', 'SELECT_BY_VAL': True}
+Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:07<03:13,  7.15s/cell]Executing:  11%|█         | 3/28 [00:46<06:50, 16.40s/cell]Mon Nov 16 15:30:06 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
+| N/A   36C    P0             69W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  18%|█▊        | 5/28 [00:47<03:07,  8.16s/cell]Executing:  25%|██▌       | 7/28 [00:57<02:25,  6.91s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  32%|███▏      | 9/28 [01:03<01:43,  5.47s/cell]Executing:  39%|███▉      | 11/28 [01:06<01:07,  3.96s/cell]LitFlowMatchingSIC defined
+RESET_TRAINING=True -- starting from scratch
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=400
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name      | Type          | Params
+--------------------------------------------
+0 | network   | UNetFM        | 32.3 M
+1 | log_scale | LogScaleModel | 17.7 K
+2 | ema_model | AveragedModel | 32.3 M
+--------------------------------------------
+32.3 M    Trainable params
+32.3 M    Non-trainable params
+64.6 M    Total params
+258.386   Total estimated model params size (MB)
+
+
+  | Name      | Type          | Params
+--------------------------------------------
+0 | network   | UNetFM        | 32.3 M
+1 | log_scale | LogScaleModel | 17.7 K
+2 | ema_model | AveragedModel | 32.3 M
+--------------------------------------------
+32.3 M    Trainable params
+32.3 M    Non-trainable params
+64.6 M    Total params
+258.386   Total estimated model params size (MB)
+Val batch cached: asip=torch.Size([2, 9, 240, 240])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[progress] epoch 1/400 | train_loss=1.6547 | train_loss_epoch=1.6547 | train_loss_step=1.6566
+[Epoch 0]  Val RMSE (masked, EMA) = 1.3736
+[progress] epoch 2/400 | train_loss=1.5635 | train_loss_epoch=1.5635 | train_loss_step=1.4931 | val_rmse_ema=1.3736
+[Epoch 1]  Val RMSE (masked, EMA) = 1.3470
+[progress] epoch 3/400 | train_loss=1.5036 | train_loss_epoch=1.5036 | train_loss_step=1.4966 | val_rmse_ema=1.3470
+[Epoch 2]  Val RMSE (masked, EMA) = 1.3147
+[progress] epoch 4/400 | train_loss=1.4708 | train_loss_epoch=1.4708 | train_loss_step=1.4454 | val_rmse_ema=1.3147
+[Epoch 3]  Val RMSE (masked, EMA) = 1.2756
+[progress] epoch 5/400 | train_loss=1.4425 | train_loss_epoch=1.4425 | train_loss_step=1.4296 | val_rmse_ema=1.2756
+[Epoch 4]  Val RMSE (masked, EMA) = 1.2342
+[progress] epoch 6/400 | train_loss=1.4276 | train_loss_epoch=1.4276 | train_loss_step=1.4147 | val_rmse_ema=1.2342
+[Epoch 5]  Val RMSE (masked, EMA) = 1.1908
+[progress] epoch 7/400 | train_loss=1.4130 | train_loss_epoch=1.4130 | train_loss_step=1.3858 | val_rmse_ema=1.1908
+[Epoch 6]  Val RMSE (masked, EMA) = 1.1498
+[progress] epoch 8/400 | train_loss=1.3890 | train_loss_epoch=1.3890 | train_loss_step=1.3604 | val_rmse_ema=1.1498
+[Epoch 7]  Val RMSE (masked, EMA) = 1.1116
+[progress] epoch 9/400 | train_loss=1.3626 | train_loss_epoch=1.3626 | train_loss_step=1.3623 | val_rmse_ema=1.1116
+[Epoch 8]  Val RMSE (masked, EMA) = 1.0769
+[progress] epoch 10/400 | train_loss=1.3290 | train_loss_epoch=1.3290 | train_loss_step=1.2890 | val_crps=0.5947 | val_rmse_ema=1.0769
+[Epoch 9]  Val RMSE (masked, EMA) = 1.0394
+[progress] epoch 11/400 | train_loss=1.3003 | train_loss_epoch=1.3003 | train_loss_step=1.2747 | val_crps=0.5947 | val_rmse_ema=1.0394
+[Epoch 10]  Val RMSE (masked, EMA) = 1.0027
+[progress] epoch 12/400 | train_loss=1.2558 | train_loss_epoch=1.2558 | train_loss_step=1.1851 | val_crps=0.5947 | val_rmse_ema=1.0027
+[Epoch 11]  Val RMSE (masked, EMA) = 0.9626
+[progress] epoch 13/400 | train_loss=1.2145 | train_loss_epoch=1.2145 | train_loss_step=1.1331 | val_crps=0.5947 | val_rmse_ema=0.9626
+[Epoch 12]  Val RMSE (masked, EMA) = 0.9282
+[progress] epoch 14/400 | train_loss=1.1724 | train_loss_epoch=1.1724 | train_loss_step=1.1985 | val_crps=0.5947 | val_rmse_ema=0.9282
+[Epoch 13]  Val RMSE (masked, EMA) = 0.8882
+[progress] epoch 15/400 | train_loss=1.1342 | train_loss_epoch=1.1342 | train_loss_step=1.0922 | val_crps=0.5947 | val_rmse_ema=0.8882
+[Epoch 14]  Val RMSE (masked, EMA) = 0.8504
+[progress] epoch 16/400 | train_loss=1.0765 | train_loss_epoch=1.0765 | train_loss_step=1.0609 | val_crps=0.5947 | val_rmse_ema=0.8504
+[Epoch 15]  Val RMSE (masked, EMA) = 0.8085
+[progress] epoch 17/400 | train_loss=1.0350 | train_loss_epoch=1.0350 | train_loss_step=0.9745 | val_crps=0.5947 | val_rmse_ema=0.8085
+[Epoch 16]  Val RMSE (masked, EMA) = 0.7647
+[progress] epoch 18/400 | train_loss=0.9787 | train_loss_epoch=0.9787 | train_loss_step=1.2052 | val_crps=0.5947 | val_rmse_ema=0.7647
+[Epoch 17]  Val RMSE (masked, EMA) = 0.7205
+[progress] epoch 19/400 | train_loss=0.9474 | train_loss_epoch=0.9474 | train_loss_step=0.7094 | val_crps=0.5947 | val_rmse_ema=0.7205
+[Epoch 18]  Val RMSE (masked, EMA) = 0.6754
+[progress] epoch 20/400 | train_loss=0.8920 | train_loss_epoch=0.8920 | train_loss_step=0.8674 | val_crps=0.3621 | val_rmse_ema=0.6754
+[Epoch 19]  Val RMSE (masked, EMA) = 0.6286
+[progress] epoch 21/400 | train_loss=0.8103 | train_loss_epoch=0.8103 | train_loss_step=0.4423 | val_crps=0.3621 | val_rmse_ema=0.6286
+[Epoch 20]  Val RMSE (masked, EMA) = 0.5811
+[progress] epoch 22/400 | train_loss=0.7711 | train_loss_epoch=0.7711 | train_loss_step=0.6687 | val_crps=0.3621 | val_rmse_ema=0.5811
+[Epoch 21]  Val RMSE (masked, EMA) = 0.5367
+[progress] epoch 23/400 | train_loss=0.7189 | train_loss_epoch=0.7189 | train_loss_step=0.6658 | val_crps=0.3621 | val_rmse_ema=0.5367
+[Epoch 22]  Val RMSE (masked, EMA) = 0.4941
+[progress] epoch 24/400 | train_loss=0.6720 | train_loss_epoch=0.6720 | train_loss_step=0.7105 | val_crps=0.3621 | val_rmse_ema=0.4941
+[Epoch 23]  Val RMSE (masked, EMA) = 0.4545
+[progress] epoch 25/400 | train_loss=0.6468 | train_loss_epoch=0.6468 | train_loss_step=0.5397 | val_crps=0.3621 | val_rmse_ema=0.4545
+[Epoch 24]  Val RMSE (masked, EMA) = 0.4177
+[progress] epoch 26/400 | train_loss=0.6160 | train_loss_epoch=0.6160 | train_loss_step=0.3793 | val_crps=0.3621 | val_rmse_ema=0.4177
+[Epoch 25]  Val RMSE (masked, EMA) = 0.3848
+[progress] epoch 27/400 | train_loss=0.5840 | train_loss_epoch=0.5840 | train_loss_step=0.5682 | val_crps=0.3621 | val_rmse_ema=0.3848
+[Epoch 26]  Val RMSE (masked, EMA) = 0.3552
+[progress] epoch 28/400 | train_loss=0.5357 | train_loss_epoch=0.5357 | train_loss_step=0.4242 | val_crps=0.3621 | val_rmse_ema=0.3552
+[Epoch 27]  Val RMSE (masked, EMA) = 0.3310
+[progress] epoch 29/400 | train_loss=0.4688 | train_loss_epoch=0.4688 | train_loss_step=0.4336 | val_crps=0.3621 | val_rmse_ema=0.3310
+[Epoch 28]  Val RMSE (masked, EMA) = 0.3081
+[progress] epoch 30/400 | train_loss=0.4225 | train_loss_epoch=0.4225 | train_loss_step=0.2752 | val_crps=0.1805 | val_rmse_ema=0.3081
+[Epoch 29]  Val RMSE (masked, EMA) = 0.2886
+[progress] epoch 31/400 | train_loss=0.3577 | train_loss_epoch=0.3577 | train_loss_step=0.1729 | val_crps=0.1805 | val_rmse_ema=0.2886
+[Epoch 30]  Val RMSE (masked, EMA) = 0.2702
+[progress] epoch 32/400 | train_loss=0.4024 | train_loss_epoch=0.4024 | train_loss_step=0.6736 | val_crps=0.1805 | val_rmse_ema=0.2702
+[Epoch 31]  Val RMSE (masked, EMA) = 0.2555
+[progress] epoch 33/400 | train_loss=0.3453 | train_loss_epoch=0.3453 | train_loss_step=0.2654 | val_crps=0.1805 | val_rmse_ema=0.2555
+[Epoch 32]  Val RMSE (masked, EMA) = 0.2405
+[progress] epoch 34/400 | train_loss=0.3475 | train_loss_epoch=0.3475 | train_loss_step=0.2543 | val_crps=0.1805 | val_rmse_ema=0.2405
+[Epoch 33]  Val RMSE (masked, EMA) = 0.2313
+[progress] epoch 35/400 | train_loss=0.2716 | train_loss_epoch=0.2716 | train_loss_step=0.5533 | val_crps=0.1805 | val_rmse_ema=0.2313
+[Epoch 34]  Val RMSE (masked, EMA) = 0.2224
+[progress] epoch 36/400 | train_loss=0.2512 | train_loss_epoch=0.2512 | train_loss_step=0.4853 | val_crps=0.1805 | val_rmse_ema=0.2224
+[Epoch 35]  Val RMSE (masked, EMA) = 0.2135
+[progress] epoch 37/400 | train_loss=0.2290 | train_loss_epoch=0.2290 | train_loss_step=0.6562 | val_crps=0.1805 | val_rmse_ema=0.2135
+[Epoch 36]  Val RMSE (masked, EMA) = 0.2077
+[progress] epoch 38/400 | train_loss=0.2175 | train_loss_epoch=0.2175 | train_loss_step=-0.0328 | val_crps=0.1805 | val_rmse_ema=0.2077
+[Epoch 37]  Val RMSE (masked, EMA) = 0.1994
+[progress] epoch 39/400 | train_loss=0.2355 | train_loss_epoch=0.2355 | train_loss_step=0.1834 | val_crps=0.1805 | val_rmse_ema=0.1994
+[Epoch 38]  Val RMSE (masked, EMA) = 0.1945
+[progress] epoch 40/400 | train_loss=0.1712 | train_loss_epoch=0.1712 | train_loss_step=0.0669 | val_crps=0.1304 | val_rmse_ema=0.1945
+[Epoch 39]  Val RMSE (masked, EMA) = 0.1885
+[progress] epoch 41/400 | train_loss=0.1483 | train_loss_epoch=0.1483 | train_loss_step=-0.0472 | val_crps=0.1304 | val_rmse_ema=0.1885
+[Epoch 40]  Val RMSE (masked, EMA) = 0.1870
+[progress] epoch 42/400 | train_loss=0.1554 | train_loss_epoch=0.1554 | train_loss_step=0.4578 | val_crps=0.1304 | val_rmse_ema=0.1870
+[Epoch 41]  Val RMSE (masked, EMA) = 0.1804
+[progress] epoch 43/400 | train_loss=0.1327 | train_loss_epoch=0.1327 | train_loss_step=-0.0491 | val_crps=0.1304 | val_rmse_ema=0.1804
+[Epoch 42]  Val RMSE (masked, EMA) = 0.1763
+[progress] epoch 44/400 | train_loss=0.1585 | train_loss_epoch=0.1585 | train_loss_step=-0.1326 | val_crps=0.1304 | val_rmse_ema=0.1763
+[Epoch 43]  Val RMSE (masked, EMA) = 0.1744
+[progress] epoch 45/400 | train_loss=0.1416 | train_loss_epoch=0.1416 | train_loss_step=0.0413 | val_crps=0.1304 | val_rmse_ema=0.1744
+[Epoch 44]  Val RMSE (masked, EMA) = 0.1711
+[progress] epoch 46/400 | train_loss=0.1087 | train_loss_epoch=0.1087 | train_loss_step=-0.0282 | val_crps=0.1304 | val_rmse_ema=0.1711
+[Epoch 45]  Val RMSE (masked, EMA) = 0.1667
+[progress] epoch 47/400 | train_loss=0.1120 | train_loss_epoch=0.1120 | train_loss_step=0.1317 | val_crps=0.1304 | val_rmse_ema=0.1667
+[Epoch 46]  Val RMSE (masked, EMA) = 0.1642
+[progress] epoch 48/400 | train_loss=0.1490 | train_loss_epoch=0.1490 | train_loss_step=0.2063 | val_crps=0.1304 | val_rmse_ema=0.1642
+[Epoch 47]  Val RMSE (masked, EMA) = 0.1627
+[progress] epoch 49/400 | train_loss=0.1084 | train_loss_epoch=0.1084 | train_loss_step=-0.0404 | val_crps=0.1304 | val_rmse_ema=0.1627
+[Epoch 48]  Val RMSE (masked, EMA) = 0.1619
+[progress] epoch 50/400 | train_loss=0.0919 | train_loss_epoch=0.0919 | train_loss_step=0.0351 | val_crps=0.1133 | val_rmse_ema=0.1619
+[Epoch 49]  Val RMSE (masked, EMA) = 0.1605
+[progress] epoch 51/400 | train_loss=0.0438 | train_loss_epoch=0.0438 | train_loss_step=-0.2046 | val_crps=0.1133 | val_rmse_ema=0.1605
+[Epoch 50]  Val RMSE (masked, EMA) = 0.1579
+[progress] epoch 52/400 | train_loss=0.0440 | train_loss_epoch=0.0440 | train_loss_step=0.0807 | val_crps=0.1133 | val_rmse_ema=0.1579
+[Epoch 51]  Val RMSE (masked, EMA) = 0.1557
+[progress] epoch 53/400 | train_loss=0.0581 | train_loss_epoch=0.0581 | train_loss_step=1.1901 | val_crps=0.1133 | val_rmse_ema=0.1557
+[Epoch 52]  Val RMSE (masked, EMA) = 0.1528
+[progress] epoch 54/400 | train_loss=0.0559 | train_loss_epoch=0.0559 | train_loss_step=0.5174 | val_crps=0.1133 | val_rmse_ema=0.1528
+[Epoch 53]  Val RMSE (masked, EMA) = 0.1541
+[progress] epoch 55/400 | train_loss=0.0405 | train_loss_epoch=0.0405 | train_loss_step=-0.0899 | val_crps=0.1133 | val_rmse_ema=0.1541
+[Epoch 54]  Val RMSE (masked, EMA) = 0.1513
+[progress] epoch 56/400 | train_loss=0.0879 | train_loss_epoch=0.0879 | train_loss_step=0.1482 | val_crps=0.1133 | val_rmse_ema=0.1513
+[Epoch 55]  Val RMSE (masked, EMA) = 0.1514
+[progress] epoch 57/400 | train_loss=0.0040 | train_loss_epoch=0.0040 | train_loss_step=-0.0211 | val_crps=0.1133 | val_rmse_ema=0.1514
+[Epoch 56]  Val RMSE (masked, EMA) = 0.1510
+[progress] epoch 58/400 | train_loss=0.0648 | train_loss_epoch=0.0648 | train_loss_step=0.3434 | val_crps=0.1133 | val_rmse_ema=0.1510
+[Epoch 57]  Val RMSE (masked, EMA) = 0.1489
+[progress] epoch 59/400 | train_loss=0.0099 | train_loss_epoch=0.0099 | train_loss_step=0.0783 | val_crps=0.1133 | val_rmse_ema=0.1489
+[Epoch 58]  Val RMSE (masked, EMA) = 0.1474
+[progress] epoch 60/400 | train_loss=0.0262 | train_loss_epoch=0.0262 | train_loss_step=0.6132 | val_crps=0.1048 | val_rmse_ema=0.1474
+[Epoch 59]  Val RMSE (masked, EMA) = 0.1456
+[progress] epoch 61/400 | train_loss=-0.0372 | train_loss_epoch=-0.0372 | train_loss_step=-0.1875 | val_crps=0.1048 | val_rmse_ema=0.1456
+[Epoch 60]  Val RMSE (masked, EMA) = 0.1444
+[progress] epoch 62/400 | train_loss=-0.0225 | train_loss_epoch=-0.0225 | train_loss_step=-0.0299 | val_crps=0.1048 | val_rmse_ema=0.1444
+[Epoch 61]  Val RMSE (masked, EMA) = 0.1432
+[progress] epoch 63/400 | train_loss=0.0706 | train_loss_epoch=0.0706 | train_loss_step=0.0729 | val_crps=0.1048 | val_rmse_ema=0.1432
+[Epoch 62]  Val RMSE (masked, EMA) = 0.1425
+[progress] epoch 64/400 | train_loss=0.0225 | train_loss_epoch=0.0225 | train_loss_step=-0.0059 | val_crps=0.1048 | val_rmse_ema=0.1425
+[Epoch 63]  Val RMSE (masked, EMA) = 0.1433
+[progress] epoch 65/400 | train_loss=-0.0342 | train_loss_epoch=-0.0342 | train_loss_step=-0.1014 | val_crps=0.1048 | val_rmse_ema=0.1433
+[Epoch 64]  Val RMSE (masked, EMA) = 0.1412
+[progress] epoch 66/400 | train_loss=-0.0257 | train_loss_epoch=-0.0257 | train_loss_step=-0.2547 | val_crps=0.1048 | val_rmse_ema=0.1412
+[Epoch 65]  Val RMSE (masked, EMA) = 0.1412
+[progress] epoch 67/400 | train_loss=-0.0440 | train_loss_epoch=-0.0440 | train_loss_step=-0.2577 | val_crps=0.1048 | val_rmse_ema=0.1412
+[Epoch 66]  Val RMSE (masked, EMA) = 0.1415
+[progress] epoch 68/400 | train_loss=-0.0607 | train_loss_epoch=-0.0607 | train_loss_step=-0.0603 | val_crps=0.1048 | val_rmse_ema=0.1415
+[Epoch 67]  Val RMSE (masked, EMA) = 0.1371
+[progress] epoch 69/400 | train_loss=-0.0454 | train_loss_epoch=-0.0454 | train_loss_step=-0.2733 | val_crps=0.1048 | val_rmse_ema=0.1371
+[Epoch 68]  Val RMSE (masked, EMA) = 0.1376
+[progress] epoch 70/400 | train_loss=-0.0382 | train_loss_epoch=-0.0382 | train_loss_step=-0.2697 | val_crps=0.0996 | val_rmse_ema=0.1376
+[Epoch 69]  Val RMSE (masked, EMA) = 0.1359
+[progress] epoch 71/400 | train_loss=-0.0154 | train_loss_epoch=-0.0154 | train_loss_step=0.2322 | val_crps=0.0996 | val_rmse_ema=0.1359
+[Epoch 70]  Val RMSE (masked, EMA) = 0.1356
+[progress] epoch 72/400 | train_loss=-0.0105 | train_loss_epoch=-0.0105 | train_loss_step=0.0243 | val_crps=0.0996 | val_rmse_ema=0.1356
+[Epoch 71]  Val RMSE (masked, EMA) = 0.1352
+[progress] epoch 73/400 | train_loss=-0.0933 | train_loss_epoch=-0.0933 | train_loss_step=0.3109 | val_crps=0.0996 | val_rmse_ema=0.1352
+[Epoch 72]  Val RMSE (masked, EMA) = 0.1352
+[progress] epoch 74/400 | train_loss=-0.0752 | train_loss_epoch=-0.0752 | train_loss_step=-0.2523 | val_crps=0.0996 | val_rmse_ema=0.1352
+[Epoch 73]  Val RMSE (masked, EMA) = 0.1313
+[progress] epoch 75/400 | train_loss=-0.0730 | train_loss_epoch=-0.0730 | train_loss_step=-0.3355 | val_crps=0.0996 | val_rmse_ema=0.1313
+[Epoch 74]  Val RMSE (masked, EMA) = 0.1339
+[progress] epoch 76/400 | train_loss=-0.0715 | train_loss_epoch=-0.0715 | train_loss_step=0.1033 | val_crps=0.0996 | val_rmse_ema=0.1339
+[Epoch 75]  Val RMSE (masked, EMA) = 0.1326
+[progress] epoch 77/400 | train_loss=-0.0894 | train_loss_epoch=-0.0894 | train_loss_step=0.1925 | val_crps=0.0996 | val_rmse_ema=0.1326
+[Epoch 76]  Val RMSE (masked, EMA) = 0.1337
+[progress] epoch 78/400 | train_loss=-0.0824 | train_loss_epoch=-0.0824 | train_loss_step=0.0412 | val_crps=0.0996 | val_rmse_ema=0.1337
+[Epoch 77]  Val RMSE (masked, EMA) = 0.1316
+[progress] epoch 79/400 | train_loss=-0.1066 | train_loss_epoch=-0.1066 | train_loss_step=0.4946 | val_crps=0.0996 | val_rmse_ema=0.1316
+[Epoch 78]  Val RMSE (masked, EMA) = 0.1310
+[progress] epoch 80/400 | train_loss=-0.1107 | train_loss_epoch=-0.1107 | train_loss_step=-0.3017 | val_crps=0.0960 | val_rmse_ema=0.1310
+[Epoch 79]  Val RMSE (masked, EMA) = 0.1293
+[progress] epoch 81/400 | train_loss=-0.0135 | train_loss_epoch=-0.0135 | train_loss_step=-0.2619 | val_crps=0.0960 | val_rmse_ema=0.1293
+[Epoch 80]  Val RMSE (masked, EMA) = 0.1285
+[progress] epoch 82/400 | train_loss=-0.1045 | train_loss_epoch=-0.1045 | train_loss_step=-0.3725 | val_crps=0.0960 | val_rmse_ema=0.1285
+[Epoch 81]  Val RMSE (masked, EMA) = 0.1314
+[progress] epoch 83/400 | train_loss=-0.1716 | train_loss_epoch=-0.1716 | train_loss_step=-0.3276 | val_crps=0.0960 | val_rmse_ema=0.1314
+[Epoch 82]  Val RMSE (masked, EMA) = 0.1296
+[progress] epoch 84/400 | train_loss=-0.1048 | train_loss_epoch=-0.1048 | train_loss_step=-0.3470 | val_crps=0.0960 | val_rmse_ema=0.1296
+[Epoch 83]  Val RMSE (masked, EMA) = 0.1273
+[progress] epoch 85/400 | train_loss=-0.1432 | train_loss_epoch=-0.1432 | train_loss_step=-0.3768 | val_crps=0.0960 | val_rmse_ema=0.1273
+[Epoch 84]  Val RMSE (masked, EMA) = 0.1276
+[progress] epoch 86/400 | train_loss=-0.0967 | train_loss_epoch=-0.0967 | train_loss_step=-0.3084 | val_crps=0.0960 | val_rmse_ema=0.1276
+[Epoch 85]  Val RMSE (masked, EMA) = 0.1272
+[progress] epoch 87/400 | train_loss=-0.1058 | train_loss_epoch=-0.1058 | train_loss_step=0.5929 | val_crps=0.0960 | val_rmse_ema=0.1272
+[Epoch 86]  Val RMSE (masked, EMA) = 0.1277
+[progress] epoch 88/400 | train_loss=-0.1341 | train_loss_epoch=-0.1341 | train_loss_step=-0.2072 | val_crps=0.0960 | val_rmse_ema=0.1277
+[Epoch 87]  Val RMSE (masked, EMA) = 0.1269
+[progress] epoch 89/400 | train_loss=-0.1732 | train_loss_epoch=-0.1732 | train_loss_step=-0.2189 | val_crps=0.0960 | val_rmse_ema=0.1269
+[Epoch 88]  Val RMSE (masked, EMA) = 0.1246
+[progress] epoch 90/400 | train_loss=-0.1123 | train_loss_epoch=-0.1123 | train_loss_step=-0.0553 | val_crps=0.0925 | val_rmse_ema=0.1246
+[Epoch 89]  Val RMSE (masked, EMA) = 0.1266
+[progress] epoch 91/400 | train_loss=-0.1220 | train_loss_epoch=-0.1220 | train_loss_step=-0.3738 | val_crps=0.0925 | val_rmse_ema=0.1266
+[Epoch 90]  Val RMSE (masked, EMA) = 0.1252
+[progress] epoch 92/400 | train_loss=-0.0903 | train_loss_epoch=-0.0903 | train_loss_step=-0.2224 | val_crps=0.0925 | val_rmse_ema=0.1252
+[Epoch 91]  Val RMSE (masked, EMA) = 0.1240
+[progress] epoch 93/400 | train_loss=-0.1610 | train_loss_epoch=-0.1610 | train_loss_step=0.0784 | val_crps=0.0925 | val_rmse_ema=0.1240
+[Epoch 92]  Val RMSE (masked, EMA) = 0.1262
+[progress] epoch 94/400 | train_loss=-0.1751 | train_loss_epoch=-0.1751 | train_loss_step=-0.3161 | val_crps=0.0925 | val_rmse_ema=0.1262
+[Epoch 93]  Val RMSE (masked, EMA) = 0.1250
+[progress] epoch 95/400 | train_loss=-0.1364 | train_loss_epoch=-0.1364 | train_loss_step=-0.3975 | val_crps=0.0925 | val_rmse_ema=0.1250
+[Epoch 94]  Val RMSE (masked, EMA) = 0.1265
+[progress] epoch 96/400 | train_loss=-0.1351 | train_loss_epoch=-0.1351 | train_loss_step=-0.3287 | val_crps=0.0925 | val_rmse_ema=0.1265
+[Epoch 95]  Val RMSE (masked, EMA) = 0.1249
+[progress] epoch 97/400 | train_loss=-0.1897 | train_loss_epoch=-0.1897 | train_loss_step=-0.4397 | val_crps=0.0925 | val_rmse_ema=0.1249
+[Epoch 96]  Val RMSE (masked, EMA) = 0.1231
+[progress] epoch 98/400 | train_loss=-0.1629 | train_loss_epoch=-0.1629 | train_loss_step=-0.1778 | val_crps=0.0925 | val_rmse_ema=0.1231
+[Epoch 97]  Val RMSE (masked, EMA) = 0.1238
+[progress] epoch 99/400 | train_loss=-0.1220 | train_loss_epoch=-0.1220 | train_loss_step=-0.4273 | val_crps=0.0925 | val_rmse_ema=0.1238
+[Epoch 98]  Val RMSE (masked, EMA) = 0.1265
+[progress] epoch 100/400 | train_loss=-0.1476 | train_loss_epoch=-0.1476 | train_loss_step=-0.2558 | val_crps=0.0897 | val_rmse_ema=0.1265
+[Epoch 99]  Val RMSE (masked, EMA) = 0.1222
+[progress] epoch 101/400 | train_loss=-0.1283 | train_loss_epoch=-0.1283 | train_loss_step=-0.0275 | val_crps=0.0897 | val_rmse_ema=0.1222
+[Epoch 100]  Val RMSE (masked, EMA) = 0.1231
+[progress] epoch 102/400 | train_loss=-0.1994 | train_loss_epoch=-0.1994 | train_loss_step=-0.4765 | val_crps=0.0897 | val_rmse_ema=0.1231
+[Epoch 101]  Val RMSE (masked, EMA) = 0.1233
+[progress] epoch 103/400 | train_loss=-0.2483 | train_loss_epoch=-0.2483 | train_loss_step=-0.5677 | val_crps=0.0897 | val_rmse_ema=0.1233
+[Epoch 102]  Val RMSE (masked, EMA) = 0.1217
+[progress] epoch 104/400 | train_loss=-0.1773 | train_loss_epoch=-0.1773 | train_loss_step=-0.3598 | val_crps=0.0897 | val_rmse_ema=0.1217
+[Epoch 103]  Val RMSE (masked, EMA) = 0.1215
+[progress] epoch 105/400 | train_loss=-0.2232 | train_loss_epoch=-0.2232 | train_loss_step=-0.3378 | val_crps=0.0897 | val_rmse_ema=0.1215
+[Epoch 104]  Val RMSE (masked, EMA) = 0.1214
+[progress] epoch 106/400 | train_loss=-0.1807 | train_loss_epoch=-0.1807 | train_loss_step=-0.3070 | val_crps=0.0897 | val_rmse_ema=0.1214
+[Epoch 105]  Val RMSE (masked, EMA) = 0.1215
+[progress] epoch 107/400 | train_loss=-0.1594 | train_loss_epoch=-0.1594 | train_loss_step=-0.0027 | val_crps=0.0897 | val_rmse_ema=0.1215
+[Epoch 106]  Val RMSE (masked, EMA) = 0.1205
+[progress] epoch 108/400 | train_loss=-0.1757 | train_loss_epoch=-0.1757 | train_loss_step=-0.3635 | val_crps=0.0897 | val_rmse_ema=0.1205
+[Epoch 107]  Val RMSE (masked, EMA) = 0.1218
+[progress] epoch 109/400 | train_loss=-0.2189 | train_loss_epoch=-0.2189 | train_loss_step=0.0956 | val_crps=0.0897 | val_rmse_ema=0.1218
+[Epoch 108]  Val RMSE (masked, EMA) = 0.1213
+[progress] epoch 110/400 | train_loss=-0.2156 | train_loss_epoch=-0.2156 | train_loss_step=-0.0844 | val_crps=0.0879 | val_rmse_ema=0.1213
+[Epoch 109]  Val RMSE (masked, EMA) = 0.1208
+[progress] epoch 111/400 | train_loss=-0.2129 | train_loss_epoch=-0.2129 | train_loss_step=-0.3774 | val_crps=0.0879 | val_rmse_ema=0.1208
+[Epoch 110]  Val RMSE (masked, EMA) = 0.1214
+[progress] epoch 112/400 | train_loss=-0.2369 | train_loss_epoch=-0.2369 | train_loss_step=-0.4727 | val_crps=0.0879 | val_rmse_ema=0.1214
+[Epoch 111]  Val RMSE (masked, EMA) = 0.1191
+[progress] epoch 113/400 | train_loss=-0.2415 | train_loss_epoch=-0.2415 | train_loss_step=-0.4950 | val_crps=0.0879 | val_rmse_ema=0.1191
+[Epoch 112]  Val RMSE (masked, EMA) = 0.1200
+[progress] epoch 114/400 | train_loss=-0.2148 | train_loss_epoch=-0.2148 | train_loss_step=-0.3776 | val_crps=0.0879 | val_rmse_ema=0.1200
+[Epoch 113]  Val RMSE (masked, EMA) = 0.1206
+[progress] epoch 115/400 | train_loss=-0.2303 | train_loss_epoch=-0.2303 | train_loss_step=-0.2392 | val_crps=0.0879 | val_rmse_ema=0.1206
+[Epoch 114]  Val RMSE (masked, EMA) = 0.1192
+[progress] epoch 116/400 | train_loss=-0.2014 | train_loss_epoch=-0.2014 | train_loss_step=-0.2238 | val_crps=0.0879 | val_rmse_ema=0.1192
+[Epoch 115]  Val RMSE (masked, EMA) = 0.1185
+[progress] epoch 117/400 | train_loss=-0.2209 | train_loss_epoch=-0.2209 | train_loss_step=-0.3778 | val_crps=0.0879 | val_rmse_ema=0.1185
+[Epoch 116]  Val RMSE (masked, EMA) = 0.1186
+[progress] epoch 118/400 | train_loss=-0.1516 | train_loss_epoch=-0.1516 | train_loss_step=0.1868 | val_crps=0.0879 | val_rmse_ema=0.1186
+[Epoch 117]  Val RMSE (masked, EMA) = 0.1188
+[progress] epoch 119/400 | train_loss=-0.2331 | train_loss_epoch=-0.2331 | train_loss_step=-0.3898 | val_crps=0.0879 | val_rmse_ema=0.1188
+[Epoch 118]  Val RMSE (masked, EMA) = 0.1196
+[progress] epoch 120/400 | train_loss=-0.2468 | train_loss_epoch=-0.2468 | train_loss_step=-0.5909 | val_crps=0.0864 | val_rmse_ema=0.1196
+[Epoch 119]  Val RMSE (masked, EMA) = 0.1194
+[progress] epoch 121/400 | train_loss=-0.2495 | train_loss_epoch=-0.2495 | train_loss_step=-0.1927 | val_crps=0.0864 | val_rmse_ema=0.1194
+[Epoch 120]  Val RMSE (masked, EMA) = 0.1174
+[progress] epoch 122/400 | train_loss=-0.2344 | train_loss_epoch=-0.2344 | train_loss_step=0.6261 | val_crps=0.0864 | val_rmse_ema=0.1174
+[Epoch 121]  Val RMSE (masked, EMA) = 0.1175
+[progress] epoch 123/400 | train_loss=-0.2438 | train_loss_epoch=-0.2438 | train_loss_step=-0.3845 | val_crps=0.0864 | val_rmse_ema=0.1175
+[Epoch 122]  Val RMSE (masked, EMA) = 0.1143
+[progress] epoch 124/400 | train_loss=-0.2767 | train_loss_epoch=-0.2767 | train_loss_step=-0.6483 | val_crps=0.0864 | val_rmse_ema=0.1143
+[Epoch 123]  Val RMSE (masked, EMA) = 0.1161
+[progress] epoch 125/400 | train_loss=-0.2413 | train_loss_epoch=-0.2413 | train_loss_step=0.0104 | val_crps=0.0864 | val_rmse_ema=0.1161
+[Epoch 124]  Val RMSE (masked, EMA) = 0.1158
+[progress] epoch 126/400 | train_loss=-0.2732 | train_loss_epoch=-0.2732 | train_loss_step=-0.3151 | val_crps=0.0864 | val_rmse_ema=0.1158
+[Epoch 125]  Val RMSE (masked, EMA) = 0.1162
+[progress] epoch 127/400 | train_loss=-0.3307 | train_loss_epoch=-0.3307 | train_loss_step=-0.1887 | val_crps=0.0864 | val_rmse_ema=0.1162
+[Epoch 126]  Val RMSE (masked, EMA) = 0.1176
+[progress] epoch 128/400 | train_loss=-0.2692 | train_loss_epoch=-0.2692 | train_loss_step=-0.4913 | val_crps=0.0864 | val_rmse_ema=0.1176
+[Epoch 127]  Val RMSE (masked, EMA) = 0.1161
+[progress] epoch 129/400 | train_loss=-0.3163 | train_loss_epoch=-0.3163 | train_loss_step=-0.3128 | val_crps=0.0864 | val_rmse_ema=0.1161
+[Epoch 128]  Val RMSE (masked, EMA) = 0.1187
+[progress] epoch 130/400 | train_loss=-0.2512 | train_loss_epoch=-0.2512 | train_loss_step=-0.3138 | val_crps=0.0847 | val_rmse_ema=0.1187
+[Epoch 129]  Val RMSE (masked, EMA) = 0.1161
+[progress] epoch 131/400 | train_loss=-0.2437 | train_loss_epoch=-0.2437 | train_loss_step=-0.4336 | val_crps=0.0847 | val_rmse_ema=0.1161
+[Epoch 130]  Val RMSE (masked, EMA) = 0.1155
+[progress] epoch 132/400 | train_loss=-0.3261 | train_loss_epoch=-0.3261 | train_loss_step=-0.3136 | val_crps=0.0847 | val_rmse_ema=0.1155
+[Epoch 131]  Val RMSE (masked, EMA) = 0.1173
+[progress] epoch 133/400 | train_loss=-0.2902 | train_loss_epoch=-0.2902 | train_loss_step=-0.2935 | val_crps=0.0847 | val_rmse_ema=0.1173
+[Epoch 132]  Val RMSE (masked, EMA) = 0.1195
+[progress] epoch 134/400 | train_loss=-0.2832 | train_loss_epoch=-0.2832 | train_loss_step=-0.3861 | val_crps=0.0847 | val_rmse_ema=0.1195
+[Epoch 133]  Val RMSE (masked, EMA) = 0.1173
+[progress] epoch 135/400 | train_loss=-0.2582 | train_loss_epoch=-0.2582 | train_loss_step=-0.3683 | val_crps=0.0847 | val_rmse_ema=0.1173
+[Epoch 134]  Val RMSE (masked, EMA) = 0.1162
+[progress] epoch 136/400 | train_loss=-0.3080 | train_loss_epoch=-0.3080 | train_loss_step=-0.3358 | val_crps=0.0847 | val_rmse_ema=0.1162
+[Epoch 135]  Val RMSE (masked, EMA) = 0.1163
+[progress] epoch 137/400 | train_loss=-0.2698 | train_loss_epoch=-0.2698 | train_loss_step=0.2063 | val_crps=0.0847 | val_rmse_ema=0.1163
+[Epoch 136]  Val RMSE (masked, EMA) = 0.1168
+[progress] epoch 138/400 | train_loss=-0.2361 | train_loss_epoch=-0.2361 | train_loss_step=-0.5208 | val_crps=0.0847 | val_rmse_ema=0.1168
+[Epoch 137]  Val RMSE (masked, EMA) = 0.1129
+[progress] epoch 139/400 | train_loss=-0.2196 | train_loss_epoch=-0.2196 | train_loss_step=-0.7625 | val_crps=0.0847 | val_rmse_ema=0.1129
+[Epoch 138]  Val RMSE (masked, EMA) = 0.1173
+[progress] epoch 140/400 | train_loss=-0.2967 | train_loss_epoch=-0.2967 | train_loss_step=-0.2701 | val_crps=0.0839 | val_rmse_ema=0.1173
+[Epoch 139]  Val RMSE (masked, EMA) = 0.1142
+[progress] epoch 141/400 | train_loss=-0.3059 | train_loss_epoch=-0.3059 | train_loss_step=-0.2959 | val_crps=0.0839 | val_rmse_ema=0.1142
+[Epoch 140]  Val RMSE (masked, EMA) = 0.1150
+[progress] epoch 142/400 | train_loss=-0.2884 | train_loss_epoch=-0.2884 | train_loss_step=-0.4954 | val_crps=0.0839 | val_rmse_ema=0.1150
+[Epoch 141]  Val RMSE (masked, EMA) = 0.1141
+[progress] epoch 143/400 | train_loss=-0.2163 | train_loss_epoch=-0.2163 | train_loss_step=-0.3288 | val_crps=0.0839 | val_rmse_ema=0.1141
+[Epoch 142]  Val RMSE (masked, EMA) = 0.1139
+[progress] epoch 144/400 | train_loss=-0.3132 | train_loss_epoch=-0.3132 | train_loss_step=-0.7483 | val_crps=0.0839 | val_rmse_ema=0.1139
+[Epoch 143]  Val RMSE (masked, EMA) = 0.1143
+[progress] epoch 145/400 | train_loss=-0.3120 | train_loss_epoch=-0.3120 | train_loss_step=-0.6471 | val_crps=0.0839 | val_rmse_ema=0.1143
+[Epoch 144]  Val RMSE (masked, EMA) = 0.1162
+[progress] epoch 146/400 | train_loss=-0.3179 | train_loss_epoch=-0.3179 | train_loss_step=-0.1899 | val_crps=0.0839 | val_rmse_ema=0.1162
+[Epoch 145]  Val RMSE (masked, EMA) = 0.1156
+[progress] epoch 147/400 | train_loss=-0.3005 | train_loss_epoch=-0.3005 | train_loss_step=0.0422 | val_crps=0.0839 | val_rmse_ema=0.1156
+[Epoch 146]  Val RMSE (masked, EMA) = 0.1144
+[progress] epoch 148/400 | train_loss=-0.2994 | train_loss_epoch=-0.2994 | train_loss_step=-0.5992 | val_crps=0.0839 | val_rmse_ema=0.1144
+[Epoch 147]  Val RMSE (masked, EMA) = 0.1151
+[progress] epoch 149/400 | train_loss=-0.3170 | train_loss_epoch=-0.3170 | train_loss_step=-0.6258 | val_crps=0.0839 | val_rmse_ema=0.1151
+[Epoch 148]  Val RMSE (masked, EMA) = 0.1180
+[progress] epoch 150/400 | train_loss=-0.3540 | train_loss_epoch=-0.3540 | train_loss_step=0.2688 | val_crps=0.0828 | val_rmse_ema=0.1180
+[Epoch 149]  Val RMSE (masked, EMA) = 0.1143
+[progress] epoch 151/400 | train_loss=-0.3375 | train_loss_epoch=-0.3375 | train_loss_step=-0.4969 | val_crps=0.0828 | val_rmse_ema=0.1143
+[Epoch 150]  Val RMSE (masked, EMA) = 0.1141
+[progress] epoch 152/400 | train_loss=-0.2839 | train_loss_epoch=-0.2839 | train_loss_step=0.1225 | val_crps=0.0828 | val_rmse_ema=0.1141
+[Epoch 151]  Val RMSE (masked, EMA) = 0.1139
+[progress] epoch 153/400 | train_loss=-0.3201 | train_loss_epoch=-0.3201 | train_loss_step=-0.3354 | val_crps=0.0828 | val_rmse_ema=0.1139
+[Epoch 152]  Val RMSE (masked, EMA) = 0.1132
+[progress] epoch 154/400 | train_loss=-0.3576 | train_loss_epoch=-0.3576 | train_loss_step=-0.3918 | val_crps=0.0828 | val_rmse_ema=0.1132
+[Epoch 153]  Val RMSE (masked, EMA) = 0.1141
+[progress] epoch 155/400 | train_loss=-0.3183 | train_loss_epoch=-0.3183 | train_loss_step=-0.2685 | val_crps=0.0828 | val_rmse_ema=0.1141
+[Epoch 154]  Val RMSE (masked, EMA) = 0.1119
+[progress] epoch 156/400 | train_loss=-0.3131 | train_loss_epoch=-0.3131 | train_loss_step=-0.0995 | val_crps=0.0828 | val_rmse_ema=0.1119
+[Epoch 155]  Val RMSE (masked, EMA) = 0.1143
+[progress] epoch 157/400 | train_loss=-0.3661 | train_loss_epoch=-0.3661 | train_loss_step=-0.6312 | val_crps=0.0828 | val_rmse_ema=0.1143
+[Epoch 156]  Val RMSE (masked, EMA) = 0.1131
+[progress] epoch 158/400 | train_loss=-0.3101 | train_loss_epoch=-0.3101 | train_loss_step=-0.2210 | val_crps=0.0828 | val_rmse_ema=0.1131
+[Epoch 157]  Val RMSE (masked, EMA) = 0.1167
+[progress] epoch 159/400 | train_loss=-0.3769 | train_loss_epoch=-0.3769 | train_loss_step=-0.4477 | val_crps=0.0828 | val_rmse_ema=0.1167
+[Epoch 158]  Val RMSE (masked, EMA) = 0.1142
+[progress] epoch 160/400 | train_loss=-0.3935 | train_loss_epoch=-0.3935 | train_loss_step=-0.3063 | val_crps=0.0811 | val_rmse_ema=0.1142
+[Epoch 159]  Val RMSE (masked, EMA) = 0.1128
+[progress] epoch 161/400 | train_loss=-0.3857 | train_loss_epoch=-0.3857 | train_loss_step=-0.0047 | val_crps=0.0811 | val_rmse_ema=0.1128
+[Epoch 160]  Val RMSE (masked, EMA) = 0.1139
+[progress] epoch 162/400 | train_loss=-0.3542 | train_loss_epoch=-0.3542 | train_loss_step=0.1005 | val_crps=0.0811 | val_rmse_ema=0.1139
+[Epoch 161]  Val RMSE (masked, EMA) = 0.1138
+[progress] epoch 163/400 | train_loss=-0.3769 | train_loss_epoch=-0.3769 | train_loss_step=-0.1529 | val_crps=0.0811 | val_rmse_ema=0.1138
+[Epoch 162]  Val RMSE (masked, EMA) = 0.1160
+[progress] epoch 164/400 | train_loss=-0.3794 | train_loss_epoch=-0.3794 | train_loss_step=-0.5122 | val_crps=0.0811 | val_rmse_ema=0.1160
+[Epoch 163]  Val RMSE (masked, EMA) = 0.1145
+[progress] epoch 165/400 | train_loss=-0.3856 | train_loss_epoch=-0.3856 | train_loss_step=-0.5910 | val_crps=0.0811 | val_rmse_ema=0.1145
+[Epoch 164]  Val RMSE (masked, EMA) = 0.1134
+[progress] epoch 166/400 | train_loss=-0.3786 | train_loss_epoch=-0.3786 | train_loss_step=-0.5867 | val_crps=0.0811 | val_rmse_ema=0.1134
+[Epoch 165]  Val RMSE (masked, EMA) = 0.1151
+[progress] epoch 167/400 | train_loss=-0.3549 | train_loss_epoch=-0.3549 | train_loss_step=-0.4980 | val_crps=0.0811 | val_rmse_ema=0.1151
+[Epoch 166]  Val RMSE (masked, EMA) = 0.1155
+[progress] epoch 168/400 | train_loss=-0.3588 | train_loss_epoch=-0.3588 | train_loss_step=-0.3971 | val_crps=0.0811 | val_rmse_ema=0.1155
+[Epoch 167]  Val RMSE (masked, EMA) = 0.1120
+[progress] epoch 169/400 | train_loss=-0.3810 | train_loss_epoch=-0.3810 | train_loss_step=-0.5533 | val_crps=0.0811 | val_rmse_ema=0.1120
+[Epoch 168]  Val RMSE (masked, EMA) = 0.1149
+[progress] epoch 170/400 | train_loss=-0.4057 | train_loss_epoch=-0.4057 | train_loss_step=-0.6012 | val_crps=0.0797 | val_rmse_ema=0.1149
+[Epoch 169]  Val RMSE (masked, EMA) = 0.1146
+[progress] epoch 171/400 | train_loss=-0.3618 | train_loss_epoch=-0.3618 | train_loss_step=-0.4756 | val_crps=0.0797 | val_rmse_ema=0.1146
+[Epoch 170]  Val RMSE (masked, EMA) = 0.1122
+[progress] epoch 172/400 | train_loss=-0.3860 | train_loss_epoch=-0.3860 | train_loss_step=-0.5268 | val_crps=0.0797 | val_rmse_ema=0.1122
+[Epoch 171]  Val RMSE (masked, EMA) = 0.1084
+[progress] epoch 173/400 | train_loss=-0.4119 | train_loss_epoch=-0.4119 | train_loss_step=-0.4228 | val_crps=0.0797 | val_rmse_ema=0.1084
+[Epoch 172]  Val RMSE (masked, EMA) = 0.1118
+[progress] epoch 174/400 | train_loss=-0.4125 | train_loss_epoch=-0.4125 | train_loss_step=-0.5228 | val_crps=0.0797 | val_rmse_ema=0.1118
+[Epoch 173]  Val RMSE (masked, EMA) = 0.1119
+[progress] epoch 175/400 | train_loss=-0.3699 | train_loss_epoch=-0.3699 | train_loss_step=-0.4176 | val_crps=0.0797 | val_rmse_ema=0.1119
+[Epoch 174]  Val RMSE (masked, EMA) = 0.1140
+[progress] epoch 176/400 | train_loss=-0.4030 | train_loss_epoch=-0.4030 | train_loss_step=-0.3829 | val_crps=0.0797 | val_rmse_ema=0.1140
+[Epoch 175]  Val RMSE (masked, EMA) = 0.1134
+[progress] epoch 177/400 | train_loss=-0.4045 | train_loss_epoch=-0.4045 | train_loss_step=-0.4714 | val_crps=0.0797 | val_rmse_ema=0.1134
+[Epoch 176]  Val RMSE (masked, EMA) = 0.1152
+[progress] epoch 178/400 | train_loss=-0.4258 | train_loss_epoch=-0.4258 | train_loss_step=-0.2759 | val_crps=0.0797 | val_rmse_ema=0.1152
+[Epoch 177]  Val RMSE (masked, EMA) = 0.1135
+[progress] epoch 179/400 | train_loss=-0.3883 | train_loss_epoch=-0.3883 | train_loss_step=-0.6807 | val_crps=0.0797 | val_rmse_ema=0.1135
+[Epoch 178]  Val RMSE (masked, EMA) = 0.1117
+[progress] epoch 180/400 | train_loss=-0.4451 | train_loss_epoch=-0.4451 | train_loss_step=-0.4088 | val_crps=0.0786 | val_rmse_ema=0.1117
+[Epoch 179]  Val RMSE (masked, EMA) = 0.1110
+[progress] epoch 181/400 | train_loss=-0.4147 | train_loss_epoch=-0.4147 | train_loss_step=-0.4958 | val_crps=0.0786 | val_rmse_ema=0.1110
+[Epoch 180]  Val RMSE (masked, EMA) = 0.1156
+[progress] epoch 182/400 | train_loss=-0.4263 | train_loss_epoch=-0.4263 | train_loss_step=-0.2674 | val_crps=0.0786 | val_rmse_ema=0.1156
+[Epoch 181]  Val RMSE (masked, EMA) = 0.1144
+[progress] epoch 183/400 | train_loss=-0.4581 | train_loss_epoch=-0.4581 | train_loss_step=-0.5130 | val_crps=0.0786 | val_rmse_ema=0.1144
+[Epoch 182]  Val RMSE (masked, EMA) = 0.1133
+[progress] epoch 184/400 | train_loss=-0.4599 | train_loss_epoch=-0.4599 | train_loss_step=-0.4231 | val_crps=0.0786 | val_rmse_ema=0.1133
+[Epoch 183]  Val RMSE (masked, EMA) = 0.1142
+[progress] epoch 185/400 | train_loss=-0.3811 | train_loss_epoch=-0.3811 | train_loss_step=-0.6217 | val_crps=0.0786 | val_rmse_ema=0.1142
+[Epoch 184]  Val RMSE (masked, EMA) = 0.1113
+[progress] epoch 186/400 | train_loss=-0.4194 | train_loss_epoch=-0.4194 | train_loss_step=-0.6678 | val_crps=0.0786 | val_rmse_ema=0.1113
+[Epoch 185]  Val RMSE (masked, EMA) = 0.1116
+[progress] epoch 187/400 | train_loss=-0.4118 | train_loss_epoch=-0.4118 | train_loss_step=-0.4682 | val_crps=0.0786 | val_rmse_ema=0.1116
+[Epoch 186]  Val RMSE (masked, EMA) = 0.1100
+[progress] epoch 188/400 | train_loss=-0.3833 | train_loss_epoch=-0.3833 | train_loss_step=-0.4944 | val_crps=0.0786 | val_rmse_ema=0.1100
+[Epoch 187]  Val RMSE (masked, EMA) = 0.1113
+[progress] epoch 189/400 | train_loss=-0.4709 | train_loss_epoch=-0.4709 | train_loss_step=-0.4629 | val_crps=0.0786 | val_rmse_ema=0.1113
+[Epoch 188]  Val RMSE (masked, EMA) = 0.1129
+[progress] epoch 190/400 | train_loss=-0.4410 | train_loss_epoch=-0.4410 | train_loss_step=-0.4105 | val_crps=0.0780 | val_rmse_ema=0.1129
+[Epoch 189]  Val RMSE (masked, EMA) = 0.1114
+[progress] epoch 191/400 | train_loss=-0.4441 | train_loss_epoch=-0.4441 | train_loss_step=-0.6519 | val_crps=0.0780 | val_rmse_ema=0.1114
+[Epoch 190]  Val RMSE (masked, EMA) = 0.1112
+[progress] epoch 192/400 | train_loss=-0.3824 | train_loss_epoch=-0.3824 | train_loss_step=-0.7816 | val_crps=0.0780 | val_rmse_ema=0.1112
+[Epoch 191]  Val RMSE (masked, EMA) = 0.1090
+[progress] epoch 193/400 | train_loss=-0.3825 | train_loss_epoch=-0.3825 | train_loss_step=-0.4511 | val_crps=0.0780 | val_rmse_ema=0.1090
+[Epoch 192]  Val RMSE (masked, EMA) = 0.1081
+[progress] epoch 194/400 | train_loss=-0.4506 | train_loss_epoch=-0.4506 | train_loss_step=-0.8046 | val_crps=0.0780 | val_rmse_ema=0.1081
+[Epoch 193]  Val RMSE (masked, EMA) = 0.1079
+[progress] epoch 195/400 | train_loss=-0.3944 | train_loss_epoch=-0.3944 | train_loss_step=-0.3076 | val_crps=0.0780 | val_rmse_ema=0.1079
+[Epoch 194]  Val RMSE (masked, EMA) = 0.1100
+[progress] epoch 196/400 | train_loss=-0.3465 | train_loss_epoch=-0.3465 | train_loss_step=-0.6060 | val_crps=0.0780 | val_rmse_ema=0.1100
+[Epoch 195]  Val RMSE (masked, EMA) = 0.1112
+[progress] epoch 197/400 | train_loss=-0.4411 | train_loss_epoch=-0.4411 | train_loss_step=-0.6376 | val_crps=0.0780 | val_rmse_ema=0.1112
+[Epoch 196]  Val RMSE (masked, EMA) = 0.1077
+[progress] epoch 198/400 | train_loss=-0.4724 | train_loss_epoch=-0.4724 | train_loss_step=-0.3378 | val_crps=0.0780 | val_rmse_ema=0.1077
+[Epoch 197]  Val RMSE (masked, EMA) = 0.1105
+[progress] epoch 199/400 | train_loss=-0.4393 | train_loss_epoch=-0.4393 | train_loss_step=-0.6492 | val_crps=0.0780 | val_rmse_ema=0.1105
+[Epoch 198]  Val RMSE (masked, EMA) = 0.1122
+[progress] epoch 200/400 | train_loss=-0.4049 | train_loss_epoch=-0.4049 | train_loss_step=-0.4492 | val_crps=0.0771 | val_rmse_ema=0.1122
+[Epoch 199]  Val RMSE (masked, EMA) = 0.1103
+[progress] epoch 201/400 | train_loss=-0.3701 | train_loss_epoch=-0.3701 | train_loss_step=-0.5076 | val_crps=0.0771 | val_rmse_ema=0.1103
+[Epoch 200]  Val RMSE (masked, EMA) = 0.1101
+[progress] epoch 202/400 | train_loss=-0.4465 | train_loss_epoch=-0.4465 | train_loss_step=-0.5568 | val_crps=0.0771 | val_rmse_ema=0.1101
+[Epoch 201]  Val RMSE (masked, EMA) = 0.1109
+[progress] epoch 203/400 | train_loss=-0.4572 | train_loss_epoch=-0.4572 | train_loss_step=-0.7662 | val_crps=0.0771 | val_rmse_ema=0.1109
+[Epoch 202]  Val RMSE (masked, EMA) = 0.1111
+[progress] epoch 204/400 | train_loss=-0.4109 | train_loss_epoch=-0.4109 | train_loss_step=-0.4817 | val_crps=0.0771 | val_rmse_ema=0.1111
+[Epoch 203]  Val RMSE (masked, EMA) = 0.1089
+[progress] epoch 205/400 | train_loss=-0.4670 | train_loss_epoch=-0.4670 | train_loss_step=-0.5529 | val_crps=0.0771 | val_rmse_ema=0.1089
+[Epoch 204]  Val RMSE (masked, EMA) = 0.1096
+[progress] epoch 206/400 | train_loss=-0.4452 | train_loss_epoch=-0.4452 | train_loss_step=-0.5927 | val_crps=0.0771 | val_rmse_ema=0.1096
+[Epoch 205]  Val RMSE (masked, EMA) = 0.1075
+[progress] epoch 207/400 | train_loss=-0.4243 | train_loss_epoch=-0.4243 | train_loss_step=-0.2931 | val_crps=0.0771 | val_rmse_ema=0.1075
+[Epoch 206]  Val RMSE (masked, EMA) = 0.1089
+[progress] epoch 208/400 | train_loss=-0.4612 | train_loss_epoch=-0.4612 | train_loss_step=-0.5886 | val_crps=0.0771 | val_rmse_ema=0.1089
+[Epoch 207]  Val RMSE (masked, EMA) = 0.1095
+[progress] epoch 209/400 | train_loss=-0.4490 | train_loss_epoch=-0.4490 | train_loss_step=-0.0975 | val_crps=0.0771 | val_rmse_ema=0.1095
+[Epoch 208]  Val RMSE (masked, EMA) = 0.1065
+[progress] epoch 210/400 | train_loss=-0.4299 | train_loss_epoch=-0.4299 | train_loss_step=-0.1524 | val_crps=0.0762 | val_rmse_ema=0.1065
+[Epoch 209]  Val RMSE (masked, EMA) = 0.1103
+[progress] epoch 211/400 | train_loss=-0.4238 | train_loss_epoch=-0.4238 | train_loss_step=-0.2087 | val_crps=0.0762 | val_rmse_ema=0.1103
+[Epoch 210]  Val RMSE (masked, EMA) = 0.1101
+[progress] epoch 212/400 | train_loss=-0.5022 | train_loss_epoch=-0.5022 | train_loss_step=0.2817 | val_crps=0.0762 | val_rmse_ema=0.1101
+[Epoch 211]  Val RMSE (masked, EMA) = 0.1071
+[progress] epoch 213/400 | train_loss=-0.4291 | train_loss_epoch=-0.4291 | train_loss_step=0.2688 | val_crps=0.0762 | val_rmse_ema=0.1071
+[Epoch 212]  Val RMSE (masked, EMA) = 0.1056
+[progress] epoch 214/400 | train_loss=-0.4696 | train_loss_epoch=-0.4696 | train_loss_step=-0.3526 | val_crps=0.0762 | val_rmse_ema=0.1056
+[Epoch 213]  Val RMSE (masked, EMA) = 0.1079
+[progress] epoch 215/400 | train_loss=-0.5423 | train_loss_epoch=-0.5423 | train_loss_step=-0.7673 | val_crps=0.0762 | val_rmse_ema=0.1079
+[Epoch 214]  Val RMSE (masked, EMA) = 0.1051
+[progress] epoch 216/400 | train_loss=-0.4981 | train_loss_epoch=-0.4981 | train_loss_step=0.3627 | val_crps=0.0762 | val_rmse_ema=0.1051
+[Epoch 215]  Val RMSE (masked, EMA) = 0.1077
+[progress] epoch 217/400 | train_loss=-0.4344 | train_loss_epoch=-0.4344 | train_loss_step=-0.7416 | val_crps=0.0762 | val_rmse_ema=0.1077
+[Epoch 216]  Val RMSE (masked, EMA) = 0.1083
+[progress] epoch 218/400 | train_loss=-0.4758 | train_loss_epoch=-0.4758 | train_loss_step=-0.7559 | val_crps=0.0762 | val_rmse_ema=0.1083
+[Epoch 217]  Val RMSE (masked, EMA) = 0.1065
+[progress] epoch 219/400 | train_loss=-0.4891 | train_loss_epoch=-0.4891 | train_loss_step=-0.5674 | val_crps=0.0762 | val_rmse_ema=0.1065
+[Epoch 218]  Val RMSE (masked, EMA) = 0.1066
+[progress] epoch 220/400 | train_loss=-0.4413 | train_loss_epoch=-0.4413 | train_loss_step=-0.7421 | val_crps=0.0756 | val_rmse_ema=0.1066
+[Epoch 219]  Val RMSE (masked, EMA) = 0.1094
+[progress] epoch 221/400 | train_loss=-0.4360 | train_loss_epoch=-0.4360 | train_loss_step=-0.3237 | val_crps=0.0756 | val_rmse_ema=0.1094
+[Epoch 220]  Val RMSE (masked, EMA) = 0.1082
+[progress] epoch 222/400 | train_loss=-0.5188 | train_loss_epoch=-0.5188 | train_loss_step=-0.5036 | val_crps=0.0756 | val_rmse_ema=0.1082
+[Epoch 221]  Val RMSE (masked, EMA) = 0.1093
+[progress] epoch 223/400 | train_loss=-0.4944 | train_loss_epoch=-0.4944 | train_loss_step=-0.6941 | val_crps=0.0756 | val_rmse_ema=0.1093
+[Epoch 222]  Val RMSE (masked, EMA) = 0.1077
+[progress] epoch 224/400 | train_loss=-0.4828 | train_loss_epoch=-0.4828 | train_loss_step=-0.5390 | val_crps=0.0756 | val_rmse_ema=0.1077
+[Epoch 223]  Val RMSE (masked, EMA) = 0.1105
+[progress] epoch 225/400 | train_loss=-0.4902 | train_loss_epoch=-0.4902 | train_loss_step=-0.6160 | val_crps=0.0756 | val_rmse_ema=0.1105
+[Epoch 224]  Val RMSE (masked, EMA) = 0.1082
+[progress] epoch 226/400 | train_loss=-0.4248 | train_loss_epoch=-0.4248 | train_loss_step=-0.5724 | val_crps=0.0756 | val_rmse_ema=0.1082
+[Epoch 225]  Val RMSE (masked, EMA) = 0.1074
+[progress] epoch 227/400 | train_loss=-0.4923 | train_loss_epoch=-0.4923 | train_loss_step=-0.6426 | val_crps=0.0756 | val_rmse_ema=0.1074
+[Epoch 226]  Val RMSE (masked, EMA) = 0.1099
+[progress] epoch 228/400 | train_loss=-0.4784 | train_loss_epoch=-0.4784 | train_loss_step=0.0529 | val_crps=0.0756 | val_rmse_ema=0.1099
+[Epoch 227]  Val RMSE (masked, EMA) = 0.1075
+[progress] epoch 229/400 | train_loss=-0.4950 | train_loss_epoch=-0.4950 | train_loss_step=0.1676 | val_crps=0.0756 | val_rmse_ema=0.1075
+[Epoch 228]  Val RMSE (masked, EMA) = 0.1086
+[progress] epoch 230/400 | train_loss=-0.4305 | train_loss_epoch=-0.4305 | train_loss_step=-0.6005 | val_crps=0.0749 | val_rmse_ema=0.1086
+[Epoch 229]  Val RMSE (masked, EMA) = 0.1071
+[progress] epoch 231/400 | train_loss=-0.4824 | train_loss_epoch=-0.4824 | train_loss_step=-0.5031 | val_crps=0.0749 | val_rmse_ema=0.1071
+[Epoch 230]  Val RMSE (masked, EMA) = 0.1097
+[progress] epoch 232/400 | train_loss=-0.4449 | train_loss_epoch=-0.4449 | train_loss_step=-0.6963 | val_crps=0.0749 | val_rmse_ema=0.1097
+[Epoch 231]  Val RMSE (masked, EMA) = 0.1056
+[progress] epoch 233/400 | train_loss=-0.4652 | train_loss_epoch=-0.4652 | train_loss_step=-0.5453 | val_crps=0.0749 | val_rmse_ema=0.1056
+[Epoch 232]  Val RMSE (masked, EMA) = 0.1066
+[progress] epoch 234/400 | train_loss=-0.4751 | train_loss_epoch=-0.4751 | train_loss_step=0.4800 | val_crps=0.0749 | val_rmse_ema=0.1066
+[Epoch 233]  Val RMSE (masked, EMA) = 0.1048
+[progress] epoch 235/400 | train_loss=-0.5072 | train_loss_epoch=-0.5072 | train_loss_step=-0.7765 | val_crps=0.0749 | val_rmse_ema=0.1048
+[Epoch 234]  Val RMSE (masked, EMA) = 0.1083
+[progress] epoch 236/400 | train_loss=-0.4921 | train_loss_epoch=-0.4921 | train_loss_step=-0.7267 | val_crps=0.0749 | val_rmse_ema=0.1083
+[Epoch 235]  Val RMSE (masked, EMA) = 0.1066
+[progress] epoch 237/400 | train_loss=-0.5444 | train_loss_epoch=-0.5444 | train_loss_step=-0.4981 | val_crps=0.0749 | val_rmse_ema=0.1066
+[Epoch 236]  Val RMSE (masked, EMA) = 0.1066
+[progress] epoch 238/400 | train_loss=-0.5006 | train_loss_epoch=-0.5006 | train_loss_step=-0.5549 | val_crps=0.0749 | val_rmse_ema=0.1066
+[Epoch 237]  Val RMSE (masked, EMA) = 0.1055
+[progress] epoch 239/400 | train_loss=-0.5176 | train_loss_epoch=-0.5176 | train_loss_step=-0.6961 | val_crps=0.0749 | val_rmse_ema=0.1055
+[Epoch 238]  Val RMSE (masked, EMA) = 0.1079
+[progress] epoch 240/400 | train_loss=-0.5511 | train_loss_epoch=-0.5511 | train_loss_step=-0.9114 | val_crps=0.0745 | val_rmse_ema=0.1079
+[Epoch 239]  Val RMSE (masked, EMA) = 0.1050
+[progress] epoch 241/400 | train_loss=-0.4682 | train_loss_epoch=-0.4682 | train_loss_step=-0.5286 | val_crps=0.0745 | val_rmse_ema=0.1050
+[Epoch 240]  Val RMSE (masked, EMA) = 0.1049
+[progress] epoch 242/400 | train_loss=-0.5254 | train_loss_epoch=-0.5254 | train_loss_step=-0.7891 | val_crps=0.0745 | val_rmse_ema=0.1049
+[Epoch 241]  Val RMSE (masked, EMA) = 0.1084
+[progress] epoch 243/400 | train_loss=-0.5348 | train_loss_epoch=-0.5348 | train_loss_step=-0.1066 | val_crps=0.0745 | val_rmse_ema=0.1084
+[Epoch 242]  Val RMSE (masked, EMA) = 0.1084
+[progress] epoch 244/400 | train_loss=-0.5401 | train_loss_epoch=-0.5401 | train_loss_step=-0.4316 | val_crps=0.0745 | val_rmse_ema=0.1084
+[Epoch 243]  Val RMSE (masked, EMA) = 0.1088
+[progress] epoch 245/400 | train_loss=-0.5079 | train_loss_epoch=-0.5079 | train_loss_step=-0.8160 | val_crps=0.0745 | val_rmse_ema=0.1088
+[Epoch 244]  Val RMSE (masked, EMA) = 0.1073
+[progress] epoch 246/400 | train_loss=-0.5215 | train_loss_epoch=-0.5215 | train_loss_step=0.3866 | val_crps=0.0745 | val_rmse_ema=0.1073
+[Epoch 245]  Val RMSE (masked, EMA) = 0.1071
+[progress] epoch 247/400 | train_loss=-0.5726 | train_loss_epoch=-0.5726 | train_loss_step=-0.1443 | val_crps=0.0745 | val_rmse_ema=0.1071
+[Epoch 246]  Val RMSE (masked, EMA) = 0.1074
+[progress] epoch 248/400 | train_loss=-0.5634 | train_loss_epoch=-0.5634 | train_loss_step=-0.2723 | val_crps=0.0745 | val_rmse_ema=0.1074
+[Epoch 247]  Val RMSE (masked, EMA) = 0.1080
+[progress] epoch 249/400 | train_loss=-0.4331 | train_loss_epoch=-0.4331 | train_loss_step=-0.1571 | val_crps=0.0745 | val_rmse_ema=0.1080
+[Epoch 248]  Val RMSE (masked, EMA) = 0.1087
+[progress] epoch 250/400 | train_loss=-0.5149 | train_loss_epoch=-0.5149 | train_loss_step=-0.8341 | val_crps=0.0740 | val_rmse_ema=0.1087
+[Epoch 249]  Val RMSE (masked, EMA) = 0.1070
+[progress] epoch 251/400 | train_loss=-0.5490 | train_loss_epoch=-0.5490 | train_loss_step=-0.7555 | val_crps=0.0740 | val_rmse_ema=0.1070
+[Epoch 250]  Val RMSE (masked, EMA) = 0.1074
+[progress] epoch 252/400 | train_loss=-0.5387 | train_loss_epoch=-0.5387 | train_loss_step=0.0705 | val_crps=0.0740 | val_rmse_ema=0.1074
+[Epoch 251]  Val RMSE (masked, EMA) = 0.1061
+[progress] epoch 253/400 | train_loss=-0.4753 | train_loss_epoch=-0.4753 | train_loss_step=-0.6344 | val_crps=0.0740 | val_rmse_ema=0.1061
+[Epoch 252]  Val RMSE (masked, EMA) = 0.1078
+[progress] epoch 254/400 | train_loss=-0.5128 | train_loss_epoch=-0.5128 | train_loss_step=0.8919 | val_crps=0.0740 | val_rmse_ema=0.1078
+[Epoch 253]  Val RMSE (masked, EMA) = 0.1035
+[progress] epoch 255/400 | train_loss=-0.4674 | train_loss_epoch=-0.4674 | train_loss_step=-0.5579 | val_crps=0.0740 | val_rmse_ema=0.1035
+[Epoch 254]  Val RMSE (masked, EMA) = 0.1060
+[progress] epoch 256/400 | train_loss=-0.6097 | train_loss_epoch=-0.6097 | train_loss_step=-0.5406 | val_crps=0.0740 | val_rmse_ema=0.1060
+[Epoch 255]  Val RMSE (masked, EMA) = 0.1065
+[progress] epoch 257/400 | train_loss=-0.5730 | train_loss_epoch=-0.5730 | train_loss_step=-0.7328 | val_crps=0.0740 | val_rmse_ema=0.1065
+[Epoch 256]  Val RMSE (masked, EMA) = 0.1051
+[progress] epoch 258/400 | train_loss=-0.5332 | train_loss_epoch=-0.5332 | train_loss_step=-0.7846 | val_crps=0.0740 | val_rmse_ema=0.1051
+[Epoch 257]  Val RMSE (masked, EMA) = 0.1047
+[progress] epoch 259/400 | train_loss=-0.4555 | train_loss_epoch=-0.4555 | train_loss_step=-0.4906 | val_crps=0.0740 | val_rmse_ema=0.1047
+[Epoch 258]  Val RMSE (masked, EMA) = 0.1057
+[progress] epoch 260/400 | train_loss=-0.5036 | train_loss_epoch=-0.5036 | train_loss_step=-0.2473 | val_crps=0.0738 | val_rmse_ema=0.1057
+[Epoch 259]  Val RMSE (masked, EMA) = 0.1061
+[progress] epoch 261/400 | train_loss=-0.5571 | train_loss_epoch=-0.5571 | train_loss_step=-0.1913 | val_crps=0.0738 | val_rmse_ema=0.1061
+[Epoch 260]  Val RMSE (masked, EMA) = 0.1091
+[progress] epoch 262/400 | train_loss=-0.5881 | train_loss_epoch=-0.5881 | train_loss_step=-0.8460 | val_crps=0.0738 | val_rmse_ema=0.1091
+[Epoch 261]  Val RMSE (masked, EMA) = 0.1074
+[progress] epoch 263/400 | train_loss=-0.5916 | train_loss_epoch=-0.5916 | train_loss_step=-0.8849 | val_crps=0.0738 | val_rmse_ema=0.1074
+[Epoch 262]  Val RMSE (masked, EMA) = 0.1057
+[progress] epoch 264/400 | train_loss=-0.4770 | train_loss_epoch=-0.4770 | train_loss_step=-0.7946 | val_crps=0.0738 | val_rmse_ema=0.1057
+[Epoch 263]  Val RMSE (masked, EMA) = 0.1050
+[progress] epoch 265/400 | train_loss=-0.5414 | train_loss_epoch=-0.5414 | train_loss_step=-0.7188 | val_crps=0.0738 | val_rmse_ema=0.1050
+[Epoch 264]  Val RMSE (masked, EMA) = 0.1052
+[progress] epoch 266/400 | train_loss=-0.5692 | train_loss_epoch=-0.5692 | train_loss_step=0.2844 | val_crps=0.0738 | val_rmse_ema=0.1052
+[Epoch 265]  Val RMSE (masked, EMA) = 0.1053
+[progress] epoch 267/400 | train_loss=-0.5769 | train_loss_epoch=-0.5769 | train_loss_step=-0.9378 | val_crps=0.0738 | val_rmse_ema=0.1053
+[Epoch 266]  Val RMSE (masked, EMA) = 0.1075
+[progress] epoch 268/400 | train_loss=-0.5261 | train_loss_epoch=-0.5261 | train_loss_step=-0.6231 | val_crps=0.0738 | val_rmse_ema=0.1075
+[Epoch 267]  Val RMSE (masked, EMA) = 0.1067
+[progress] epoch 269/400 | train_loss=-0.6089 | train_loss_epoch=-0.6089 | train_loss_step=-0.3687 | val_crps=0.0738 | val_rmse_ema=0.1067
+[Epoch 268]  Val RMSE (masked, EMA) = 0.1043
+[progress] epoch 270/400 | train_loss=-0.5162 | train_loss_epoch=-0.5162 | train_loss_step=-0.5556 | val_crps=0.0737 | val_rmse_ema=0.1043
+[Epoch 269]  Val RMSE (masked, EMA) = 0.1068
+[progress] epoch 271/400 | train_loss=-0.5664 | train_loss_epoch=-0.5664 | train_loss_step=-0.7770 | val_crps=0.0737 | val_rmse_ema=0.1068
+[Epoch 270]  Val RMSE (masked, EMA) = 0.1054
+[progress] epoch 272/400 | train_loss=-0.5342 | train_loss_epoch=-0.5342 | train_loss_step=-0.2043 | val_crps=0.0737 | val_rmse_ema=0.1054
+[Epoch 271]  Val RMSE (masked, EMA) = 0.1072
+[progress] epoch 273/400 | train_loss=-0.6031 | train_loss_epoch=-0.6031 | train_loss_step=-0.1078 | val_crps=0.0737 | val_rmse_ema=0.1072
+[Epoch 272]  Val RMSE (masked, EMA) = 0.1082
+[progress] epoch 274/400 | train_loss=-0.5786 | train_loss_epoch=-0.5786 | train_loss_step=-0.6799 | val_crps=0.0737 | val_rmse_ema=0.1082
+[Epoch 273]  Val RMSE (masked, EMA) = 0.1056
+[progress] epoch 275/400 | train_loss=-0.5746 | train_loss_epoch=-0.5746 | train_loss_step=-0.7550 | val_crps=0.0737 | val_rmse_ema=0.1056
+[Epoch 274]  Val RMSE (masked, EMA) = 0.1066
+[progress] epoch 276/400 | train_loss=-0.5899 | train_loss_epoch=-0.5899 | train_loss_step=-0.4904 | val_crps=0.0737 | val_rmse_ema=0.1066
+[Epoch 275]  Val RMSE (masked, EMA) = 0.1026
+[progress] epoch 277/400 | train_loss=-0.5563 | train_loss_epoch=-0.5563 | train_loss_step=-0.7340 | val_crps=0.0737 | val_rmse_ema=0.1026
+[Epoch 276]  Val RMSE (masked, EMA) = 0.1048
+[progress] epoch 278/400 | train_loss=-0.5707 | train_loss_epoch=-0.5707 | train_loss_step=-0.8483 | val_crps=0.0737 | val_rmse_ema=0.1048
+[Epoch 277]  Val RMSE (masked, EMA) = 0.1053
+[progress] epoch 279/400 | train_loss=-0.6197 | train_loss_epoch=-0.6197 | train_loss_step=-0.7318 | val_crps=0.0737 | val_rmse_ema=0.1053
+[Epoch 278]  Val RMSE (masked, EMA) = 0.1055
+[progress] epoch 280/400 | train_loss=-0.5067 | train_loss_epoch=-0.5067 | train_loss_step=-0.6132 | val_crps=0.0734 | val_rmse_ema=0.1055
+[Epoch 279]  Val RMSE (masked, EMA) = 0.1047
+[progress] epoch 281/400 | train_loss=-0.5896 | train_loss_epoch=-0.5896 | train_loss_step=-0.5295 | val_crps=0.0734 | val_rmse_ema=0.1047
+[Epoch 280]  Val RMSE (masked, EMA) = 0.1045
+[progress] epoch 282/400 | train_loss=-0.5911 | train_loss_epoch=-0.5911 | train_loss_step=-0.0244 | val_crps=0.0734 | val_rmse_ema=0.1045
+[Epoch 281]  Val RMSE (masked, EMA) = 0.1042
+[progress] epoch 283/400 | train_loss=-0.6173 | train_loss_epoch=-0.6173 | train_loss_step=-0.7909 | val_crps=0.0734 | val_rmse_ema=0.1042
+[Epoch 282]  Val RMSE (masked, EMA) = 0.1032
+[progress] epoch 284/400 | train_loss=-0.6095 | train_loss_epoch=-0.6095 | train_loss_step=-0.8966 | val_crps=0.0734 | val_rmse_ema=0.1032
+[Epoch 283]  Val RMSE (masked, EMA) = 0.1041
+[progress] epoch 285/400 | train_loss=-0.6163 | train_loss_epoch=-0.6163 | train_loss_step=-0.1804 | val_crps=0.0734 | val_rmse_ema=0.1041
+[Epoch 284]  Val RMSE (masked, EMA) = 0.1046
+[progress] epoch 286/400 | train_loss=-0.5909 | train_loss_epoch=-0.5909 | train_loss_step=0.0737 | val_crps=0.0734 | val_rmse_ema=0.1046
+[Epoch 285]  Val RMSE (masked, EMA) = 0.1059
+[progress] epoch 287/400 | train_loss=-0.6018 | train_loss_epoch=-0.6018 | train_loss_step=-0.5355 | val_crps=0.0734 | val_rmse_ema=0.1059
+[Epoch 286]  Val RMSE (masked, EMA) = 0.1038
+[progress] epoch 288/400 | train_loss=-0.5695 | train_loss_epoch=-0.5695 | train_loss_step=-0.8564 | val_crps=0.0734 | val_rmse_ema=0.1038
+[Epoch 287]  Val RMSE (masked, EMA) = 0.1042
+[progress] epoch 289/400 | train_loss=-0.6111 | train_loss_epoch=-0.6111 | train_loss_step=-0.6052 | val_crps=0.0734 | val_rmse_ema=0.1042
+[Epoch 288]  Val RMSE (masked, EMA) = 0.1022
+[progress] epoch 290/400 | train_loss=-0.6036 | train_loss_epoch=-0.6036 | train_loss_step=-1.0021 | val_crps=0.0730 | val_rmse_ema=0.1022
+[Epoch 289]  Val RMSE (masked, EMA) = 0.1053
+[progress] epoch 291/400 | train_loss=-0.5801 | train_loss_epoch=-0.5801 | train_loss_step=-0.7426 | val_crps=0.0730 | val_rmse_ema=0.1053
+[Epoch 290]  Val RMSE (masked, EMA) = 0.1048
+[progress] epoch 292/400 | train_loss=-0.6025 | train_loss_epoch=-0.6025 | train_loss_step=-0.9712 | val_crps=0.0730 | val_rmse_ema=0.1048
+[Epoch 291]  Val RMSE (masked, EMA) = 0.1073
+[progress] epoch 293/400 | train_loss=-0.5545 | train_loss_epoch=-0.5545 | train_loss_step=-0.9801 | val_crps=0.0730 | val_rmse_ema=0.1073
+[Epoch 292]  Val RMSE (masked, EMA) = 0.1005
+[progress] epoch 294/400 | train_loss=-0.6596 | train_loss_epoch=-0.6596 | train_loss_step=-0.8914 | val_crps=0.0730 | val_rmse_ema=0.1005
+[Epoch 293]  Val RMSE (masked, EMA) = 0.1013
+[progress] epoch 295/400 | train_loss=-0.6504 | train_loss_epoch=-0.6504 | train_loss_step=-0.9683 | val_crps=0.0730 | val_rmse_ema=0.1013
+[Epoch 294]  Val RMSE (masked, EMA) = 0.1042
+[progress] epoch 296/400 | train_loss=-0.6727 | train_loss_epoch=-0.6727 | train_loss_step=-0.8736 | val_crps=0.0730 | val_rmse_ema=0.1042
+[Epoch 295]  Val RMSE (masked, EMA) = 0.1021
+[progress] epoch 297/400 | train_loss=-0.6326 | train_loss_epoch=-0.6326 | train_loss_step=-1.0788 | val_crps=0.0730 | val_rmse_ema=0.1021
+[Epoch 296]  Val RMSE (masked, EMA) = 0.1004
+[progress] epoch 298/400 | train_loss=-0.6479 | train_loss_epoch=-0.6479 | train_loss_step=-0.9025 | val_crps=0.0730 | val_rmse_ema=0.1004
+[Epoch 297]  Val RMSE (masked, EMA) = 0.1016
+[progress] epoch 299/400 | train_loss=-0.5631 | train_loss_epoch=-0.5631 | train_loss_step=-0.5133 | val_crps=0.0730 | val_rmse_ema=0.1016
+[Epoch 298]  Val RMSE (masked, EMA) = 0.1030
+[progress] epoch 300/400 | train_loss=-0.5662 | train_loss_epoch=-0.5662 | train_loss_step=-0.7750 | val_crps=0.0728 | val_rmse_ema=0.1030
+[Epoch 299]  Val RMSE (masked, EMA) = 0.1007
+[progress] epoch 301/400 | train_loss=-0.6442 | train_loss_epoch=-0.6442 | train_loss_step=0.3877 | val_crps=0.0728 | val_rmse_ema=0.1007
+[Epoch 300]  Val RMSE (masked, EMA) = 0.1022
+[progress] epoch 302/400 | train_loss=-0.6314 | train_loss_epoch=-0.6314 | train_loss_step=-0.8122 | val_crps=0.0728 | val_rmse_ema=0.1022
+[Epoch 301]  Val RMSE (masked, EMA) = 0.1018
+[progress] epoch 303/400 | train_loss=-0.5354 | train_loss_epoch=-0.5354 | train_loss_step=-1.1223 | val_crps=0.0728 | val_rmse_ema=0.1018
+[Epoch 302]  Val RMSE (masked, EMA) = 0.1012
+[progress] epoch 304/400 | train_loss=-0.6560 | train_loss_epoch=-0.6560 | train_loss_step=-0.5046 | val_crps=0.0728 | val_rmse_ema=0.1012
+[Epoch 303]  Val RMSE (masked, EMA) = 0.1043
+[progress] epoch 305/400 | train_loss=-0.6709 | train_loss_epoch=-0.6709 | train_loss_step=-0.7399 | val_crps=0.0728 | val_rmse_ema=0.1043
+[Epoch 304]  Val RMSE (masked, EMA) = 0.1025
+[progress] epoch 306/400 | train_loss=-0.6517 | train_loss_epoch=-0.6517 | train_loss_step=-0.9255 | val_crps=0.0728 | val_rmse_ema=0.1025
+[Epoch 305]  Val RMSE (masked, EMA) = 0.1048
+[progress] epoch 307/400 | train_loss=-0.5533 | train_loss_epoch=-0.5533 | train_loss_step=-0.4979 | val_crps=0.0728 | val_rmse_ema=0.1048
+[Epoch 306]  Val RMSE (masked, EMA) = 0.1040
+[progress] epoch 308/400 | train_loss=-0.6118 | train_loss_epoch=-0.6118 | train_loss_step=-0.7066 | val_crps=0.0728 | val_rmse_ema=0.1040
+[Epoch 307]  Val RMSE (masked, EMA) = 0.1031
+[progress] epoch 309/400 | train_loss=-0.6211 | train_loss_epoch=-0.6211 | train_loss_step=-0.7266 | val_crps=0.0728 | val_rmse_ema=0.1031
+[Epoch 308]  Val RMSE (masked, EMA) = 0.1013
+[progress] epoch 310/400 | train_loss=-0.6224 | train_loss_epoch=-0.6224 | train_loss_step=-0.4502 | val_crps=0.0731 | val_rmse_ema=0.1013
+[Epoch 309]  Val RMSE (masked, EMA) = 0.1034
+[progress] epoch 311/400 | train_loss=-0.6345 | train_loss_epoch=-0.6345 | train_loss_step=-0.8797 | val_crps=0.0731 | val_rmse_ema=0.1034
+[Epoch 310]  Val RMSE (masked, EMA) = 0.1029
+[progress] epoch 312/400 | train_loss=-0.6418 | train_loss_epoch=-0.6418 | train_loss_step=-0.9111 | val_crps=0.0731 | val_rmse_ema=0.1029
+[Epoch 311]  Val RMSE (masked, EMA) = 0.1052
+[progress] epoch 313/400 | train_loss=-0.5921 | train_loss_epoch=-0.5921 | train_loss_step=-0.1754 | val_crps=0.0731 | val_rmse_ema=0.1052
+[Epoch 312]  Val RMSE (masked, EMA) = 0.1024
+[progress] epoch 314/400 | train_loss=-0.6274 | train_loss_epoch=-0.6274 | train_loss_step=-0.8475 | val_crps=0.0731 | val_rmse_ema=0.1024
+[Epoch 313]  Val RMSE (masked, EMA) = 0.1009
+[progress] epoch 315/400 | train_loss=-0.6359 | train_loss_epoch=-0.6359 | train_loss_step=-1.1244 | val_crps=0.0731 | val_rmse_ema=0.1009
+[Epoch 314]  Val RMSE (masked, EMA) = 0.1017
+[progress] epoch 316/400 | train_loss=-0.5960 | train_loss_epoch=-0.5960 | train_loss_step=-0.6927 | val_crps=0.0731 | val_rmse_ema=0.1017
+[Epoch 315]  Val RMSE (masked, EMA) = 0.1018
+[progress] epoch 317/400 | train_loss=-0.6214 | train_loss_epoch=-0.6214 | train_loss_step=-0.0163 | val_crps=0.0731 | val_rmse_ema=0.1018
+[Epoch 316]  Val RMSE (masked, EMA) = 0.1046
+[progress] epoch 318/400 | train_loss=-0.6605 | train_loss_epoch=-0.6605 | train_loss_step=-0.3741 | val_crps=0.0731 | val_rmse_ema=0.1046
+[Epoch 317]  Val RMSE (masked, EMA) = 0.1019
+[progress] epoch 319/400 | train_loss=-0.6200 | train_loss_epoch=-0.6200 | train_loss_step=-0.8986 | val_crps=0.0731 | val_rmse_ema=0.1019
+[Epoch 318]  Val RMSE (masked, EMA) = 0.1034
+[progress] epoch 320/400 | train_loss=-0.6747 | train_loss_epoch=-0.6747 | train_loss_step=-0.6671 | val_crps=0.0725 | val_rmse_ema=0.1034
+[Epoch 319]  Val RMSE (masked, EMA) = 0.1043
+[progress] epoch 321/400 | train_loss=-0.6581 | train_loss_epoch=-0.6581 | train_loss_step=-0.3780 | val_crps=0.0725 | val_rmse_ema=0.1043
+[Epoch 320]  Val RMSE (masked, EMA) = 0.1021
+[progress] epoch 322/400 | train_loss=-0.5876 | train_loss_epoch=-0.5876 | train_loss_step=-0.7428 | val_crps=0.0725 | val_rmse_ema=0.1021
+[Epoch 321]  Val RMSE (masked, EMA) = 0.1013
+[progress] epoch 323/400 | train_loss=-0.6711 | train_loss_epoch=-0.6711 | train_loss_step=-0.7608 | val_crps=0.0725 | val_rmse_ema=0.1013
+[Epoch 322]  Val RMSE (masked, EMA) = 0.1036
+[progress] epoch 324/400 | train_loss=-0.6589 | train_loss_epoch=-0.6589 | train_loss_step=-0.3472 | val_crps=0.0725 | val_rmse_ema=0.1036
+[Epoch 323]  Val RMSE (masked, EMA) = 0.1028
+[progress] epoch 325/400 | train_loss=-0.6744 | train_loss_epoch=-0.6744 | train_loss_step=-0.5286 | val_crps=0.0725 | val_rmse_ema=0.1028
+[Epoch 324]  Val RMSE (masked, EMA) = 0.1000
+[progress] epoch 326/400 | train_loss=-0.6475 | train_loss_epoch=-0.6475 | train_loss_step=-0.7043 | val_crps=0.0725 | val_rmse_ema=0.1000
+[Epoch 325]  Val RMSE (masked, EMA) = 0.1012
+[progress] epoch 327/400 | train_loss=-0.6325 | train_loss_epoch=-0.6325 | train_loss_step=-1.0571 | val_crps=0.0725 | val_rmse_ema=0.1012
+[Epoch 326]  Val RMSE (masked, EMA) = 0.1019
+[progress] epoch 328/400 | train_loss=-0.6885 | train_loss_epoch=-0.6885 | train_loss_step=-0.9790 | val_crps=0.0725 | val_rmse_ema=0.1019
+[Epoch 327]  Val RMSE (masked, EMA) = 0.1025
+[progress] epoch 329/400 | train_loss=-0.6534 | train_loss_epoch=-0.6534 | train_loss_step=0.1272 | val_crps=0.0725 | val_rmse_ema=0.1025
+[Epoch 328]  Val RMSE (masked, EMA) = 0.1017
+[progress] epoch 330/400 | train_loss=-0.6815 | train_loss_epoch=-0.6815 | train_loss_step=-0.7898 | val_crps=0.0723 | val_rmse_ema=0.1017
+[Epoch 329]  Val RMSE (masked, EMA) = 0.0984
+[progress] epoch 331/400 | train_loss=-0.6772 | train_loss_epoch=-0.6772 | train_loss_step=-1.0825 | val_crps=0.0723 | val_rmse_ema=0.0984
+[Epoch 330]  Val RMSE (masked, EMA) = 0.1016
+[progress] epoch 332/400 | train_loss=-0.5927 | train_loss_epoch=-0.5927 | train_loss_step=-0.6475 | val_crps=0.0723 | val_rmse_ema=0.1016
+[Epoch 331]  Val RMSE (masked, EMA) = 0.1017
+[progress] epoch 333/400 | train_loss=-0.6517 | train_loss_epoch=-0.6517 | train_loss_step=-0.9402 | val_crps=0.0723 | val_rmse_ema=0.1017
+[Epoch 332]  Val RMSE (masked, EMA) = 0.1016
+[progress] epoch 334/400 | train_loss=-0.6442 | train_loss_epoch=-0.6442 | train_loss_step=-0.8570 | val_crps=0.0723 | val_rmse_ema=0.1016
+[Epoch 333]  Val RMSE (masked, EMA) = 0.1006
+[progress] epoch 335/400 | train_loss=-0.6368 | train_loss_epoch=-0.6368 | train_loss_step=-1.2056 | val_crps=0.0723 | val_rmse_ema=0.1006
+[Epoch 334]  Val RMSE (masked, EMA) = 0.1015
+[progress] epoch 336/400 | train_loss=-0.7146 | train_loss_epoch=-0.7146 | train_loss_step=-0.8871 | val_crps=0.0723 | val_rmse_ema=0.1015
+[Epoch 335]  Val RMSE (masked, EMA) = 0.1032
+[progress] epoch 337/400 | train_loss=-0.6314 | train_loss_epoch=-0.6314 | train_loss_step=0.9086 | val_crps=0.0723 | val_rmse_ema=0.1032
+[Epoch 336]  Val RMSE (masked, EMA) = 0.1026
+[progress] epoch 338/400 | train_loss=-0.5922 | train_loss_epoch=-0.5922 | train_loss_step=-0.8540 | val_crps=0.0723 | val_rmse_ema=0.1026
+[Epoch 337]  Val RMSE (masked, EMA) = 0.1022
+[progress] epoch 339/400 | train_loss=-0.6298 | train_loss_epoch=-0.6298 | train_loss_step=-1.1389 | val_crps=0.0723 | val_rmse_ema=0.1022
+[Epoch 338]  Val RMSE (masked, EMA) = 0.1037
+[progress] epoch 340/400 | train_loss=-0.7283 | train_loss_epoch=-0.7283 | train_loss_step=-0.4089 | val_crps=0.0729 | val_rmse_ema=0.1037
+[Epoch 339]  Val RMSE (masked, EMA) = 0.0984
+[progress] epoch 341/400 | train_loss=-0.6902 | train_loss_epoch=-0.6902 | train_loss_step=0.4671 | val_crps=0.0729 | val_rmse_ema=0.0984
+[Epoch 340]  Val RMSE (masked, EMA) = 0.1015
+[progress] epoch 342/400 | train_loss=-0.6894 | train_loss_epoch=-0.6894 | train_loss_step=-0.5759 | val_crps=0.0729 | val_rmse_ema=0.1015
+[Epoch 341]  Val RMSE (masked, EMA) = 0.1034
+[progress] epoch 343/400 | train_loss=-0.6726 | train_loss_epoch=-0.6726 | train_loss_step=-0.7767 | val_crps=0.0729 | val_rmse_ema=0.1034
+[Epoch 342]  Val RMSE (masked, EMA) = 0.1003
+[progress] epoch 344/400 | train_loss=-0.6727 | train_loss_epoch=-0.6727 | train_loss_step=-0.9423 | val_crps=0.0729 | val_rmse_ema=0.1003
+[Epoch 343]  Val RMSE (masked, EMA) = 0.1032
+[progress] epoch 345/400 | train_loss=-0.6221 | train_loss_epoch=-0.6221 | train_loss_step=-0.6034 | val_crps=0.0729 | val_rmse_ema=0.1032
+[Epoch 344]  Val RMSE (masked, EMA) = 0.1026
+[progress] epoch 346/400 | train_loss=-0.7108 | train_loss_epoch=-0.7108 | train_loss_step=-0.6775 | val_crps=0.0729 | val_rmse_ema=0.1026
+[Epoch 345]  Val RMSE (masked, EMA) = 0.1034
+[progress] epoch 347/400 | train_loss=-0.7321 | train_loss_epoch=-0.7321 | train_loss_step=-0.1821 | val_crps=0.0729 | val_rmse_ema=0.1034
+[Epoch 346]  Val RMSE (masked, EMA) = 0.1035
+[progress] epoch 348/400 | train_loss=-0.6493 | train_loss_epoch=-0.6493 | train_loss_step=-1.0605 | val_crps=0.0729 | val_rmse_ema=0.1035
+[Epoch 347]  Val RMSE (masked, EMA) = 0.1021
+[progress] epoch 349/400 | train_loss=-0.6497 | train_loss_epoch=-0.6497 | train_loss_step=-0.8155 | val_crps=0.0729 | val_rmse_ema=0.1021
+[Epoch 348]  Val RMSE (masked, EMA) = 0.1024
+[progress] epoch 350/400 | train_loss=-0.7224 | train_loss_epoch=-0.7224 | train_loss_step=0.6515 | val_crps=0.0727 | val_rmse_ema=0.1024
+[Epoch 349]  Val RMSE (masked, EMA) = 0.1038
+[progress] epoch 351/400 | train_loss=-0.6840 | train_loss_epoch=-0.6840 | train_loss_step=-0.7975 | val_crps=0.0727 | val_rmse_ema=0.1038
+[Epoch 350]  Val RMSE (masked, EMA) = 0.1024
+[progress] epoch 352/400 | train_loss=-0.7148 | train_loss_epoch=-0.7148 | train_loss_step=-0.4510 | val_crps=0.0727 | val_rmse_ema=0.1024
+[Epoch 351]  Val RMSE (masked, EMA) = 0.1030
+[progress] epoch 353/400 | train_loss=-0.7225 | train_loss_epoch=-0.7225 | train_loss_step=-0.7585 | val_crps=0.0727 | val_rmse_ema=0.1030
+[Epoch 352]  Val RMSE (masked, EMA) = 0.1031
+[progress] epoch 354/400 | train_loss=-0.6539 | train_loss_epoch=-0.6539 | train_loss_step=-0.9658 | val_crps=0.0727 | val_rmse_ema=0.1031
+[Epoch 353]  Val RMSE (masked, EMA) = 0.1005
+[progress] epoch 355/400 | train_loss=-0.7179 | train_loss_epoch=-0.7179 | train_loss_step=-0.9784 | val_crps=0.0727 | val_rmse_ema=0.1005
+[Epoch 354]  Val RMSE (masked, EMA) = 0.1015
+[progress] epoch 356/400 | train_loss=-0.7089 | train_loss_epoch=-0.7089 | train_loss_step=-0.4747 | val_crps=0.0727 | val_rmse_ema=0.1015
+[Epoch 355]  Val RMSE (masked, EMA) = 0.1021
+[progress] epoch 357/400 | train_loss=-0.6984 | train_loss_epoch=-0.6984 | train_loss_step=-0.7885 | val_crps=0.0727 | val_rmse_ema=0.1021
+[Epoch 356]  Val RMSE (masked, EMA) = 0.1039
+[progress] epoch 358/400 | train_loss=-0.6447 | train_loss_epoch=-0.6447 | train_loss_step=-0.6652 | val_crps=0.0727 | val_rmse_ema=0.1039
+[Epoch 357]  Val RMSE (masked, EMA) = 0.1020
+[progress] epoch 359/400 | train_loss=-0.6837 | train_loss_epoch=-0.6837 | train_loss_step=-1.1048 | val_crps=0.0727 | val_rmse_ema=0.1020
+[Epoch 358]  Val RMSE (masked, EMA) = 0.1015
+[progress] epoch 360/400 | train_loss=-0.7214 | train_loss_epoch=-0.7214 | train_loss_step=-0.9905 | val_crps=0.0726 | val_rmse_ema=0.1015
+[Epoch 359]  Val RMSE (masked, EMA) = 0.1005
+[progress] epoch 361/400 | train_loss=-0.6528 | train_loss_epoch=-0.6528 | train_loss_step=-0.7380 | val_crps=0.0726 | val_rmse_ema=0.1005
+[Epoch 360]  Val RMSE (masked, EMA) = 0.1014
+[progress] epoch 362/400 | train_loss=-0.6866 | train_loss_epoch=-0.6866 | train_loss_step=-0.5324 | val_crps=0.0726 | val_rmse_ema=0.1014
+[Epoch 361]  Val RMSE (masked, EMA) = 0.1008
+[progress] epoch 363/400 | train_loss=-0.6542 | train_loss_epoch=-0.6542 | train_loss_step=-0.5083 | val_crps=0.0726 | val_rmse_ema=0.1008
+[Epoch 362]  Val RMSE (masked, EMA) = 0.0998
+[progress] epoch 364/400 | train_loss=-0.7125 | train_loss_epoch=-0.7125 | train_loss_step=-0.7409 | val_crps=0.0726 | val_rmse_ema=0.0998
+[Epoch 363]  Val RMSE (masked, EMA) = 0.0981
+[progress] epoch 365/400 | train_loss=-0.7008 | train_loss_epoch=-0.7008 | train_loss_step=0.1475 | val_crps=0.0726 | val_rmse_ema=0.0981
+[Epoch 364]  Val RMSE (masked, EMA) = 0.1013
+[progress] epoch 366/400 | train_loss=-0.7559 | train_loss_epoch=-0.7559 | train_loss_step=-0.9493 | val_crps=0.0726 | val_rmse_ema=0.1013
+[Epoch 365]  Val RMSE (masked, EMA) = 0.1013
+[progress] epoch 367/400 | train_loss=-0.6616 | train_loss_epoch=-0.6616 | train_loss_step=-0.9365 | val_crps=0.0726 | val_rmse_ema=0.1013
+[Epoch 366]  Val RMSE (masked, EMA) = 0.1008
+[progress] epoch 368/400 | train_loss=-0.7034 | train_loss_epoch=-0.7034 | train_loss_step=-1.0043 | val_crps=0.0726 | val_rmse_ema=0.1008
+[Epoch 367]  Val RMSE (masked, EMA) = 0.0986
+[progress] epoch 369/400 | train_loss=-0.7131 | train_loss_epoch=-0.7131 | train_loss_step=-0.7339 | val_crps=0.0726 | val_rmse_ema=0.0986
+[Epoch 368]  Val RMSE (masked, EMA) = 0.0991
+[progress] epoch 370/400 | train_loss=-0.7158 | train_loss_epoch=-0.7158 | train_loss_step=-0.2254 | val_crps=0.0724 | val_rmse_ema=0.0991
+[Epoch 369]  Val RMSE (masked, EMA) = 0.1024
+[progress] epoch 371/400 | train_loss=-0.5278 | train_loss_epoch=-0.5278 | train_loss_step=-0.8153 | val_crps=0.0724 | val_rmse_ema=0.1024
+[Epoch 370]  Val RMSE (masked, EMA) = 0.0988
+[progress] epoch 372/400 | train_loss=-0.6715 | train_loss_epoch=-0.6715 | train_loss_step=-0.4962 | val_crps=0.0724 | val_rmse_ema=0.0988
+[Epoch 371]  Val RMSE (masked, EMA) = 0.1002
+[progress] epoch 373/400 | train_loss=-0.7029 | train_loss_epoch=-0.7029 | train_loss_step=-1.0469 | val_crps=0.0724 | val_rmse_ema=0.1002
+[Epoch 372]  Val RMSE (masked, EMA) = 0.1015
+[progress] epoch 374/400 | train_loss=-0.7013 | train_loss_epoch=-0.7013 | train_loss_step=-0.9524 | val_crps=0.0724 | val_rmse_ema=0.1015
+[Epoch 373]  Val RMSE (masked, EMA) = 0.1017
+[progress] epoch 375/400 | train_loss=-0.7024 | train_loss_epoch=-0.7024 | train_loss_step=-0.1474 | val_crps=0.0724 | val_rmse_ema=0.1017
+[Epoch 374]  Val RMSE (masked, EMA) = 0.1024
+[progress] epoch 376/400 | train_loss=-0.7269 | train_loss_epoch=-0.7269 | train_loss_step=-0.3872 | val_crps=0.0724 | val_rmse_ema=0.1024
+[Epoch 375]  Val RMSE (masked, EMA) = 0.0999
+[progress] epoch 377/400 | train_loss=-0.7267 | train_loss_epoch=-0.7267 | train_loss_step=-0.5943 | val_crps=0.0724 | val_rmse_ema=0.0999
+[Epoch 376]  Val RMSE (masked, EMA) = 0.0996
+[progress] epoch 378/400 | train_loss=-0.7386 | train_loss_epoch=-0.7386 | train_loss_step=-1.0186 | val_crps=0.0724 | val_rmse_ema=0.0996
+[Epoch 377]  Val RMSE (masked, EMA) = 0.1009
+[progress] epoch 379/400 | train_loss=-0.7038 | train_loss_epoch=-0.7038 | train_loss_step=-0.8253 | val_crps=0.0724 | val_rmse_ema=0.1009
+[Epoch 378]  Val RMSE (masked, EMA) = 0.0988
+[progress] epoch 380/400 | train_loss=-0.6718 | train_loss_epoch=-0.6718 | train_loss_step=-1.0580 | val_crps=0.0721 | val_rmse_ema=0.0988
+[Epoch 379]  Val RMSE (masked, EMA) = 0.0998
+[progress] epoch 381/400 | train_loss=-0.7145 | train_loss_epoch=-0.7145 | train_loss_step=-1.2055 | val_crps=0.0721 | val_rmse_ema=0.0998
+[Epoch 380]  Val RMSE (masked, EMA) = 0.1003
+[progress] epoch 382/400 | train_loss=-0.7390 | train_loss_epoch=-0.7390 | train_loss_step=-0.8503 | val_crps=0.0721 | val_rmse_ema=0.1003
+[Epoch 381]  Val RMSE (masked, EMA) = 0.1009
+[progress] epoch 383/400 | train_loss=-0.7585 | train_loss_epoch=-0.7585 | train_loss_step=0.3397 | val_crps=0.0721 | val_rmse_ema=0.1009
+[Epoch 382]  Val RMSE (masked, EMA) = 0.0983
+[progress] epoch 384/400 | train_loss=-0.7031 | train_loss_epoch=-0.7031 | train_loss_step=-0.6053 | val_crps=0.0721 | val_rmse_ema=0.0983
+[Epoch 383]  Val RMSE (masked, EMA) = 0.0985
+[progress] epoch 385/400 | train_loss=-0.7484 | train_loss_epoch=-0.7484 | train_loss_step=-1.1163 | val_crps=0.0721 | val_rmse_ema=0.0985
+[Epoch 384]  Val RMSE (masked, EMA) = 0.0984
+[progress] epoch 386/400 | train_loss=-0.6857 | train_loss_epoch=-0.6857 | train_loss_step=-0.9482 | val_crps=0.0721 | val_rmse_ema=0.0984
+[Epoch 385]  Val RMSE (masked, EMA) = 0.0979
+[progress] epoch 387/400 | train_loss=-0.6892 | train_loss_epoch=-0.6892 | train_loss_step=-0.4418 | val_crps=0.0721 | val_rmse_ema=0.0979
+[Epoch 386]  Val RMSE (masked, EMA) = 0.0981
+[progress] epoch 388/400 | train_loss=-0.7591 | train_loss_epoch=-0.7591 | train_loss_step=-0.9375 | val_crps=0.0721 | val_rmse_ema=0.0981
+[Epoch 387]  Val RMSE (masked, EMA) = 0.0994
+[progress] epoch 389/400 | train_loss=-0.7418 | train_loss_epoch=-0.7418 | train_loss_step=-0.9062 | val_crps=0.0721 | val_rmse_ema=0.0994
+[Epoch 388]  Val RMSE (masked, EMA) = 0.0987
+[progress] epoch 390/400 | train_loss=-0.7395 | train_loss_epoch=-0.7395 | train_loss_step=-0.4262 | val_crps=0.0719 | val_rmse_ema=0.0987
+[Epoch 389]  Val RMSE (masked, EMA) = 0.1001
+[progress] epoch 391/400 | train_loss=-0.6495 | train_loss_epoch=-0.6495 | train_loss_step=-0.7728 | val_crps=0.0719 | val_rmse_ema=0.1001
+[Epoch 390]  Val RMSE (masked, EMA) = 0.0966
+[progress] epoch 392/400 | train_loss=-0.7480 | train_loss_epoch=-0.7480 | train_loss_step=-0.7530 | val_crps=0.0719 | val_rmse_ema=0.0966
+[Epoch 391]  Val RMSE (masked, EMA) = 0.0994
+[progress] epoch 393/400 | train_loss=-0.7704 | train_loss_epoch=-0.7704 | train_loss_step=-1.0189 | val_crps=0.0719 | val_rmse_ema=0.0994
+[Epoch 392]  Val RMSE (masked, EMA) = 0.0967
+[progress] epoch 394/400 | train_loss=-0.7609 | train_loss_epoch=-0.7609 | train_loss_step=0.0254 | val_crps=0.0719 | val_rmse_ema=0.0967
+[Epoch 393]  Val RMSE (masked, EMA) = 0.0970
+[progress] epoch 395/400 | train_loss=-0.7868 | train_loss_epoch=-0.7868 | train_loss_step=-1.0618 | val_crps=0.0719 | val_rmse_ema=0.0970
+[Epoch 394]  Val RMSE (masked, EMA) = 0.0980
+[progress] epoch 396/400 | train_loss=-0.7014 | train_loss_epoch=-0.7014 | train_loss_step=-1.0549 | val_crps=0.0719 | val_rmse_ema=0.0980
+[Epoch 395]  Val RMSE (masked, EMA) = 0.0970
+[progress] epoch 397/400 | train_loss=-0.6270 | train_loss_epoch=-0.6270 | train_loss_step=-0.3982 | val_crps=0.0719 | val_rmse_ema=0.0970
+[Epoch 396]  Val RMSE (masked, EMA) = 0.0965
+[progress] epoch 398/400 | train_loss=-0.7671 | train_loss_epoch=-0.7671 | train_loss_step=-0.7471 | val_crps=0.0719 | val_rmse_ema=0.0965
+[Epoch 397]  Val RMSE (masked, EMA) = 0.0975
+[progress] epoch 399/400 | train_loss=-0.7410 | train_loss_epoch=-0.7410 | train_loss_step=-0.8321 | val_crps=0.0719 | val_rmse_ema=0.0975
+[Epoch 398]  Val RMSE (masked, EMA) = 0.0967
+[progress] epoch 400/400 | train_loss=-0.7779 | train_loss_epoch=-0.7779 | train_loss_step=-0.4931 | val_crps=0.0720 | val_rmse_ema=0.0967
+`Trainer.fit` stopped: `max_epochs=400` reached.
+
+`Trainer.fit` stopped: `max_epochs=400` reached.
+[Epoch 399]  Val RMSE (masked, EMA) = 0.0981
+[SELECT] best validation CRPS checkpoint: logs_FM_sic_v2/checkpoints/val_crps=0.07188-epoch=389.ckpt
+EMA model saved to: logs_FM_sic_v2/best_model
+Executing:  54%|█████▎    | 15/28 [6:01:07<9:45:27, 2702.11s/cell]EMA UNetFM loaded from logs_FM_sic_v2/best_model
+  Params : 32,289,417
+Executing:  61%|██████    | 17/28 [6:01:07<6:05:02, 1991.10s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+Executing:  68%|██████▊   | 19/28 [6:01:09<3:37:06, 1447.34s/cell]  member 1/2 done  member 2/2 done
+Ensemble: (2, 2, 9, 240, 240)
+Executing:  75%|███████▌  | 21/28 [6:01:16<2:01:33, 1041.96s/cell]Masked-out fraction (no ASIP obs in window): 14.8%
+  Saved: figures/FM_sic_v2/FM_sic_v2_asip_gt.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_input.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_osisaf.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_mean.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_spread.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_member0.png
+Executing:  82%|████████▏ | 23/28 [6:01:18<1:02:00, 744.04s/cell] Executing:  86%|████████▌ | 24/28 [6:01:18<41:11, 617.76s/cell]    Saved: figures/FM_sic_v2/FM_sic_v2_transport.png
+Executing:  89%|████████▉ | 25/28 [6:01:21<24:53, 497.75s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (2 members): SSR 0.642  spread 0.0536  RMSE 0.1023  CRPS(all px) 0.0588  rank dev 0.19 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train_calibration.csv
+Executing:  96%|█████████▋| 27/28 [6:03:52<05:46, 346.51s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_train.csv
+Executing: 100%|██████████| 28/28 [6:03:52<00:00, 275.97s/cell]Executing: 100%|██████████| 28/28 [6:03:55<00:00, 779.86s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_train.ipynb
+
+========================================================================================
+[run_metrics] STARTING FM_v2 / SIC
+========================================================================================
+[run_metrics] FM_v2 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 400, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v2', 'SELECT_BY_VAL': True}
+Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:07<03:12,  7.14s/cell]Executing:  11%|█         | 3/28 [00:26<03:42,  8.88s/cell]Mon Nov 16 21:33:50 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
+| N/A   38C    P0             69W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  18%|█▊        | 5/28 [00:26<01:43,  4.50s/cell]Executing:  25%|██▌       | 7/28 [00:36<01:36,  4.58s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  32%|███▏      | 9/28 [00:42<01:18,  4.13s/cell]Executing:  39%|███▉      | 11/28 [00:44<00:50,  2.98s/cell]LitFlowMatchingSIC defined
+Valid checkpoint: logs_FM_sic_v2/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_FM_sic_v2/checkpoints/last.ckpt directly (trainer.fit() not called)
+[SELECT] best validation CRPS checkpoint: logs_FM_sic_v2/checkpoints/val_crps=0.07188-epoch=389.ckpt
+EMA model saved to: logs_FM_sic_v2/best_model
+Executing:  54%|█████▎    | 15/28 [00:50<00:28,  2.22s/cell]EMA UNetFM loaded from logs_FM_sic_v2/best_model
+  Params : 32,289,417
+Executing:  61%|██████    | 17/28 [00:50<00:18,  1.68s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+Executing:  68%|██████▊   | 19/28 [00:51<00:11,  1.31s/cell]  member 1/20 done  member 2/20 done  member 3/20 done  member 4/20 done  member 5/20 done  member 6/20 done  member 7/20 done  member 8/20 done  member 9/20 done  member 10/20 done  member 11/20 done  member 12/20 done  member 13/20 done  member 14/20 done  member 15/20 done  member 16/20 done  member 17/20 done  member 18/20 done  member 19/20 done  member 20/20 done
+Ensemble: (20, 2, 9, 240, 240)
+Executing:  75%|███████▌  | 21/28 [01:57<01:11, 10.16s/cell]Masked-out fraction (no ASIP obs in window): 14.8%
+  Saved: figures/FM_sic_v2/FM_sic_v2_asip_gt.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_input.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_osisaf.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_mean.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_fm_spread.png
+  Saved: figures/FM_sic_v2/FM_sic_v2_member0.png
+Executing:  82%|████████▏ | 23/28 [01:58<00:37,  7.44s/cell]  Saved: figures/FM_sic_v2/FM_sic_v2_transport.png
+Executing:  89%|████████▉ | 25/28 [02:01<00:16,  5.65s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (20 members): SSR 0.569  spread 0.0533  RMSE 0.0960  CRPS(all px) 0.0465  rank dev 0.41 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_calibration.csv
+Executing:  96%|█████████▋| 27/28 [25:40<03:32, 212.08s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv
+Executing: 100%|██████████| 28/28 [25:43<00:00, 55.13s/cell] 
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv
+[run_step] ok in 23399.7 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261116-152902_sic_fm_v2_train
+[job] 2026-11-16T21:59:08+01:00 exit=0
