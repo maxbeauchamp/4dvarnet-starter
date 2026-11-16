@@ -649,7 +649,14 @@ class VarDynCMSamplingAndEditing:
             C = y.shape[1]
             frame_t = [sb * (C - 1 - k) / max(C - 1, 1) for k in range(C)]
             frame_t[-1] = max(frame_t[-1], 1e-8)
-            times = torch.tensor([1.0] + frame_t, device=dev, dtype=dtype)
+            # (rebuttal) refine_by_nsteps: every segment of the frame grid split into K = nsteps uniform jumps
+            # (grids that contain the frame times, NFE = K * C), for the NFE sweep / composition-gap test.
+            K = max(int(nsteps), 1) if getattr(self, "refine_by_nsteps", False) else 1
+            knots = [1.0] + frame_t
+            tl = [knots[0]]
+            for a, b in zip(knots[:-1], knots[1:]):
+                tl += [a + (b - a) * (j + 1) / K for j in range(K)]
+            times = torch.tensor(tl, device=dev, dtype=dtype)
             nsteps = len(times)
         else:
             times = torch.linspace(1.0, 1e-8, nsteps, device=dev, dtype=dtype)

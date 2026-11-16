@@ -328,6 +328,12 @@
    "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_metrics.py --xp SSH_GF --method VarCM_aug"
   },
   {
+   "id": "gp_vardyncm_fr_sweep",
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --method VarDynCM_scratch_fr --grid 1,2,3,4,6 ; python run_nfe_sweep.py --method VarDynCM_grid_fr --grid 1,2,3,4,6 ; cat results/GP/VarDynCM_*_fr_nfe_sweep.csv"
+  },
+  {
    "id": "sic_fm_v2_train",
    "time": "30:00:00",
    "gate": "status == 'ok'",

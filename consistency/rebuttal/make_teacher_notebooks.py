@@ -337,7 +337,8 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
             s += PARAMS_CRPS + ("FRAME_GRID = False       # sample on the training frame grid (1 -> IC, then one jump "
                                 "per frame) instead of NSTEPS uniform steps\n"
                                 "W_IC = 0.0               # extra weight of the CRPS of the first frame (initial condition)\n"
-                                "GRID_REFINE = []         # e.g. [1, 2, 3, 4]: train on random refinements of the frame grid\n")
+                                "GRID_REFINE = []         # e.g. [1, 2, 3, 4]: train on random refinements of the frame grid\n"
+                                "FRAME_REFINE_SWEEP = False  # frame grid: NFE sweep N -> N uniform jumps per segment\n")
             done.add("params")
         if old_tr in s:
             i = s.index("\nLOG_DIR     = ") + 1
@@ -358,6 +359,9 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
 )""", "training")
             s = sub(s, "consistency_sampling = VarDynCMSamplingAndEditing(\n",
                     "consistency_sampling = VarDynCMSamplingAndEditing(\n    frame_grid=FRAME_GRID,\n", "frame grid")
+            s = sub(s, "    conditioning_mode=COND_MODE,\n)\n",
+                    "    conditioning_mode=COND_MODE,\n)\nconsistency_sampling.refine_by_nsteps = FRAME_REFINE_SWEEP\n",
+                    "refine")
             s = sub(s, "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n",
                     "    resume_ckpt = find_resume_ckpt(CKPT_DIR)\n"
                     + _warm(f"logs_CT_VarDynCM_{suffix}_grad", "lit_model", "find_resume_ckpt")

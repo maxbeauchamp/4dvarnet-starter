@@ -341,6 +341,47 @@ methods:
         log_dir: logs_VarCM_crps2_ssh_gf_grad_aug
         status: existing
 
+  VarDynCM_scratch_fr:
+    # NFE sweep on refined frame grids (K uniform jumps per segment, grids containing the frame times).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 200
+      COND_MODE: "grad"
+      LAMBDA_SELF: 0.1
+      RUN_TAG: "_scratch"
+      WARM_START: false
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+      FRAME_REFINE_SWEEP: true
+      EVAL_TAG: "_fr"
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_scratch
+        status: existing
+
+  VarDynCM_grid_fr:
+    # Same for the model fine-tuned on random refinements.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 40
+      COND_MODE: "grad"
+      LAMBDA_SELF: 0.1
+      GRID_REFINE: [1, 2, 3, 4]
+      RUN_TAG: "_grid"
+      WARM_FROM: "logs_VarDynCM_crps_spde_grad_scratch"
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+      FRAME_REFINE_SWEEP: true
+      EVAL_TAG: "_fr"
+    xp:
+      GP:
+        notebook: Notebook_consistency_model_VarDynCM_spde.ipynb
+        log_dir: logs_VarDynCM_crps_spde_grad_grid
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.
