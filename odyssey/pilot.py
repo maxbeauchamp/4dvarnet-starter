@@ -13,12 +13,12 @@
     python3 odyssey/pilot.py watch [sec]      # live dashboard: plan progress, current job, log tail (default 60 s)
 
 Rules: never more than one icl job per lane: the main lane, plus side lanes 2..N (steps marked "lane": n run on an
-extra GPU, in parallel with the main lane; 2 lanes by the user's decision of 2026-11-14, 3 on 2026-11-16); no dependency chains; a failed job is retried once,
+extra GPU, in parallel with the main lane; 2 lanes by the user's decision of 2026-11-14, 3 then 4 on 2026-11-16); no dependency chains; a failed job is retried once,
 then the pilot pauses; a failed gate pauses; steps marked "confirm" wait for `approve`. Every action is
 appended to RUNLOG.md, and anything needing a human writes results/ATTENTION.md and posts a macOS
 notification. Standard library only.
 """
-import json, os, shlex, subprocess, sys, time
+import json, os, re, shlex, subprocess, sys, time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -144,7 +144,7 @@ def job_state(job):
 
 
 # ----------------------------------------------------------------------------- actions
-SIDE_LANES = (2, 3)
+SIDE_LANES = (2, 3, 4)
 
 
 def lane_of(sid):
@@ -154,6 +154,39 @@ def lane_of(sid):
 
 def side_jobs(st):
     return {(st.get(f"lane{n}") or {}).get("job") for n in SIDE_LANES} - {None}
+
+
+def choose_resources(base):
+    """GPU type and node exclusion for a new job (user, 16 Nov: 4 GPUs, preferably not on the nodes already used,
+    H100 if available, else A100). For each candidate (SLURM_GRES_CHOICES, in order of preference), with and then
+    without SLURM_EXCLUDE, ask Slurm when the job would start (`sbatch --test-only`). The earliest start with the
+    exclusion is taken unless it is more than 30 min later than the earliest start without it; ties go to the
+    earlier candidate (H100 first). Falls back to SLURM_GRES."""
+    from datetime import datetime, timedelta
+    gres = [g.strip() for g in CFG.get("SLURM_GRES_CHOICES", CFG["SLURM_GRES"]).split(",") if g.strip()]
+    excl = CFG.get("SLURM_EXCLUDE", "").strip()
+    found = []
+    for ex in ([excl, ""] if excl else [""]):
+        for g in gres:
+            args = base + [f"--gres={g}"] + ([f"--exclude={ex}"] if ex else []) + ["--test-only", "odyssey/job.sbatch", "x"]
+            out = ssh(f"cd {shlex.quote(remote_repo())} && " + " ".join(shlex.quote(a) for a in args) + " 2>&1", check=False)
+            m = re.search(r"to start at (\S+)", out)
+            if m:
+                try:
+                    found.append((datetime.fromisoformat(m.group(1)), g, ex))
+                except ValueError:
+                    pass
+    if not found:
+        return CFG["SLURM_GRES"], ""
+    best_all = min(found, key=lambda f: f[0])          # min keeps the first of equal starts (preference order)
+    with_ex = [f for f in found if f[2]]
+    best = best_all
+    if with_ex:
+        b = min(with_ex, key=lambda f: f[0])
+        if b[0] <= best_all[0] + timedelta(minutes=30):
+            best = b
+    print(f"resources: {best[1]}{' excluding ' + best[2] if best[2] else ''} (expected start {best[0]})")
+    return best[1], best[2]
 
 
 def submit(sid, st):
@@ -173,9 +206,11 @@ def submit(sid, st):
     for k in ("ODY_OLD", "ODY_DATA"):
         if CFG.get(k):
             exports.append(f"{k}={CFG[k]}")
-    sb = ["sbatch", "--parsable", f"--job-name=icl-{sid}", f"--time={s.get('time', '04:00:00')}",
-          f"--partition={CFG['SLURM_PARTITION']}", f"--account={CFG['SLURM_ACCOUNT']}",
-          f"--gres={CFG['SLURM_GRES']}", f"--cpus-per-task={CFG.get('SLURM_CPUS', '8')}",
+    base = [f"--time={s.get('time', '04:00:00')}", f"--partition={CFG['SLURM_PARTITION']}",
+            f"--account={CFG['SLURM_ACCOUNT']}", f"--cpus-per-task={CFG.get('SLURM_CPUS', '8')}"]
+    gres, excl = choose_resources(["sbatch"] + base)
+    sb = ["sbatch", "--parsable", f"--job-name=icl-{sid}", *base, f"--gres={gres}",
+          *([f"--exclude={excl}"] if excl else []),
           "--export=" + ",".join(exports), "odyssey/job.sbatch", run_dir]
     sb += ["--cmd", s["cmd"]]
     job = ssh(f"cd {shlex.quote(remote_repo())} && " + " ".join(shlex.quote(a) for a in sb)).split(";")[0]
@@ -184,7 +219,8 @@ def submit(sid, st):
     else:
         st.update(job=job, run_dir=run_dir, step=sid)
     save_state(st)
-    log(f"submitted `{sid}` as job {job} -> `{run_dir}`" + (f" (lane {lane})" if lane != 1 else ""))
+    log(f"submitted `{sid}` as job {job} -> `{run_dir}`" + (f" (lane {lane})" if lane != 1 else "")
+        + f" [{gres}{', excl. ' + excl if excl else ''}]")
 
 
 def fetch(run_dir, job=None):

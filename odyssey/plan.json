@@ -338,7 +338,15 @@
    "id": "ssh_varcm_aug_eval",
    "time": "03:00:00",
    "gate": "status == 'ok'",
-   "cmd": "ls -la consistency/Notebooks/Notebooks_SSH_GF/logs_VarCM_crps2_ssh_gf_grad_aug/checkpoints; cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug"
+   "cmd": "ls -la consistency/Notebooks/Notebooks_SSH_GF/logs_VarCM_crps2_ssh_gf_grad_aug/checkpoints; cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug",
+   "lane": 4
+  },
+  {
+   "id": "ssh_var_v1_eval",
+   "lane": 4,
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_v1 && python run_metrics.py --xp SSH_GF --method VarDynCM_v1"
   },
   {
    "id": "ssh_dynfm_v2_train",
@@ -379,13 +387,6 @@
    "time": "20:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method VarDynCM_grid_ssh --reset && python run_metrics.py --xp SSH_GF --method VarDynCM_grid_ssh"
-  },
-  {
-   "id": "ssh_var_v1_eval",
-   "lane": 2,
-   "time": "06:00:00",
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_v1 && python run_metrics.py --xp SSH_GF --method VarDynCM_v1"
   },
   {
    "id": "sic_fm_v2_train",
