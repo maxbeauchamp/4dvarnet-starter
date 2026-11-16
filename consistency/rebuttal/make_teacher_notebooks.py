@@ -256,7 +256,8 @@ PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpo
                "RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run (e.g. '_ls01')\n"
                "WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)\n"
                "SELECT_BY_VAL = False    # validation CRPS of the ensemble each epoch; keep the best checkpoint\n"
-               "EVAL_TAG = ''            # suffix of the figure folder for an evaluation variant (e.g. '_fg')\n")
+               "EVAL_TAG = ''            # suffix of the figure folder for an evaluation variant (e.g. '_fg')\n"
+               "AUGMENT = False          # random rot90/flip of (x0, y) at training time (small SSH training set)\n")
 
 
 PARAMS_V3 = ("SHORT_CRPS = False       # v3: CRPS instead of L2 in the short anchor (last L2 target on the interpolant)\n"
@@ -290,7 +291,7 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
             s = sub(s, "    conditioning_mode = COND_MODE,\n)",
                     "    conditioning_mode = COND_MODE,\n    crps_members      = CRPS_MEMBERS,\n"
                     "    crps_lags         = CRPS_LAGS,\n    crps_direct       = True,\n"
-                    "    short_crps        = SHORT_CRPS,\n    rollout_steps     = tuple(ROLLOUT_STEPS),\n"
+                    "    short_crps        = SHORT_CRPS,\n    rollout_steps     = tuple(ROLLOUT_STEPS),\n    augment           = AUGMENT,\n"
                     "    rollout_schedule  = \"cosine\",   # = varcm_sampler's noise_schedule\n)", "crps")
             s = sub(s, "    LitVarCMConfig(lr_scheduler_iters=1000),\n)",
                     "    LitVarCMConfig(lr_scheduler_iters=1000),\n)\n"
@@ -353,6 +354,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
     lambda_semi=LAMBDA_SELF,
     w_ic=W_IC,
     grid_refine=tuple(GRID_REFINE),
+    augment=AUGMENT,
 )""", "training")
             s = sub(s, "consistency_sampling = VarDynCMSamplingAndEditing(\n",
                     "consistency_sampling = VarDynCMSamplingAndEditing(\n    frame_grid=FRAME_GRID,\n", "frame grid")

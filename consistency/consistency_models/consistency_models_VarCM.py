@@ -444,6 +444,19 @@ def crps_field_loss(ens: Tensor, x0: Tensor, M: int, lags=(1, 2, 4, 8), w_inc: f
         loss = loss + w_inc * torch.stack(inc).mean()
     return loss
 
+
+def dihedral_augment(*fields):
+    """(rebuttal) Same random element of the dihedral group D4 (rot90 x flip) applied to every (B, C, H, W) field:
+    data augmentation for the small SSH training set (one 128x128 patch), where the CRPS-trained Var* models
+    over-fit (validation CRPS rising after ~30 epochs)."""
+    k = int(torch.randint(4, (1,)).item())
+    flip = bool(torch.randint(2, (1,)).item())
+    out = []
+    for f in fields:
+        g = torch.rot90(f, k, dims=(-2, -1))
+        out.append(torch.flip(g, dims=(-1,)) if flip else g)
+    return out
+
 class VarCMTraining(nn.Module):
     """
     Deterministic pairwise VarCM training.
@@ -495,6 +508,7 @@ class VarCMTraining(nn.Module):
         crps_lags:          tuple = (1, 2, 4, 8),  # spatial lags of the increment CRPS (spatial correlations)
         crps_w_inc:         float = 1.0,
         crps_direct:        bool  = False,  # also score the one-jump map from x_T (see __call__)
+        augment:            bool  = False,  # (rebuttal) random D4 transform of (x0, y) at training time
         short_crps:         bool  = False,  # (v3) L_short scored by the CRPS instead of an L2 regression on x0
         rollout_steps:      tuple = (),     # (v3) also score the sampler's own K-step chain, K drawn from this set
         rollout_schedule:   str   = "cosine",  # time grid of that chain = the evaluation sampler's
@@ -504,6 +518,7 @@ class VarCMTraining(nn.Module):
         self.crps_lags         = crps_lags
         self.crps_w_inc        = crps_w_inc
         self.crps_direct       = crps_direct
+        self.augment           = augment
         self.short_crps        = short_crps
         self.rollout_steps     = tuple(rollout_steps)
         self.rollout_schedule  = rollout_schedule
@@ -538,6 +553,8 @@ class VarCMTraining(nn.Module):
     ) -> "VarCMOutput":
         device = x0.device
         M = self.crps_members
+        if self.augment and student.training:
+            x0, y = dihedral_augment(x0, y)
         if M > 1:
             # M independent draws of x_T for each (x0, y): every copy follows the same deterministic,
             # self-consistent transport; only the data anchors couple the copies (fair CRPS below).

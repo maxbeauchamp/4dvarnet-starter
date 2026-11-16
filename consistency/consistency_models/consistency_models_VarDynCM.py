@@ -507,7 +507,7 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
 
     def __init__(self, crps_members: int = 8, crps_lags=(1, 2, 4, 8), crps_w_inc: float = 1.0,
                  lambda_semi: float = 1.0, lambda_traj: float = 1.0, w_ic: float = 0.0,
-                 grid_refine: tuple = (), **kw):
+                 grid_refine: tuple = (), augment: bool = False, **kw):
         super().__init__(**kw)
         self.crps_members, self.crps_lags, self.crps_w_inc = crps_members, crps_lags, crps_w_inc
         self.lambda_semi, self.lambda_traj = lambda_semi, lambda_traj
@@ -519,11 +519,14 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
         # scored for many sampling grids, not only the frame grid. With K > 1 only the last jump of each segment
         # carries a gradient and the state is detached between segments (memory). Empty: the frame grid only.
         self.grid_refine = tuple(grid_refine)
+        self.augment = augment                    # random D4 transform of (x, y) at training time (SSH)
 
     def __call__(self, student, teacher, x, y, current_step, total_steps,
                  obs_cost=None, prior_cost=None, lambda_reg=None, **kwargs) -> VarDynCMOutput:
-        from .consistency_models_VarCM import crps_field_loss, fair_crps
+        from .consistency_models_VarCM import crps_field_loss, fair_crps, dihedral_augment
         M = self.crps_members
+        if self.augment and student.training:
+            x, y = dihedral_augment(x, y)
         B0, C, H, W = x.shape
         xr, yr = x.repeat_interleave(M, 0), y.repeat_interleave(M, 0)
         B, sb, dev = B0 * M, self.spinup_boundary, x.device

@@ -173,3 +173,6 @@ the new results, list what changed in the PDF with line references.
   (0.27), rank dev 0.89 (2.05). 400 epochs in 2 h 17. User: no real SIC results exist (table values are
   placeholders) -> prepare SIC, starting with FM: FM SIC patched (patch_ssh_teachers.py, SIC data: asip target,
   input + osisaf conditioning); sic_fm_smoke after gp_nfe_final, sic_fm_v2_train after ssh_cmt_v2_train.
+* 16 Nov — SSH: CMT_v2 (from FM_v2): RMSE 0.072, CRPS 0.0355, SSR 0.83, rank dev 0.88 (CM v1: SSR 0.06).
+  VarCM SSH from scratch over-fits (val CRPS min at epoch 31 then rising; test RMSE 0.28): rerun with D4 data
+  augmentation (VarCM_aug). gp_vardyncm_grid OOM with K=4: only the last jump of each segment carries a gradient.

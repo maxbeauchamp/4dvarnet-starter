@@ -322,6 +322,25 @@ methods:
         log_dir: logs_VarDynCM_crps_spde_grad_grid
         status: existing
 
+  VarCM_aug:
+    # VarCM SSH from scratch over-fits the small SSH training set (validation CRPS minimal at epoch 31, rising
+    # after; test RMSE 0.28). Same recipe with random rot90/flip of (x0, y) at training time.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 250
+      COND_MODE: grad
+      RUN_TAG: _aug
+      WARM_START: false
+      SELECT_BY_VAL: true
+      SHORT_CRPS: true
+      AUGMENT: true
+    xp:
+      SSH_GF:
+        notebook: Notebook_consistency_model_VarCM_ssh_gf.ipynb
+        log_dir: logs_VarCM_crps2_ssh_gf_grad_aug
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.
