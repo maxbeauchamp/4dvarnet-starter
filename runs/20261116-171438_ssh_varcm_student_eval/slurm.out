@@ -1,0 +1,184 @@
+[job] 2026-11-16T17:15:02+01:00 host=sl-mee-br-212 job=76524 run_dir=runs/20261116-171438_ssh_varcm_student_eval args=--cmd cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug_student ; python run_metrics.py --xp SSH_GF --method VarCM_scratch_student
+NVIDIA H100 NVL, 95830 MiB
+
+========================================================================================
+[run_metrics] STARTING VarCM_aug_student / SSH_GF
+========================================================================================
+[run_metrics] VarCM_aug_student / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_aug_student_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 250, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_aug_student_metrics.csv', 'SKIP_TRAINING': True, 'COND_MODE': 'grad', 'RUN_TAG': '_aug', 'WARM_START': False, 'SELECT_BY_VAL': True, 'SHORT_CRPS': True, 'AUGMENT': True, 'SAVE_STUDENT': True, 'EVAL_TAG': '_student'}
+Unable to parse line 17 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:12<07:18, 12.52s/cell]Executing:   8%|▊         | 3/36 [00:46<08:48, 16.01s/cell]Mon Nov 16 17:15:59 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   29C    P0             62W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:47<04:04,  7.90s/cell]Executing:  19%|█▉        | 7/36 [01:07<04:13,  8.74s/cell]Norm stats (0.3047108663749711, 0.3879814586804132)
+window_size (C) = 9
+TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
+Executing:  28%|██▊       | 10/36 [01:25<03:15,  7.52s/cell][OK] UNet stoch=True: mu torch.Size([1, 9, 100, 100])  log_sigma torch.Size([1, 1])
+Executing:  42%|████▏     | 15/36 [01:33<01:30,  4.31s/cell]J_o = 179481.453125
+J_b = 180618.5
+Phi(x) shape = torch.Size([2, 9, 100, 100])
+Executing:  47%|████▋     | 17/36 [01:33<01:03,  3.34s/cell][OK] VarCMTraining (L_pair + L_anc + L_ae):
+  loss=1.8421  N=3
+  L_pair=0.5181  L_anc=0.8185  (L_long=0.7433  L_short=0.0752)  L_ae=1.0109
+Executing:  53%|█████▎    | 19/36 [01:35<00:47,  2.82s/cell][RESUME] last checkpoint: logs_VarCM_crps2_ssh_gf_grad_aug/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_VarCM_crps2_ssh_gf_grad_aug/checkpoints/last.ckpt directly (trainer.fit() not called)
+[SELECT] best validation CRPS checkpoint: logs_VarCM_crps2_ssh_gf_grad_aug/checkpoints/val_crps=0.20472-epoch=067.ckpt
+[OK] EMA UNet saved via save_pretrained to: logs_VarCM_crps2_ssh_gf_grad_aug/best_model
+[OK] Costs saved to: logs_VarCM_crps2_ssh_gf_grad_aug/best_model/costs.pt
+Executing:  64%|██████▍   | 23/36 [01:42<00:30,  2.32s/cell][OK] Model loaded from: logs_VarCM_crps2_ssh_gf_grad_aug/best_model
+   lambda_reg = 1.0000
+Executing:  69%|██████▉   | 25/36 [01:42<00:20,  1.84s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  75%|███████▌  | 27/36 [01:43<00:12,  1.41s/cell]  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+Executing:  81%|████████  | 29/36 [01:51<00:14,  2.13s/cell]  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_obs.png
+  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_gt.png
+  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_varcm_mean.png
+  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_varcm_spread.png
+  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_member0.png
+  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_member1.png
+Executing:  86%|████████▌ | 31/36 [01:53<00:08,  1.79s/cell]  Saved: figures/VarCM_crps_ssh_gf_aug_student/VarCM_crps_ssh_gf_aug_student_transport.png
+Executing:  92%|█████████▏| 33/36 [01:53<00:04,  1.41s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 657 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=657 (sample,t) pairs
+
+Calibration (20 members): SSR 1.438  spread 0.1326  RMSE 0.0945  CRPS(all px) 0.0415  rank dev 0.39 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_aug_student_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [08:04<00:53, 53.89s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_aug_student_metrics.csv
+Executing: 100%|██████████| 36/36 [08:08<00:00, 13.56s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_aug_student_metrics.csv
+
+========================================================================================
+[run_metrics] STARTING VarCM_scratch_student / SSH_GF
+========================================================================================
+[run_metrics] VarCM_scratch_student / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_scratch_student_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 250, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_scratch_student_metrics.csv', 'SKIP_TRAINING': True, 'COND_MODE': 'grad', 'RUN_TAG': '_scratch', 'WARM_START': False, 'SELECT_BY_VAL': True, 'SHORT_CRPS': True, 'SAVE_STUDENT': True, 'EVAL_TAG': '_student'}
+Unable to parse line 17 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:01<00:37,  1.08s/cell]Executing:   8%|▊         | 3/36 [00:05<01:03,  1.93s/cell]Mon Nov 16 17:23:27 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   38C    P0             64W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:05<00:31,  1.01s/cell]Executing:  19%|█▉        | 7/36 [00:06<00:23,  1.25cell/s]Norm stats (0.3047108663749711, 0.3879814586804132)
+window_size (C) = 9
+TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
+Executing:  28%|██▊       | 10/36 [00:17<00:54,  2.10s/cell][OK] UNet stoch=True: mu torch.Size([1, 9, 100, 100])  log_sigma torch.Size([1, 1])
+Executing:  42%|████▏     | 15/36 [00:19<00:24,  1.15s/cell]J_o = 178925.390625
+J_b = 180979.40625
+Phi(x) shape = torch.Size([2, 9, 100, 100])
+[OK] VarCMTraining (L_pair + L_anc + L_ae):
+  loss=1.7864  N=3
+  L_pair=0.5255  L_anc=0.8004  (L_long=0.6977  L_short=0.1027)  L_ae=0.9210
+Executing:  53%|█████▎    | 19/36 [00:21<00:15,  1.09cell/s][RESUME] last checkpoint: logs_VarCM_crps2_ssh_gf_grad_scratch/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_VarCM_crps2_ssh_gf_grad_scratch/checkpoints/last.ckpt directly (trainer.fit() not called)
+[SELECT] best validation CRPS checkpoint: logs_VarCM_crps2_ssh_gf_grad_scratch/checkpoints/val_crps=0.20708-epoch=031.ckpt
+[OK] EMA UNet saved via save_pretrained to: logs_VarCM_crps2_ssh_gf_grad_scratch/best_model
+[OK] Costs saved to: logs_VarCM_crps2_ssh_gf_grad_scratch/best_model/costs.pt
+Executing:  64%|██████▍   | 23/36 [00:26<00:14,  1.09s/cell][OK] Model loaded from: logs_VarCM_crps2_ssh_gf_grad_scratch/best_model
+   lambda_reg = 1.0000
+Executing:  69%|██████▉   | 25/36 [00:27<00:10,  1.10cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  75%|███████▌  | 27/36 [00:27<00:06,  1.38cell/s]  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+Executing:  81%|████████  | 29/36 [00:32<00:08,  1.19s/cell]  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_obs.png
+  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_gt.png
+  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_varcm_mean.png
+  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_varcm_spread.png
+  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_member0.png
+  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_member1.png
+Executing:  86%|████████▌ | 31/36 [00:34<00:05,  1.11s/cell]  Saved: figures/VarCM_crps_ssh_gf_scratch_student/VarCM_crps_ssh_gf_scratch_student_transport.png
+Executing:  92%|█████████▏| 33/36 [00:35<00:02,  1.12cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 657 (test sample, timestep) pairs across the full test set
+
+## Metrics -- full test set (whole domain), n=657 (sample,t) pairs
+
+Calibration (20 members): SSR 1.285  spread 0.1225  RMSE 0.0977  CRPS(all px) 0.0430  rank dev 0.36 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_scratch_student_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [06:41<00:51, 51.36s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_scratch_student_metrics.csv
+Executing: 100%|██████████| 36/36 [06:44<00:00, 11.24s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_scratch_student_metrics.csv
+[run_step] ok in 903.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261116-171438_ssh_varcm_student_eval
+[job] 2026-11-16T17:30:06+01:00 exit=0

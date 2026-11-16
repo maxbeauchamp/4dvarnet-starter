@@ -187,3 +187,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 15:51 `gp_vardyncm_fr_sweep` done in 00:13:54, gate passed
 - 2026-11-16 15:51 submitted `ssh_varcm_aug_eval` as job 76494 -> `runs/20261116-155138_ssh_varcm_aug_eval`
 - 2026-11-16 16:13 `ssh_varcm_aug_eval` done in 00:09:25, gate passed
+- 2026-11-16 17:15 submitted `ssh_varcm_student_eval` as job 76524 -> `runs/20261116-171438_ssh_varcm_student_eval` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-16 17:53 lane 4: `ssh_varcm_student_eval` done in 00:15:05, gate passed
