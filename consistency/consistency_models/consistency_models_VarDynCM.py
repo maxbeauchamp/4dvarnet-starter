@@ -516,8 +516,8 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
         self.w_ic = w_ic
         # (rebuttal) grid_refine=(1, 2, 3, 4): each segment of the frame grid (1 -> sb, then frame to frame) is
         # split into K jumps at random sorted times, K drawn from this set at every step, so that the frames are
-        # scored for many sampling grids, not only the frame grid. With K > 1 the state is detached at the start
-        # of each segment (memory). Empty: the frame grid only.
+        # scored for many sampling grids, not only the frame grid. With K > 1 only the last jump of each segment
+        # carries a gradient and the state is detached between segments (memory). Empty: the frame grid only.
         self.grid_refine = tuple(grid_refine)
 
     def __call__(self, student, teacher, x, y, current_step, total_steps,
@@ -556,13 +556,15 @@ class VarDynCMCRPSTraining(VarDynCMTraining):
             l_semi = l_semi / C
         else:
             def segment(state, ta, tb):
+                # the first K-1 jumps without gradient (memory: same graph size as the frame grid); the last jump,
+                # from a random intermediate time to the frame time, is scored by the CRPS and the semigroup term
                 inner = sorted((ta - (ta - tb) * torch.rand(K - 1)).tolist(), reverse=True)
-                ts, ls = [ta] + inner + [tb], 0.0
-                for a, b in zip(ts[:-1], ts[1:]):
-                    nxt = fwd(student, state, a, b)
-                    ls = ls + semi(state, a, b, nxt)
-                    state = nxt
-                return state, ls / K
+                ts = [ta] + inner
+                with torch.no_grad():
+                    for a, b in zip(ts[:-1], ts[1:]):
+                        state = fwd(student, state, a, b)
+                nxt = fwd(student, state.detach(), ts[-1], tb)
+                return nxt, semi(state, ts[-1], tb, nxt)
             cur, l_semi = segment(u, 1.0, frame_t[0])
             frames = [cur]
             for k in range(C - 1):
