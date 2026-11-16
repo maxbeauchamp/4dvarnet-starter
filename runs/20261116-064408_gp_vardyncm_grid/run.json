@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_vardyncm_grid",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp GP --method VarDynCM_grid --reset && python run_training.py --xp GP --method VarDynCM_grid --reset && python run_metrics.py --xp GP --method VarDynCM_grid && python run_nfe_sweep.py --method VarDynCM_grid_uni --grid 2,3,5,10,20 && cat results/GP/VarDynCM_grid_uni_nfe_sweep.csv",
+  "commit": "e14d294-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "76073",
+  "started": "2026-11-16T06:44:12",
+  "status": "ok",
+  "seconds": 13091.6,
+  "finished": "2026-11-16T10:22:23"
+}

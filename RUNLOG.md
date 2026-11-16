@@ -179,3 +179,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 01:46 `gp_vardyncm_grid` ended FAILED after 00:00:41; retrying once
 - 2026-11-16 01:46 submitted `gp_vardyncm_grid` as job 75969 -> `runs/20261116-014636_gp_vardyncm_grid`
 - 2026-11-16 02:17 **ATTENTION** `gp_vardyncm_grid` ended FAILED after 00:00:20; see `runs/20261116-014636_gp_vardyncm_grid`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
+- 2026-11-16 06:44 submitted `gp_vardyncm_grid` as job 76073 -> `runs/20261116-064408_gp_vardyncm_grid`
+- 2026-11-16 10:47 `gp_vardyncm_grid` done in 03:38:13, gate passed
