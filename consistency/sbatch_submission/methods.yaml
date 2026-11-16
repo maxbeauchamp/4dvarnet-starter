@@ -93,6 +93,8 @@ methods:
         notebook: Notebook_consistency_model_CMT_sic.ipynb
         log_dir: logs_CMT_sic
         status: existing
+        params:
+          MAX_TIME: "00:04:45:00"   # same training time as CMT_v2 on SSH (more SIC data: equal time, not equal epochs)
 
   VarCM:
     # ICLR rebuttal (GP): CRPS ensemble anchors (pixels + spatial/temporal increments), fixed grid, warm start
@@ -228,6 +230,8 @@ methods:
         notebook: Notebook_flowmatching_model_FM_sic.ipynb
         log_dir: logs_FM_sic_v2
         status: existing
+        params:
+          MAX_TIME: "00:02:45:00"   # same training time as FM_v2 on SSH
 
   DynFM_v2:
     # Same for the DynFM teacher on SSH.

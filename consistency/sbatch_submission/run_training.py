@@ -68,6 +68,7 @@ def main():
         "METRICS_CSV": str(metrics_csv),
     }
     params.update(method_cfg.get("params") or {})
+    params.update(xp_cfg.get("params") or {})          # (rebuttal) per-experiment overrides, e.g. SIC MAX_TIME
     if os.environ.get("MAX_EPOCHS_OVERRIDE"):          # smoke tests driven by odyssey/plan.json
         params["MAX_EPOCHS"] = int(os.environ["MAX_EPOCHS_OVERRIDE"])
 

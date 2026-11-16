@@ -198,3 +198,9 @@ GP VarCM student weights: RMSE 0.184, lambda_x 21.6, CRPS 0.101, SSR 0.80, rank 
   to the EMA target r, pseudo-Huber). Paper App. B now describes the code as run: L_self = rho(p,r)+rho(s,r),
   L_S = 1/2[S(p)+S(q)] + 1/2[S_Omega(p)+S_Omega(s)], + L_AE. lambda_reg unused in grad mode (normalised sum of grads).
 - DynVarCM: network also receives y_{0:N}; grad conditioning only in the physical regime; evaluated with EMA weights.
+
+## 2026-11-16 — SIC at SSH-like cost (user: "plus de data pour SIC mais garde comme SSH pour avoir des temps similaires")
+SIC has 300 training windows (vs ~210 on SSH) and larger fields: equal epochs would take 2-3x longer. Same recipes as SSH,
+but trainer.fit bounded by the SSH training time (MAX_TIME, Lightning max_time; per-xp params in methods.yaml):
+FM_v2 SIC 2h45, CMT SIC 4h45. Checkpoint still selected on validation CRPS (FM) as on SSH.
+sic_fm_v2_train (job 76482) already ran ~7h -> cancel it and evaluate its best validation checkpoint (sic_fm_v2_eval).
