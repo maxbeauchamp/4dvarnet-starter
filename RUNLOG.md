@@ -204,3 +204,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 22:53 skipped `sic_fm_v2_train`
 - 2026-11-16 22:53 skipped `sic_fm_v2_train`
 - 2026-11-16 23:00 lane 3: `sic_fm_v2_eval` done in 00:26:03, gate passed
+- 2026-11-16 23:00 submitted `sic_cmt_train` as job 76748 -> `runs/20261116-230026_sic_cmt_train` (lane 3) [gpu:a100:1]
+- 2026-11-17 00:01 lane 4: `ssh_varcm_aug_resume` done in 04:06:50, gate passed
