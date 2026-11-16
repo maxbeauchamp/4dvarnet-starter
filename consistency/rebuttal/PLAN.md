@@ -176,3 +176,6 @@ the new results, list what changed in the PDF with line references.
 * 16 Nov — SSH: CMT_v2 (from FM_v2): RMSE 0.072, CRPS 0.0355, SSR 0.83, rank dev 0.88 (CM v1: SSR 0.06).
   VarCM SSH from scratch over-fits (val CRPS min at epoch 31 then rising; test RMSE 0.28): rerun with D4 data
   augmentation (VarCM_aug). gp_vardyncm_grid OOM with K=4: only the last jump of each segment carries a gradient.
+* 16 Nov 15:20, user: stop VarCM_aug (time); finish the GP evaluations; paper; then all power on SSH, then SIC.
+  Main lane: gp_vardyncm_fr_sweep -> ssh_dynfm_v2_train -> ssh_dyncmt_train (DynCMT SSH, DynFM_v2 teacher, from
+  scratch). Lane 2: ssh_vardyncm_train (running) -> ssh_var_v1_eval -> sic_fm_v2_train.

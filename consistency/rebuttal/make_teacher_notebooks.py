@@ -134,11 +134,12 @@ def build_varcmt():
     _write(nb, dst)
 
 
-def build_dyncmt():
+def build_dyncmt(xp_dir="Notebooks_GP", suffix="spde", dynfm_log="logs_DynFM_spde", warm=True):
     """GP DynCM -> DynCMT: DynFM-teacher targets (TeacherDynamicalConsistencyTraining), no data anchors,
     EMA 0.999, warm start from the submitted DynCM."""
-    src = NB / "Notebooks_GP" / "Notebook_consistency_model_DynCM_spde.ipynb"
-    dst = NB / "Notebooks_GP" / "Notebook_consistency_model_DynCMT_spde.ipynb"
+    src = NB / xp_dir / f"Notebook_consistency_model_DynCM_{suffix}.ipynb"
+    dst = NB / xp_dir / f"Notebook_consistency_model_DynCMT_{suffix}.ipynb"
+    old_log = f"logs_CT_DynCM_{suffix}"
     nb = json.load(open(src))
     done = set()
     old_ct = """ct = ConsistencyTrainingDynamicalSystems(
@@ -153,7 +154,8 @@ def build_dyncmt():
             continue
         s = "".join(c["source"])
         if s.lstrip().startswith("# --- parameters"):
-            s += ("WARM_START = True        # DynCMT: start from the submitted DynCM checkpoint\n"
+            s += (f"WARM_START = {warm}        # DynCMT: start from the submitted DynCM checkpoint\n"
+                  f"DYNFM_TEACHER_LOG = '{dynfm_log}'  # log dir of the DynFM teacher (best_model)\n"
                   "P_LOCAL = 0.25\n"
                   "N_GRID = 64             # fixed training grid (sampler grid is NSTEPS)\n")
             done.add("params")
@@ -163,31 +165,31 @@ def build_dyncmt():
                                "from flowmatching_models.flowmatching_models_FM import UNetFM")
             done.add("imports")
         if old_ct in s:
-            s = sub(s, 'LOG_DIR     = "logs_CT_DynCM_spde"', 'LOG_DIR     = "logs_DynCMT_spde"', "LOG_DIR")
+            s = sub(s, f'LOG_DIR     = "{old_log}"', f'LOG_DIR     = "logs_DynCMT_{suffix}"', "LOG_DIR")
             s = sub(s, old_ct,
-                    "_dynfm = UNetFM.from_pretrained(os.path.join('logs_DynFM_spde', 'best_model')).cuda().eval()\n"
+                    "_dynfm = UNetFM.from_pretrained(os.path.join(DYNFM_TEACHER_LOG, 'best_model')).cuda().eval()\n"
                     "ct = TeacherDynamicalConsistencyTraining(\n"
                     "    DynFMTeacher(_dynfm, spinup_boundary=0.7, sigma_min=0.002, sigma_max=10.0),\n"
                     "    num_timesteps=N_GRID, p_local=P_LOCAL, sigma_min=0.002, sigma_max=10.0, rho=7.0)\n"
-                    "print('[DynCMT] DynFM-teacher targets from logs_DynFM_spde/best_model')", "ct")
+                    "print('[DynCMT] DynFM-teacher targets from', DYNFM_TEACHER_LOG)", "ct")
             s = sub(s, "        lambda_obs=0.1,\n    ),\n)",
                     "        lambda_obs=0.0,              # DynCMT: no L2 data anchors (they pull towards the mean)\n"
                     "        lambda_IC=0.0,\n"
                     "        initial_ema_decay_rate=0.999,\n    ),\n)\n"
                     "if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
-                    "    _old = find_resume_ckpt(os.path.join('logs_CT_DynCM_spde', 'checkpoints'))\n"
+                    f"    _old = find_resume_ckpt(os.path.join('{old_log}', 'checkpoints'))\n"
                     "    if _old is None:\n"
-                    "        raise RuntimeError('WARM_START=True but no submitted checkpoint in logs_CT_DynCM_spde')\n"
+                    f"        raise RuntimeError('WARM_START=True but no submitted checkpoint in {old_log}')\n"
                     "    lit_cm.load_state_dict(torch.load(_old, map_location='cpu')['state_dict'])\n"
                     "    print(f'[DynCMT] warm start from {_old}', flush=True)", "lit config")
             done.add("training")
-        if 'MODEL_PATH = os.path.join("logs_CT_DynCM_spde", "best_model")' in s:
+        if f'MODEL_PATH = os.path.join("{old_log}", "best_model")' in s:
             # the sampling cell of the DynCM notebook hard-codes the submitted model: evaluate DynCMT's own
-            s = s.replace('MODEL_PATH = os.path.join("logs_CT_DynCM_spde", "best_model")',
+            s = s.replace(f'MODEL_PATH = os.path.join("{old_log}", "best_model")',
                           'MODEL_PATH = os.path.join(LOG_DIR, "best_model")')
             done.add("model_path")
         if "write_calibration_csv(_calib_csv," in s:
-            s = s.replace("write_calibration_csv(_calib_csv, 'DynCM_spde'", "write_calibration_csv(_calib_csv, 'DynCMT_spde'")
+            s = s.replace(f"write_calibration_csv(_calib_csv, 'DynCM_{suffix}'", f"write_calibration_csv(_calib_csv, 'DynCMT_{suffix}'")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "imports", "training", "model_path"} - done:
         raise SystemExit(f"DynCMT: anchors not found for {({'params', 'imports', 'training', 'model_path'} - done)}")
@@ -386,7 +388,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
 
 FIG_TAGS = {  # figures of the rebuttal models go to their own folders (never over the submitted ones)
     "CMT_spde": ("CM_spde", "CMT_spde"), "CMT_ssh_gf": ("CM_ssh_gf", "CMT_ssh_gf"),
-    "DynCMT_spde": ("DynCM_spde", "DynCMT_spde"), "VarCMT_spde": ("VarCM_spde", "VarCMT_spde"),
+    "DynCMT_spde": ("DynCM_spde", "DynCMT_spde"), "DynCMT_ssh_gf": ("DynCM_ssh_gf", "DynCMT_ssh_gf"), "VarCMT_spde": ("VarCM_spde", "VarCMT_spde"),
     "VarCM_spde": ("VarCM_spde", "VarCM_crps_spde"), "VarDynCM_spde": ("VarDynCM_spde", "VarDynCM_crps_spde"),
     "VarCM_ssh_gf": ("VarCM_ssh_gf", "VarCM_crps_ssh_gf"), "VarDynCM_ssh_gf": ("VarDynCM_ssh_gf", "VarDynCM_crps_ssh_gf"),
 }
@@ -490,5 +492,6 @@ if __name__ == "__main__":
     build_dyncmt()
     build_varcm_crps()
     build_vardyncm_crps()
+    build_dyncmt("Notebooks_SSH_GF", "ssh_gf", "logs_DynFM_ssh_gf_v2", False)
     build_varcm_crps("Notebooks_SSH_GF", "ssh_gf")
     build_vardyncm_crps("Notebooks_SSH_GF", "ssh_gf")

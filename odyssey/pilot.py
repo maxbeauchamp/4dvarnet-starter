@@ -437,6 +437,13 @@ def main():
         st["paused"] = False; st["lane2_paused"] = False; save_state(st); log("pilot resumed")
         (REPO / "results" / "ATTENTION.md").unlink(missing_ok=True)
     elif cmd == "skip":
+        # mark the step as done without running it (cancel its job first if it is running: `scancel <job>`)
+        st["history"].append(dict(step=args[0], job=None, state="COMPLETED (skipped)", elapsed="0", run_dir=None))
+        if st.get("step") == args[0]:
+            st.update(job=None, run_dir=None, step=None)
+        if (st.get("lane2") or {}).get("step") == args[0]:
+            st["lane2"] = None
+        st["paused"] = False
         log(f"skipped `{args[0]}`"); advance(st, args[0])
     elif cmd == "push":
         push()

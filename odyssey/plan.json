@@ -325,7 +325,8 @@
    "id": "ssh_varcm_aug_train",
    "time": "14:00:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_metrics.py --xp SSH_GF --method VarCM_aug"
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_training.py --xp SSH_GF --method VarCM_aug --reset && python run_metrics.py --xp SSH_GF --method VarCM_aug",
+   "note": "stopped by the user on 16 Nov (time): skip"
   },
   {
    "id": "gp_vardyncm_fr_sweep",
@@ -334,16 +335,16 @@
    "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --method VarDynCM_scratch_fr --grid 1,2,3,4,6 ; python run_nfe_sweep.py --method VarDynCM_grid_fr --grid 1,2,3,4,6 ; cat results/GP/VarDynCM_*_fr_nfe_sweep.csv"
   },
   {
-   "id": "sic_fm_v2_train",
-   "time": "30:00:00",
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method FM_v2 --reset && python run_metrics.py --xp SIC --method FM_v2"
-  },
-  {
    "id": "ssh_dynfm_v2_train",
    "time": "30:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method DynFM_v2 --reset && python run_metrics.py --xp SSH_GF --method DynFM_v2"
+  },
+  {
+   "id": "ssh_dyncmt_train",
+   "time": "30:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SSH_GF --method DynCMT --reset && python run_training.py --xp SSH_GF --method DynCMT --reset && python run_metrics.py --xp SSH_GF --method DynCMT"
   },
   {
    "id": "ssh_var_smoke",
@@ -372,6 +373,13 @@
    "time": "06:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_v1 && python run_metrics.py --xp SSH_GF --method VarDynCM_v1"
+  },
+  {
+   "id": "sic_fm_v2_train",
+   "time": "30:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method FM_v2 --reset && python run_metrics.py --xp SIC --method FM_v2",
+   "lane": 2
   },
   {
    "id": "ssh_cmt_train",
