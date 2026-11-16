@@ -412,6 +412,45 @@ methods:
         log_dir: logs_VarDynCM_crps_ssh_gf_grad_grid
         status: existing
 
+  VarCM_aug_student:
+    # Evaluation of VarCM_aug with the student weights (the EMA of decay 0.99993 lags on short SSH runs).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 250
+      COND_MODE: "grad"
+      RUN_TAG: "_aug"
+      WARM_START: false
+      SELECT_BY_VAL: true
+      SHORT_CRPS: true
+      AUGMENT: true
+      SAVE_STUDENT: true
+      EVAL_TAG: "_student"
+    xp:
+      SSH_GF:
+        notebook: Notebook_consistency_model_VarCM_ssh_gf.ipynb
+        log_dir: logs_VarCM_crps2_ssh_gf_grad_aug
+        status: existing
+
+  VarCM_scratch_student:
+    # Same for VarCM_scratch (SSH).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 250
+      COND_MODE: "grad"
+      RUN_TAG: "_scratch"
+      WARM_START: false
+      SELECT_BY_VAL: true
+      SHORT_CRPS: true
+      SAVE_STUDENT: true
+      EVAL_TAG: "_student"
+    xp:
+      SSH_GF:
+        notebook: Notebook_consistency_model_VarCM_ssh_gf.ipynb
+        log_dir: logs_VarCM_crps2_ssh_gf_grad_scratch
+        status: existing
+
   VarCM_ls01:
     # ICLR rebuttal (GP), second CRPS stage: self-consistency weight 0.1 (was 1), 100 epochs from VarCM (crps2,
     # 300 epochs), checkpoint chosen on the validation CRPS of the ensemble. Same notebook as VarCM.

@@ -272,7 +272,9 @@ PARAMS_CRPS = ("WARM_START = True        # start from the submitted (v1) checkpo
                "AUGMENT = False          # random rot90/flip of (x0, y) at training time (small SSH training set)\n")
 
 
-PARAMS_V3 = ("SHORT_CRPS = False       # v3: CRPS instead of L2 in the short anchor (last L2 target on the interpolant)\n"
+PARAMS_V3 = ("SAVE_STUDENT = False     # evaluate the student weights instead of their slow EMA (decay 0.99993:\n"
+             "                         # ~10k-step half-life, too slow for short runs on the small SSH set)\n"
+             "SHORT_CRPS = False       # v3: CRPS instead of L2 in the short anchor (last L2 target on the interpolant)\n"
              "ROLLOUT_STEPS = []       # v3: also score the sampler's K-step chain, K drawn from this list\n")
 
 
@@ -320,6 +322,9 @@ def build_varcm_crps(xp_dir="Notebooks_GP", suffix="spde"):
                     '    limit_val_batches       = 50,\n', "trainer")
             s = sub(s, "# ── Save EMA UNet via save_pretrained",
                     SELECT_BEST.replace("{LIT_OBJ}", "lit_cm") + "\n# ── Save EMA UNet via save_pretrained", "select")
+            s = sub(s, "lit_cm.ema_student_model.save_pretrained(MODEL_PATH)",
+                    "(lit_cm.student_model if SAVE_STUDENT else lit_cm.ema_student_model).save_pretrained(MODEL_PATH)",
+                    "save student")
             done.add("training")
         c["source"] = s.splitlines(keepends=True)
     if {"params", "training"} - done:
