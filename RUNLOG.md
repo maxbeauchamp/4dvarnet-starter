@@ -185,3 +185,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 15:29 submitted `sic_fm_v2_train` as job 76482 -> `runs/20261116-152902_sic_fm_v2_train` (lane 3)
 - 2026-11-16 15:32 submitted `gp_vardyncm_fr_sweep` as job 76485 -> `runs/20261116-153206_gp_vardyncm_fr_sweep`
 - 2026-11-16 15:51 `gp_vardyncm_fr_sweep` done in 00:13:54, gate passed
+- 2026-11-16 15:51 submitted `ssh_varcm_aug_eval` as job 76494 -> `runs/20261116-155138_ssh_varcm_aug_eval`
+- 2026-11-16 16:13 `ssh_varcm_aug_eval` done in 00:09:25, gate passed
