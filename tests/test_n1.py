@@ -372,3 +372,27 @@ def test_one_step_bias_script(days):
     r = res["all"]
     assert all(f"{v}_bias_SIT" in r for v in VARIANTS) and 0 <= r["raw_below0_SIT"] <= 1
     assert r["raw_clip_spread_SIC"] >= 0 and r["n"] > 0
+
+
+def test_n1o_dense_increment_targets(days):
+    torch.manual_seed(0)
+    kw = dict(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2, increment=True,
+              inc_scale=0.2, dense_targets=True, dense_members=1, dense_steps=1, dense_paired=True, analysis_steps=1)
+    n1o = LitCascadeN1(dense_increment=True, **kw)
+    n1o._dense_seed = 123
+    a0, _ = n1o.analysis(days[0], 1, torch.Generator("cpu").manual_seed(123))
+    a1, _ = n1o.analysis(days[1], 1, torch.Generator("cpu").manual_seed(123))
+    a2, _ = n1o.analysis(days[2], 1, torch.Generator("cpu").manual_seed(123))
+    ocean = days[1]["omega_c"] > 0
+    fill = ocean & ~n1o.n0.target_c(days[1])[1][:, 0]
+    # step 1 from A_t: as N1n (A_t+1)
+    n1o._dense_prev = a0
+    z, _, _ = n1o.target(days[1], z_in=a0)
+    assert torch.allclose(z[:, 0][fill], n1o.nrm.z(a1)[:, 0][fill], atol=1e-4)
+    # step 2 from another state: that state + (A_t+2 - A_t+1), within the bounds
+    z_in = a1 + 0.1
+    fill2 = (days[2]["omega_c"] > 0) & ~n1o.n0.target_c(days[2])[1][:, 0]
+    z, _, _ = n1o.target(days[2], z_in=z_in)
+    want = n1o.nrm.z(z_in + (a2 - a1)).clamp(n1o.lo[0, 0].item(), n1o.hi[0, 0].item())
+    assert torch.allclose(z[:, 0][fill2], want[:, 0][fill2], atol=1e-4)
+    assert torch.isfinite(n1o.losses(days)["loss"])

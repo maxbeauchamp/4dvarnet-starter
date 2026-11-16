@@ -74,6 +74,13 @@ Options (v6, N1b; all False for the former checkpoints):
                tens of cm), N1m learnt it as daily increments, a random walk
                pushed up at 0 (SIT, snow, open-water SIC) and down at 1 (pack):
                volume x1.5-2 in 30 days, ice appearing in open water.
+  dense_increment  (N1o) at step k the dense target is the step's input state
+               plus the paired N0 change z_in + (A_t+k - A_t+k-1) (clipped to
+               the bounds), not A_t+k: k = 1 as N1n; for k >= 2 the input is
+               the model's own sample, far from the paired chain, and N1n
+               learnt that gap (the N0 SIT uncertainty) as the daily law: one
+               step from A_t had a SIT spread of 0.3-0.5 m (true change
+               ~0.05 m), thin ice +0.13 m, thick -0.31 m, volume x2-3 in 30 days.
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -186,7 +193,8 @@ class LitCascadeN1(pl.LightningModule):
                  bg_sigma=None, analysis_steps=None, weak_targets=True, inc_scale=None, bg_advect=False,
                  inc_scale_sic=None, weak_sic=True,
                  drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False,
-                 dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05, dense_paired=False):
+                 dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05, dense_paired=False,
+                 dense_increment=False):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -276,10 +284,11 @@ class LitCascadeN1(pl.LightningModule):
         return out
 
     @torch.no_grad()
-    def target(self, b: dict, keep: dict | None = None) -> tuple[Tensor, Tensor, Tensor]:
+    def target(self, b: dict, keep: dict | None = None, z_in: Tensor | None = None) -> tuple[Tensor, Tensor, Tensor]:
         """(X^, S^, psi^) normalised, mask and scale floor; psi^ from the N0 EMA
         encoder on the full window of the day, where it saw observations.
-        keep: the groups of the step's conditioning (weak_sic = "seen")."""
+        keep: the groups of the step's conditioning (weak_sic = "seen");
+        z_in: the step's input state, physical (dense_increment)."""
         z, m, floor = self.n0.target_c(b)
         ws = self.hparams.get("weak_sic", True)
         sg = b["tgt_C_sigma"]
@@ -306,8 +315,14 @@ class LitCascadeN1(pl.LightningModule):
             gens = [torch.Generator(z.device).manual_seed(seed + i) if seed is not None else None
                     for i in range(hp.dense_members)]
             a = torch.stack([n0.sample_c(n0.ema.module, ctx, b, kp, hp.dense_steps, gn) for gn in gens]).mean(0)
+            an = self.nrm.z(a)
+            prev = getattr(self, "_dense_prev", None)
+            if hp.get("dense_increment", False) and z_in is not None and prev is not None:
+                self._dense_prev = a
+                an = self.nrm.z(z_in + (a - prev))
+                an = torch.minimum(torch.maximum(an, self.lo[:, :N_Z]), self.hi[:, :N_Z])
             fill = (b["omega_c"] > 0)[:, None] & ~m
-            z = torch.where(fill, self.nrm.z(a), z)
+            z = torch.where(fill, an, z)
             floor = torch.where(fill, torch.full_like(floor, hp.dense_sigma), floor)
             m = m | fill
         m_psi = ctx["m_C"][:, None].expand(-1, self.d_psi, -1, -1)
@@ -316,7 +331,7 @@ class LitCascadeN1(pl.LightningModule):
 
     def step_loss(self, b: dict, z: Tensor, psi: Tensor, keep: dict, noise=None, t=None) -> dict:
         hp = self.hparams
-        z1, m, floor = self.target(b, keep)
+        z1, m, floor = self.target(b, keep, z)
         base = self.base(b, z, psi)
         cond, valid = self.cond(self.nets, b, z, psi, keep, base)
         lo, hi = self.lo, self.hi
@@ -371,6 +386,7 @@ class LitCascadeN1(pl.LightningModule):
             self._dense_seed = int(torch.randint(0, 2 ** 31 - 1, ()).item())
             gen = torch.Generator(dev).manual_seed(self._dense_seed)
         z, psi = self.analysis(days[0], hp.analysis_steps or hp.push_steps, gen)
+        self._dense_prev = z if hp.get("dense_increment", False) else None  # A_t: previous paired analysis
         total, out = 0.0, {}
         for k in range(1, self.k_now(len(days)) + 1):
             keep = self.keep(bsz, dev, train)
