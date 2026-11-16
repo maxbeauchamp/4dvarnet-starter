@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_varcm_student_eval",
+  "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp GP --method VarCM_scratch2_student",
+  "commit": "ea1b92e-dirty",
+  "host": "sl-mee-br-212",
+  "slurm_job": "76572",
+  "started": "2026-11-16T19:14:44",
+  "status": "ok",
+  "seconds": 294.9,
+  "finished": "2026-11-16T19:19:39"
+}

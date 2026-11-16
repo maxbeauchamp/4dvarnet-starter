@@ -194,3 +194,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 19:14 pilot resumed
 - 2026-11-16 19:14 submitted `gp_varcm_student_eval` as job 76572 -> `runs/20261116-191428_gp_varcm_student_eval` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-16 19:15 `ssh_dynfm_v2_train` done in 02:50:22, gate passed
+- 2026-11-16 19:15 submitted `ssh_dyncmt_train` as job 76577 -> `runs/20261116-191536_ssh_dyncmt_train` [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-16 19:25 lane 4: `gp_varcm_student_eval` done in 00:04:56, gate passed
