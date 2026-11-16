@@ -88,6 +88,11 @@ methods:
         notebook: Notebook_consistency_model_CMT_ssh_gf.ipynb
         log_dir: logs_CMT_ssh_gf
         status: generated
+      SIC:
+        # FM_v2 SIC teacher (validation-selected), from scratch
+        notebook: Notebook_consistency_model_CMT_sic.ipynb
+        log_dir: logs_CMT_sic
+        status: existing
 
   VarCM:
     # ICLR rebuttal (GP): CRPS ensemble anchors (pixels + spatial/temporal increments), fixed grid, warm start

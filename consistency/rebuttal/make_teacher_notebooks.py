@@ -30,6 +30,13 @@ SPECS = [
          ct_line="ct = ConsistencyTrainingFewSteps_TimeEmbedding(\n    final_timesteps=17, sigma_max=10, pairwise=PAIRWISE,\n)",
          lit_cfg="LitConsistencyModelConfig(lr_scheduler_iters=1000),\n)",
          lit_name="lit_cm", label="CM_ssh_gf", new_label="CMT_ssh_gf"),
+    dict(src=NB / "Notebooks_SIC" / "Notebook_consistency_model_CM_sic.ipynb",
+         dst=NB / "Notebooks_SIC" / "Notebook_consistency_model_CMT_sic.ipynb",
+         old_log="logs_CT_CM_sic_{COND_MODE}", new_log="logs_CMT_sic", fm_log="logs_FM_sic_v2",
+         ct_line="ct = ConsistencyTrainingFewSteps_TimeEmbedding(\n    final_timesteps=17, sigma_max=SIGMA_MAX, pairwise=PAIRWISE,\n)",
+         lit_cfg="LitConsistencyModelConfig(lr_scheduler_iters=1000, cond_mode=COND_MODE),\n)",
+         lit_cfg_new="LitConsistencyModelConfig(lr_scheduler_iters=1000, cond_mode=COND_MODE, initial_ema_decay_rate=0.999),\n)",
+         warm=False, lit_name="lit_cm", label="CM_sic", new_label="CMT_sic"),
 ]
 
 
@@ -60,7 +67,7 @@ def build(spec):
         if s.lstrip().startswith("# --- parameters"):
             s += ("RUN_TAG = ''             # suffix of LOG_DIR / figure folder for a variant run\n"
                   f"FM_TEACHER_LOG = '{spec['fm_log']}'  # log dir of the FM teacher (best_model)\n"
-                  "WARM_START = True        # CMT: start from the submitted checkpoint when no CMT checkpoint exists\n"
+                  f"WARM_START = {spec.get('warm', True)}        # CMT: start from the submitted checkpoint when no CMT checkpoint exists\n"
                   "TEACHER_HEUN_SUBSTEPS = 1\n"
                   "P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)\n")
             done.add("params")
@@ -78,7 +85,7 @@ def build(spec):
                     "print('[CMT] ODE-teacher targets from', os.path.join(FM_TEACHER_LOG, 'best_model'))",
                     "ct")
             s = sub(s, spec["lit_cfg"],
-                    "LitConsistencyModelConfig(lr_scheduler_iters=1000, initial_ema_decay_rate=0.999),\n)\n"
+                    spec.get("lit_cfg_new", "LitConsistencyModelConfig(lr_scheduler_iters=1000, initial_ema_decay_rate=0.999),\n)") + "\n"
                     f"if WARM_START and resume_ckpt is None and not SKIP_TRAINING:\n"
                     f"    _old = find_best_valid_checkpoint(os.path.join('{spec['old_log']}', 'checkpoints'))\n"
                     f"    if _old is None:\n"
@@ -87,6 +94,9 @@ def build(spec):
                     f"    print(f'[CMT] warm start from {{_old}}', flush=True)",
                     "lit config")
             done.add("training")
+        elif f"LOG_DIR    = f'{spec['old_log']}'" in s:
+            # a later cell redefines LOG_DIR (SIC): evaluate the new model, not the submitted one
+            s = s.replace(f"LOG_DIR    = f'{spec['old_log']}'", f"LOG_DIR    = '{spec['new_log']}' + RUN_TAG")
         if "write_calibration_csv(_calib_csv," in s:
             s = s.replace(f"write_calibration_csv(_calib_csv, '{spec['label']}'",
                           f"write_calibration_csv(_calib_csv, '{spec['new_label']}'")
@@ -387,7 +397,7 @@ def build_vardyncm_crps(xp_dir="Notebooks_GP", suffix="spde"):
 
 
 FIG_TAGS = {  # figures of the rebuttal models go to their own folders (never over the submitted ones)
-    "CMT_spde": ("CM_spde", "CMT_spde"), "CMT_ssh_gf": ("CM_ssh_gf", "CMT_ssh_gf"),
+    "CMT_spde": ("CM_spde", "CMT_spde"), "CMT_ssh_gf": ("CM_ssh_gf", "CMT_ssh_gf"), "CMT_sic": ("CM_sic", "CMT_sic"),
     "DynCMT_spde": ("DynCM_spde", "DynCMT_spde"), "DynCMT_ssh_gf": ("DynCM_ssh_gf", "DynCMT_ssh_gf"), "VarCMT_spde": ("VarCM_spde", "VarCMT_spde"),
     "VarCM_spde": ("VarCM_spde", "VarCM_crps_spde"), "VarDynCM_spde": ("VarDynCM_spde", "VarDynCM_crps_spde"),
     "VarCM_ssh_gf": ("VarCM_ssh_gf", "VarCM_crps_ssh_gf"), "VarDynCM_ssh_gf": ("VarDynCM_ssh_gf", "VarDynCM_crps_ssh_gf"),
