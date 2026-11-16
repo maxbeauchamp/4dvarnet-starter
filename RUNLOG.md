@@ -181,3 +181,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 02:17 **ATTENTION** `gp_vardyncm_grid` ended FAILED after 00:00:20; see `runs/20261116-014636_gp_vardyncm_grid`. Pilot paused (`pilot.py retry` to resubmit, `resume` to continue).
 - 2026-11-16 06:44 submitted `gp_vardyncm_grid` as job 76073 -> `runs/20261116-064408_gp_vardyncm_grid`
 - 2026-11-16 10:47 `gp_vardyncm_grid` done in 03:38:13, gate passed
+- 2026-11-16 15:27 skipped `ssh_varcm_aug_train`
+- 2026-11-16 15:29 submitted `sic_fm_v2_train` as job 76482 -> `runs/20261116-152902_sic_fm_v2_train` (lane 3)
+- 2026-11-16 15:32 submitted `gp_vardyncm_fr_sweep` as job 76485 -> `runs/20261116-153206_gp_vardyncm_fr_sweep`
+- 2026-11-16 15:51 `gp_vardyncm_fr_sweep` done in 00:13:54, gate passed
