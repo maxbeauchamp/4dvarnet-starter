@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_cmt_v2_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT_v2 --reset && python run_metrics.py --xp SSH_GF --method CMT_v2",
+  "commit": "22caefc",
+  "host": "sl-mee-br-207",
+  "slurm_job": "75595",
+  "started": "2026-11-15T19:12:34",
+  "status": "ok",
+  "seconds": 19999.5,
+  "finished": "2026-11-16T00:45:53"
+}
