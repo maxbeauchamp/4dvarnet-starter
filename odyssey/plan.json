@@ -445,6 +445,13 @@
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method FM_v2"
   },
   {
+   "id": "sic_fm_diag",
+   "lane": 3,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/Notebooks/Notebooks_SIC && python ../../rebuttal/diag_fm_sic.py --members 20"
+  },
+  {
    "id": "sic_chain_smoke",
    "lane": 3,
    "time": "03:00:00",
