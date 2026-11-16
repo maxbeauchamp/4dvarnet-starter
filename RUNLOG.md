@@ -200,3 +200,7 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-16 19:26 submitted `ssh_varcm_aug_resume` as job 76594 -> `runs/20261116-192550_ssh_varcm_aug_resume` (lane 4) [gpu:a100:1]
 - 2026-11-16 19:26 submitted `ssh_varcm_aug_resume` as job 76597 -> `runs/20261116-192605_ssh_varcm_aug_resume` (lane 4) [gpu:a100:1]
 - 2026-11-16 22:28 lane 3: `sic_fm_v2_train` done in 06:30:02, gate passed
+- 2026-11-16 22:29 submitted `sic_fm_v2_eval` as job 76735 -> `runs/20261116-222911_sic_fm_v2_eval` (lane 3) [gpu:a100:1]
+- 2026-11-16 22:53 skipped `sic_fm_v2_train`
+- 2026-11-16 22:53 skipped `sic_fm_v2_train`
+- 2026-11-16 23:00 lane 3: `sic_fm_v2_eval` done in 00:26:03, gate passed
