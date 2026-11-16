@@ -358,3 +358,17 @@ def test_non_finite_steps_are_skipped(n1, days, monkeypatch):
                 q.grad = None
     n1.on_before_optimizer_step(Opt())
     assert p.grad is None and n1._skipped == 2
+
+
+def test_one_step_bias_script(days):
+    import os
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+    from one_step_bias import VARIANTS, pair_stats
+    torch.manual_seed(0)
+    n1n = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2,
+                       increment=True, inc_scale=0.2, tobit=True)
+    res = pair_stats(n1n, days[0], days[1], seed=3, members=2, w=0.0, ana_steps=1, n_steps=1)
+    r = res["all"]
+    assert all(f"{v}_bias_SIT" in r for v in VARIANTS) and 0 <= r["raw_below0_SIT"] <= 1
+    assert r["raw_clip_spread_SIC"] >= 0 and r["n"] > 0
