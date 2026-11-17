@@ -1,3 +1,3 @@
-# Needs attention (2026-11-17 06:46)
+# Needs attention (2026-11-17 06:47)
 
-lane 2: `sic_vardyncm_grid` ended FAILED after 00:00:27; see `runs/20261117-064349_sic_vardyncm_grid`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+lane 4: `sic_varcm_train` ended FAILED after 00:00:19; see `runs/20261117-064412_sic_varcm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
