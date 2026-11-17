@@ -244,3 +244,4 @@ fatal: Cannot autostash
 - 2026-11-17 13:31 lane 3: `sic_dynfm_train` done in 03:28:57, gate passed
 - 2026-11-17 13:32 submitted `sic_dyncmt_train` as job 77211 -> `runs/20261117-133203_sic_dyncmt_train` (lane 3) [gpu:a100:1]
 - 2026-11-17 16:00 **ATTENTION** lane 3: `sic_dyncmt_train` ended FAILED after 00:00:53; see `runs/20261117-133203_sic_dyncmt_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-17 16:01 `ssh_dyncmt_train` done in 19:49:24, gate passed
