@@ -479,6 +479,13 @@
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v2 --reset && python run_metrics.py --xp SIC --method DynFM_v2"
   },
   {
+   "id": "gp_nfe_fm_ssr",
+   "lane": 3,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --xp GP --method FM && python run_nfe_sweep.py --xp GP --method DynFM"
+  },
+  {
    "id": "sic_dyncmt_train",
    "lane": 3,
    "time": "09:00:00",
