@@ -262,3 +262,4 @@ fatal: Cannot autostash
 - 2026-11-17 21:06 `sic_cmt_raw_train` done in 04:52:05, gate passed
 - 2026-11-17 22:08 **ATTENTION** lane 3: `sic_dyncmt_train` ended CANCELLED by 264082 after 01:05:36; see `runs/20261117-204742_sic_dyncmt_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 23:09 lane 2: `sic_vardyncm_grid` done in 03:10:43, gate passed
+- 2026-11-17 23:09 lane 2: `sic_vardyncm_grid` done in 03:10:43, gate passed
