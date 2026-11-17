@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_vardyncm_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarDynCM_scratch --reset && python run_metrics.py --xp SIC --method VarDynCM_scratch",
+  "commit": "e4c1b23",
+  "host": "sl-mee-br-211",
+  "slurm_job": "76884",
+  "started": "2026-11-17T05:34:37",
+  "status": "exit 1",
+  "seconds": 15.5,
+  "finished": "2026-11-17T05:34:52"
+}
