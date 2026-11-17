@@ -314,6 +314,40 @@ methods:
         params:
           MAX_TIME: "00:04:00:00"
 
+  CMT_v3:
+    # SIC: CM distilled from the FM_v3 teacher (OSI SAF gap fill), same fill in the CM inputs, from scratch.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _v3
+      GAP_FILL: osi
+      FM_TEACHER_LOG: logs_FM_sic_v3
+    xp:
+      SIC:
+        notebook: Notebook_consistency_model_CMT_sic.ipynb
+        log_dir: logs_CMT_sic_v3
+        status: existing
+        params:
+          MAX_TIME: "00:04:45:00"
+
+  DynCMT_v3:
+    # SIC: DynCM distilled from the DynFM_v3 teacher (OSI SAF gap fill), same fill in the DynCM inputs.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _v3
+      GAP_FILL: osi
+      DYNFM_TEACHER_LOG: logs_DynFM_sic_v3
+    xp:
+      SIC:
+        notebook: Notebook_consistency_model_DynCMT_sic.ipynb
+        log_dir: logs_DynCMT_sic_v3
+        status: existing
+        params:
+          MAX_TIME: "00:05:00:00"
+
   CMT_v2:
     # CM (ODE-teacher targets) on SSH distilled from FM_v2, from scratch.
     generative: true

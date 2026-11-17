@@ -218,8 +218,9 @@ class TeacherDynamicalConsistencyTraining:
         physical_steps = torch.linspace(0.0, sb, x.shape[1], device=dev)
         phys_step_size = sb / max(x.shape[1] - 1, 1)
         noise = torch.randn_like(x[:, [0], :, :])
+        x_fill = kwargs.pop('x_fill', None)   # (rebuttal, SIC) gap fill of the inputs (e.g. OSI SAF); default 0
         x_raw = x
-        x = torch.nan_to_num(x)          # (rebuttal, SIC) gappy targets: filled inputs, masked targets below
+        x = torch.nan_to_num(x) if x_fill is None else torch.where(torch.isfinite(x), x, torch.nan_to_num(x_fill.to(x)))
 
         i = torch.randint(0, N - 1, (B,), device=dev)
         k = i + 1 + (torch.rand(B, device=dev) * (N - 1 - i)).long().clamp(max=N - 2 - i)

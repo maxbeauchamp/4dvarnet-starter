@@ -531,6 +531,24 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v3 --reset && python run_metrics.py --xp SIC --method DynFM_v3",
    "note": "teacher fix: OSI SAF gap fill in the DynFM frame interpolant"
+  },
+  {
+   "id": "sic_cmt_v3_train",
+   "lane": 4,
+   "time": "08:00:00",
+   "gate": "status == 'ok'",
+   "confirm": true,
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method CMT_v3 --reset && python run_metrics.py --xp SIC --method CMT_v3",
+   "note": "approve only if FM_v3 is better than FM_v2 (SSR > 0.57)"
+  },
+  {
+   "id": "sic_dyncmt_v3_train",
+   "lane": 2,
+   "time": "09:00:00",
+   "gate": "status == 'ok'",
+   "confirm": true,
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT_v3 --reset && python run_metrics.py --xp SIC --method DynCMT_v3",
+   "note": "approve only if DynFM_v3 is good (RMSE MIZ < 0.20)"
   }
  ]
 }
