@@ -224,3 +224,8 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 07:05 lane 3: `sic_fm_diag` done in 02:56:54, gate passed
 - 2026-11-17 07:05 submitted `sic_chain_smoke` as job 76909 -> `runs/20261117-070517_sic_chain_smoke` (lane 3) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-17 07:11 lane 3: `sic_chain_smoke` done in 00:02:08, gate passed
+- 2026-11-17 07:11 submitted `sic_dynfm_train` as job 76914 -> `runs/20261117-071113_sic_dynfm_train` (lane 3) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-17 09:38 git pull failed: fatal: unable to access 'https://github.com/maxbeauchamp/4dvarnet-starter.git/': Could not resolve host: github.com
+- 2026-11-17 09:48 pilot resumed
+- 2026-11-17 09:49 submitted `sic_vardyncm_train` as job 76982 -> `runs/20261117-094853_sic_vardyncm_train` (lane 2) [gpu:a100:1]
+- 2026-11-17 09:49 **ATTENTION** lane 3: `sic_dynfm_train` ended FAILED after 00:00:17; see `runs/20261117-071113_sic_dynfm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
