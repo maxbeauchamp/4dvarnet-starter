@@ -260,6 +260,24 @@ methods:
         params:
           MAX_TIME: "00:02:15:00"   # DynFM_v2 SSH: ~2h15 of training
 
+  DynFM_v2_more:
+    # SIC: DynFM_v2 stopped by its 2h15 budget at epoch ~104/400 with the validation CRPS still decreasing
+    # (0.42 -> 0.155); resumed from its last checkpoint (no reset). Lightning restores the elapsed time of the
+    # Timer, so MAX_TIME is the new total (~4h15 more).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 400
+      RUN_TAG: _v2
+      SELECT_BY_VAL: true
+    xp:
+      SIC:
+        notebook: Notebook_flowmatching_model_DynFM_sic.ipynb
+        log_dir: logs_DynFM_sic_v2
+        status: existing
+        params:
+          MAX_TIME: "00:06:30:00"
+
   CMT_v2:
     # CM (ODE-teacher targets) on SSH distilled from FM_v2, from scratch.
     generative: true

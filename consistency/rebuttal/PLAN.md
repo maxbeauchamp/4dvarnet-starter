@@ -223,3 +223,9 @@ FM_v2 SIC (400 epochs, 6h30, best val epoch 389): RMSE 0.144 (MIZ) / 0.096 (all)
 - SSH: VarCM_aug resume kept the epoch-67 checkpoint (same model, SSR 1.44, RMSE 0.092);
   DynVarCM scratch RMSE 0.057, CRPS 0.029, SSR 0.58; grid fine-tune SSR 0.25 (worse) -> to discuss.
 - ssh_var_v1_eval: VarCM v1 SSH SSR 0.34 / RMSE 0.238; VarDynCM v1 checkpoint incompatible (grad_j 2 ch) -> skip.
+
+## 2026-11-17 17:00
+- SSH DynCM (DynCMT): RMSE 0.079, CRPS 0.0415, SSR 0.98, lambda_x 1.5 deg.
+- SIC DynFM_v2: stopped by MAX_TIME 2h15 at epoch ~104 with val CRPS still decreasing -> RMSE 0.20, SSR 0.34 (bad).
+  Resumed (sic_dynfm_more, total MAX_TIME 6h30) before DynCM SIC, which distils it.
+- SIC DynCM: OOM at 240x240 batch 2 -> batch 1 + 128 crops (make_sic_chain.fixes_dyncmt_mem).
