@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_fm_diag",
+  "cmd": "cd consistency/Notebooks/Notebooks_SIC && python ../../rebuttal/diag_fm_sic.py --members 20",
+  "commit": "86346f7",
+  "host": "sl-mee-br-206",
+  "slurm_job": "76869",
+  "started": "2026-11-17T04:04:05",
+  "status": "ok",
+  "seconds": 10613.0,
+  "finished": "2026-11-17T07:00:58"
+}

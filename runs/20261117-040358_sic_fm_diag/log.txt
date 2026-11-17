@@ -1,0 +1,23 @@
+test batches: 22, members: 20
+best, 20 Heun steps: {"n": 11500639, "ssr": 0.5678190649637672, "spread": 0.05195370689034462, "rmse": 0.09375646710395813, "bias": 0.0031950531993061304, "rank_dev": 0.24496078207563285, "rank_lo": 2.0972173807038024, "rank_hi": 1.8687628574377475}
+best, 50 Heun steps: {"n": 11500639, "ssr": 0.5146973377928351, "spread": 0.047024767845869064, "rmse": 0.093620166182518, "bias": 0.00334179843775928, "rank_dev": 0.36131629605227034, "rank_lo": 2.857581478733486, "rank_hi": 2.2176721658683487}
+logs_FM_sic_v2/checkpoints/last.ckpt (epoch 399): {"n": 11500639, "ssr": 0.5616637666222938, "spread": 0.05139221251010895, "rmse": 0.09375955909490585, "bias": 0.00302591803483665, "rank_dev": 0.24789070623028198, "rank_lo": 2.091942108608052, "rank_hi": 1.895312686538548}
+logs_FM_sic_v2/checkpoints/val_crps=0.07188-epoch=389.ckpt (epoch 389): {"n": 11500639, "ssr": 0.5678190649637672, "spread": 0.05195370689034462, "rmse": 0.09375646710395813, "bias": 0.0031950531993061304, "rank_dev": 0.24496078207563285, "rank_lo": 2.0972173807038024, "rank_hi": 1.8687628574377475}
+logs_FM_sic_v2/checkpoints/val_crps=0.07204-epoch=399.ckpt (epoch 399): {"n": 11500639, "ssr": 0.5616637666222938, "spread": 0.05139221251010895, "rmse": 0.09375955909490585, "bias": 0.00302591803483665, "rank_dev": 0.24789070623028198, "rank_lo": 2.091942108608052, "rank_hi": 1.895312686538548}
+logs_FM_sic_v2/checkpoints/val_crps=0.07207-epoch=379.ckpt (epoch 379): {"n": 11500639, "ssr": 0.5780503092748598, "spread": 0.05293722078204155, "rmse": 0.09384045749902725, "bias": 0.002009171061217785, "rank_dev": 0.21107414325495513, "rank_lo": 2.0111769441680587, "rank_hi": 1.850775074324131}
+
+== SUMMARY ==
+all          SSR 0.568  rank lo/hi 2.10/1.87
+truth at a bound: 42.2% of valid pixels
+interior     SSR 0.537  rmse 0.1143  rank lo/hi 2.47/3.15
+at_bound     SSR 0.728  rmse 0.0541  rank lo/hi 1.58/0.12
+miz          SSR 0.540  rmse 0.1258  rank lo/hi 2.63/3.92
+dist 0-0.5     SSR 0.612  rmse 0.0957  n 3428868
+dist 0.5-5     SSR 0.509  rmse 0.1242  n 2326666
+dist 5-20      SSR 0.453  rmse 0.1481  n 895507
+50 Heun steps: SSR 0.515
+epoch 379: SSR 0.578  rmse 0.0938  (logs_FM_sic_v2/checkpoints/val_crps=0.07207-epoch=379.ckpt)
+epoch 389: SSR 0.568  rmse 0.0938  (logs_FM_sic_v2/checkpoints/val_crps=0.07188-epoch=389.ckpt)
+epoch 399: SSR 0.562  rmse 0.0938  (logs_FM_sic_v2/checkpoints/last.ckpt)
+epoch 399: SSR 0.562  rmse 0.0938  (logs_FM_sic_v2/checkpoints/val_crps=0.07204-epoch=399.ckpt)
+[run_step] ok in 10613.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261117-040358_sic_fm_diag

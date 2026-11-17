@@ -221,3 +221,4 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 06:44 submitted `sic_varcm_train` as job 76904 -> `runs/20261117-064412_sic_varcm_train` (lane 4) [gpu:a100:1]
 - 2026-11-17 06:46 **ATTENTION** lane 2: `sic_vardyncm_grid` ended FAILED after 00:00:27; see `runs/20261117-064349_sic_vardyncm_grid`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 06:47 **ATTENTION** lane 4: `sic_varcm_train` ended FAILED after 00:00:19; see `runs/20261117-064412_sic_varcm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-17 07:05 lane 3: `sic_fm_diag` done in 02:56:54, gate passed
