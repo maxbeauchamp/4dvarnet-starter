@@ -39,6 +39,9 @@ def main():
     ap.add_argument("--method", required=True)
     ap.add_argument("--n-members", type=int, default=None, help="Override the number of members (default: methods.yaml n_samples_metrics)")
     ap.add_argument("--cuda-device", default="0")
+    ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE",
+                    help="(rebuttal) override a notebook parameter (Python literal), e.g. --set FIG_DUMP=True")
+    ap.add_argument("--out-tag", default="", help="(rebuttal) suffix of the output notebook / metrics CSV names")
     args = ap.parse_args()
 
     cfg = load_methods()
@@ -53,8 +56,8 @@ def main():
 
     out_dir = RESULTS_ROOT / args.xp
     out_dir.mkdir(parents=True, exist_ok=True)
-    notebook_out = out_dir / f"{args.method}_metrics.ipynb"
-    metrics_csv = out_dir / f"{args.method}_metrics.csv"
+    notebook_out = out_dir / f"{args.method}{args.out_tag}_metrics.ipynb"
+    metrics_csv = out_dir / f"{args.method}{args.out_tag}_metrics.csv"
 
     n_members = args.n_members if args.n_members is not None else method_cfg["n_samples_metrics"]
 
@@ -71,6 +74,13 @@ def main():
         "SKIP_TRAINING": True,
     }
     params.update(method_cfg.get("params") or {})
+    import ast
+    for kv in args.set:
+        k, v = kv.split("=", 1)
+        try:
+            params[k] = ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            params[k] = v
 
     print(f"\n{'='*88}\n[run_metrics] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
     print(f"[run_metrics] {args.method} / {args.xp} -> {notebook_out} (n_members={n_members})", flush=True)
