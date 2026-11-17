@@ -70,7 +70,7 @@ def bar(kind, r0, r1, label, ticks):
     top, bot = axs[r0, -1].get_position(), axs[r1, -1].get_position()
     g = 0.012 * (top.y1 - bot.y0)
     cax = fig.add_axes([top.x1 + 0.012, bot.y0 + g, 0.012, top.y1 - bot.y0 - 2 * g])
-    cb = fig.colorbar(ims[kind], cax=cax, ticks=ticks)
+    cb = fig.colorbar(ims[kind], cax=cax, ticks=ticks, format='%.2f')
     cb.set_label(label, fontsize=8); cb.ax.tick_params(labelsize=7, length=2); cb.outline.set_linewidth(0.4)
 bar('sic', 0, 3, 'sea-ice concentration', [0, 0.25, 0.5, 0.75, 1])
 bar('unc', 4, 5, 'spread, |error| (SIC)', np.round(np.linspace(0, umax, 3), 3))
