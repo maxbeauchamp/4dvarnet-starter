@@ -417,19 +417,47 @@ def watch(interval=60, once=False):
         n_done = sum(1 for i in IDS if i in done)
         bar = int(30 * n_done / len(IDS))
         lines.append(f"plan  [{'#' * bar}{'.' * (30 - bar)}]  {n_done}/{len(IDS)} steps done")
-        for sid in IDS:
-            mark = "done" if sid in done else ("RUN " if sid == st.get("step") and st.get("job") else
-                    ("next" if sid == st.get("next") else "    "))
-            if sid == st.get("waiting"):
-                mark = "WAIT"
-            lines.append(f"  {mark}  {sid}")
-        lines.append("")
+        # every lane: main (st["job"]) and side lanes (st["laneN"]["job"])
+        running = {}                                   # step -> (lane, job, run_dir)
         if st.get("job"):
+            running[st.get("step")] = (1, st["job"], st.get("run_dir"))
+        failed = set()
+        for n in SIDE_LANES:
+            l2 = st.get(f"lane{n}") or {}
+            if l2.get("job"):
+                running[l2.get("step")] = (n, l2["job"], l2.get("run_dir"))
+            elif l2.get("step") and st.get(f"lane{n}_paused"):
+                failed.add(l2["step"])
+        nexts = {first_pending(st, lane=n) for n in SIDE_LANES if not st.get(f"lane{n}_paused")}
+        nexts.add(st.get("next"))
+        for sid in IDS:
+            if sid in done:
+                mark = "done"
+            elif sid in running:
+                mark = "RUN "
+            elif sid in failed:
+                mark = "FAIL"
+            elif sid == st.get("waiting"):
+                mark = "WAIT"
+            elif sid in nexts:
+                mark = "next"
+            else:
+                mark = "    "
+            lane = lane_of(sid)
+            lines.append(f"  {mark}  {sid}" + (f"   [lane {lane}]" if lane != 1 else ""))
+        lines.append("")
+        if running:
             try:
-                q = ssh(f"squeue -h -j {st['job']} -o '%T %M %l %R'", check=False) or "finished (fetched at next tick)"
-                lines.append(f"job {st['job']} ({st['step']}): {q}")
-                tail = ssh(f"tail -n 8 {shlex.quote(remote_repo())}/{st['run_dir']}/log.txt 2>/dev/null", check=False)
-                lines += ["", "last lines of the log:"] + ["  " + l[:150] for l in tail.splitlines()]
+                ids = ",".join(j for _, j, _ in running.values())
+                q = {}
+                for l in (ssh(f"squeue -h -j {ids} -o '%i %T %M %l %R'", check=False) or "").splitlines():
+                    parts = l.split(None, 1)
+                    if len(parts) == 2:
+                        q[parts[0]] = parts[1]
+                for sid, (lane, job, run_dir) in sorted(running.items(), key=lambda kv: kv[1][0]):
+                    lines.append(f"lane {lane}  job {job} ({sid}): {q.get(job, 'finished (fetched at next tick)')}")
+                    tail = ssh(f"tail -n 3 {shlex.quote(remote_repo())}/{run_dir}/log.txt 2>/dev/null", check=False)
+                    lines += ["      " + l[:140] for l in tail.splitlines()]
             except Exception as e:
                 lines.append(f"Odyssey unreachable: {e}")
         else:
