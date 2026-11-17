@@ -222,3 +222,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 06:46 **ATTENTION** lane 2: `sic_vardyncm_grid` ended FAILED after 00:00:27; see `runs/20261117-064349_sic_vardyncm_grid`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 06:47 **ATTENTION** lane 4: `sic_varcm_train` ended FAILED after 00:00:19; see `runs/20261117-064412_sic_varcm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 07:05 lane 3: `sic_fm_diag` done in 02:56:54, gate passed
+- 2026-11-17 07:05 submitted `sic_chain_smoke` as job 76909 -> `runs/20261117-070517_sic_chain_smoke` (lane 3) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-17 07:11 lane 3: `sic_chain_smoke` done in 00:02:08, gate passed
