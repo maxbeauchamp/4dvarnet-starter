@@ -1,0 +1,366 @@
+
+========================================================================================
+[run_training] STARTING VarCM_aug_student / SIC
+========================================================================================
+[run_training] VarCM_aug_student / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/VarCM_aug_student_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 250, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/VarCM_aug_student_metrics_train.csv', 'COND_MODE': 'grad', 'RUN_TAG': '_aug', 'WARM_START': False, 'SELECT_BY_VAL': True, 'SHORT_CRPS': True, 'AUGMENT': True, 'SAVE_STUDENT': True, 'EVAL_TAG': '_student', 'MAX_TIME': '00:07:00:00'}
+Unable to parse line 18 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
+Passed unknown parameter: COND_MODE
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:01<00:36,  1.04s/cell]Executing:   8%|▊         | 3/36 [00:05<01:00,  1.85s/cell]Tue Nov 17 09:58:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:C8:00.0 Off |                    0 |
+| N/A   30C    P0             65W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:05<00:32,  1.05s/cell]Executing:  19%|█▉        | 7/36 [00:06<00:22,  1.30cell/s]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (18, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  28%|██▊       | 10/36 [00:08<00:17,  1.44cell/s][OK] UNet stoch=True: mu torch.Size([1, 9, 100, 100])  log_sigma torch.Size([1, 1])
+Executing:  42%|████▏     | 15/36 [00:10<00:12,  1.72cell/s]J_o = 180587.171875
+J_b = 180225.6875
+Phi(x) shape = torch.Size([2, 9, 100, 100])
+Executing:  47%|████▋     | 17/36 [00:11<00:08,  2.17cell/s][OK] VarCMTraining (L_pair + L_anc + L_ae):
+  loss=nan  N=3
+  L_pair=0.5376  L_anc=nan  (L_long=nan  L_short=0.1776)  L_ae=0.2284
+Executing:  53%|█████▎    | 19/36 [00:14<00:12,  1.32cell/s][RESET] Starting from scratch.
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=250
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+
+Loading `train_dataloader` to estimate number of stepping batches.
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | SICObsCost       | 0     
+5 | prior_cost        | BilinAEPriorCost | 35.6 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.1 M    Total params
+396.312   Total estimated model params size (MB)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+  | Name              | Type             | Params
+-------------------------------------------------------
+0 | var_cm_training   | VarCMTraining    | 0     
+1 | teacher_model     | UNet             | 33.0 M
+2 | student_model     | UNet             | 33.0 M
+3 | ema_student_model | UNet             | 33.0 M
+4 | obs_cost          | SICObsCost       | 0     
+5 | prior_cost        | BilinAEPriorCost | 35.6 K
+-------------------------------------------------------
+33.0 M    Trainable params
+66.0 M    Non-trainable params
+99.1 M    Total params
+396.312   Total estimated model params size (MB)
+[LitVarCM] Dynamic total_training_steps = 18750  (config fallback was 5000)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:438: PossibleUserWarning: The dataloader, val_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 96 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+  rank_zero_warn(
+Executing:  64%|██████▍   | 23/36 [00:20<00:13,  1.05s/cell]Executing:  64%|██████▍   | 23/36 [00:21<00:12,  1.05cell/s]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 102, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 89, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [14]":
+---------------------------------------------------------------------------
+OutOfMemoryError                          Traceback (most recent call last)
+Cell In[14], line 171
+    167     _ckpt_state = torch.load(resume_ckpt, map_location='cpu')
+    168     lit_cm.load_state_dict(_ckpt_state['state_dict'])
+    169 else:
+    170     print(f'[TRAINING] resume_ckpt={resume_ckpt!r} | MAX_EPOCHS={MAX_EPOCHS}', flush=True)
+--> 171     trainer.fit(lit_cm, datamodule, ckpt_path=resume_ckpt)
+    172 
+    173 
+    174 _best_val = None
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:532, in Trainer.fit(self, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path)
+    530 self.strategy._lightning_module = model
+    531 _verify_strategy_supports_compile(model, self.strategy)
+--> 532 call._call_and_handle_interrupt(
+    533     self, self._fit_impl, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path
+    534 )
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py:43, in _call_and_handle_interrupt(trainer, trainer_fn, *args, **kwargs)
+     41     if trainer.strategy.launcher is not None:
+     42         return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+---> 43     return trainer_fn(*args, **kwargs)
+     45 except _TunerExitException:
+     46     _call_teardown_hook(trainer)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:571, in Trainer._fit_impl(self, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path)
+    561 self._data_connector.attach_data(
+    562     model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders, datamodule=datamodule
+    563 )
+    565 ckpt_path = self._checkpoint_connector._select_ckpt_path(
+    566     self.state.fn,
+    567     ckpt_path,
+    568     model_provided=True,
+    569     model_connected=self.lightning_module is not None,
+    570 )
+--> 571 self._run(model, ckpt_path=ckpt_path)
+    573 assert self.state.stopped
+    574 self.training = False
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:980, in Trainer._run(self, model, ckpt_path)
+    975 self._signal_connector.register_signal_handlers()
+    977 # ----------------------------
+    978 # RUN THE TRAINER
+    979 # ----------------------------
+--> 980 results = self._run_stage()
+    982 # ----------------------------
+    983 # POST-Training CLEAN UP
+    984 # ----------------------------
+    985 log.debug(f"{self.__class__.__name__}: trainer tearing down")
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:1021, in Trainer._run_stage(self)
+   1019 if self.training:
+   1020     with isolate_rng():
+-> 1021         self._run_sanity_check()
+   1022     with torch.autograd.set_detect_anomaly(self._detect_anomaly):
+   1023         self.fit_loop.run()
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py:1050, in Trainer._run_sanity_check(self)
+   1047 call._call_callback_hooks(self, "on_sanity_check_start")
+   1049 # run eval step
+-> 1050 val_loop.run()
+   1052 call._call_callback_hooks(self, "on_sanity_check_end")
+   1054 # reset logger connector
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/utilities.py:181, in _no_grad_context.<locals>._decorator(self, *args, **kwargs)
+    179     context_manager = torch.no_grad
+    180 with context_manager():
+--> 181     return loop_run(self, *args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py:115, in _EvaluationLoop.run(self)
+    113     previous_dataloader_idx = dataloader_idx
+    114     # run step hooks
+--> 115     self._evaluation_step(batch, batch_idx, dataloader_idx)
+    116 except StopIteration:
+    117     # this needs to wrap the `*_step` call too (not just `next`) for `dataloader_iter` support
+    118     break
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py:376, in _EvaluationLoop._evaluation_step(self, batch, batch_idx, dataloader_idx)
+    373 self.batch_progress.increment_started()
+    375 hook_name = "test_step" if trainer.testing else "validation_step"
+--> 376 output = call._call_strategy_hook(trainer, hook_name, *step_kwargs.values())
+    378 self.batch_progress.increment_processed()
+    380 hook_name = "on_test_batch_end" if trainer.testing else "on_validation_batch_end"
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py:293, in _call_strategy_hook(trainer, hook_name, *args, **kwargs)
+    290     return None
+    292 with trainer.profiler.profile(f"[Strategy]{trainer.strategy.__class__.__name__}.{hook_name}"):
+--> 293     output = fn(*args, **kwargs)
+    295 # restore current_fx when nested context
+    296 pl_module._current_fx_name = prev_fx_name
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py:393, in Strategy.validation_step(self, *args, **kwargs)
+    391 with self.precision_plugin.val_step_context():
+    392     assert isinstance(self.model, ValidationStep)
+--> 393     return self.model.validation_step(*args, **kwargs)
+
+Cell In[14], line 129, in _val_crps_step(self, batch, batch_idx)
+    125         batch = batch[0]
+    126     _devs = [torch.cuda.current_device()] if torch.cuda.is_available() else []
+    127     with torch.random.fork_rng(devices=_devs), torch.enable_grad():
+    128         torch.manual_seed(1234 + batch_idx)
+--> 129         out = self.var_cm_training(self.student_model, self.teacher_model, self.obs_cost, self.prior_cost, self.lambda_reg, batch.tgt, batch.input, self.global_step, self._total_training_steps)
+    130     self.log("val_crps", out.l_long.detach().float(), prog_bar=True, on_epoch=True, on_step=False, batch_size=batch.tgt.shape[0])
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
+   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+   1777 else:
+-> 1778     return self._call_impl(*args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
+   1784 # If we don't have any hooks, we want to skip the rest of the logic in
+   1785 # this function, and just call forward.
+   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
+   1787         or _global_backward_pre_hooks or _global_backward_hooks
+   1788         or _global_forward_hooks or _global_forward_pre_hooks):
+-> 1789     return forward_call(*args, **kwargs)
+   1791 result = None
+   1792 called_always_called_hooks = set()
+
+File ~/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SIC/../../consistency_models/consistency_models_VarCM.py:656, in VarCMTraining.forward(self, student, teacher, obs_cost, prior_cost, lambda_reg, x0, y, global_step, total_steps)
+    650 if self.pure_short:
+    651     # Pure self-consistency: no interpolant, no x_0.
+    652     # Short path: x_T --(teacher,sg)--> h_t --(student,sg)--> x_mid
+    653     #                                        --(student)-----> t'->0
+    654     # Target: sg[g_t(h_tp, t', 0)] = target_pair  (already computed)
+    655     with torch.no_grad():
+--> 656         x_mid = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+    657                           h_t, y, t_s, t_p)
+    658     pred_short = self._fwd(student, obs_cost, prior_cost, lambda_reg,
+    659                            x_mid, y, t_p, t0_vec)
+    660     l_short = pseudo_huber_loss(pred_short, target_pair).mean()
+
+File ~/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SIC/../../consistency_models/consistency_models_VarCM.py:539, in VarCMTraining._fwd(self, model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime)
+    538 def _fwd(self, model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime):
+--> 539     return _g_fwd(model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime,
+    540                   self.sigma_noise, self.conditioning_mode)
+
+File ~/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SIC/../../consistency_models/consistency_models_VarCM.py:362, in _g_fwd(model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime, sigma_noise, conditioning_mode, grad_at)
+    356 def _g_fwd(
+    357     model, obs_cost, prior_cost, lambda_reg,
+    358     x, y, t, t_prime, sigma_noise, conditioning_mode,
+    359     grad_at=None,
+    360 ):
+    361     """Single g_φ step — returns transported state (B,C,H,W)."""
+--> 362     x_out, _ = model_variational_forward_wrapper(
+    363         model, obs_cost, prior_cost, lambda_reg,
+    364         x, y, t, t_prime,
+    365         sigma_noise=sigma_noise,
+    366         conditioning_mode=conditioning_mode,
+    367         grad_at=grad_at,
+    368     )
+    369     return x_out
+
+File ~/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SIC/../../consistency_models/consistency_models_VarCM.py:344, in model_variational_forward_wrapper(model, obs_cost, prior_cost, lambda_reg, x, y, t, t_prime, schedule, sigma_noise, **kwargs)
+    338 net_x     = c_in * x        # (B, C, H, W)  -- whitened state
+    339 # grad_J is NOT scaled by c_in: it already carries units of 1/state
+    340 # and its own learned projection handles the scaling.
+    341 
+    342 # ---- Network forward ---------------------------------------------------
+    343 # F_theta output: (B, C, H, W) -- direct prediction of x_0
+--> 344 F_out = model(net_x, cond, t, t_prime, **kwargs)  # (B, C, H, W)
+    346 # ---- Preconditioned output: c_skip * x + c_out * F_theta --------------
+    347 x_out = c_skip * x + c_out * F_out             # (B, C, H, W)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
+   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+   1777 else:
+-> 1778     return self._call_impl(*args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
+   1784 # If we don't have any hooks, we want to skip the rest of the logic in
+   1785 # this function, and just call forward.
+   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
+   1787         or _global_backward_pre_hooks or _global_backward_hooks
+   1788         or _global_forward_hooks or _global_forward_pre_hooks):
+-> 1789     return forward_call(*args, **kwargs)
+   1791 result = None
+   1792 called_always_called_hooks = set()
+
+Cell In[10], line 125, in UNet.forward(self, x, cond, t, t_prime)
+    121 
+    122         mid_encoder_embeddings = []
+    123         for block in self.mid_encoder_blocks:
+    124             if isinstance(block, UNetBlockWithSelfAttention):
+--> 125                 h = block(h, time_level)
+    126                 mid_encoder_embeddings.append(h)
+    127             else:
+    128                 h = block(h)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
+   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+   1777 else:
+-> 1778     return self._call_impl(*args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
+   1784 # If we don't have any hooks, we want to skip the rest of the logic in
+   1785 # this function, and just call forward.
+   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
+   1787         or _global_backward_pre_hooks or _global_backward_hooks
+   1788         or _global_forward_hooks or _global_forward_pre_hooks):
+-> 1789     return forward_call(*args, **kwargs)
+   1791 result = None
+   1792 called_always_called_hooks = set()
+
+Cell In[9], line 68, in UNetBlockWithSelfAttention.forward(self, x, time_level)
+     67     def forward(self, x: Tensor, time_level: Tensor) -> Tensor:
+---> 68         return self.self_attention(self.unet_block(x, time_level))
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
+   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+   1777 else:
+-> 1778     return self._call_impl(*args, **kwargs)
+
+File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
+   1784 # If we don't have any hooks, we want to skip the rest of the logic in
+   1785 # this function, and just call forward.
+   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
+   1787         or _global_backward_pre_hooks or _global_backward_hooks
+   1788         or _global_forward_hooks or _global_forward_pre_hooks):
+-> 1789     return forward_call(*args, **kwargs)
+   1791 result = None
+   1792 called_always_called_hooks = set()
+
+Cell In[9], line 26, in SelfAttention.forward(self, x)
+     24     def forward(self, x: Tensor) -> Tensor:
+     25         q, k, v = self.qkv_projection(x).unbind(dim=0)
+---> 26         output = F.scaled_dot_product_attention(
+     27             q, k, v, dropout_p=self.dropout if self.training else 0.0, is_causal=False
+     28         )
+     29         output = self.output_projection(output)
+
+OutOfMemoryError: CUDA out of memory. Tried to allocate 3.09 GiB. GPU 0 has a total capacity of 79.25 GiB of which 2.01 GiB is free. Including non-PyTorch memory, this process has 77.23 GiB memory in use. Of the allocated memory 76.10 GiB is allocated by PyTorch, and 640.54 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+[run_step] exit 1 in 23.0 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261117-095702_sic_varcm_train

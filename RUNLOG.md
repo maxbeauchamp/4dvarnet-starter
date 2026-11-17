@@ -231,3 +231,11 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 09:49 **ATTENTION** lane 3: `sic_dynfm_train` ended FAILED after 00:00:17; see `runs/20261117-071113_sic_dynfm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 09:55 pilot resumed
 - 2026-11-17 09:56 **ATTENTION** lane 2: `sic_vardyncm_train` ended FAILED after 00:01:08; see `runs/20261117-094853_sic_vardyncm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-17 09:56 submitted `sic_dynfm_train` as job 77000 -> `runs/20261117-095641_sic_dynfm_train` (lane 3) [gpu:a100:1]
+- 2026-11-17 09:57 submitted `sic_varcm_train` as job 77006 -> `runs/20261117-095702_sic_varcm_train` (lane 4) [gpu:a100:1]
+- 2026-11-17 09:58 pilot resumed
+- 2026-11-17 09:58 git pull failed: error: could not write index
+fatal: Cannot autostash
+- 2026-11-17 09:59 pilot resumed
+- 2026-11-17 09:59 submitted `sic_vardyncm_train` as job 77012 -> `runs/20261117-095913_sic_vardyncm_train` (lane 2) [gpu:a100:1]
+- 2026-11-17 10:00 **ATTENTION** lane 4: `sic_varcm_train` ended FAILED after 00:00:23; see `runs/20261117-095702_sic_varcm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
