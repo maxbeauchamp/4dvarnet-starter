@@ -245,3 +245,7 @@ fatal: Cannot autostash
 - 2026-11-17 13:32 submitted `sic_dyncmt_train` as job 77211 -> `runs/20261117-133203_sic_dyncmt_train` (lane 3) [gpu:a100:1]
 - 2026-11-17 16:00 **ATTENTION** lane 3: `sic_dyncmt_train` ended FAILED after 00:00:53; see `runs/20261117-133203_sic_dyncmt_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 16:01 `ssh_dyncmt_train` done in 19:49:24, gate passed
+- 2026-11-17 16:02 submitted `sic_cmt_raw_train` as job 77288 -> `runs/20261117-160145_sic_cmt_raw_train` [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-17 17:06 pilot resumed
+- 2026-11-17 17:07 submitted `sic_dynfm_more` as job 77573 -> `runs/20261117-170704_sic_dynfm_more` (lane 3) [gpu:h100:1]
+- 2026-11-17 18:00 lane 4: `sic_varcm_train` done in 07:16:00, gate passed
