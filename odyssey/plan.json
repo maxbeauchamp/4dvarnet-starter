@@ -480,7 +480,7 @@
   },
   {
    "id": "gp_nfe_fm_ssr",
-   "lane": 3,
+   "lane": 4,
    "time": "03:00:00",
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_nfe_sweep.py --xp GP --method FM && python run_nfe_sweep.py --xp GP --method DynFM"
