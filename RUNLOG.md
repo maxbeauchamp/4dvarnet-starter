@@ -211,3 +211,5 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 01:33 lane 2: `ssh_vardyncm_train` done in 1-01:17:58, gate passed
 - 2026-11-17 01:33 submitted `ssh_vardyncm_grid` as job 76826 -> `runs/20261117-013327_ssh_vardyncm_grid` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-17 04:03 lane 3: `sic_cmt_train` done in 04:58:28, gate passed
+- 2026-11-17 04:04 submitted `sic_fm_diag` as job 76869 -> `runs/20261117-040358_sic_fm_diag` (lane 3) [gpu:a100:1]
+- 2026-11-17 05:34 lane 2: `ssh_vardyncm_grid` done in 03:52:04, gate passed
