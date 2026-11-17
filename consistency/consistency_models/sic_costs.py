@@ -45,6 +45,8 @@ class SICObsCost(nn.Module):
         sar, osi = y[:, :C], y[:, C:2 * C]
         m = (~torch.isnan(sar)).to(x.dtype)
         j_sar = (m * (x - torch.nan_to_num(sar))).pow(2).sum()
+        if osi.shape[1] == 0:                       # y without the OSI SAF channels: SAR term only
+            return j_sar / (2.0 * self.sigma_obs ** 2)
         px, _ = masked_pool(x, self.pool)
         po, mc = masked_pool(osi.to(x.dtype), self.pool)
         j_osi = (mc * (px - po)).pow(2).sum() * self.pool ** 2

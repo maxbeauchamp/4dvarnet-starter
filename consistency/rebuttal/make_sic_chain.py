@@ -181,6 +181,60 @@ def fix_cmt_norm(name="Notebook_consistency_model_CMT_sic.ipynb"):
     print(f"{name}: normalisation fix {sorted(done) or 'already applied'}")
 
 
+CROP = '''
+    # (rebuttal) training on random TRAIN_PATCH x TRAIN_PATCH crops (128: the SSH size; 240x240 x 8 members x 9 frames
+    # does not fit on a GPU), batch size 1 as SSH; validation and test on the full 240x240 fields
+    def _crop_collate(self, items):
+        b = torch.utils.data.default_collate(items)
+        H, W = b.tgt.shape[-2:]
+        P = TRAIN_PATCH
+        if not P or P >= min(H, W):
+            return b
+        for _ in range(20):                       # a crop with at least 5% observed target pixels
+            i, j = np.random.randint(0, H - P + 1), np.random.randint(0, W - P + 1)
+            if torch.isfinite(b.tgt[..., i:i + P, j:j + P]).float().mean() > 0.05:
+                break
+        return b._replace(**{k: v[..., i:i + P, j:j + P] for k, v in b._asdict().items()
+                             if torch.is_tensor(v) and v.dim() >= 2 and tuple(v.shape[-2:]) == (H, W)})
+    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_ds, shuffle=True, batch_size=1, num_workers=1,
+                                           collate_fn=self._crop_collate)
+'''
+
+
+def fixes_20261117():
+    """Smoke-test fixes: `ft` shadowed by a float in some notebooks; VarCM sanity test with 2C observation channels;
+    random 128x128 training crops for VarCM / DynVarCM (out of memory at 240x240). Idempotent."""
+    for name in ["Notebook_flowmatching_model_DynFM_sic.ipynb", "Notebook_consistency_model_DynCMT_sic.ipynb",
+                 "Notebook_consistency_model_VarCM_sic.ipynb", "Notebook_consistency_model_VarDynCM_sic.ipynb"]:
+        path = os.path.join(NB, name)
+        nb = json.load(open(path)); done = []
+        for c in nb["cells"]:
+            s = "".join(c["source"])
+            old = "        return ft.partial(ft.reduce, lambda i, f: f(i), [\n            TrainingItem_4da._make,\n            _to_sic_item,"
+            if old in s:
+                s = s.replace(old, "        import functools as _ft          # (rebuttal) `ft` may be shadowed by a variable\n"
+                                   "        return _ft.partial(_ft.reduce, lambda i, f: f(i), [\n            TrainingItem_4da._make,\n            _to_sic_item,")
+                done.append("ft")
+            if "_y_test = torch.randn(2, C, 100, 100)" in s and "SICObsCost" in s:
+                s = s.replace("_y_test = torch.randn(2, C, 100, 100)", "_y_test = torch.randn(2, 2 * C, 100, 100)")
+                done.append("sanity")
+            old_tr = """    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_ds, shuffle=True, batch_size=1, num_workers=1)
+"""
+            if old_tr in s and "_crop_collate" not in s:
+                s = s.replace(old_tr, CROP.lstrip("\n")); done.append("crop")
+            if s.lstrip().startswith("# --- parameters") and "Var" in name and "TRAIN_PATCH" not in s:
+                s = s.rstrip("\n") + "\nTRAIN_PATCH = 128        # (rebuttal, SIC) training crop size (None: full 240x240)\n"
+                done.append("param")
+            c["source"] = s.splitlines(keepends=True)
+        if done:
+            json.dump(nb, open(path, "w"), indent=1, ensure_ascii=False)
+            with open(path, "a") as f:
+                f.write("\n")
+        print(f"{name}: {done or 'nothing to do'}")
+
+
 if __name__ == "__main__":
     mt = _load("make_teacher_notebooks")
     mt.build_dyncmt("Notebooks_SIC", "sic", "logs_DynFM_sic_v2", False)
@@ -195,4 +249,5 @@ if __name__ == "__main__":
     adapt("Notebook_consistency_model_VarCM_sic.ipynb", "cat", batch1=True, extra=varcm_extra)
     adapt("Notebook_consistency_model_VarDynCM_sic.ipynb", "cat", batch1=True, extra=vardyncm_extra)
     fix_cmt_norm()
+    fixes_20261117()
     subprocess.run([sys.executable, os.path.join(HERE, "patch_max_time.py")], cwd=os.path.join(HERE, ".."), check=True)

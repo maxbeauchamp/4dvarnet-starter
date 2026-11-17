@@ -298,7 +298,8 @@ def reload_plan():
 def first_pending(st, lane=1):
     """First step of plan.json, in its current order, of the given lane that has not completed yet."""
     done = {h["step"] for h in st.get("history", []) if str(h.get("state", "")).startswith("COMPLETED")}
-    busy = {(st.get(f"lane{n}") or {}).get("step") for n in SIDE_LANES} | {st.get("step") if st.get("job") else None}
+    busy = ({(st.get(f"lane{n}") or {}).get("step") for n in SIDE_LANES if (st.get(f"lane{n}") or {}).get("job")}
+            | {st.get("step") if st.get("job") else None})   # a failed step (no job) is not busy: it is resubmitted
     return next((i for i in IDS if i not in done and lane_of(i) == lane and (lane == 1 or i not in busy)), None)
 
 
