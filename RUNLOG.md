@@ -260,3 +260,4 @@ fatal: Cannot autostash
 - 2026-11-17 20:48 submitted `sic_fig_dump` as job 77667 -> `runs/20261117-204804_sic_fig_dump` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-17 21:06 lane 4: `sic_fig_dump` done in 00:04:33, gate passed
 - 2026-11-17 21:06 `sic_cmt_raw_train` done in 04:52:05, gate passed
+- 2026-11-17 22:08 **ATTENTION** lane 3: `sic_dyncmt_train` ended CANCELLED by 264082 after 01:05:36; see `runs/20261117-204742_sic_dyncmt_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
