@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_cmt_train",
+  "cmd": "cd consistency/sbatch_submission && MAX_EPOCHS_OVERRIDE=1 python run_training.py --xp SIC --method CMT --reset && python run_training.py --xp SIC --method CMT --reset && python run_metrics.py --xp SIC --method CMT",
+  "commit": "f4202a4",
+  "host": "sl-mee-br-206",
+  "slurm_job": "76748",
+  "started": "2026-11-16T23:01:25",
+  "status": "ok",
+  "seconds": 17907.1,
+  "finished": "2026-11-17T03:59:52"
+}
