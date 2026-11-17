@@ -281,6 +281,23 @@ def fixes_dyncmt_mem(name="Notebook_consistency_model_DynCMT_sic.ipynb"):
     print(f"{name}: {done or 'nothing to do'}")
 
 
+def fix_sampler_frames(name="Notebook_consistency_model_VarDynCM_sic.ipynb"):
+    """The notebook reloads consistency_models_VarDynCM after the class attribute was set: set n_frames on the
+    sampler instance before every call instead (else 2C = 18 frames are inferred from y). Idempotent."""
+    path = os.path.join(NB, name)
+    nb = json.load(open(path)); n = 0
+    for c in nb["cells"]:
+        s = "".join(c["source"])
+        if c["cell_type"] == "code" and "consistency_sampling(" in s and "consistency_sampling.n_frames = C" not in s:
+            s = "consistency_sampling.n_frames = C   # (rebuttal, SIC) y carries 2C channels: 9 frames, not y.shape[1]\n" + s
+            c["source"] = s.splitlines(keepends=True); n += 1
+    if n:
+        json.dump(nb, open(path, "w"), indent=1, ensure_ascii=False)
+        with open(path, "a") as f:
+            f.write("\n")
+    print(f"{name}: sampler n_frames set in {n} cells")
+
+
 if __name__ == "__main__":
     mt = _load("make_teacher_notebooks")
     mt.build_dyncmt("Notebooks_SIC", "sic", "logs_DynFM_sic_v2", False)
@@ -298,4 +315,5 @@ if __name__ == "__main__":
     fixes_20261117()
     fixes_val_crop()
     fixes_dyncmt_mem()
+    fix_sampler_frames()
     subprocess.run([sys.executable, os.path.join(HERE, "patch_max_time.py")], cwd=os.path.join(HERE, ".."), check=True)

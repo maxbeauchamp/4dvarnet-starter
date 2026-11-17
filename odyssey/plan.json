@@ -425,9 +425,10 @@
   {
    "id": "sic_vardyncm_train",
    "lane": 2,
-   "time": "12:00:00",
+   "time": "04:00:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarDynCM_scratch --reset && python run_metrics.py --xp SIC --method VarDynCM_scratch"
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method VarDynCM_scratch",
+   "note": "trained 8h (best val epoch 43); the first run failed in a figure cell (18 frames inferred from y) -> metrics only"
   },
   {
    "id": "sic_vardyncm_grid",
