@@ -278,6 +278,42 @@ methods:
         params:
           MAX_TIME: "00:06:30:00"
 
+  FM_v3:
+    # SIC: FM_v2 with the target gaps filled by OSI SAF in the interpolant (GAP_FILL='osi'; loss still masked).
+    # FM_v2 filled them with 0, i.e. open water: x_t then carries fake open-water holes never seen at sampling.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 400
+      RUN_TAG: _v3
+      SELECT_BY_VAL: true
+      GAP_FILL: osi
+    xp:
+      SIC:
+        notebook: Notebook_flowmatching_model_FM_sic.ipynb
+        log_dir: logs_FM_sic_v3
+        status: existing
+        params:
+          MAX_TIME: "00:02:45:00"
+
+  DynFM_v3:
+    # SIC: DynFM with OSI-SAF-filled gaps (see FM_v3). In the physical regime x_t is a blend of two target frames,
+    # so zero-filled gaps (whole missing frames included) gave inputs very far from the sampled trajectories.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 400
+      RUN_TAG: _v3
+      SELECT_BY_VAL: true
+      GAP_FILL: osi
+    xp:
+      SIC:
+        notebook: Notebook_flowmatching_model_DynFM_sic.ipynb
+        log_dir: logs_DynFM_sic_v3
+        status: existing
+        params:
+          MAX_TIME: "00:04:00:00"
+
   CMT_v2:
     # CM (ODE-teacher targets) on SSH distilled from FM_v2, from scratch.
     generative: true

@@ -515,6 +515,22 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method VarDynCM_scratch --set FIG_DUMP=True --out-tag _fig",
    "note": "paper figure: 20-member DynVarCM ensembles of the 3 test windows with the most MIZ pixels -> results/SIC/figdump/*.npz (metrics recomputed under VarDynCM_scratch_fig_*, same seed)"
+  },
+  {
+   "id": "sic_fm_v3_train",
+   "lane": 4,
+   "time": "05:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method FM_v3 --reset && python run_metrics.py --xp SIC --method FM_v3",
+   "note": "teacher fix: OSI SAF gap fill instead of 0 (open water) in the FM interpolant"
+  },
+  {
+   "id": "sic_dynfm_v3_train",
+   "lane": 2,
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v3 --reset && python run_metrics.py --xp SIC --method DynFM_v3",
+   "note": "teacher fix: OSI SAF gap fill in the DynFM frame interpolant"
   }
  ]
 }
