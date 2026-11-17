@@ -77,3 +77,30 @@ for name, e in ens.items():
     rmse = float(np.sqrt(((e.mean(0) - x0) ** 2).mean()))
     spread = float(np.sqrt(e.var(0, ddof=1).mean()))
     print(f"  {name:<28} CRPS {crps_ensemble(e, x0):.4f}   RMSE {rmse:.4f}   SSR {spread / rmse:.3f}")
+
+# Proper-score target (revised VarCM objective): one-step linear map g = c*y + b*x_T from x_T = x0 + T*eps,
+# fitted by minimising the fair ensemble CRPS against x0 (no regression on x0). By propriety the optimum is the
+# posterior: c*y + b*x_T ~ N(k y, 1 - k), i.e. SSR -> 1.
+from scipy.optimize import minimize
+
+
+def fair_crps(samples, obs):
+    m = samples.shape[0]
+    t1 = np.abs(samples - obs).mean(0)
+    s = np.sort(samples, axis=0)
+    i = np.arange(1, m + 1)[:, None]
+    t2 = ((2 * i - m - 1) * s).sum(0) / (m * (m - 1))
+    return float((t1 - t2).mean())
+
+
+Mt, nt = 8, 20_000
+x0t = rng.standard_normal(nt); yt = x0t + r * rng.standard_normal(nt)
+xTt = x0t[None] + T * rng.standard_normal((Mt, nt))
+res = minimize(lambda p: fair_crps(p[0] * yt[None] + p[1] * xTt, x0t), x0=[0.5, 0.001], method="Nelder-Mead",
+               options=dict(xatol=1e-6, fatol=1e-7, maxiter=2000))
+c_opt, b_opt = res.x
+print(f"\nProper-score (fair CRPS) fit of g = c y + b x_T: c = {c_opt:.4f} (posterior mean gain {k:.4f}), "
+      f"b*T = {abs(b_opt) * T:.4f} (posterior std {np.sqrt(var):.4f})")
+e = c_opt * y[None] + b_opt * (x0[None] + T * z)
+rmse = float(np.sqrt(((e.mean(0) - x0) ** 2).mean())); spread = float(np.sqrt(e.var(0, ddof=1).mean()))
+print(f"  {'proper-score target':<28} CRPS {crps_ensemble(e, x0):.4f}   RMSE {rmse:.4f}   SSR {spread / rmse:.3f}")
