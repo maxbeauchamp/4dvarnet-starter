@@ -256,6 +256,31 @@ def fixes_val_crop():
         print(f"{name}: val crop {'added' if n else 'already there / anchor missing'}")
 
 
+def fixes_dyncmt_mem(name="Notebook_consistency_model_DynCMT_sic.ipynb"):
+    """DynCM SIC: out of memory at 240x240 with batch 2 (student + DynFM teacher + EMA). Batch 1 and 128x128 training
+    crops, as VarCM / DynVarCM; validation on a fixed crop; test on full fields. Idempotent."""
+    path = os.path.join(NB, name)
+    nb = json.load(open(path)); done = []
+    for c in nb["cells"]:
+        src = "".join(c["source"])
+        if src.lstrip().startswith("# --- parameters") and "TRAIN_PATCH" not in src:
+            src = src.rstrip("\n") + "\nTRAIN_PATCH = 128        # (rebuttal, SIC) training crop size (None: full 240x240)\n"
+            done.append("param")
+        if "class CroppedDataModule(BaseDataModule):" in src and "_crop_collate" not in src:
+            src = src.replace("    def setup(self, stage='test'):",
+                              BATCH1.replace(VAL_OLD, VAL_NEW) + "\n    def setup(self, stage='test'):", 1)
+            src = src.replace("""    def train_dataloader(self):
+        return torch.utils.data.DataLoader(self.train_ds, shuffle=True, batch_size=1, num_workers=1)
+""", CROP.lstrip("\n"))
+            done.append("batch1+crop")
+        c["source"] = src.splitlines(keepends=True)
+    if done:
+        json.dump(nb, open(path, "w"), indent=1, ensure_ascii=False)
+        with open(path, "a") as f:
+            f.write("\n")
+    print(f"{name}: {done or 'nothing to do'}")
+
+
 if __name__ == "__main__":
     mt = _load("make_teacher_notebooks")
     mt.build_dyncmt("Notebooks_SIC", "sic", "logs_DynFM_sic_v2", False)
@@ -272,4 +297,5 @@ if __name__ == "__main__":
     fix_cmt_norm()
     fixes_20261117()
     fixes_val_crop()
+    fixes_dyncmt_mem()
     subprocess.run([sys.executable, os.path.join(HERE, "patch_max_time.py")], cwd=os.path.join(HERE, ".."), check=True)
