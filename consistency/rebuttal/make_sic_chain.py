@@ -35,12 +35,11 @@ def _load(name):
 
 ADAPTER = '''
 # ── {mark}: batches with tgt = asip (gaps) and input = {what} ──
-from collections import namedtuple as _nt
-SICItem = _nt('SICItem', ['tgt', 'input', 'asip', 'osisaf', 'sar'])
 def _to_sic_item(it):
+    # keep the TrainingItem_4da type: XrDataset then adds tgt = asip; only `input` changes
     sar, osi = it.input, it.osisaf
     inp = {expr}
-    return SICItem(tgt=it.asip, input=inp, asip=it.asip, osisaf=osi, sar=sar)
+    return it._replace(input=inp)
 '''
 EXPR = {"fused": "np.where(np.isnan(sar), osi, sar).astype(np.float32)",
         "cat": "np.concatenate([sar, osi], axis=0).astype(np.float32)"}
