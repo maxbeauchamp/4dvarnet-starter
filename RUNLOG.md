@@ -208,3 +208,4 @@ Written by `odyssey/pilot.py`; newest last.
 - 2026-11-17 00:01 lane 4: `ssh_varcm_aug_resume` done in 04:06:50, gate passed
 - 2026-11-17 00:02 submitted `ssh_var_v1_eval` as job 76790 -> `runs/20261117-000153_ssh_var_v1_eval` (lane 4) [gpu:a100:1]
 - 2026-11-17 00:32 **ATTENTION** lane 4: `ssh_var_v1_eval` ended FAILED after 00:10:39; see `runs/20261117-000153_ssh_var_v1_eval`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-17 01:33 lane 2: `ssh_vardyncm_train` done in 1-01:17:58, gate passed
