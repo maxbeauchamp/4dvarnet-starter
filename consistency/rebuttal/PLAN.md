@@ -214,3 +214,12 @@ l_obs and l_ae masked; batch 1 for the Var models). MAX_TIME ~ SSH training time
 (non-blocking, grep 'SMOKE FAIL') -> sic_cmt_train -> sic_dynfm_train -> sic_dyncmt_train; lane 4 sic_varcm_train;
 lane 2 sic_vardyncm_train -> sic_vardyncm_grid.
 FM_v2 SIC (400 epochs, 6h30, best val epoch 389): RMSE 0.144 (MIZ) / 0.096 (all), CRPS 0.046, SSR 0.57, rank dev 0.41.
+
+## 2026-11-17 07:00
+- sic_vardyncm_train failed at once: SIC adapter returned its own namedtuple, XrDataset then reads item.lon -> fixed
+  (adapter keeps TrainingItem_4da, replaces input only).
+- CM SIC collapsed (SSR 0.08, RMSE 0.174, 206 epochs in 4h45): the CMT_sic notebook z-scored SIC while its FM teacher
+  works on raw [0,1] -> wrong teacher steps. SIC_ZSCORE=False (make_sic_chain.fix_cmt_norm); rerun sic_cmt_raw_train (main lane).
+- SSH: VarCM_aug resume kept the epoch-67 checkpoint (same model, SSR 1.44, RMSE 0.092);
+  DynVarCM scratch RMSE 0.057, CRPS 0.029, SSR 0.58; grid fine-tune SSR 0.25 (worse) -> to discuss.
+- ssh_var_v1_eval: VarCM v1 SSH SSR 0.34 / RMSE 0.238; VarDynCM v1 checkpoint incompatible (grad_j 2 ch) -> skip.

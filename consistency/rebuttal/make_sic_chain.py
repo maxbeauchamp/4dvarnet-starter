@@ -156,6 +156,31 @@ def vardyncm_extra(s, name, done):
     return s
 
 
+def fix_cmt_norm(name="Notebook_consistency_model_CMT_sic.ipynb"):
+    """CM SIC must use the normalisation of its FM teacher (raw SIC in [0, 1]): the z-score of the generated CM
+    notebook fed the teacher states on another scale (wrong ODE steps -> collapsed CM, SSR 0.08)."""
+    path = os.path.join(NB, name)
+    nb = json.load(open(path))
+    anchor = "SIC_STD  = float(np.sqrt(_sqsum / _count - SIC_MEAN ** 2))\n"
+    new = (anchor + "if not SIC_ZSCORE:   # (rebuttal) same normalisation as the FM teacher: raw SIC in [0, 1]\n"
+           "    print(f'(z-score disabled; train stats were mean={SIC_MEAN:.4f} std={SIC_STD:.4f})')\n"
+           "    SIC_MEAN, SIC_STD = 0.0, 1.0\n")
+    done = set()
+    for c in nb["cells"]:
+        s = "".join(c["source"])
+        if s.lstrip().startswith("# --- parameters") and "SIC_ZSCORE" not in s:
+            s = s.rstrip("\n") + "\nSIC_ZSCORE = False       # (rebuttal) z-score SIC (False: raw [0, 1], as the FM teacher)\n"
+            done.add("param")
+        if anchor in s and "SIC_ZSCORE" not in s:
+            s = s.replace(anchor, new); done.add("norm")
+        c["source"] = s.splitlines(keepends=True)
+    if done:
+        json.dump(nb, open(path, "w"), indent=1, ensure_ascii=False)
+        with open(path, "a") as f:
+            f.write("\n")
+    print(f"{name}: normalisation fix {sorted(done) or 'already applied'}")
+
+
 if __name__ == "__main__":
     mt = _load("make_teacher_notebooks")
     mt.build_dyncmt("Notebooks_SIC", "sic", "logs_DynFM_sic_v2", False)
@@ -169,4 +194,5 @@ if __name__ == "__main__":
     adapt("Notebook_consistency_model_DynCMT_sic.ipynb", "fused", extra=dyncm_extra)
     adapt("Notebook_consistency_model_VarCM_sic.ipynb", "cat", batch1=True, extra=varcm_extra)
     adapt("Notebook_consistency_model_VarDynCM_sic.ipynb", "cat", batch1=True, extra=vardyncm_extra)
+    fix_cmt_norm()
     subprocess.run([sys.executable, os.path.join(HERE, "patch_max_time.py")], cwd=os.path.join(HERE, ".."), check=True)
