@@ -239,3 +239,6 @@ fatal: Cannot autostash
 - 2026-11-17 09:59 pilot resumed
 - 2026-11-17 09:59 submitted `sic_vardyncm_train` as job 77012 -> `runs/20261117-095913_sic_vardyncm_train` (lane 2) [gpu:a100:1]
 - 2026-11-17 10:00 **ATTENTION** lane 4: `sic_varcm_train` ended FAILED after 00:00:23; see `runs/20261117-095702_sic_varcm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-17 10:22 pilot resumed
+- 2026-11-17 10:23 submitted `sic_varcm_train` as job 77044 -> `runs/20261117-102256_sic_varcm_train` (lane 4) [gpu:a100:1]
+- 2026-11-17 13:31 lane 3: `sic_dynfm_train` done in 03:28:57, gate passed
