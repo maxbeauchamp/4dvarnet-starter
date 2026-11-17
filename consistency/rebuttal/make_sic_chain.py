@@ -235,6 +235,27 @@ def fixes_20261117():
         print(f"{name}: {done or 'nothing to do'}")
 
 
+VAL_OLD = '    def val_dataloader(self):\n        return torch.utils.data.DataLoader(self.val_ds, shuffle=False, batch_size=1, num_workers=1)\n'
+VAL_NEW = '    # (rebuttal) validation (checkpoint selection, 8 rollouts at once) on one fixed TRAIN_PATCH crop per window: the\n    # one with the most observed target pixels among a regular grid of positions (deterministic); test: full fields\n    def _val_crop_collate(self, items):\n        b = torch.utils.data.default_collate(items)\n        H, W = b.tgt.shape[-2:]\n        P = TRAIN_PATCH\n        if not P or P >= min(H, W):\n            return b\n        pos = [(i, j) for i in np.linspace(0, H - P, 3).astype(int) for j in np.linspace(0, W - P, 3).astype(int)]\n        i, j = max(pos, key=lambda ij: torch.isfinite(b.tgt[..., ij[0]:ij[0] + P, ij[1]:ij[1] + P]).sum().item())\n        return b._replace(**{k: v[..., i:i + P, j:j + P] for k, v in b._asdict().items()\n                             if torch.is_tensor(v) and v.dim() >= 2 and tuple(v.shape[-2:]) == (H, W)})\n    def val_dataloader(self):\n        return torch.utils.data.DataLoader(self.val_ds, shuffle=False, batch_size=1, num_workers=1,\n                                           collate_fn=self._val_crop_collate)\n'
+
+
+def fixes_val_crop():
+    """Validation of VarCM / DynVarCM on a fixed 128x128 crop (OOM of the 8-rollout validation at 240x240). Idempotent."""
+    for name in ["Notebook_consistency_model_VarCM_sic.ipynb", "Notebook_consistency_model_VarDynCM_sic.ipynb"]:
+        path = os.path.join(NB, name)
+        nb = json.load(open(path)); n = 0
+        for c in nb["cells"]:
+            src = "".join(c["source"])
+            if VAL_OLD in src and "_val_crop_collate" not in src:
+                src = src.replace(VAL_OLD, VAL_NEW); n += 1
+                c["source"] = src.splitlines(keepends=True)
+        if n:
+            json.dump(nb, open(path, "w"), indent=1, ensure_ascii=False)
+            with open(path, "a") as f:
+                f.write("\n")
+        print(f"{name}: val crop {'added' if n else 'already there / anchor missing'}")
+
+
 if __name__ == "__main__":
     mt = _load("make_teacher_notebooks")
     mt.build_dyncmt("Notebooks_SIC", "sic", "logs_DynFM_sic_v2", False)
@@ -250,4 +271,5 @@ if __name__ == "__main__":
     adapt("Notebook_consistency_model_VarDynCM_sic.ipynb", "cat", batch1=True, extra=vardyncm_extra)
     fix_cmt_norm()
     fixes_20261117()
+    fixes_val_crop()
     subprocess.run([sys.executable, os.path.join(HERE, "patch_max_time.py")], cwd=os.path.join(HERE, ".."), check=True)
