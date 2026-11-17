@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_dynfm_more",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v2_more && python run_metrics.py --xp SIC --method DynFM_v2_more",
+  "commit": "9f6d177-dirty",
+  "host": "sl-mee-br-211",
+  "slurm_job": "77573",
+  "started": "2026-11-17T17:07:19",
+  "status": "ok",
+  "seconds": 12822.0,
+  "finished": "2026-11-17T20:41:01"
+}

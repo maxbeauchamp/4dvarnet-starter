@@ -255,3 +255,4 @@ fatal: Cannot autostash
 - 2026-11-17 19:28 pilot resumed
 - 2026-11-17 19:29 submitted `sic_vardyncm_train` as job 77638 -> `runs/20261117-192901_sic_vardyncm_train` (lane 2) [gpu:a100:1]
 - 2026-11-17 19:45 lane 2: `sic_vardyncm_train` done in 00:08:05, gate passed
+- 2026-11-17 20:47 lane 3: `sic_dynfm_more` done in 03:33:43, gate passed
