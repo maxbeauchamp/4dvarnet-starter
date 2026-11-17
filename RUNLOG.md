@@ -252,3 +252,6 @@ fatal: Cannot autostash
 - 2026-11-17 18:00 submitted `gp_nfe_fm_ssr` as job 77598 -> `runs/20261117-180045_gp_nfe_fm_ssr` (lane 4) [gpu:a100:1]
 - 2026-11-17 18:31 **ATTENTION** lane 2: `sic_vardyncm_train` ended FAILED after 08:01:41; see `runs/20261117-095913_sic_vardyncm_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 18:32 lane 4: `gp_nfe_fm_ssr` done in 00:16:25, gate passed
+- 2026-11-17 19:28 pilot resumed
+- 2026-11-17 19:29 submitted `sic_vardyncm_train` as job 77638 -> `runs/20261117-192901_sic_vardyncm_train` (lane 2) [gpu:a100:1]
+- 2026-11-17 19:45 lane 2: `sic_vardyncm_train` done in 00:08:05, gate passed
