@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_cmt_raw_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method CMT --reset && python run_metrics.py --xp SIC --method CMT",
+  "commit": "f9a652e",
+  "host": "sl-mee-br-212",
+  "slurm_job": "77288",
+  "started": "2026-11-17T16:02:04",
+  "status": "ok",
+  "seconds": 17524.2,
+  "finished": "2026-11-17T20:54:08"
+}
