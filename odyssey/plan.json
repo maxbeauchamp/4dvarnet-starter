@@ -566,6 +566,13 @@
    "confirm": true,
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT_v4 --reset && python run_metrics.py --xp SIC --method DynCMT_v4",
    "note": "approve if DynFM_v4 beats DynFM_v3 (RMSE MIZ 0.245)"
+  },
+  {
+   "id": "ssh_fig_dump",
+   "time": "01:30:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set FIG_DUMP=True --out-tag _fig",
+   "note": "paper figure: full DynVarCM sampling process (20 members) of test window 0 on the frame grid and its K=4 refinement -> results/SSH_GF/figdump/*.npz"
   }
  ]
 }
