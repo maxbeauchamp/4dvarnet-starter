@@ -280,3 +280,5 @@ fatal: Cannot autostash
 - 2026-11-18 11:44 lane 3: `sic_dynfm_v4_train` done in 04:34:25, gate passed
 - 2026-11-18 11:44 **ATTENTION** next lane-3 step `sic_dyncmt_v4_train` needs approval (`python3 odyssey/pilot.py approve sic_dyncmt_v4_train`).
 - 2026-11-18 11:45 lane 4: `sic_cmt_v3_train` done in 04:51:22, gate passed
+- 2026-11-18 11:45 submitted `ssh_dynfm_aug_train` as job 78052 -> `runs/20261118-114534_ssh_dynfm_aug_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 13:10 lane 2: `sic_dyncmt_v3_train` done in 05:15:58, gate passed

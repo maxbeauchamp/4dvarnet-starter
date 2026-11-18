@@ -1,0 +1,2 @@
+Method,RMSE,lambda_x,CRPS
+"DynCM (ens. mean, MIZ, full test set)",0.2456 $\pm$ 0.0786,180.3 $\pm$ 118.2,0.2055 $\pm$ 0.0800
