@@ -271,3 +271,8 @@ fatal: Cannot autostash
 - 2026-11-18 06:43 **ATTENTION** next lane-2 step `sic_dyncmt_v3_train` needs approval (`python3 odyssey/pilot.py approve sic_dyncmt_v3_train`).
 - 2026-11-18 06:44 submitted `sic_cmt_v3_train` as job 77836 -> `runs/20261118-064350_sic_cmt_v3_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-18 06:44 `ssh_cmt_train` done in 04:44:37, gate passed
+- 2026-11-18 06:57 submitted `sic_dyncmt_v3_train` as job 77841 -> `runs/20261118-065649_sic_dyncmt_v3_train` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 06:57 submitted `sic_dynfm_v4_train` as job 77846 -> `runs/20261118-065707_sic_dynfm_v4_train` (lane 3) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 10:11 plan.json changed; next is `ssh_fig_dump`
+- 2026-11-18 10:12 submitted `ssh_fig_dump` as job 77953 -> `runs/20261118-101159_ssh_fig_dump` [gpu:a100:1]
+- 2026-11-18 10:36 `ssh_fig_dump` done in 00:06:46, gate passed

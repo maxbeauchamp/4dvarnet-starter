@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_fig_dump",
+  "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set FIG_DUMP=True --out-tag _fig",
+  "commit": "56831ac-dirty",
+  "host": "sl-mee-br-207",
+  "slurm_job": "77953",
+  "started": "2026-11-18T10:12:16",
+  "status": "ok",
+  "seconds": 406.2,
+  "finished": "2026-11-18T10:19:02"
+}
