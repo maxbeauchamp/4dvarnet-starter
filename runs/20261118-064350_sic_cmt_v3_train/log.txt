@@ -1,0 +1,1927 @@
+
+========================================================================================
+[run_training] STARTING CMT_v3 / SIC
+========================================================================================
+[run_training] CMT_v3 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics_train.csv', 'RUN_TAG': '_v3', 'GAP_FILL': 'osi', 'FM_TEACHER_LOG': 'logs_FM_sic_v3', 'MAX_TIME': '00:04:45:00'}
+Unable to parse line 16 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Unable to parse line 19 'GAP_FILL = 'zero'       # (rebuttal, SIC) fill of the target gaps in the training inputs: 'zero' (= open water) or 'osi' (OSI SAF)'.
+Passed unknown parameter: GAP_FILL
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:05<03:22,  5.77s/cell]Executing:   8%|▊         | 3/36 [00:28<05:24,  9.85s/cell]Wed Nov 18 06:44:43 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   34C    P0             63W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:28<02:30,  4.87s/cell]Executing:  19%|█▉        | 7/36 [00:36<02:07,  4.41s/cell](z-score disabled; train stats were mean=0.5201 std=0.4040)
+Computed SIC training stats: mean=0.0000  std=1.0000
+C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range (normalised): [0.000, 1.000]
+asip std (normalised): 0.4139
+NaN fraction in asip: 22.2%
+Executing:  25%|██▌       | 9/36 [01:14<04:30, 10.02s/cell]Executing:  36%|███▌      | 13/36 [01:16<01:54,  4.99s/cell]RESET_TRAINING=True -- starting from scratch
+[CMT] ODE-teacher targets from logs_FM_sic_v3/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=600
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA H100 NVL') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/trainer/configuration_validator.py:69: UserWarning: You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.
+  rank_zero_warn("You passed in a `val_dataloader` but have no `validation_step`. Skipping val loop.")
+You are using a CUDA device ('NVIDIA H100 NVL') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.7 M    Total params
+394.649   Total estimated model params size (MB)
+
+
+  | Name              | Type | Params
+-------------------------------------------
+0 | student_model     | UNet | 32.9 M
+1 | teacher_model     | UNet | 32.9 M
+2 | ema_student_model | UNet | 32.9 M
+-------------------------------------------
+32.9 M    Trainable params
+65.8 M    Non-trainable params
+98.7 M    Total params
+394.649   Total estimated model params size (MB)
+Val batch cached: asip=torch.Size([2, 9, 240, 240])
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+[Epoch 0] num_timesteps=18
+[E0] loss=0.057606 pred=[-34.40,35.33] tgt=[-34.40,35.46]
+[progress] epoch 1/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0183
+[Epoch 0]  Val RMSE (masked, EMA) = 0.9167
+[Epoch 1] num_timesteps=18
+[E1] loss=0.017514 pred=[-4.29,4.59] tgt=[-4.18,4.97]
+[progress] epoch 2/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0281 | val_rmse_ema=0.9167
+[Epoch 1]  Val RMSE (masked, EMA) = 0.9159
+[Epoch 2] num_timesteps=18
+[E2] loss=0.010825 pred=[-1.03,2.34] tgt=[-1.32,2.53]
+[progress] epoch 3/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0115 | val_rmse_ema=0.9159
+[Epoch 2]  Val RMSE (masked, EMA) = 0.9144
+[Epoch 3] num_timesteps=18
+[E3] loss=0.016187 pred=[-12.32,13.64] tgt=[-12.33,13.79]
+[progress] epoch 4/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0453 | val_rmse_ema=0.9144
+[Epoch 3]  Val RMSE (masked, EMA) = 0.9132
+[Epoch 4] num_timesteps=18
+[E4] loss=0.030022 pred=[-13.72,13.89] tgt=[-13.49,13.96]
+[progress] epoch 5/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0696 | val_rmse_ema=0.9132
+[Epoch 4]  Val RMSE (masked, EMA) = 0.9117
+[Epoch 5] num_timesteps=18
+[E5] loss=0.007047 pred=[-6.04,6.52] tgt=[-6.01,6.50]
+[progress] epoch 6/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0372 | val_rmse_ema=0.9117
+[Epoch 5]  Val RMSE (masked, EMA) = 0.9103
+[Epoch 6] num_timesteps=18
+[E6] loss=0.055749 pred=[-1.05,2.24] tgt=[-0.02,1.02]
+[progress] epoch 7/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0323 | val_rmse_ema=0.9103
+[Epoch 6]  Val RMSE (masked, EMA) = 0.9087
+[Epoch 7] num_timesteps=18
+[E7] loss=0.041894 pred=[-1.10,1.53] tgt=[-1.11,1.29]
+[progress] epoch 8/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0449 | val_rmse_ema=0.9087
+[Epoch 7]  Val RMSE (masked, EMA) = 0.9071
+[Epoch 8] num_timesteps=18
+[E8] loss=0.038950 pred=[-2.14,3.40] tgt=[-2.24,3.46]
+[progress] epoch 9/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0439 | val_rmse_ema=0.9071
+[Epoch 8]  Val RMSE (masked, EMA) = 0.9056
+[Epoch 9] num_timesteps=18
+[E9] loss=0.019130 pred=[-2.76,3.36] tgt=[-2.75,3.37]
+[progress] epoch 10/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0208 | val_rmse_ema=0.9056
+[Epoch 9]  Val RMSE (masked, EMA) = 0.9038
+[Epoch 10] num_timesteps=18
+[E10] loss=0.009894 pred=[-18.20,18.64] tgt=[-18.11,18.59]
+[progress] epoch 11/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0163 | val_rmse_ema=0.9038
+[Epoch 10]  Val RMSE (masked, EMA) = 0.9023
+[Epoch 11] num_timesteps=18
+[E11] loss=0.049451 pred=[-28.26,26.51] tgt=[-28.08,26.72]
+[progress] epoch 12/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0071 | val_rmse_ema=0.9023
+[Epoch 11]  Val RMSE (masked, EMA) = 0.9006
+[Epoch 12] num_timesteps=18
+[E12] loss=0.018961 pred=[-1.01,1.18] tgt=[-1.15,1.31]
+[progress] epoch 13/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0061 | val_rmse_ema=0.9006
+[Epoch 12]  Val RMSE (masked, EMA) = 0.8990
+[Epoch 13] num_timesteps=18
+[E13] loss=0.007729 pred=[-0.91,1.75] tgt=[-1.00,1.88]
+[progress] epoch 14/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0282 | val_rmse_ema=0.8990
+[Epoch 13]  Val RMSE (masked, EMA) = 0.8971
+[Epoch 14] num_timesteps=18
+[E14] loss=0.015086 pred=[-2.85,3.14] tgt=[-2.79,3.44]
+[progress] epoch 15/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0046 | val_rmse_ema=0.8971
+[Epoch 14]  Val RMSE (masked, EMA) = 0.8954
+[Epoch 15] num_timesteps=18
+[E15] loss=0.011326 pred=[-12.70,14.93] tgt=[-12.56,14.97]
+[progress] epoch 16/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0095 | val_rmse_ema=0.8954
+[Epoch 15]  Val RMSE (masked, EMA) = 0.8932
+[Epoch 16] num_timesteps=18
+[E16] loss=0.019406 pred=[-2.78,3.32] tgt=[-2.77,3.22]
+[progress] epoch 17/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0053 | val_rmse_ema=0.8932
+[Epoch 16]  Val RMSE (masked, EMA) = 0.8910
+[Epoch 17] num_timesteps=18
+[E17] loss=0.010762 pred=[-0.34,1.23] tgt=[-0.39,1.07]
+[progress] epoch 18/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0098 | val_rmse_ema=0.8910
+[Epoch 17]  Val RMSE (masked, EMA) = 0.8887
+[Epoch 18] num_timesteps=18
+[E18] loss=0.003869 pred=[-1.27,1.61] tgt=[-1.32,1.57]
+[progress] epoch 19/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0084 | val_rmse_ema=0.8887
+[Epoch 18]  Val RMSE (masked, EMA) = 0.8864
+[Epoch 19] num_timesteps=18
+[E19] loss=0.009835 pred=[-2.63,3.68] tgt=[-2.67,3.76]
+[progress] epoch 20/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0085 | val_rmse_ema=0.8864
+[Epoch 19]  Val RMSE (masked, EMA) = 0.8839
+[Epoch 20] num_timesteps=18
+[E20] loss=0.004161 pred=[-0.88,1.51] tgt=[-0.80,1.72]
+[progress] epoch 21/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0038 | val_rmse_ema=0.8839
+[Epoch 20]  Val RMSE (masked, EMA) = 0.8811
+[Epoch 21] num_timesteps=18
+[E21] loss=0.013002 pred=[-18.38,19.29] tgt=[-18.35,19.34]
+[progress] epoch 22/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0023 | val_rmse_ema=0.8811
+[Epoch 21]  Val RMSE (masked, EMA) = 0.8785
+[Epoch 22] num_timesteps=18
+[E22] loss=0.003859 pred=[-0.67,1.55] tgt=[-0.69,1.49]
+[progress] epoch 23/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0048 | val_rmse_ema=0.8785
+[Epoch 22]  Val RMSE (masked, EMA) = 0.8756
+[Epoch 23] num_timesteps=18
+[E23] loss=0.004591 pred=[-0.28,1.21] tgt=[-0.25,1.15]
+[progress] epoch 24/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0034 | val_rmse_ema=0.8756
+[Epoch 23]  Val RMSE (masked, EMA) = 0.8728
+[Epoch 24] num_timesteps=18
+[E24] loss=0.002477 pred=[-0.23,1.26] tgt=[-0.22,1.22]
+[progress] epoch 25/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0097 | val_rmse_ema=0.8728
+[Epoch 24]  Val RMSE (masked, EMA) = 0.8696
+[Epoch 25] num_timesteps=18
+[E25] loss=0.003027 pred=[-0.61,1.42] tgt=[-0.56,1.59]
+[progress] epoch 26/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0018 | val_rmse_ema=0.8696
+[Epoch 25]  Val RMSE (masked, EMA) = 0.8664
+[Epoch 26] num_timesteps=18
+[E26] loss=0.003510 pred=[-0.67,1.58] tgt=[-0.66,1.39]
+[progress] epoch 27/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0087 | val_rmse_ema=0.8664
+[Epoch 26]  Val RMSE (masked, EMA) = 0.8632
+[Epoch 27] num_timesteps=18
+[E27] loss=0.004875 pred=[-2.56,3.50] tgt=[-2.53,3.45]
+[progress] epoch 28/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0042 | val_rmse_ema=0.8632
+[Epoch 27]  Val RMSE (masked, EMA) = 0.8600
+[Epoch 28] num_timesteps=18
+[E28] loss=0.006449 pred=[-13.93,14.26] tgt=[-13.89,14.12]
+[progress] epoch 29/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0033 | val_rmse_ema=0.8600
+[Epoch 28]  Val RMSE (masked, EMA) = 0.8565
+[Epoch 29] num_timesteps=18
+[E29] loss=0.003080 pred=[-4.37,4.86] tgt=[-4.44,4.76]
+[progress] epoch 30/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0087 | val_rmse_ema=0.8565
+[Epoch 29]  Val RMSE (masked, EMA) = 0.8528
+[Epoch 30] num_timesteps=18
+[E30] loss=0.006335 pred=[-0.21,1.10] tgt=[-0.02,1.00]
+[progress] epoch 31/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.8528
+[Epoch 30]  Val RMSE (masked, EMA) = 0.8492
+[Epoch 31] num_timesteps=18
+[E31] loss=0.004940 pred=[-0.17,1.22] tgt=[-0.29,1.15]
+[progress] epoch 32/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0041 | val_rmse_ema=0.8492
+[Epoch 31]  Val RMSE (masked, EMA) = 0.8455
+[Epoch 32] num_timesteps=18
+[E32] loss=0.002049 pred=[-1.96,3.75] tgt=[-1.92,3.72]
+[progress] epoch 33/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0045 | val_rmse_ema=0.8455
+[Epoch 32]  Val RMSE (masked, EMA) = 0.8417
+[Epoch 33] num_timesteps=18
+[E33] loss=0.006065 pred=[-0.14,1.43] tgt=[-0.06,1.33]
+[progress] epoch 34/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0019 | val_rmse_ema=0.8417
+[Epoch 33]  Val RMSE (masked, EMA) = 0.8376
+[Epoch 34] num_timesteps=18
+[E34] loss=0.001745 pred=[-1.32,1.64] tgt=[-1.30,1.57]
+[progress] epoch 35/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0057 | val_rmse_ema=0.8376
+[Epoch 34]  Val RMSE (masked, EMA) = 0.8336
+[Epoch 35] num_timesteps=18
+[E35] loss=0.003444 pred=[-9.04,10.55] tgt=[-8.94,10.62]
+[progress] epoch 36/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0059 | val_rmse_ema=0.8336
+[Epoch 35]  Val RMSE (masked, EMA) = 0.8294
+[Epoch 36] num_timesteps=18
+[E36] loss=0.004242 pred=[-1.52,2.75] tgt=[-1.60,2.71]
+[progress] epoch 37/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0035 | val_rmse_ema=0.8294
+[Epoch 36]  Val RMSE (masked, EMA) = 0.8249
+[Epoch 37] num_timesteps=18
+[E37] loss=0.004412 pred=[-6.56,6.60] tgt=[-6.54,6.68]
+[progress] epoch 38/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.8249
+[Epoch 37]  Val RMSE (masked, EMA) = 0.8204
+[Epoch 38] num_timesteps=18
+[E38] loss=0.000999 pred=[-0.18,1.23] tgt=[-0.22,1.02]
+[progress] epoch 39/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0045 | val_rmse_ema=0.8204
+[Epoch 38]  Val RMSE (masked, EMA) = 0.8159
+[Epoch 39] num_timesteps=18
+[E39] loss=0.004578 pred=[-9.01,9.74] tgt=[-9.09,9.71]
+[progress] epoch 40/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0045 | val_rmse_ema=0.8159
+[Epoch 39]  Val RMSE (masked, EMA) = 0.8111
+[Epoch 40] num_timesteps=18
+[E40] loss=0.001548 pred=[-4.06,4.81] tgt=[-3.98,4.81]
+[progress] epoch 41/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0021 | val_rmse_ema=0.8111
+[Epoch 40]  Val RMSE (masked, EMA) = 0.8062
+[Epoch 41] num_timesteps=18
+[E41] loss=0.000875 pred=[-0.73,1.99] tgt=[-0.83,2.00]
+[progress] epoch 42/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0037 | val_rmse_ema=0.8062
+[Epoch 41]  Val RMSE (masked, EMA) = 0.8013
+[Epoch 42] num_timesteps=18
+[E42] loss=0.000813 pred=[-3.87,4.76] tgt=[-3.90,4.69]
+[progress] epoch 43/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0035 | val_rmse_ema=0.8013
+[Epoch 42]  Val RMSE (masked, EMA) = 0.7963
+[Epoch 43] num_timesteps=18
+[E43] loss=0.000921 pred=[-0.67,2.02] tgt=[-0.78,2.02]
+[progress] epoch 44/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.7963
+[Epoch 43]  Val RMSE (masked, EMA) = 0.7911
+[Epoch 44] num_timesteps=18
+[E44] loss=0.002800 pred=[-0.19,1.22] tgt=[-0.28,1.22]
+[progress] epoch 45/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0018 | val_rmse_ema=0.7911
+[Epoch 44]  Val RMSE (masked, EMA) = 0.7860
+[Epoch 45] num_timesteps=18
+[E45] loss=0.001149 pred=[-1.03,1.31] tgt=[-1.03,1.26]
+[progress] epoch 46/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0023 | val_rmse_ema=0.7860
+[Epoch 45]  Val RMSE (masked, EMA) = 0.7806
+[Epoch 46] num_timesteps=18
+[E46] loss=0.003307 pred=[-17.18,19.38] tgt=[-17.11,19.40]
+[progress] epoch 47/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0054 | val_rmse_ema=0.7806
+[Epoch 46]  Val RMSE (masked, EMA) = 0.7751
+[Epoch 47] num_timesteps=18
+[E47] loss=0.001271 pred=[-2.74,2.95] tgt=[-2.75,3.01]
+[progress] epoch 48/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.7751
+[Epoch 47]  Val RMSE (masked, EMA) = 0.7695
+[Epoch 48] num_timesteps=18
+[E48] loss=0.005498 pred=[-0.15,1.14] tgt=[-0.04,1.02]
+[progress] epoch 49/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0027 | val_rmse_ema=0.7695
+[Epoch 48]  Val RMSE (masked, EMA) = 0.7637
+[Epoch 49] num_timesteps=18
+[E49] loss=0.002214 pred=[-0.11,1.14] tgt=[-0.18,1.17]
+[progress] epoch 50/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.7637
+[Epoch 49]  Val RMSE (masked, EMA) = 0.7576
+[Epoch 50] num_timesteps=18
+[E50] loss=0.001410 pred=[-0.15,1.32] tgt=[-0.15,1.27]
+[progress] epoch 51/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.7576
+[Epoch 50]  Val RMSE (masked, EMA) = 0.7515
+[Epoch 51] num_timesteps=18
+[E51] loss=0.001108 pred=[-1.20,2.63] tgt=[-1.25,2.59]
+[progress] epoch 52/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.7515
+[Epoch 51]  Val RMSE (masked, EMA) = 0.7455
+[Epoch 52] num_timesteps=18
+[E52] loss=0.001780 pred=[-0.61,1.46] tgt=[-0.63,1.51]
+[progress] epoch 53/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0013 | val_rmse_ema=0.7455
+[Epoch 52]  Val RMSE (masked, EMA) = 0.7392
+[Epoch 53] num_timesteps=18
+[E53] loss=0.002472 pred=[-0.32,1.25] tgt=[-0.29,1.24]
+[progress] epoch 54/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0014 | val_rmse_ema=0.7392
+[Epoch 53]  Val RMSE (masked, EMA) = 0.7329
+[Epoch 54] num_timesteps=18
+[E54] loss=0.002322 pred=[-9.08,10.18] tgt=[-9.03,10.21]
+[progress] epoch 55/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0021 | val_rmse_ema=0.7329
+[Epoch 54]  Val RMSE (masked, EMA) = 0.7265
+[Epoch 55] num_timesteps=18
+[E55] loss=0.002245 pred=[-2.77,3.32] tgt=[-2.83,3.27]
+[progress] epoch 56/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0025 | val_rmse_ema=0.7265
+[Epoch 55]  Val RMSE (masked, EMA) = 0.7196
+[Epoch 56] num_timesteps=18
+[E56] loss=0.002316 pred=[-24.19,25.73] tgt=[-24.12,25.75]
+[progress] epoch 57/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0019 | val_rmse_ema=0.7196
+[Epoch 56]  Val RMSE (masked, EMA) = 0.7125
+[Epoch 57] num_timesteps=18
+[E57] loss=0.002888 pred=[-1.15,1.90] tgt=[-1.09,1.93]
+[progress] epoch 58/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0044 | val_rmse_ema=0.7125
+[Epoch 57]  Val RMSE (masked, EMA) = 0.7052
+[Epoch 58] num_timesteps=18
+[E58] loss=0.002263 pred=[-12.22,14.22] tgt=[-12.18,14.21]
+[progress] epoch 59/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0020 | val_rmse_ema=0.7052
+[Epoch 58]  Val RMSE (masked, EMA) = 0.6980
+[Epoch 59] num_timesteps=18
+[E59] loss=0.001256 pred=[-20.26,19.58] tgt=[-20.33,19.56]
+[progress] epoch 60/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.6980
+[Epoch 59]  Val RMSE (masked, EMA) = 0.6904
+[Epoch 60] num_timesteps=18
+[E60] loss=0.001182 pred=[-18.86,17.87] tgt=[-18.90,17.91]
+[progress] epoch 61/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.6904
+[Epoch 60]  Val RMSE (masked, EMA) = 0.6828
+[Epoch 61] num_timesteps=18
+[E61] loss=0.000939 pred=[-0.52,1.34] tgt=[-0.54,1.38]
+[progress] epoch 62/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.6828
+[Epoch 61]  Val RMSE (masked, EMA) = 0.6751
+[Epoch 62] num_timesteps=18
+[E62] loss=0.001700 pred=[-12.09,14.50] tgt=[-12.09,14.48]
+[progress] epoch 63/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.6751
+[Epoch 62]  Val RMSE (masked, EMA) = 0.6672
+[Epoch 63] num_timesteps=18
+[E63] loss=0.000957 pred=[-0.13,1.20] tgt=[-0.15,1.24]
+[progress] epoch 64/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.6672
+[Epoch 63]  Val RMSE (masked, EMA) = 0.6592
+[Epoch 64] num_timesteps=18
+[E64] loss=0.002019 pred=[-0.61,1.11] tgt=[-0.57,1.05]
+[progress] epoch 65/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.6592
+[Epoch 64]  Val RMSE (masked, EMA) = 0.6513
+[Epoch 65] num_timesteps=18
+[E65] loss=0.000864 pred=[-5.30,7.06] tgt=[-5.32,7.01]
+[progress] epoch 66/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0017 | val_rmse_ema=0.6513
+[Epoch 65]  Val RMSE (masked, EMA) = 0.6432
+[Epoch 66] num_timesteps=18
+[E66] loss=0.002597 pred=[-0.12,1.23] tgt=[-0.02,1.23]
+[progress] epoch 67/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0033 | val_rmse_ema=0.6432
+[Epoch 66]  Val RMSE (masked, EMA) = 0.6352
+[Epoch 67] num_timesteps=18
+[E67] loss=0.003406 pred=[-0.10,1.17] tgt=[-0.17,1.18]
+[progress] epoch 68/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0014 | val_rmse_ema=0.6352
+[Epoch 67]  Val RMSE (masked, EMA) = 0.6268
+[Epoch 68] num_timesteps=18
+[E68] loss=0.002116 pred=[-8.70,9.84] tgt=[-8.94,9.79]
+[progress] epoch 69/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0014 | val_rmse_ema=0.6268
+[Epoch 68]  Val RMSE (masked, EMA) = 0.6183
+[Epoch 69] num_timesteps=18
+[E69] loss=0.000777 pred=[-1.52,2.84] tgt=[-1.60,2.84]
+[progress] epoch 70/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.6183
+[Epoch 69]  Val RMSE (masked, EMA) = 0.6101
+[Epoch 70] num_timesteps=18
+[E70] loss=0.000774 pred=[-0.19,1.12] tgt=[-0.14,1.03]
+[progress] epoch 71/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0017 | val_rmse_ema=0.6101
+[Epoch 70]  Val RMSE (masked, EMA) = 0.6017
+[Epoch 71] num_timesteps=18
+[E71] loss=0.000527 pred=[-0.22,1.12] tgt=[-0.22,1.09]
+[progress] epoch 72/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.6017
+[Epoch 71]  Val RMSE (masked, EMA) = 0.5933
+[Epoch 72] num_timesteps=18
+[E72] loss=0.001585 pred=[-0.66,1.33] tgt=[-0.66,1.37]
+[progress] epoch 73/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.5933
+[Epoch 72]  Val RMSE (masked, EMA) = 0.5853
+[Epoch 73] num_timesteps=18
+[E73] loss=0.002298 pred=[-6.40,6.02] tgt=[-6.64,6.00]
+[progress] epoch 74/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.5853
+[Epoch 73]  Val RMSE (masked, EMA) = 0.5773
+[Epoch 74] num_timesteps=18
+[E74] loss=0.002367 pred=[-0.26,1.27] tgt=[-0.41,1.39]
+[progress] epoch 75/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0019 | val_rmse_ema=0.5773
+[Epoch 74]  Val RMSE (masked, EMA) = 0.5692
+[Epoch 75] num_timesteps=18
+[E75] loss=0.000786 pred=[-3.84,4.66] tgt=[-3.92,4.63]
+[progress] epoch 76/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.5692
+[Epoch 75]  Val RMSE (masked, EMA) = 0.5612
+[Epoch 76] num_timesteps=18
+[E76] loss=0.000970 pred=[-0.33,1.21] tgt=[-0.34,1.20]
+[progress] epoch 77/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.5612
+[Epoch 76]  Val RMSE (masked, EMA) = 0.5533
+[Epoch 77] num_timesteps=18
+[E77] loss=0.001102 pred=[-0.35,1.28] tgt=[-0.42,1.35]
+[progress] epoch 78/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.5533
+[Epoch 77]  Val RMSE (masked, EMA) = 0.5457
+[Epoch 78] num_timesteps=18
+[E78] loss=0.000803 pred=[-3.98,4.41] tgt=[-3.98,4.36]
+[progress] epoch 79/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.5457
+[Epoch 78]  Val RMSE (masked, EMA) = 0.5381
+[Epoch 79] num_timesteps=18
+[E79] loss=0.000735 pred=[-0.26,1.52] tgt=[-0.15,1.47]
+[progress] epoch 80/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.5381
+[Epoch 79]  Val RMSE (masked, EMA) = 0.5306
+[Epoch 80] num_timesteps=18
+[E80] loss=0.000782 pred=[-8.63,9.40] tgt=[-8.65,9.37]
+[progress] epoch 81/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0018 | val_rmse_ema=0.5306
+[Epoch 80]  Val RMSE (masked, EMA) = 0.5228
+[Epoch 81] num_timesteps=18
+[E81] loss=0.000646 pred=[-0.14,1.10] tgt=[-0.16,1.10]
+[progress] epoch 82/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.5228
+[Epoch 81]  Val RMSE (masked, EMA) = 0.5157
+[Epoch 82] num_timesteps=18
+[E82] loss=0.001378 pred=[-18.16,19.20] tgt=[-18.34,19.15]
+[progress] epoch 83/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.5157
+[Epoch 82]  Val RMSE (masked, EMA) = 0.5082
+[Epoch 83] num_timesteps=18
+[E83] loss=0.000944 pred=[-0.50,1.36] tgt=[-0.50,1.36]
+[progress] epoch 84/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.5082
+[Epoch 83]  Val RMSE (masked, EMA) = 0.5013
+[Epoch 84] num_timesteps=18
+[E84] loss=0.000482 pred=[-0.18,1.19] tgt=[-0.17,1.21]
+[progress] epoch 85/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.5013
+[Epoch 84]  Val RMSE (masked, EMA) = 0.4949
+[Epoch 85] num_timesteps=18
+[E85] loss=0.001001 pred=[-0.99,2.00] tgt=[-1.04,1.99]
+[progress] epoch 86/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.4949
+[Epoch 85]  Val RMSE (masked, EMA) = 0.4877
+[Epoch 86] num_timesteps=18
+[E86] loss=0.000937 pred=[-0.85,2.03] tgt=[-0.86,2.03]
+[progress] epoch 87/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0020 | val_rmse_ema=0.4877
+[Epoch 86]  Val RMSE (masked, EMA) = 0.4813
+[Epoch 87] num_timesteps=18
+[E87] loss=0.000885 pred=[-0.48,1.63] tgt=[-0.54,1.58]
+[progress] epoch 88/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.4813
+[Epoch 87]  Val RMSE (masked, EMA) = 0.4749
+[Epoch 88] num_timesteps=18
+[E88] loss=0.000806 pred=[-0.61,1.55] tgt=[-0.70,1.58]
+[progress] epoch 89/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.4749
+[Epoch 88]  Val RMSE (masked, EMA) = 0.4685
+[Epoch 89] num_timesteps=18
+[E89] loss=0.002466 pred=[-12.77,15.87] tgt=[-12.86,15.86]
+[progress] epoch 90/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.4685
+[Epoch 89]  Val RMSE (masked, EMA) = 0.4624
+[Epoch 90] num_timesteps=18
+[E90] loss=0.001399 pred=[-2.69,3.22] tgt=[-2.71,3.23]
+[progress] epoch 91/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0018 | val_rmse_ema=0.4624
+[Epoch 90]  Val RMSE (masked, EMA) = 0.4564
+[Epoch 91] num_timesteps=18
+[E91] loss=0.001021 pred=[-4.98,7.49] tgt=[-4.90,7.44]
+[progress] epoch 92/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.4564
+[Epoch 91]  Val RMSE (masked, EMA) = 0.4504
+[Epoch 92] num_timesteps=18
+[E92] loss=0.000705 pred=[-0.09,1.10] tgt=[-0.10,1.11]
+[progress] epoch 93/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.4504
+[Epoch 92]  Val RMSE (masked, EMA) = 0.4448
+[Epoch 93] num_timesteps=18
+[E93] loss=0.000700 pred=[-4.35,4.47] tgt=[-4.37,4.39]
+[progress] epoch 94/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.4448
+[Epoch 93]  Val RMSE (masked, EMA) = 0.4390
+[Epoch 94] num_timesteps=18
+[E94] loss=0.000981 pred=[-1.78,2.53] tgt=[-1.81,2.50]
+[progress] epoch 95/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.4390
+[Epoch 94]  Val RMSE (masked, EMA) = 0.4333
+[Epoch 95] num_timesteps=18
+[E95] loss=0.000553 pred=[-0.18,1.15] tgt=[-0.17,1.19]
+[progress] epoch 96/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.4333
+[Epoch 95]  Val RMSE (masked, EMA) = 0.4283
+[Epoch 96] num_timesteps=18
+[E96] loss=0.000645 pred=[-24.94,31.06] tgt=[-24.94,31.04]
+[progress] epoch 97/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.4283
+[Epoch 96]  Val RMSE (masked, EMA) = 0.4230
+[Epoch 97] num_timesteps=18
+[E97] loss=0.000805 pred=[-31.38,35.37] tgt=[-31.31,35.44]
+[progress] epoch 98/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.4230
+[Epoch 97]  Val RMSE (masked, EMA) = 0.4179
+[Epoch 98] num_timesteps=18
+[E98] loss=0.000682 pred=[-0.50,1.66] tgt=[-0.54,1.66]
+[progress] epoch 99/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0021 | val_rmse_ema=0.4179
+[Epoch 98]  Val RMSE (masked, EMA) = 0.4133
+[Epoch 99] num_timesteps=18
+[E99] loss=0.001833 pred=[-0.11,1.15] tgt=[-0.08,1.05]
+[progress] epoch 100/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0014 | val_rmse_ema=0.4133
+[Epoch 99]  Val RMSE (masked, EMA) = 0.4088
+[Epoch 100] num_timesteps=18
+[E100] loss=0.002411 pred=[-0.10,1.18] tgt=[-0.10,1.18]
+[progress] epoch 101/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.4088
+[Epoch 100]  Val RMSE (masked, EMA) = 0.4042
+[Epoch 101] num_timesteps=18
+[E101] loss=0.000491 pred=[-4.47,4.52] tgt=[-4.49,4.51]
+[progress] epoch 102/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0018 | val_rmse_ema=0.4042
+[Epoch 101]  Val RMSE (masked, EMA) = 0.3996
+[Epoch 102] num_timesteps=18
+[E102] loss=0.000401 pred=[-3.82,5.03] tgt=[-3.84,5.01]
+[progress] epoch 103/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.3996
+[Epoch 102]  Val RMSE (masked, EMA) = 0.3951
+[Epoch 103] num_timesteps=18
+[E103] loss=0.000555 pred=[-6.45,6.78] tgt=[-6.45,6.78]
+[progress] epoch 104/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.3951
+[Epoch 103]  Val RMSE (masked, EMA) = 0.3909
+[Epoch 104] num_timesteps=18
+[E104] loss=0.000798 pred=[-26.47,27.80] tgt=[-26.47,27.77]
+[progress] epoch 105/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.3909
+[Epoch 104]  Val RMSE (masked, EMA) = 0.3867
+[Epoch 105] num_timesteps=18
+[E105] loss=0.000668 pred=[-35.60,32.74] tgt=[-35.64,32.76]
+[progress] epoch 106/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.3867
+[Epoch 105]  Val RMSE (masked, EMA) = 0.3824
+[Epoch 106] num_timesteps=18
+[E106] loss=0.000578 pred=[-5.18,7.23] tgt=[-5.18,7.20]
+[progress] epoch 107/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.3824
+[Epoch 106]  Val RMSE (masked, EMA) = 0.3785
+[Epoch 107] num_timesteps=18
+[E107] loss=0.001543 pred=[-18.63,18.39] tgt=[-18.66,18.37]
+[progress] epoch 108/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.3785
+[Epoch 107]  Val RMSE (masked, EMA) = 0.3749
+[Epoch 108] num_timesteps=18
+[E108] loss=0.000840 pred=[-0.14,1.08] tgt=[-0.09,1.01]
+[progress] epoch 109/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.3749
+[Epoch 108]  Val RMSE (masked, EMA) = 0.3707
+[Epoch 109] num_timesteps=18
+[E109] loss=0.000554 pred=[-24.95,26.59] tgt=[-24.93,26.52]
+[progress] epoch 110/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.3707
+[Epoch 109]  Val RMSE (masked, EMA) = 0.3670
+[Epoch 110] num_timesteps=18
+[E110] loss=0.000752 pred=[-0.20,1.07] tgt=[-0.16,1.06]
+[progress] epoch 111/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.3670
+[Epoch 110]  Val RMSE (masked, EMA) = 0.3636
+[Epoch 111] num_timesteps=18
+[E111] loss=0.000924 pred=[-0.20,1.76] tgt=[-0.17,1.74]
+[progress] epoch 112/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.3636
+[Epoch 111]  Val RMSE (masked, EMA) = 0.3597
+[Epoch 112] num_timesteps=18
+[E112] loss=0.000582 pred=[-0.40,1.26] tgt=[-0.40,1.25]
+[progress] epoch 113/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0013 | val_rmse_ema=0.3597
+[Epoch 112]  Val RMSE (masked, EMA) = 0.3562
+[Epoch 113] num_timesteps=18
+[E113] loss=0.000740 pred=[-0.38,1.15] tgt=[-0.41,1.16]
+[progress] epoch 114/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.3562
+[Epoch 113]  Val RMSE (masked, EMA) = 0.3527
+[Epoch 114] num_timesteps=18
+[E114] loss=0.000642 pred=[-2.71,2.99] tgt=[-2.71,3.03]
+[progress] epoch 115/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.3527
+[Epoch 114]  Val RMSE (masked, EMA) = 0.3495
+[Epoch 115] num_timesteps=18
+[E115] loss=0.002827 pred=[-0.40,1.17] tgt=[-0.40,1.15]
+[progress] epoch 116/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.3495
+[Epoch 115]  Val RMSE (masked, EMA) = 0.3461
+[Epoch 116] num_timesteps=18
+[E116] loss=0.000882 pred=[-0.77,1.96] tgt=[-0.75,1.99]
+[progress] epoch 117/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.3461
+[Epoch 116]  Val RMSE (masked, EMA) = 0.3427
+[Epoch 117] num_timesteps=18
+[E117] loss=0.000690 pred=[-17.00,18.59] tgt=[-16.99,18.57]
+[progress] epoch 118/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.3427
+[Epoch 117]  Val RMSE (masked, EMA) = 0.3397
+[Epoch 118] num_timesteps=18
+[E118] loss=0.000546 pred=[-1.11,1.71] tgt=[-1.10,1.66]
+[progress] epoch 119/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.3397
+[Epoch 118]  Val RMSE (masked, EMA) = 0.3363
+[Epoch 119] num_timesteps=18
+[E119] loss=0.000368 pred=[-0.08,1.04] tgt=[-0.08,1.04]
+[progress] epoch 120/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.3363
+[Epoch 119]  Val RMSE (masked, EMA) = 0.3336
+[Epoch 120] num_timesteps=18
+[E120] loss=0.000388 pred=[-2.24,3.74] tgt=[-2.22,3.74]
+[progress] epoch 121/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.3336
+[Epoch 120]  Val RMSE (masked, EMA) = 0.3305
+[Epoch 121] num_timesteps=18
+[E121] loss=0.000555 pred=[-35.64,35.02] tgt=[-35.61,35.05]
+[progress] epoch 122/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.3305
+[Epoch 121]  Val RMSE (masked, EMA) = 0.3277
+[Epoch 122] num_timesteps=18
+[E122] loss=0.001237 pred=[-24.35,25.00] tgt=[-24.34,25.02]
+[progress] epoch 123/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.3277
+[Epoch 122]  Val RMSE (masked, EMA) = 0.3248
+[Epoch 123] num_timesteps=18
+[E123] loss=0.000558 pred=[-2.50,3.68] tgt=[-2.49,3.69]
+[progress] epoch 124/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.3248
+[Epoch 123]  Val RMSE (masked, EMA) = 0.3220
+[Epoch 124] num_timesteps=18
+[E124] loss=0.002007 pred=[-0.35,1.37] tgt=[-0.42,1.39]
+[progress] epoch 125/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.3220
+[Epoch 124]  Val RMSE (masked, EMA) = 0.3191
+[Epoch 125] num_timesteps=18
+[E125] loss=0.000660 pred=[-0.43,1.62] tgt=[-0.45,1.64]
+[progress] epoch 126/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.3191
+[Epoch 125]  Val RMSE (masked, EMA) = 0.3167
+[Epoch 126] num_timesteps=18
+[E126] loss=0.001125 pred=[-4.09,5.18] tgt=[-4.09,5.18]
+[progress] epoch 127/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.3167
+[Epoch 126]  Val RMSE (masked, EMA) = 0.3138
+[Epoch 127] num_timesteps=18
+[E127] loss=0.000630 pred=[-16.65,18.96] tgt=[-16.66,18.97]
+[progress] epoch 128/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.3138
+[Epoch 127]  Val RMSE (masked, EMA) = 0.3109
+[Epoch 128] num_timesteps=18
+[E128] loss=0.001049 pred=[-9.05,9.31] tgt=[-9.01,9.31]
+[progress] epoch 129/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.3109
+[Epoch 128]  Val RMSE (masked, EMA) = 0.3084
+[Epoch 129] num_timesteps=18
+[E129] loss=0.000697 pred=[-24.84,27.76] tgt=[-24.84,28.20]
+[progress] epoch 130/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.3084
+[Epoch 129]  Val RMSE (masked, EMA) = 0.3059
+[Epoch 130] num_timesteps=18
+[E130] loss=0.000419 pred=[-17.83,19.23] tgt=[-17.85,19.25]
+[progress] epoch 131/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.3059
+[Epoch 130]  Val RMSE (masked, EMA) = 0.3029
+[Epoch 131] num_timesteps=18
+[E131] loss=0.000653 pred=[-4.07,4.49] tgt=[-4.04,4.51]
+[progress] epoch 132/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.3029
+[Epoch 131]  Val RMSE (masked, EMA) = 0.3004
+[Epoch 132] num_timesteps=18
+[E132] loss=0.000657 pred=[-0.57,1.59] tgt=[-0.72,1.62]
+[progress] epoch 133/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.3004
+[Epoch 132]  Val RMSE (masked, EMA) = 0.2981
+[Epoch 133] num_timesteps=18
+[E133] loss=0.000670 pred=[-0.26,1.15] tgt=[-0.22,1.20]
+[progress] epoch 134/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2981
+[Epoch 133]  Val RMSE (masked, EMA) = 0.2959
+[Epoch 134] num_timesteps=18
+[E134] loss=0.000320 pred=[-0.65,1.31] tgt=[-0.64,1.33]
+[progress] epoch 135/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.2959
+[Epoch 134]  Val RMSE (masked, EMA) = 0.2934
+[Epoch 135] num_timesteps=18
+[E135] loss=0.000966 pred=[-1.66,2.29] tgt=[-1.71,2.40]
+[progress] epoch 136/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.2934
+[Epoch 135]  Val RMSE (masked, EMA) = 0.2907
+[Epoch 136] num_timesteps=18
+[E136] loss=0.001687 pred=[-26.55,25.81] tgt=[-26.55,25.85]
+[progress] epoch 137/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.2907
+[Epoch 136]  Val RMSE (masked, EMA) = 0.2886
+[Epoch 137] num_timesteps=18
+[E137] loss=0.000775 pred=[-35.15,36.21] tgt=[-35.16,36.16]
+[progress] epoch 138/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2886
+[Epoch 137]  Val RMSE (masked, EMA) = 0.2866
+[Epoch 138] num_timesteps=18
+[E138] loss=0.000557 pred=[-1.73,2.69] tgt=[-1.76,2.71]
+[progress] epoch 139/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.2866
+[Epoch 138]  Val RMSE (masked, EMA) = 0.2842
+[Epoch 139] num_timesteps=18
+[E139] loss=0.001186 pred=[-0.08,1.08] tgt=[-0.02,1.02]
+[progress] epoch 140/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.2842
+[Epoch 139]  Val RMSE (masked, EMA) = 0.2821
+[Epoch 140] num_timesteps=18
+[E140] loss=0.000320 pred=[-4.26,5.22] tgt=[-4.25,5.21]
+[progress] epoch 141/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.2821
+[Epoch 140]  Val RMSE (masked, EMA) = 0.2796
+[Epoch 141] num_timesteps=18
+[E141] loss=0.000572 pred=[-0.12,1.09] tgt=[-0.15,1.07]
+[progress] epoch 142/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2796
+[Epoch 141]  Val RMSE (masked, EMA) = 0.2771
+[Epoch 142] num_timesteps=18
+[E142] loss=0.001025 pred=[-0.18,1.21] tgt=[-0.24,1.24]
+[progress] epoch 143/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.2771
+[Epoch 142]  Val RMSE (masked, EMA) = 0.2754
+[Epoch 143] num_timesteps=18
+[E143] loss=0.001077 pred=[-0.17,1.22] tgt=[-0.17,1.15]
+[progress] epoch 144/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.2754
+[Epoch 143]  Val RMSE (masked, EMA) = 0.2735
+[Epoch 144] num_timesteps=18
+[E144] loss=0.000364 pred=[-1.65,2.75] tgt=[-1.60,2.77]
+[progress] epoch 145/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.2735
+[Epoch 144]  Val RMSE (masked, EMA) = 0.2711
+[Epoch 145] num_timesteps=18
+[E145] loss=0.000811 pred=[-24.15,24.47] tgt=[-24.12,24.43]
+[progress] epoch 146/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2711
+[Epoch 145]  Val RMSE (masked, EMA) = 0.2690
+[Epoch 146] num_timesteps=18
+[E146] loss=0.000676 pred=[-0.17,0.92] tgt=[-0.17,0.95]
+[progress] epoch 147/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2690
+[Epoch 146]  Val RMSE (masked, EMA) = 0.2670
+[Epoch 147] num_timesteps=18
+[E147] loss=0.000534 pred=[-36.59,35.52] tgt=[-36.55,35.50]
+[progress] epoch 148/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2670
+[Epoch 147]  Val RMSE (masked, EMA) = 0.2651
+[Epoch 148] num_timesteps=18
+[E148] loss=0.000748 pred=[-0.75,1.64] tgt=[-0.72,1.60]
+[progress] epoch 149/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2651
+[Epoch 148]  Val RMSE (masked, EMA) = 0.2633
+[Epoch 149] num_timesteps=18
+[E149] loss=0.000461 pred=[-0.31,1.41] tgt=[-0.31,1.38]
+[progress] epoch 150/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.2633
+[Epoch 149]  Val RMSE (masked, EMA) = 0.2615
+[Epoch 150] num_timesteps=18
+[E150] loss=0.000688 pred=[-12.86,13.16] tgt=[-13.14,13.30]
+[progress] epoch 151/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2615
+[Epoch 150]  Val RMSE (masked, EMA) = 0.2594
+[Epoch 151] num_timesteps=18
+[E151] loss=0.000449 pred=[-0.20,1.17] tgt=[-0.17,1.19]
+[progress] epoch 152/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0019 | val_rmse_ema=0.2594
+[Epoch 151]  Val RMSE (masked, EMA) = 0.2571
+[Epoch 152] num_timesteps=18
+[E152] loss=0.000778 pred=[-0.19,1.22] tgt=[-0.17,1.21]
+[progress] epoch 153/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0017 | val_rmse_ema=0.2571
+[Epoch 152]  Val RMSE (masked, EMA) = 0.2556
+[Epoch 153] num_timesteps=18
+[E153] loss=0.000581 pred=[-0.35,1.19] tgt=[-0.33,1.16]
+[progress] epoch 154/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2556
+[Epoch 153]  Val RMSE (masked, EMA) = 0.2538
+[Epoch 154] num_timesteps=18
+[E154] loss=0.000627 pred=[-0.17,1.12] tgt=[-0.13,1.05]
+[progress] epoch 155/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2538
+[Epoch 154]  Val RMSE (masked, EMA) = 0.2516
+[Epoch 155] num_timesteps=18
+[E155] loss=0.001043 pred=[-0.24,1.36] tgt=[-0.45,1.37]
+[progress] epoch 156/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.2516
+[Epoch 155]  Val RMSE (masked, EMA) = 0.2497
+[Epoch 156] num_timesteps=18
+[E156] loss=0.001106 pred=[-0.34,1.73] tgt=[-0.27,1.76]
+[progress] epoch 157/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2497
+[Epoch 156]  Val RMSE (masked, EMA) = 0.2476
+[Epoch 157] num_timesteps=18
+[E157] loss=0.000711 pred=[-1.91,2.35] tgt=[-1.92,2.37]
+[progress] epoch 158/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.2476
+[Epoch 157]  Val RMSE (masked, EMA) = 0.2462
+[Epoch 158] num_timesteps=18
+[E158] loss=0.000766 pred=[-2.74,2.99] tgt=[-2.74,2.95]
+[progress] epoch 159/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2462
+[Epoch 158]  Val RMSE (masked, EMA) = 0.2442
+[Epoch 159] num_timesteps=18
+[E159] loss=0.000517 pred=[-0.11,1.12] tgt=[-0.26,1.17]
+[progress] epoch 160/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2442
+[Epoch 159]  Val RMSE (masked, EMA) = 0.2425
+[Epoch 160] num_timesteps=18
+[E160] loss=0.000431 pred=[-0.21,1.18] tgt=[-0.17,1.16]
+[progress] epoch 161/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.2425
+[Epoch 160]  Val RMSE (masked, EMA) = 0.2409
+[Epoch 161] num_timesteps=18
+[E161] loss=0.000724 pred=[-0.33,2.06] tgt=[-0.38,2.08]
+[progress] epoch 162/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2409
+[Epoch 161]  Val RMSE (masked, EMA) = 0.2388
+[Epoch 162] num_timesteps=18
+[E162] loss=0.000414 pred=[-8.78,9.55] tgt=[-8.77,9.55]
+[progress] epoch 163/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.2388
+[Epoch 162]  Val RMSE (masked, EMA) = 0.2369
+[Epoch 163] num_timesteps=18
+[E163] loss=0.000590 pred=[-13.95,14.18] tgt=[-13.95,14.18]
+[progress] epoch 164/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.2369
+[Epoch 163]  Val RMSE (masked, EMA) = 0.2357
+[Epoch 164] num_timesteps=18
+[E164] loss=0.000521 pred=[-0.16,1.24] tgt=[-0.15,1.24]
+[progress] epoch 165/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2357
+[Epoch 164]  Val RMSE (masked, EMA) = 0.2333
+[Epoch 165] num_timesteps=18
+[E165] loss=0.000483 pred=[-0.41,1.32] tgt=[-0.45,1.28]
+[progress] epoch 166/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2333
+[Epoch 165]  Val RMSE (masked, EMA) = 0.2323
+[Epoch 166] num_timesteps=18
+[E166] loss=0.000845 pred=[-1.86,2.61] tgt=[-1.87,2.57]
+[progress] epoch 167/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.2323
+[Epoch 166]  Val RMSE (masked, EMA) = 0.2302
+[Epoch 167] num_timesteps=18
+[E167] loss=0.000770 pred=[-0.59,1.53] tgt=[-0.58,1.50]
+[progress] epoch 168/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.2302
+[Epoch 167]  Val RMSE (masked, EMA) = 0.2280
+[Epoch 168] num_timesteps=18
+[E168] loss=0.000671 pred=[-0.18,1.17] tgt=[-0.28,1.17]
+[progress] epoch 169/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2280
+[Epoch 168]  Val RMSE (masked, EMA) = 0.2272
+[Epoch 169] num_timesteps=18
+[E169] loss=0.000433 pred=[-33.32,36.54] tgt=[-33.35,36.55]
+[progress] epoch 170/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0019 | val_rmse_ema=0.2272
+[Epoch 169]  Val RMSE (masked, EMA) = 0.2253
+[Epoch 170] num_timesteps=18
+[E170] loss=0.000609 pred=[-0.20,1.23] tgt=[-0.22,1.21]
+[progress] epoch 171/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.2253
+[Epoch 170]  Val RMSE (masked, EMA) = 0.2238
+[Epoch 171] num_timesteps=18
+[E171] loss=0.001275 pred=[-0.37,1.05] tgt=[-0.34,1.03]
+[progress] epoch 172/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2238
+[Epoch 171]  Val RMSE (masked, EMA) = 0.2223
+[Epoch 172] num_timesteps=18
+[E172] loss=0.000654 pred=[-2.83,3.10] tgt=[-2.89,3.11]
+[progress] epoch 173/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2223
+[Epoch 172]  Val RMSE (masked, EMA) = 0.2205
+[Epoch 173] num_timesteps=18
+[E173] loss=0.001556 pred=[-0.10,1.15] tgt=[-0.13,1.11]
+[progress] epoch 174/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2205
+[Epoch 173]  Val RMSE (masked, EMA) = 0.2190
+[Epoch 174] num_timesteps=18
+[E174] loss=0.000869 pred=[-2.18,3.90] tgt=[-2.31,3.90]
+[progress] epoch 175/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.2190
+[Epoch 174]  Val RMSE (masked, EMA) = 0.2172
+[Epoch 175] num_timesteps=18
+[E175] loss=0.000569 pred=[-0.17,1.18] tgt=[-0.17,1.20]
+[progress] epoch 176/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.2172
+[Epoch 175]  Val RMSE (masked, EMA) = 0.2154
+[Epoch 176] num_timesteps=18
+[E176] loss=0.000345 pred=[-3.83,5.29] tgt=[-3.82,5.29]
+[progress] epoch 177/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.2154
+[Epoch 176]  Val RMSE (masked, EMA) = 0.2143
+[Epoch 177] num_timesteps=18
+[E177] loss=0.000397 pred=[-4.19,4.76] tgt=[-4.20,4.75]
+[progress] epoch 178/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.2143
+[Epoch 177]  Val RMSE (masked, EMA) = 0.2127
+[Epoch 178] num_timesteps=18
+[E178] loss=0.000964 pred=[-0.94,1.95] tgt=[-1.08,1.96]
+[progress] epoch 179/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.2127
+[Epoch 178]  Val RMSE (masked, EMA) = 0.2119
+[Epoch 179] num_timesteps=18
+[E179] loss=0.000635 pred=[-0.09,1.16] tgt=[-0.08,1.13]
+[progress] epoch 180/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.2119
+[Epoch 179]  Val RMSE (masked, EMA) = 0.2096
+[Epoch 180] num_timesteps=18
+[E180] loss=0.001216 pred=[-9.01,10.01] tgt=[-9.01,10.02]
+[progress] epoch 181/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.2096
+[Epoch 180]  Val RMSE (masked, EMA) = 0.2085
+[Epoch 181] num_timesteps=18
+[E181] loss=0.000863 pred=[-0.14,1.10] tgt=[-0.14,1.02]
+[progress] epoch 182/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.2085
+[Epoch 181]  Val RMSE (masked, EMA) = 0.2070
+[Epoch 182] num_timesteps=18
+[E182] loss=0.000603 pred=[-17.70,17.89] tgt=[-17.67,17.88]
+[progress] epoch 183/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2070
+[Epoch 182]  Val RMSE (masked, EMA) = 0.2058
+[Epoch 183] num_timesteps=18
+[E183] loss=0.000582 pred=[-0.08,1.13] tgt=[-0.08,1.10]
+[progress] epoch 184/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.2058
+[Epoch 183]  Val RMSE (masked, EMA) = 0.2042
+[Epoch 184] num_timesteps=18
+[E184] loss=0.000390 pred=[-0.85,2.25] tgt=[-0.90,2.20]
+[progress] epoch 185/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.2042
+[Epoch 184]  Val RMSE (masked, EMA) = 0.2030
+[Epoch 185] num_timesteps=18
+[E185] loss=0.000693 pred=[-3.94,5.13] tgt=[-3.93,5.15]
+[progress] epoch 186/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.2030
+[Epoch 185]  Val RMSE (masked, EMA) = 0.2015
+[Epoch 186] num_timesteps=18
+[E186] loss=0.000678 pred=[-0.10,1.04] tgt=[-0.09,1.03]
+[progress] epoch 187/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.2015
+[Epoch 186]  Val RMSE (masked, EMA) = 0.1999
+[Epoch 187] num_timesteps=18
+[E187] loss=0.000638 pred=[-36.94,37.08] tgt=[-36.94,37.14]
+[progress] epoch 188/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1999
+[Epoch 187]  Val RMSE (masked, EMA) = 0.1985
+[Epoch 188] num_timesteps=18
+[E188] loss=0.000787 pred=[-0.54,1.57] tgt=[-0.52,1.58]
+[progress] epoch 189/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1985
+[Epoch 188]  Val RMSE (masked, EMA) = 0.1975
+[Epoch 189] num_timesteps=18
+[E189] loss=0.000524 pred=[-24.46,26.54] tgt=[-24.47,26.54]
+[progress] epoch 190/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1975
+[Epoch 189]  Val RMSE (masked, EMA) = 0.1962
+[Epoch 190] num_timesteps=18
+[E190] loss=0.000787 pred=[-0.67,1.54] tgt=[-0.68,1.59]
+[progress] epoch 191/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1962
+[Epoch 190]  Val RMSE (masked, EMA) = 0.1946
+[Epoch 191] num_timesteps=18
+[E191] loss=0.001736 pred=[-0.19,1.28] tgt=[-0.26,1.25]
+[progress] epoch 192/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1946
+[Epoch 191]  Val RMSE (masked, EMA) = 0.1932
+[Epoch 192] num_timesteps=18
+[E192] loss=0.000586 pred=[-0.41,1.10] tgt=[-0.42,1.04]
+[progress] epoch 193/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1932
+[Epoch 192]  Val RMSE (masked, EMA) = 0.1919
+[Epoch 193] num_timesteps=18
+[E193] loss=0.001979 pred=[-0.32,1.34] tgt=[-0.35,1.35]
+[progress] epoch 194/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1919
+[Epoch 193]  Val RMSE (masked, EMA) = 0.1907
+[Epoch 194] num_timesteps=18
+[E194] loss=0.000686 pred=[-0.15,1.12] tgt=[-0.13,1.13]
+[progress] epoch 195/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1907
+[Epoch 194]  Val RMSE (masked, EMA) = 0.1897
+[Epoch 195] num_timesteps=18
+[E195] loss=0.000502 pred=[-1.53,2.66] tgt=[-1.59,2.66]
+[progress] epoch 196/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0016 | val_rmse_ema=0.1897
+[Epoch 195]  Val RMSE (masked, EMA) = 0.1881
+[Epoch 196] num_timesteps=18
+[E196] loss=0.001398 pred=[-0.33,1.23] tgt=[-0.28,1.21]
+[progress] epoch 197/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1881
+[Epoch 196]  Val RMSE (masked, EMA) = 0.1867
+[Epoch 197] num_timesteps=18
+[E197] loss=0.000311 pred=[-2.92,3.54] tgt=[-2.97,3.54]
+[progress] epoch 198/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1867
+[Epoch 197]  Val RMSE (masked, EMA) = 0.1856
+[Epoch 198] num_timesteps=18
+[E198] loss=0.000275 pred=[-0.13,1.09] tgt=[-0.11,1.10]
+[progress] epoch 199/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1856
+[Epoch 198]  Val RMSE (masked, EMA) = 0.1846
+[Epoch 199] num_timesteps=18
+[E199] loss=0.000339 pred=[-6.91,6.86] tgt=[-6.93,6.86]
+[progress] epoch 200/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1846
+[Epoch 199]  Val RMSE (masked, EMA) = 0.1837
+[Epoch 200] num_timesteps=18
+[E200] loss=0.000578 pred=[-0.27,1.20] tgt=[-0.27,1.20]
+[progress] epoch 201/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1837
+[Epoch 200]  Val RMSE (masked, EMA) = 0.1818
+[Epoch 201] num_timesteps=18
+[E201] loss=0.001290 pred=[-0.12,1.09] tgt=[-0.08,1.06]
+[progress] epoch 202/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.1818
+[Epoch 201]  Val RMSE (masked, EMA) = 0.1807
+[Epoch 202] num_timesteps=18
+[E202] loss=0.001650 pred=[-1.21,1.86] tgt=[-1.21,1.90]
+[progress] epoch 203/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1807
+[Epoch 202]  Val RMSE (masked, EMA) = 0.1795
+[Epoch 203] num_timesteps=18
+[E203] loss=0.000610 pred=[-33.18,36.28] tgt=[-33.19,36.26]
+[progress] epoch 204/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1795
+[Epoch 203]  Val RMSE (masked, EMA) = 0.1789
+[Epoch 204] num_timesteps=18
+[E204] loss=0.000427 pred=[-0.14,1.02] tgt=[-0.16,1.07]
+[progress] epoch 205/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1789
+[Epoch 204]  Val RMSE (masked, EMA) = 0.1776
+[Epoch 205] num_timesteps=18
+[E205] loss=0.000267 pred=[-0.17,1.14] tgt=[-0.15,1.15]
+[progress] epoch 206/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1776
+[Epoch 205]  Val RMSE (masked, EMA) = 0.1760
+[Epoch 206] num_timesteps=18
+[E206] loss=0.000269 pred=[-13.05,16.29] tgt=[-13.05,16.32]
+[progress] epoch 207/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1760
+[Epoch 206]  Val RMSE (masked, EMA) = 0.1753
+[Epoch 207] num_timesteps=18
+[E207] loss=0.000531 pred=[-0.20,1.15] tgt=[-0.27,1.21]
+[progress] epoch 208/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1753
+[Epoch 207]  Val RMSE (masked, EMA) = 0.1744
+[Epoch 208] num_timesteps=18
+[E208] loss=0.000307 pred=[-4.09,4.89] tgt=[-4.06,4.89]
+[progress] epoch 209/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1744
+[Epoch 208]  Val RMSE (masked, EMA) = 0.1730
+[Epoch 209] num_timesteps=18
+[E209] loss=0.000280 pred=[-1.70,2.46] tgt=[-1.69,2.51]
+[progress] epoch 210/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1730
+[Epoch 209]  Val RMSE (masked, EMA) = 0.1719
+[Epoch 210] num_timesteps=18
+[E210] loss=0.000804 pred=[-0.21,1.27] tgt=[-0.17,1.25]
+[progress] epoch 211/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.1719
+[Epoch 210]  Val RMSE (masked, EMA) = 0.1711
+[Epoch 211] num_timesteps=18
+[E211] loss=0.000682 pred=[-7.01,7.19] tgt=[-6.98,7.21]
+[progress] epoch 212/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0013 | val_rmse_ema=0.1711
+[Epoch 211]  Val RMSE (masked, EMA) = 0.1700
+[Epoch 212] num_timesteps=18
+[E212] loss=0.000689 pred=[-17.75,19.59] tgt=[-17.87,19.49]
+[progress] epoch 213/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1700
+[Epoch 212]  Val RMSE (masked, EMA) = 0.1694
+[Epoch 213] num_timesteps=18
+[E213] loss=0.000509 pred=[-5.89,7.31] tgt=[-5.87,7.32]
+[progress] epoch 214/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.1694
+[Epoch 213]  Val RMSE (masked, EMA) = 0.1672
+[Epoch 214] num_timesteps=18
+[E214] loss=0.000585 pred=[-6.73,6.69] tgt=[-6.88,6.70]
+[progress] epoch 215/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1672
+[Epoch 214]  Val RMSE (masked, EMA) = 0.1669
+[Epoch 215] num_timesteps=18
+[E215] loss=0.000375 pred=[-36.15,33.36] tgt=[-36.11,33.37]
+[progress] epoch 216/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1669
+[Epoch 215]  Val RMSE (masked, EMA) = 0.1654
+[Epoch 216] num_timesteps=18
+[E216] loss=0.000355 pred=[-4.01,5.34] tgt=[-4.05,5.38]
+[progress] epoch 217/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1654
+[Epoch 216]  Val RMSE (masked, EMA) = 0.1645
+[Epoch 217] num_timesteps=18
+[E217] loss=0.000906 pred=[-3.93,4.76] tgt=[-3.94,4.75]
+[progress] epoch 218/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1645
+[Epoch 217]  Val RMSE (masked, EMA) = 0.1641
+[Epoch 218] num_timesteps=18
+[E218] loss=0.001001 pred=[-0.37,1.29] tgt=[-0.40,1.32]
+[progress] epoch 219/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1641
+[Epoch 218]  Val RMSE (masked, EMA) = 0.1630
+[Epoch 219] num_timesteps=18
+[E219] loss=0.000486 pred=[-5.80,7.00] tgt=[-5.80,7.01]
+[progress] epoch 220/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1630
+[Epoch 219]  Val RMSE (masked, EMA) = 0.1619
+[Epoch 220] num_timesteps=18
+[E220] loss=0.000309 pred=[-0.14,1.01] tgt=[-0.12,0.99]
+[progress] epoch 221/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1619
+[Epoch 220]  Val RMSE (masked, EMA) = 0.1607
+[Epoch 221] num_timesteps=18
+[E221] loss=0.000368 pred=[-0.20,1.20] tgt=[-0.18,1.17]
+[progress] epoch 222/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1607
+[Epoch 221]  Val RMSE (masked, EMA) = 0.1598
+[Epoch 222] num_timesteps=18
+[E222] loss=0.000457 pred=[-0.41,1.33] tgt=[-0.40,1.37]
+[progress] epoch 223/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1598
+[Epoch 222]  Val RMSE (masked, EMA) = 0.1593
+[Epoch 223] num_timesteps=18
+[E223] loss=0.000424 pred=[-0.92,2.06] tgt=[-0.90,2.06]
+[progress] epoch 224/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1593
+[Epoch 223]  Val RMSE (masked, EMA) = 0.1584
+[Epoch 224] num_timesteps=18
+[E224] loss=0.000331 pred=[-0.10,1.07] tgt=[-0.12,1.08]
+[progress] epoch 225/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1584
+[Epoch 224]  Val RMSE (masked, EMA) = 0.1574
+[Epoch 225] num_timesteps=18
+[E225] loss=0.000950 pred=[-0.38,1.51] tgt=[-0.43,1.52]
+[progress] epoch 226/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1574
+[Epoch 225]  Val RMSE (masked, EMA) = 0.1562
+[Epoch 226] num_timesteps=18
+[E226] loss=0.000831 pred=[-0.88,2.09] tgt=[-1.04,2.02]
+[progress] epoch 227/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1562
+[Epoch 226]  Val RMSE (masked, EMA) = 0.1561
+[Epoch 227] num_timesteps=18
+[E227] loss=0.000757 pred=[-0.55,1.67] tgt=[-0.56,1.68]
+[progress] epoch 228/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1561
+[Epoch 227]  Val RMSE (masked, EMA) = 0.1546
+[Epoch 228] num_timesteps=18
+[E228] loss=0.000359 pred=[-35.16,35.85] tgt=[-35.13,35.86]
+[progress] epoch 229/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1546
+[Epoch 228]  Val RMSE (masked, EMA) = 0.1538
+[Epoch 229] num_timesteps=18
+[E229] loss=0.000253 pred=[-0.16,1.09] tgt=[-0.15,1.09]
+[progress] epoch 230/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1538
+[Epoch 229]  Val RMSE (masked, EMA) = 0.1529
+[Epoch 230] num_timesteps=18
+[E230] loss=0.000835 pred=[-0.28,1.22] tgt=[-0.25,1.19]
+[progress] epoch 231/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1529
+[Epoch 230]  Val RMSE (masked, EMA) = 0.1524
+[Epoch 231] num_timesteps=18
+[E231] loss=0.000540 pred=[-0.12,1.04] tgt=[-0.11,1.06]
+[progress] epoch 232/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1524
+[Epoch 231]  Val RMSE (masked, EMA) = 0.1510
+[Epoch 232] num_timesteps=18
+[E232] loss=0.001631 pred=[-4.18,4.92] tgt=[-4.19,4.94]
+[progress] epoch 233/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1510
+[Epoch 232]  Val RMSE (masked, EMA) = 0.1505
+[Epoch 233] num_timesteps=18
+[E233] loss=0.000531 pred=[-6.61,7.07] tgt=[-6.65,7.08]
+[progress] epoch 234/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1505
+[Epoch 233]  Val RMSE (masked, EMA) = 0.1496
+[Epoch 234] num_timesteps=18
+[E234] loss=0.000307 pred=[-1.36,2.42] tgt=[-1.34,2.43]
+[progress] epoch 235/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1496
+[Epoch 234]  Val RMSE (masked, EMA) = 0.1494
+[Epoch 235] num_timesteps=18
+[E235] loss=0.000342 pred=[-17.53,22.61] tgt=[-17.53,22.62]
+[progress] epoch 236/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1494
+[Epoch 235]  Val RMSE (masked, EMA) = 0.1489
+[Epoch 236] num_timesteps=18
+[E236] loss=0.000412 pred=[-4.94,7.52] tgt=[-4.94,7.49]
+[progress] epoch 237/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1489
+[Epoch 236]  Val RMSE (masked, EMA) = 0.1475
+[Epoch 237] num_timesteps=18
+[E237] loss=0.000407 pred=[-13.52,13.81] tgt=[-13.53,13.87]
+[progress] epoch 238/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1475
+[Epoch 237]  Val RMSE (masked, EMA) = 0.1465
+[Epoch 238] num_timesteps=18
+[E238] loss=0.000463 pred=[-8.87,9.71] tgt=[-8.90,9.71]
+[progress] epoch 239/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1465
+[Epoch 238]  Val RMSE (masked, EMA) = 0.1463
+[Epoch 239] num_timesteps=18
+[E239] loss=0.000382 pred=[-0.18,1.06] tgt=[-0.15,1.05]
+[progress] epoch 240/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1463
+[Epoch 239]  Val RMSE (masked, EMA) = 0.1457
+[Epoch 240] num_timesteps=18
+[E240] loss=0.001052 pred=[-0.43,1.18] tgt=[-0.38,1.19]
+[progress] epoch 241/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1457
+[Epoch 240]  Val RMSE (masked, EMA) = 0.1445
+[Epoch 241] num_timesteps=18
+[E241] loss=0.000848 pred=[-12.76,13.63] tgt=[-12.80,13.55]
+[progress] epoch 242/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1445
+[Epoch 241]  Val RMSE (masked, EMA) = 0.1440
+[Epoch 242] num_timesteps=18
+[E242] loss=0.000449 pred=[-0.98,2.03] tgt=[-0.96,2.03]
+[progress] epoch 243/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1440
+[Epoch 242]  Val RMSE (masked, EMA) = 0.1428
+[Epoch 243] num_timesteps=18
+[E243] loss=0.000345 pred=[-0.05,1.10] tgt=[-0.04,1.10]
+[progress] epoch 244/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1428
+[Epoch 243]  Val RMSE (masked, EMA) = 0.1423
+[Epoch 244] num_timesteps=18
+[E244] loss=0.000378 pred=[-0.30,1.14] tgt=[-0.31,1.13]
+[progress] epoch 245/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1423
+[Epoch 244]  Val RMSE (masked, EMA) = 0.1425
+[Epoch 245] num_timesteps=18
+[E245] loss=0.001057 pred=[-3.48,4.94] tgt=[-3.52,4.92]
+[progress] epoch 246/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1425
+[Epoch 245]  Val RMSE (masked, EMA) = 0.1417
+[Epoch 246] num_timesteps=18
+[E246] loss=0.000369 pred=[-5.69,6.89] tgt=[-5.73,6.92]
+[progress] epoch 247/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1417
+[Epoch 246]  Val RMSE (masked, EMA) = 0.1400
+[Epoch 247] num_timesteps=18
+[E247] loss=0.001540 pred=[-0.11,1.09] tgt=[-0.09,1.12]
+[progress] epoch 248/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1400
+[Epoch 247]  Val RMSE (masked, EMA) = 0.1402
+[Epoch 248] num_timesteps=18
+[E248] loss=0.000532 pred=[-0.34,1.35] tgt=[-0.40,1.33]
+[progress] epoch 249/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.1402
+[Epoch 248]  Val RMSE (masked, EMA) = 0.1404
+[Epoch 249] num_timesteps=18
+[E249] loss=0.000351 pred=[-23.95,27.67] tgt=[-23.93,27.65]
+[progress] epoch 250/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1404
+[Epoch 249]  Val RMSE (masked, EMA) = 0.1388
+[Epoch 250] num_timesteps=18
+[E250] loss=0.000257 pred=[-0.11,0.95] tgt=[-0.10,0.97]
+[progress] epoch 251/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1388
+[Epoch 250]  Val RMSE (masked, EMA) = 0.1377
+[Epoch 251] num_timesteps=18
+[E251] loss=0.000758 pred=[-0.32,1.34] tgt=[-0.28,1.34]
+[progress] epoch 252/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1377
+[Epoch 251]  Val RMSE (masked, EMA) = 0.1382
+[Epoch 252] num_timesteps=18
+[E252] loss=0.000274 pred=[-8.78,10.42] tgt=[-8.76,10.41]
+[progress] epoch 253/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1382
+[Epoch 252]  Val RMSE (masked, EMA) = 0.1363
+[Epoch 253] num_timesteps=18
+[E253] loss=0.000763 pred=[-0.10,1.17] tgt=[-0.12,1.12]
+[progress] epoch 254/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1363
+[Epoch 253]  Val RMSE (masked, EMA) = 0.1359
+[Epoch 254] num_timesteps=18
+[E254] loss=0.000334 pred=[-6.32,6.11] tgt=[-6.32,6.12]
+[progress] epoch 255/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1359
+[Epoch 254]  Val RMSE (masked, EMA) = 0.1361
+[Epoch 255] num_timesteps=18
+[E255] loss=0.000585 pred=[-0.21,1.12] tgt=[-0.23,1.10]
+[progress] epoch 256/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1361
+[Epoch 255]  Val RMSE (masked, EMA) = 0.1345
+[Epoch 256] num_timesteps=18
+[E256] loss=0.000791 pred=[-20.59,18.13] tgt=[-20.59,18.07]
+[progress] epoch 257/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1345
+[Epoch 256]  Val RMSE (masked, EMA) = 0.1345
+[Epoch 257] num_timesteps=18
+[E257] loss=0.000514 pred=[-0.24,1.11] tgt=[-0.21,1.05]
+[progress] epoch 258/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1345
+[Epoch 257]  Val RMSE (masked, EMA) = 0.1343
+[Epoch 258] num_timesteps=18
+[E258] loss=0.000413 pred=[-0.12,1.11] tgt=[-0.15,1.11]
+[progress] epoch 259/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0013 | val_rmse_ema=0.1343
+[Epoch 258]  Val RMSE (masked, EMA) = 0.1335
+[Epoch 259] num_timesteps=18
+[E259] loss=0.000457 pred=[-2.54,3.75] tgt=[-2.66,3.75]
+[progress] epoch 260/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1335
+[Epoch 259]  Val RMSE (masked, EMA) = 0.1325
+[Epoch 260] num_timesteps=18
+[E260] loss=0.000440 pred=[-1.00,2.06] tgt=[-0.97,2.07]
+[progress] epoch 261/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1325
+[Epoch 260]  Val RMSE (masked, EMA) = 0.1326
+[Epoch 261] num_timesteps=18
+[E261] loss=0.000296 pred=[-26.23,26.83] tgt=[-26.24,26.88]
+[progress] epoch 262/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1326
+[Epoch 261]  Val RMSE (masked, EMA) = 0.1322
+[Epoch 262] num_timesteps=18
+[E262] loss=0.000517 pred=[-0.36,1.16] tgt=[-0.27,1.09]
+[progress] epoch 263/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1322
+[Epoch 262]  Val RMSE (masked, EMA) = 0.1313
+[Epoch 263] num_timesteps=18
+[E263] loss=0.000915 pred=[-4.01,5.04] tgt=[-4.03,5.02]
+[progress] epoch 264/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1313
+[Epoch 263]  Val RMSE (masked, EMA) = 0.1313
+[Epoch 264] num_timesteps=18
+[E264] loss=0.000333 pred=[-34.89,33.09] tgt=[-34.90,33.07]
+[progress] epoch 265/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1313
+[Epoch 264]  Val RMSE (masked, EMA) = 0.1307
+[Epoch 265] num_timesteps=18
+[E265] loss=0.000270 pred=[-8.44,10.17] tgt=[-8.40,10.17]
+[progress] epoch 266/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1307
+[Epoch 265]  Val RMSE (masked, EMA) = 0.1297
+[Epoch 266] num_timesteps=18
+[E266] loss=0.000399 pred=[-8.79,11.04] tgt=[-8.81,11.03]
+[progress] epoch 267/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1297
+[Epoch 266]  Val RMSE (masked, EMA) = 0.1297
+[Epoch 267] num_timesteps=18
+[E267] loss=0.000956 pred=[-0.85,1.51] tgt=[-0.83,1.50]
+[progress] epoch 268/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1297
+[Epoch 267]  Val RMSE (masked, EMA) = 0.1297
+[Epoch 268] num_timesteps=18
+[E268] loss=0.000221 pred=[-2.92,3.09] tgt=[-2.94,3.10]
+[progress] epoch 269/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1297
+[Epoch 268]  Val RMSE (masked, EMA) = 0.1290
+[Epoch 269] num_timesteps=18
+[E269] loss=0.000885 pred=[-0.10,1.07] tgt=[-0.07,1.08]
+[progress] epoch 270/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1290
+[Epoch 269]  Val RMSE (masked, EMA) = 0.1280
+[Epoch 270] num_timesteps=18
+[E270] loss=0.000364 pred=[-2.76,3.59] tgt=[-2.72,3.57]
+[progress] epoch 271/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1280
+[Epoch 270]  Val RMSE (masked, EMA) = 0.1275
+[Epoch 271] num_timesteps=18
+[E271] loss=0.000671 pred=[-0.25,1.28] tgt=[-0.20,1.32]
+[progress] epoch 272/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1275
+[Epoch 271]  Val RMSE (masked, EMA) = 0.1270
+[Epoch 272] num_timesteps=18
+[E272] loss=0.000403 pred=[-0.19,1.10] tgt=[-0.21,1.12]
+[progress] epoch 273/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1270
+[Epoch 272]  Val RMSE (masked, EMA) = 0.1264
+[Epoch 273] num_timesteps=18
+[E273] loss=0.000742 pred=[-0.62,1.08] tgt=[-0.69,1.06]
+[progress] epoch 274/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1264
+[Epoch 273]  Val RMSE (masked, EMA) = 0.1258
+[Epoch 274] num_timesteps=18
+[E274] loss=0.000440 pred=[-0.35,1.21] tgt=[-0.32,1.22]
+[progress] epoch 275/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1258
+[Epoch 274]  Val RMSE (masked, EMA) = 0.1253
+[Epoch 275] num_timesteps=18
+[E275] loss=0.000613 pred=[-0.08,1.06] tgt=[-0.09,1.07]
+[progress] epoch 276/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.1253
+[Epoch 275]  Val RMSE (masked, EMA) = 0.1244
+[Epoch 276] num_timesteps=18
+[E276] loss=0.000997 pred=[-0.29,1.24] tgt=[-0.23,1.20]
+[progress] epoch 277/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1244
+[Epoch 276]  Val RMSE (masked, EMA) = 0.1248
+[Epoch 277] num_timesteps=18
+[E277] loss=0.000592 pred=[-18.22,21.61] tgt=[-18.23,21.57]
+[progress] epoch 278/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1248
+[Epoch 277]  Val RMSE (masked, EMA) = 0.1238
+[Epoch 278] num_timesteps=18
+[E278] loss=0.000164 pred=[-1.89,4.00] tgt=[-1.91,4.02]
+[progress] epoch 279/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1238
+[Epoch 278]  Val RMSE (masked, EMA) = 0.1236
+[Epoch 279] num_timesteps=18
+[E279] loss=0.000368 pred=[-25.96,27.48] tgt=[-25.94,27.52]
+[progress] epoch 280/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1236
+[Epoch 279]  Val RMSE (masked, EMA) = 0.1237
+[Epoch 280] num_timesteps=18
+[E280] loss=0.000373 pred=[-0.03,1.05] tgt=[-0.04,1.02]
+[progress] epoch 281/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1237
+[Epoch 280]  Val RMSE (masked, EMA) = 0.1232
+[Epoch 281] num_timesteps=18
+[E281] loss=0.000223 pred=[-2.56,3.49] tgt=[-2.54,3.46]
+[progress] epoch 282/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1232
+[Epoch 281]  Val RMSE (masked, EMA) = 0.1222
+[Epoch 282] num_timesteps=18
+[E282] loss=0.000264 pred=[-27.81,28.14] tgt=[-27.83,28.14]
+[progress] epoch 283/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1222
+[Epoch 282]  Val RMSE (masked, EMA) = 0.1224
+[Epoch 283] num_timesteps=18
+[E283] loss=0.000593 pred=[-4.36,5.73] tgt=[-4.37,5.76]
+[progress] epoch 284/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1224
+[Epoch 283]  Val RMSE (masked, EMA) = 0.1223
+[Epoch 284] num_timesteps=18
+[E284] loss=0.000540 pred=[-0.35,1.40] tgt=[-0.34,1.34]
+[progress] epoch 285/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1223
+[Epoch 284]  Val RMSE (masked, EMA) = 0.1213
+[Epoch 285] num_timesteps=18
+[E285] loss=0.001223 pred=[-0.68,1.60] tgt=[-0.69,1.61]
+[progress] epoch 286/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1213
+[Epoch 285]  Val RMSE (masked, EMA) = 0.1202
+[Epoch 286] num_timesteps=18
+[E286] loss=0.000766 pred=[-1.58,2.73] tgt=[-1.59,2.72]
+[progress] epoch 287/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1202
+[Epoch 286]  Val RMSE (masked, EMA) = 0.1209
+[Epoch 287] num_timesteps=18
+[E287] loss=0.001269 pred=[-28.12,25.42] tgt=[-28.13,25.43]
+[progress] epoch 288/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1209
+[Epoch 287]  Val RMSE (masked, EMA) = 0.1203
+[Epoch 288] num_timesteps=18
+[E288] loss=0.000143 pred=[-0.19,1.70] tgt=[-0.27,1.67]
+[progress] epoch 289/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1203
+[Epoch 288]  Val RMSE (masked, EMA) = 0.1193
+[Epoch 289] num_timesteps=18
+[E289] loss=0.000352 pred=[-0.07,1.09] tgt=[-0.07,1.10]
+[progress] epoch 290/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1193
+[Epoch 289]  Val RMSE (masked, EMA) = 0.1199
+[Epoch 290] num_timesteps=18
+[E290] loss=0.000317 pred=[-1.57,2.36] tgt=[-1.54,2.38]
+[progress] epoch 291/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1199
+[Epoch 290]  Val RMSE (masked, EMA) = 0.1192
+[Epoch 291] num_timesteps=18
+[E291] loss=0.000479 pred=[-0.20,1.03] tgt=[-0.21,1.00]
+[progress] epoch 292/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1192
+[Epoch 291]  Val RMSE (masked, EMA) = 0.1189
+[Epoch 292] num_timesteps=18
+[E292] loss=0.000245 pred=[-0.05,1.07] tgt=[-0.02,1.02]
+[progress] epoch 293/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1189
+[Epoch 292]  Val RMSE (masked, EMA) = 0.1178
+[Epoch 293] num_timesteps=18
+[E293] loss=0.000956 pred=[-0.32,1.22] tgt=[-0.35,1.27]
+[progress] epoch 294/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1178
+[Epoch 293]  Val RMSE (masked, EMA) = 0.1179
+[Epoch 294] num_timesteps=18
+[E294] loss=0.001230 pred=[-0.29,1.00] tgt=[-0.32,1.00]
+[progress] epoch 295/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1179
+[Epoch 294]  Val RMSE (masked, EMA) = 0.1175
+[Epoch 295] num_timesteps=18
+[E295] loss=0.000318 pred=[-0.15,1.05] tgt=[-0.13,0.98]
+[progress] epoch 296/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1175
+[Epoch 295]  Val RMSE (masked, EMA) = 0.1165
+[Epoch 296] num_timesteps=18
+[E296] loss=0.000204 pred=[-0.17,1.11] tgt=[-0.12,1.09]
+[progress] epoch 297/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1165
+[Epoch 296]  Val RMSE (masked, EMA) = 0.1166
+[Epoch 297] num_timesteps=18
+[E297] loss=0.000804 pred=[-0.41,1.59] tgt=[-0.38,1.59]
+[progress] epoch 298/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1166
+[Epoch 297]  Val RMSE (masked, EMA) = 0.1164
+[Epoch 298] num_timesteps=18
+[E298] loss=0.000275 pred=[-1.54,2.40] tgt=[-1.60,2.40]
+[progress] epoch 299/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.1164
+[Epoch 298]  Val RMSE (masked, EMA) = 0.1168
+[Epoch 299] num_timesteps=18
+[E299] loss=0.000589 pred=[-1.76,2.66] tgt=[-1.75,2.67]
+[progress] epoch 300/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1168
+[Epoch 299]  Val RMSE (masked, EMA) = 0.1166
+[Epoch 300] num_timesteps=18
+[E300] loss=0.000938 pred=[-0.29,1.25] tgt=[-0.29,1.24]
+[progress] epoch 301/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1166
+[Epoch 300]  Val RMSE (masked, EMA) = 0.1153
+[Epoch 301] num_timesteps=18
+[E301] loss=0.000671 pred=[-0.36,1.30] tgt=[-0.42,1.31]
+[progress] epoch 302/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1153
+[Epoch 301]  Val RMSE (masked, EMA) = 0.1148
+[Epoch 302] num_timesteps=18
+[E302] loss=0.000479 pred=[-2.74,3.05] tgt=[-2.77,3.06]
+[progress] epoch 303/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1148
+[Epoch 302]  Val RMSE (masked, EMA) = 0.1149
+[Epoch 303] num_timesteps=18
+[E303] loss=0.000235 pred=[-0.16,1.38] tgt=[-0.14,1.33]
+[progress] epoch 304/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1149
+[Epoch 303]  Val RMSE (masked, EMA) = 0.1144
+[Epoch 304] num_timesteps=18
+[E304] loss=0.000345 pred=[-19.50,19.58] tgt=[-19.50,19.56]
+[progress] epoch 305/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1144
+[Epoch 304]  Val RMSE (masked, EMA) = 0.1130
+[Epoch 305] num_timesteps=18
+[E305] loss=0.000268 pred=[-0.16,1.10] tgt=[-0.15,1.11]
+[progress] epoch 306/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1130
+[Epoch 305]  Val RMSE (masked, EMA) = 0.1136
+[Epoch 306] num_timesteps=18
+[E306] loss=0.000236 pred=[-18.82,17.43] tgt=[-18.83,17.41]
+[progress] epoch 307/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1136
+[Epoch 306]  Val RMSE (masked, EMA) = 0.1132
+[Epoch 307] num_timesteps=18
+[E307] loss=0.001081 pred=[-0.37,1.20] tgt=[-0.28,1.20]
+[progress] epoch 308/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1132
+[Epoch 307]  Val RMSE (masked, EMA) = 0.1134
+[Epoch 308] num_timesteps=18
+[E308] loss=0.000267 pred=[-0.17,1.21] tgt=[-0.19,1.20]
+[progress] epoch 309/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1134
+[Epoch 308]  Val RMSE (masked, EMA) = 0.1128
+[Epoch 309] num_timesteps=18
+[E309] loss=0.000571 pred=[-0.86,1.91] tgt=[-0.92,1.89]
+[progress] epoch 310/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1128
+[Epoch 309]  Val RMSE (masked, EMA) = 0.1129
+[Epoch 310] num_timesteps=18
+[E310] loss=0.000600 pred=[-2.62,3.79] tgt=[-2.69,3.77]
+[progress] epoch 311/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.1129
+[Epoch 310]  Val RMSE (masked, EMA) = 0.1119
+[Epoch 311] num_timesteps=18
+[E311] loss=0.000477 pred=[-0.30,1.50] tgt=[-0.26,1.51]
+[progress] epoch 312/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1119
+[Epoch 311]  Val RMSE (masked, EMA) = 0.1119
+[Epoch 312] num_timesteps=18
+[E312] loss=0.000211 pred=[-0.28,1.36] tgt=[-0.28,1.40]
+[progress] epoch 313/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1119
+[Epoch 312]  Val RMSE (masked, EMA) = 0.1125
+[Epoch 313] num_timesteps=18
+[E313] loss=0.000647 pred=[-0.18,1.14] tgt=[-0.17,1.11]
+[progress] epoch 314/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1125
+[Epoch 313]  Val RMSE (masked, EMA) = 0.1111
+[Epoch 314] num_timesteps=18
+[E314] loss=0.000672 pred=[-1.06,2.03] tgt=[-1.05,2.05]
+[progress] epoch 315/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1111
+[Epoch 314]  Val RMSE (masked, EMA) = 0.1113
+[Epoch 315] num_timesteps=18
+[E315] loss=0.000199 pred=[-0.06,1.13] tgt=[-0.05,1.11]
+[progress] epoch 316/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1113
+[Epoch 315]  Val RMSE (masked, EMA) = 0.1109
+[Epoch 316] num_timesteps=18
+[E316] loss=0.000385 pred=[-0.28,1.30] tgt=[-0.26,1.31]
+[progress] epoch 317/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1109
+[Epoch 316]  Val RMSE (masked, EMA) = 0.1103
+[Epoch 317] num_timesteps=18
+[E317] loss=0.000463 pred=[-5.82,6.67] tgt=[-5.79,6.67]
+[progress] epoch 318/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1103
+[Epoch 317]  Val RMSE (masked, EMA) = 0.1107
+[Epoch 318] num_timesteps=18
+[E318] loss=0.000591 pred=[-1.58,2.83] tgt=[-1.59,2.87]
+[progress] epoch 319/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1107
+[Epoch 318]  Val RMSE (masked, EMA) = 0.1105
+[Epoch 319] num_timesteps=18
+[E319] loss=0.000908 pred=[-0.44,1.47] tgt=[-0.55,1.47]
+[progress] epoch 320/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1105
+[Epoch 319]  Val RMSE (masked, EMA) = 0.1098
+[Epoch 320] num_timesteps=18
+[E320] loss=0.000524 pred=[-5.99,6.42] tgt=[-5.98,6.45]
+[progress] epoch 321/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1098
+[Epoch 320]  Val RMSE (masked, EMA) = 0.1100
+[Epoch 321] num_timesteps=18
+[E321] loss=0.000193 pred=[-0.09,1.08] tgt=[-0.13,1.11]
+[progress] epoch 322/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1100
+[Epoch 321]  Val RMSE (masked, EMA) = 0.1100
+[Epoch 322] num_timesteps=18
+[E322] loss=0.000439 pred=[-0.24,1.37] tgt=[-0.23,1.36]
+[progress] epoch 323/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1100
+[Epoch 322]  Val RMSE (masked, EMA) = 0.1093
+[Epoch 323] num_timesteps=18
+[E323] loss=0.000977 pred=[-0.97,1.87] tgt=[-1.17,1.83]
+[progress] epoch 324/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1093
+[Epoch 323]  Val RMSE (masked, EMA) = 0.1084
+[Epoch 324] num_timesteps=18
+[E324] loss=0.000434 pred=[-0.65,1.59] tgt=[-0.65,1.63]
+[progress] epoch 325/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1084
+[Epoch 324]  Val RMSE (masked, EMA) = 0.1075
+[Epoch 325] num_timesteps=18
+[E325] loss=0.000822 pred=[-0.23,1.09] tgt=[-0.18,1.08]
+[progress] epoch 326/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0012 | val_rmse_ema=0.1075
+[Epoch 325]  Val RMSE (masked, EMA) = 0.1090
+[Epoch 326] num_timesteps=18
+[E326] loss=0.000324 pred=[-2.70,3.59] tgt=[-2.69,3.59]
+[progress] epoch 327/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1090
+[Epoch 326]  Val RMSE (masked, EMA) = 0.1072
+[Epoch 327] num_timesteps=18
+[E327] loss=0.000311 pred=[-0.17,1.37] tgt=[-0.21,1.37]
+[progress] epoch 328/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1072
+[Epoch 327]  Val RMSE (masked, EMA) = 0.1077
+[Epoch 328] num_timesteps=18
+[E328] loss=0.000303 pred=[-18.62,18.75] tgt=[-18.60,18.75]
+[progress] epoch 329/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1077
+[Epoch 328]  Val RMSE (masked, EMA) = 0.1079
+[Epoch 329] num_timesteps=18
+[E329] loss=0.000465 pred=[-0.22,1.19] tgt=[-0.22,1.18]
+[progress] epoch 330/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1079
+[Epoch 329]  Val RMSE (masked, EMA) = 0.1074
+[Epoch 330] num_timesteps=18
+[E330] loss=0.000407 pred=[-0.10,1.22] tgt=[-0.15,1.21]
+[progress] epoch 331/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1074
+[Epoch 330]  Val RMSE (masked, EMA) = 0.1062
+[Epoch 331] num_timesteps=18
+[E331] loss=0.000263 pred=[-0.10,0.98] tgt=[-0.08,0.99]
+[progress] epoch 332/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1062
+[Epoch 331]  Val RMSE (masked, EMA) = 0.1062
+[Epoch 332] num_timesteps=18
+[E332] loss=0.000250 pred=[-0.14,1.05] tgt=[-0.15,1.02]
+[progress] epoch 333/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1062
+[Epoch 332]  Val RMSE (masked, EMA) = 0.1062
+[Epoch 333] num_timesteps=18
+[E333] loss=0.000355 pred=[-0.18,1.15] tgt=[-0.18,1.13]
+[progress] epoch 334/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1062
+[Epoch 333]  Val RMSE (masked, EMA) = 0.1059
+[Epoch 334] num_timesteps=18
+[E334] loss=0.000242 pred=[-1.98,2.54] tgt=[-1.98,2.52]
+[progress] epoch 335/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1059
+[Epoch 334]  Val RMSE (masked, EMA) = 0.1060
+[Epoch 335] num_timesteps=18
+[E335] loss=0.000536 pred=[-0.18,1.17] tgt=[-0.17,1.17]
+[progress] epoch 336/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0011 | val_rmse_ema=0.1060
+[Epoch 335]  Val RMSE (masked, EMA) = 0.1064
+[Epoch 336] num_timesteps=18
+[E336] loss=0.000233 pred=[-24.66,25.15] tgt=[-24.69,25.15]
+[progress] epoch 337/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0010 | val_rmse_ema=0.1064
+[Epoch 336]  Val RMSE (masked, EMA) = 0.1050
+[Epoch 337] num_timesteps=18
+[E337] loss=0.000237 pred=[-1.16,1.67] tgt=[-1.21,1.65]
+[progress] epoch 338/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1050
+[Epoch 337]  Val RMSE (masked, EMA) = 0.1047
+[Epoch 338] num_timesteps=18
+[E338] loss=0.000554 pred=[-0.28,1.20] tgt=[-0.27,1.19]
+[progress] epoch 339/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1047
+[Epoch 338]  Val RMSE (masked, EMA) = 0.1045
+[Epoch 339] num_timesteps=18
+[E339] loss=0.000448 pred=[-4.15,4.69] tgt=[-4.15,4.74]
+[progress] epoch 340/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1045
+[Epoch 339]  Val RMSE (masked, EMA) = 0.1046
+[Epoch 340] num_timesteps=18
+[E340] loss=0.000404 pred=[-0.98,2.11] tgt=[-1.02,2.11]
+[progress] epoch 341/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0015 | val_rmse_ema=0.1046
+[Epoch 340]  Val RMSE (masked, EMA) = 0.1044
+[Epoch 341] num_timesteps=18
+[E341] loss=0.000399 pred=[-12.07,14.67] tgt=[-12.10,14.67]
+[progress] epoch 342/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1044
+[Epoch 341]  Val RMSE (masked, EMA) = 0.1047
+[Epoch 342] num_timesteps=18
+[E342] loss=0.000635 pred=[-6.51,6.55] tgt=[-6.50,6.52]
+[progress] epoch 343/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1047
+[Epoch 342]  Val RMSE (masked, EMA) = 0.1043
+[Epoch 343] num_timesteps=18
+[E343] loss=0.000419 pred=[-24.98,24.94] tgt=[-24.99,24.92]
+[progress] epoch 344/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1043
+[Epoch 343]  Val RMSE (masked, EMA) = 0.1039
+[Epoch 344] num_timesteps=18
+[E344] loss=0.000132 pred=[-0.59,1.61] tgt=[-0.60,1.62]
+[progress] epoch 345/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1039
+[Epoch 344]  Val RMSE (masked, EMA) = 0.1027
+[Epoch 345] num_timesteps=18
+[E345] loss=0.000130 pred=[-0.53,1.55] tgt=[-0.53,1.55]
+[progress] epoch 346/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1027
+[Epoch 345]  Val RMSE (masked, EMA) = 0.1034
+[Epoch 346] num_timesteps=18
+[E346] loss=0.000297 pred=[-2.34,3.78] tgt=[-2.41,3.75]
+[progress] epoch 347/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1034
+[Epoch 346]  Val RMSE (masked, EMA) = 0.1037
+[Epoch 347] num_timesteps=18
+[E347] loss=0.000453 pred=[-23.80,25.47] tgt=[-23.83,25.45]
+[progress] epoch 348/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.1037
+[Epoch 347]  Val RMSE (masked, EMA) = 0.1027
+[Epoch 348] num_timesteps=18
+[E348] loss=0.000647 pred=[-0.17,1.13] tgt=[-0.17,1.16]
+[progress] epoch 349/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1027
+[Epoch 348]  Val RMSE (masked, EMA) = 0.1029
+[Epoch 349] num_timesteps=18
+[E349] loss=0.000584 pred=[-0.36,1.32] tgt=[-0.34,1.29]
+[progress] epoch 350/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1029
+[Epoch 349]  Val RMSE (masked, EMA) = 0.1026
+[Epoch 350] num_timesteps=18
+[E350] loss=0.000944 pred=[-0.10,1.08] tgt=[-0.04,1.03]
+[progress] epoch 351/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1026
+[Epoch 350]  Val RMSE (masked, EMA) = 0.1030
+[Epoch 351] num_timesteps=18
+[E351] loss=0.000324 pred=[-1.13,1.85] tgt=[-1.13,1.85]
+[progress] epoch 352/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1030
+[Epoch 351]  Val RMSE (masked, EMA) = 0.1028
+[Epoch 352] num_timesteps=18
+[E352] loss=0.000369 pred=[-0.12,1.18] tgt=[-0.11,1.18]
+[progress] epoch 353/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1028
+[Epoch 352]  Val RMSE (masked, EMA) = 0.1026
+[Epoch 353] num_timesteps=18
+[E353] loss=0.000622 pred=[-1.64,2.46] tgt=[-1.63,2.47]
+[progress] epoch 354/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.1026
+[Epoch 353]  Val RMSE (masked, EMA) = 0.1021
+[Epoch 354] num_timesteps=18
+[E354] loss=0.000385 pred=[-18.21,18.66] tgt=[-18.22,18.68]
+[progress] epoch 355/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.1021
+[Epoch 354]  Val RMSE (masked, EMA) = 0.1033
+[Epoch 355] num_timesteps=18
+[E355] loss=0.000519 pred=[-6.10,7.63] tgt=[-6.13,7.62]
+[progress] epoch 356/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1033
+[Epoch 355]  Val RMSE (masked, EMA) = 0.1003
+[Epoch 356] num_timesteps=18
+[E356] loss=0.000484 pred=[-0.31,1.30] tgt=[-0.31,1.28]
+[progress] epoch 357/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1003
+[Epoch 356]  Val RMSE (masked, EMA) = 0.1019
+[Epoch 357] num_timesteps=18
+[E357] loss=0.000181 pred=[-0.52,1.64] tgt=[-0.53,1.65]
+[progress] epoch 358/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0007 | val_rmse_ema=0.1019
+[Epoch 357]  Val RMSE (masked, EMA) = 0.1019
+[Epoch 358] num_timesteps=18
+[E358] loss=0.000659 pred=[-0.29,1.17] tgt=[-0.22,1.18]
+[progress] epoch 359/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1019
+[Epoch 358]  Val RMSE (masked, EMA) = 0.1009
+[Epoch 359] num_timesteps=18
+[E359] loss=0.000469 pred=[-2.34,3.54] tgt=[-2.39,3.55]
+[progress] epoch 360/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1009
+[Epoch 359]  Val RMSE (masked, EMA) = 0.1006
+[Epoch 360] num_timesteps=18
+[E360] loss=0.000238 pred=[-1.72,2.64] tgt=[-1.73,2.66]
+[progress] epoch 361/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1006
+[Epoch 360]  Val RMSE (masked, EMA) = 0.1000
+[Epoch 361] num_timesteps=18
+[E361] loss=0.000252 pred=[-1.16,1.83] tgt=[-1.16,1.85]
+[progress] epoch 362/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.1000
+[Epoch 361]  Val RMSE (masked, EMA) = 0.1011
+[Epoch 362] num_timesteps=18
+[E362] loss=0.000898 pred=[-0.14,1.10] tgt=[-0.15,1.10]
+[progress] epoch 363/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1011
+[Epoch 362]  Val RMSE (masked, EMA) = 0.1007
+[Epoch 363] num_timesteps=18
+[E363] loss=0.000253 pred=[-9.24,9.59] tgt=[-9.25,9.61]
+[progress] epoch 364/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.1007
+[Epoch 363]  Val RMSE (masked, EMA) = 0.0999
+[Epoch 364] num_timesteps=18
+[E364] loss=0.000238 pred=[-18.67,19.25] tgt=[-18.69,19.25]
+[progress] epoch 365/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0999
+[Epoch 364]  Val RMSE (masked, EMA) = 0.1009
+[Epoch 365] num_timesteps=18
+[E365] loss=0.000616 pred=[-2.60,3.31] tgt=[-2.61,3.32]
+[progress] epoch 366/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1009
+[Epoch 365]  Val RMSE (masked, EMA) = 0.0990
+[Epoch 366] num_timesteps=18
+[E366] loss=0.000347 pred=[-0.21,1.15] tgt=[-0.20,1.18]
+[progress] epoch 367/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0990
+[Epoch 366]  Val RMSE (masked, EMA) = 0.1009
+[Epoch 367] num_timesteps=18
+[E367] loss=0.000366 pred=[-4.40,4.81] tgt=[-4.41,4.82]
+[progress] epoch 368/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.1009
+[Epoch 367]  Val RMSE (masked, EMA) = 0.1007
+[Epoch 368] num_timesteps=18
+[E368] loss=0.000172 pred=[-1.46,2.78] tgt=[-1.66,2.79]
+[progress] epoch 369/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.1007
+[Epoch 368]  Val RMSE (masked, EMA) = 0.0998
+[Epoch 369] num_timesteps=18
+[E369] loss=0.000338 pred=[-19.65,18.79] tgt=[-19.62,18.83]
+[progress] epoch 370/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0998
+[Epoch 369]  Val RMSE (masked, EMA) = 0.0995
+[Epoch 370] num_timesteps=18
+[E370] loss=0.000515 pred=[-0.14,1.09] tgt=[-0.08,1.08]
+[progress] epoch 371/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0995
+[Epoch 370]  Val RMSE (masked, EMA) = 0.0987
+[Epoch 371] num_timesteps=18
+[E371] loss=0.000434 pred=[-1.85,2.09] tgt=[-1.84,2.07]
+[progress] epoch 372/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0987
+[Epoch 371]  Val RMSE (masked, EMA) = 0.0989
+[Epoch 372] num_timesteps=18
+[E372] loss=0.000351 pred=[-6.38,6.45] tgt=[-6.39,6.45]
+[progress] epoch 373/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0989
+[Epoch 372]  Val RMSE (masked, EMA) = 0.0991
+[Epoch 373] num_timesteps=18
+[E373] loss=0.000356 pred=[-0.77,1.78] tgt=[-0.79,1.79]
+[progress] epoch 374/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0991
+[Epoch 373]  Val RMSE (masked, EMA) = 0.0985
+[Epoch 374] num_timesteps=18
+[E374] loss=0.000585 pred=[-0.14,1.37] tgt=[-0.15,1.37]
+[progress] epoch 375/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.0985
+[Epoch 374]  Val RMSE (masked, EMA) = 0.0987
+[Epoch 375] num_timesteps=18
+[E375] loss=0.000383 pred=[-2.41,3.24] tgt=[-2.49,3.25]
+[progress] epoch 376/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0008 | val_rmse_ema=0.0987
+[Epoch 375]  Val RMSE (masked, EMA) = 0.0984
+[Epoch 376] num_timesteps=18
+[E376] loss=0.000409 pred=[-0.63,1.38] tgt=[-0.65,1.41]
+[progress] epoch 377/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0984
+[Epoch 376]  Val RMSE (masked, EMA) = 0.0985
+[Epoch 377] num_timesteps=18
+[E377] loss=0.000251 pred=[-6.20,7.01] tgt=[-6.19,6.99]
+[progress] epoch 378/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0985
+[Epoch 377]  Val RMSE (masked, EMA) = 0.0986
+[Epoch 378] num_timesteps=18
+[E378] loss=0.000222 pred=[-0.13,1.11] tgt=[-0.13,1.12]
+[progress] epoch 379/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0986
+[Epoch 378]  Val RMSE (masked, EMA) = 0.0982
+[Epoch 379] num_timesteps=18
+[E379] loss=0.000111 pred=[-3.97,5.30] tgt=[-3.95,5.31]
+[progress] epoch 380/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0982
+[Epoch 379]  Val RMSE (masked, EMA) = 0.0974
+[Epoch 380] num_timesteps=18
+[E380] loss=0.000377 pred=[-1.29,2.75] tgt=[-1.29,2.75]
+[progress] epoch 381/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0974
+[Epoch 380]  Val RMSE (masked, EMA) = 0.0985
+[Epoch 381] num_timesteps=18
+[E381] loss=0.000162 pred=[-3.44,4.83] tgt=[-3.43,4.83]
+[progress] epoch 382/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0985
+[Epoch 381]  Val RMSE (masked, EMA) = 0.0984
+[Epoch 382] num_timesteps=18
+[E382] loss=0.000203 pred=[-1.49,2.68] tgt=[-1.65,2.69]
+[progress] epoch 383/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0984
+[Epoch 382]  Val RMSE (masked, EMA) = 0.0977
+[Epoch 383] num_timesteps=18
+[E383] loss=0.000419 pred=[-9.29,9.47] tgt=[-9.28,9.47]
+[progress] epoch 384/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0977
+[Epoch 383]  Val RMSE (masked, EMA) = 0.0970
+[Epoch 384] num_timesteps=18
+[E384] loss=0.000369 pred=[-0.11,1.09] tgt=[-0.09,1.08]
+[progress] epoch 385/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0970
+[Epoch 384]  Val RMSE (masked, EMA) = 0.0970
+[Epoch 385] num_timesteps=18
+[E385] loss=0.001338 pred=[-0.20,1.22] tgt=[-0.20,1.16]
+[progress] epoch 386/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0970
+[Epoch 385]  Val RMSE (masked, EMA) = 0.0976
+[Epoch 386] num_timesteps=18
+[E386] loss=0.000330 pred=[-0.16,1.09] tgt=[-0.14,1.12]
+[progress] epoch 387/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0976
+[Epoch 386]  Val RMSE (masked, EMA) = 0.0970
+[Epoch 387] num_timesteps=18
+[E387] loss=0.000289 pred=[-0.56,1.67] tgt=[-0.53,1.66]
+[progress] epoch 388/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0970
+[Epoch 387]  Val RMSE (masked, EMA) = 0.0970
+[Epoch 388] num_timesteps=18
+[E388] loss=0.000869 pred=[-3.71,5.17] tgt=[-3.78,5.16]
+[progress] epoch 389/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0970
+[Epoch 388]  Val RMSE (masked, EMA) = 0.0973
+[Epoch 389] num_timesteps=18
+[E389] loss=0.000543 pred=[-0.19,1.08] tgt=[-0.26,1.13]
+[progress] epoch 390/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0973
+[Epoch 389]  Val RMSE (masked, EMA) = 0.0968
+[Epoch 390] num_timesteps=18
+[E390] loss=0.000255 pred=[-0.05,1.06] tgt=[-0.08,1.08]
+[progress] epoch 391/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0968
+[Epoch 390]  Val RMSE (masked, EMA) = 0.0969
+[Epoch 391] num_timesteps=18
+[E391] loss=0.000163 pred=[-0.10,1.07] tgt=[-0.10,1.08]
+[progress] epoch 392/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0969
+[Epoch 391]  Val RMSE (masked, EMA) = 0.0964
+[Epoch 392] num_timesteps=18
+[E392] loss=0.000225 pred=[-2.83,3.70] tgt=[-2.84,3.70]
+[progress] epoch 393/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0964
+[Epoch 392]  Val RMSE (masked, EMA) = 0.0962
+[Epoch 393] num_timesteps=18
+[E393] loss=0.000344 pred=[-4.00,4.74] tgt=[-3.98,4.74]
+[progress] epoch 394/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0962
+[Epoch 393]  Val RMSE (masked, EMA) = 0.0969
+[Epoch 394] num_timesteps=18
+[E394] loss=0.000775 pred=[-0.09,1.25] tgt=[-0.02,1.23]
+[progress] epoch 395/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0969
+[Epoch 394]  Val RMSE (masked, EMA) = 0.0960
+[Epoch 395] num_timesteps=18
+[E395] loss=0.000297 pred=[-25.16,25.15] tgt=[-25.16,25.13]
+[progress] epoch 396/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0960
+[Epoch 395]  Val RMSE (masked, EMA) = 0.0951
+[Epoch 396] num_timesteps=18
+[E396] loss=0.000740 pred=[-2.31,3.82] tgt=[-2.32,3.81]
+[progress] epoch 397/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0951
+[Epoch 396]  Val RMSE (masked, EMA) = 0.0960
+[Epoch 397] num_timesteps=18
+[E397] loss=0.000416 pred=[-26.13,25.33] tgt=[-26.12,25.30]
+[progress] epoch 398/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0960
+[Epoch 397]  Val RMSE (masked, EMA) = 0.0962
+[Epoch 398] num_timesteps=18
+[E398] loss=0.000564 pred=[-2.37,3.13] tgt=[-2.37,3.14]
+[progress] epoch 399/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0962
+[Epoch 398]  Val RMSE (masked, EMA) = 0.0953
+[Epoch 399] num_timesteps=18
+[E399] loss=0.000289 pred=[-0.46,1.60] tgt=[-0.47,1.60]
+[progress] epoch 400/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0953
+[Epoch 399]  Val RMSE (masked, EMA) = 0.0958
+[Epoch 400] num_timesteps=18
+[E400] loss=0.000221 pred=[-1.16,1.95] tgt=[-1.19,1.94]
+[progress] epoch 401/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0958
+[Epoch 400]  Val RMSE (masked, EMA) = 0.0952
+[Epoch 401] num_timesteps=18
+[E401] loss=0.000686 pred=[-0.67,1.45] tgt=[-0.69,1.38]
+[progress] epoch 402/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0009 | val_rmse_ema=0.0952
+[Epoch 401]  Val RMSE (masked, EMA) = 0.0952
+[Epoch 402] num_timesteps=18
+[E402] loss=0.000160 pred=[-0.11,1.20] tgt=[-0.14,1.20]
+[progress] epoch 403/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.0952
+[Epoch 402]  Val RMSE (masked, EMA) = 0.0961
+[Epoch 403] num_timesteps=18
+[E403] loss=0.000229 pred=[-0.16,1.09] tgt=[-0.15,1.07]
+[progress] epoch 404/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0961
+[Epoch 403]  Val RMSE (masked, EMA) = 0.0945
+[Epoch 404] num_timesteps=18
+[E404] loss=0.000223 pred=[-0.09,1.01] tgt=[-0.08,1.01]
+[progress] epoch 405/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0005 | val_rmse_ema=0.0945
+[Epoch 404]  Val RMSE (masked, EMA) = 0.0959
+[Epoch 405] num_timesteps=18
+[E405] loss=0.000240 pred=[-27.82,25.08] tgt=[-27.87,25.04]
+[progress] epoch 406/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0959
+[Epoch 405]  Val RMSE (masked, EMA) = 0.0948
+[Epoch 406] num_timesteps=18
+[E406] loss=0.000197 pred=[-1.15,1.82] tgt=[-1.18,1.84]
+[progress] epoch 407/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0006 | val_rmse_ema=0.0948
+[Epoch 406]  Val RMSE (masked, EMA) = 0.0952
+[Epoch 407] num_timesteps=18
+[E407] loss=0.000204 pred=[-0.17,1.26] tgt=[-0.31,1.33]
+[progress] epoch 408/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0952
+[Epoch 407]  Val RMSE (masked, EMA) = 0.0944
+[Epoch 408] num_timesteps=18
+[E408] loss=0.001138 pred=[-0.16,1.07] tgt=[-0.10,1.08]
+[progress] epoch 409/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0944
+[Epoch 408]  Val RMSE (masked, EMA) = 0.0952
+[Epoch 409] num_timesteps=18
+[E409] loss=0.000271 pred=[-0.66,1.33] tgt=[-0.76,1.36]
+[progress] epoch 410/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0952
+[Epoch 409]  Val RMSE (masked, EMA) = 0.0945
+[Epoch 410] num_timesteps=18
+[E410] loss=0.000396 pred=[-0.25,1.26] tgt=[-0.24,1.23]
+[progress] epoch 411/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0945
+[Epoch 410]  Val RMSE (masked, EMA) = 0.0936
+[Epoch 411] num_timesteps=18
+[E411] loss=0.000440 pred=[-0.47,2.05] tgt=[-0.45,2.06]
+[progress] epoch 412/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0936
+[Epoch 411]  Val RMSE (masked, EMA) = 0.0934
+[Epoch 412] num_timesteps=18
+[E412] loss=0.000238 pred=[-0.06,1.08] tgt=[-0.15,1.06]
+[progress] epoch 413/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0934
+[Epoch 412]  Val RMSE (masked, EMA) = 0.0939
+[Epoch 413] num_timesteps=18
+[E413] loss=0.000236 pred=[-0.10,1.09] tgt=[-0.07,1.14]
+[progress] epoch 414/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0003 | val_rmse_ema=0.0939
+[Epoch 413]  Val RMSE (masked, EMA) = 0.0937
+[Epoch 414] num_timesteps=18
+[E414] loss=0.000280 pred=[-8.60,9.87] tgt=[-8.48,9.87]
+[progress] epoch 415/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0004 | val_rmse_ema=0.0937
+[Epoch 414]  Val RMSE (masked, EMA) = 0.0941
+[Epoch 415] num_timesteps=18
+[E415] loss=0.000170 pred=[-0.60,1.37] tgt=[-0.67,1.37]
+[progress] epoch 416/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0941
+[Epoch 415]  Val RMSE (masked, EMA) = 0.0948
+[Epoch 416] num_timesteps=18
+[E416] loss=0.000241 pred=[-25.12,27.40] tgt=[-25.14,27.42]
+Time limit reached. Elapsed time is 4:45:00. Signaling Trainer to stop.
+
+Time limit reached. Elapsed time is 4:45:00. Signaling Trainer to stop.
+[progress] epoch 417/600 | ema_decay_rate=0.9990 | num_timesteps=18.0000 | train_loss=0.0002 | val_rmse_ema=0.0948
+[Epoch 416]  Val RMSE (masked, EMA) = 0.0930
+EMA model saved to: logs_CMT_sic_v3/best_model
+Executing:  47%|████▋     | 17/36 [4:46:26<9:37:19, 1823.14s/cell]Executing:  50%|█████     | 18/36 [4:46:26<7:54:47, 1582.64s/cell]Model loaded from: logs_CMT_sic_v3/best_model  (cond_mode=assim)
+  Params : 32,887,433
+Executing:  53%|█████▎    | 19/36 [4:46:27<6:17:19, 1331.75s/cell]Executing:  56%|█████▌    | 20/36 [4:46:27<4:49:32, 1085.80s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  58%|█████▊    | 21/36 [4:46:29<3:34:53, 859.58s/cell] Executing:  61%|██████    | 22/36 [4:46:29<2:34:29, 662.13s/cell]Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+  Sample 1/2 done  Sample 2/2 done
+2 ensemble members generated
+[diag] ens_std (normalised): min=0.000000  mean=0.006165  max=0.244141
+[diag] |member0 - member1| (normalised): min=0.000000  mean=0.008728  max=0.345703
+[diag] |noise0 - noise1| input (should be ~sqrt(2)*sigma_max): 1.1250
+Executing:  64%|██████▍   | 23/36 [4:46:30<1:48:03, 498.71s/cell]Executing:  67%|██████▋   | 24/36 [4:46:30<1:13:43, 368.63s/cell][diag] t=0.95  sigma=7.7820  |x_A-x_B|=8.7500  |raw_model(x_A)-raw_model(x_B)|=0.0505  ratio(out/in)=0.0058
+[diag] t=0.50  sigma=0.4803  |x_A-x_B|=0.5430  |raw_model(x_A)-raw_model(x_B)|=0.0136  ratio(out/in)=0.0251
+[diag] t=0.10  sigma=0.0089  |x_A-x_B|=0.0100  |raw_model(x_A)-raw_model(x_B)|=0.0008  ratio(out/in)=0.0774
+Executing:  69%|██████▉   | 25/36 [4:46:30<49:14, 268.63s/cell]  Executing:  72%|███████▏  | 26/36 [4:46:31<32:15, 193.59s/cell][diag] ens_std in OBSERVED pixels (input valid): mean=0.003738  n=153791
+[diag] ens_std in GAP pixels (OSISAF-only):      mean=0.007172  n=364609
+[diag] ens_std COARSE (low-pass, k=9):  mean=0.005214
+[diag] ens_std FINE   (high-pass resid): mean=0.002211
+Executing:  75%|███████▌  | 27/36 [4:46:31<20:45, 138.39s/cell]Executing:  78%|███████▊  | 28/36 [4:46:31<13:06, 98.37s/cell] [diag] REINJECTION sampler (frac=0.3) — ens_std (normalised): min=0.000000  mean=0.008972  max=0.227539
+[diag] (original sampler, no reinjection) ens_std mean=0.006165
+Executing:  81%|████████  | 29/36 [4:46:33<08:10, 70.06s/cell]Executing:  83%|████████▎ | 30/36 [4:46:33<04:56, 49.44s/cell]Masked-out fraction (no ASIP obs in window): 14.8%
+[diag] std_phys (physical units): min=0.000000  mean=0.006564  max=0.207031  p99=0.060059
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_asip_gt.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_input.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_osisaf.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_mean.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_spread.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_member0.png
+Executing:  86%|████████▌ | 31/36 [4:46:34<02:56, 35.23s/cell]Executing:  89%|████████▉ | 32/36 [4:46:34<01:39, 24.79s/cell]  Saved: figures/CMT_sic_v3/CMT_sic_v3_transport.png
+Executing:  92%|█████████▏| 33/36 [4:46:35<00:52, 17.58s/cell]Executing:  94%|█████████▍| 34/36 [4:46:35<00:24, 12.36s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (2 members): SSR 0.208  spread 0.0186  RMSE 0.1096  CRPS(all px) 0.0695  rank dev 0.76 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics_train_calibration.csv
+Executing:  97%|█████████▋| 35/36 [4:47:00<00:16, 16.10s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics_train.csv
+Executing: 100%|██████████| 36/36 [4:47:00<00:00, 11.32s/cell]Executing: 100%|██████████| 36/36 [4:47:04<00:00, 478.45s/cell]
+[run_training] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_train.ipynb
+
+========================================================================================
+[run_metrics] STARTING CMT_v3 / SIC
+========================================================================================
+[run_metrics] CMT_v3 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v3', 'GAP_FILL': 'osi', 'FM_TEACHER_LOG': 'logs_FM_sic_v3'}
+Unable to parse line 16 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Unable to parse line 19 'GAP_FILL = 'zero'       # (rebuttal, SIC) fill of the target gaps in the training inputs: 'zero' (= open water) or 'osi' (OSI SAF)'.
+Passed unknown parameter: GAP_FILL
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:05<03:24,  5.84s/cell]Executing:   8%|▊         | 3/36 [00:24<04:42,  8.56s/cell]Wed Nov 18 11:31:51 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   65C    P0             75W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:25<02:11,  4.25s/cell]Executing:  19%|█▉        | 7/36 [00:30<01:44,  3.61s/cell](z-score disabled; train stats were mean=0.5201 std=0.4040)
+Computed SIC training stats: mean=0.0000  std=1.0000
+C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range (normalised): [0.000, 1.000]
+asip std (normalised): 0.4139
+NaN fraction in asip: 22.2%
+Executing:  25%|██▌       | 9/36 [00:40<01:48,  4.02s/cell]Executing:  36%|███▌      | 13/36 [00:41<00:48,  2.10s/cell]Valid checkpoint: logs_CMT_sic_v3/checkpoints/last.ckpt
+[CMT] ODE-teacher targets from logs_FM_sic_v3/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_CMT_sic_v3/checkpoints/last.ckpt directly (trainer.fit() not called)
+EMA model saved to: logs_CMT_sic_v3/best_model
+Executing:  47%|████▋     | 17/36 [00:44<00:29,  1.53s/cell]Model loaded from: logs_CMT_sic_v3/best_model  (cond_mode=assim)
+  Params : 32,887,433
+Executing:  53%|█████▎    | 19/36 [00:44<00:20,  1.23s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  58%|█████▊    | 21/36 [00:45<00:14,  1.00cell/s]Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+[diag] ens_std (normalised): min=0.000874  mean=0.009094  max=0.205078
+[diag] |member0 - member1| (normalised): min=0.000000  mean=0.008728  max=0.345703
+[diag] |noise0 - noise1| input (should be ~sqrt(2)*sigma_max): 1.1328
+Executing:  64%|██████▍   | 23/36 [00:49<00:16,  1.29s/cell][diag] t=0.95  sigma=7.7820  |x_A-x_B|=8.7500  |raw_model(x_A)-raw_model(x_B)|=0.0505  ratio(out/in)=0.0058
+[diag] t=0.50  sigma=0.4803  |x_A-x_B|=0.5430  |raw_model(x_A)-raw_model(x_B)|=0.0136  ratio(out/in)=0.0251
+[diag] t=0.10  sigma=0.0089  |x_A-x_B|=0.0100  |raw_model(x_A)-raw_model(x_B)|=0.0008  ratio(out/in)=0.0774
+Executing:  69%|██████▉   | 25/36 [00:49<00:10,  1.03cell/s][diag] ens_std in OBSERVED pixels (input valid): mean=0.005249  n=153791
+[diag] ens_std in GAP pixels (OSISAF-only):      mean=0.010742  n=364609
+[diag] ens_std COARSE (low-pass, k=9):  mean=0.007928
+[diag] ens_std FINE   (high-pass resid): mean=0.002897
+Executing:  75%|███████▌  | 27/36 [00:50<00:06,  1.37cell/s][diag] REINJECTION sampler (frac=0.3) — ens_std (normalised): min=0.000000  mean=0.008972  max=0.227539
+[diag] (original sampler, no reinjection) ens_std mean=0.009094
+Executing:  81%|████████  | 29/36 [00:51<00:04,  1.42cell/s]Masked-out fraction (no ASIP obs in window): 14.8%
+[diag] std_phys (physical units): min=0.000999  mean=0.009610  max=0.179688  p99=0.071289
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_asip_gt.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_input.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_osisaf.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_mean.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_spread.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_member0.png
+Executing:  86%|████████▌ | 31/36 [00:52<00:03,  1.51cell/s]  Saved: figures/CMT_sic_v3/CMT_sic_v3_transport.png
+Executing:  92%|█████████▏| 33/36 [00:53<00:01,  1.82cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (20 members): SSR 0.170  spread 0.0181  RMSE 0.1089  CRPS(all px) 0.0667  rank dev 2.65 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [03:55<00:27, 27.24s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics.csv
+Executing: 100%|██████████| 36/36 [03:59<00:00,  6.64s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_metrics.csv
+[run_step] ok in 17479.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261118-064350_sic_cmt_v3_train
