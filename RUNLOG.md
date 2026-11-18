@@ -276,3 +276,5 @@ fatal: Cannot autostash
 - 2026-11-18 10:11 plan.json changed; next is `ssh_fig_dump`
 - 2026-11-18 10:12 submitted `ssh_fig_dump` as job 77953 -> `runs/20261118-101159_ssh_fig_dump` [gpu:a100:1]
 - 2026-11-18 10:36 `ssh_fig_dump` done in 00:06:46, gate passed
+- 2026-11-18 10:36 submitted `ssh_fm_aug_train` as job 77968 -> `runs/20261118-103637_ssh_fm_aug_train` [gpu:a100:1]
+- 2026-11-18 11:44 lane 3: `sic_dynfm_v4_train` done in 04:34:25, gate passed
