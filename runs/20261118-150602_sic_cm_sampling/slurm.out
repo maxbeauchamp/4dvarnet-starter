@@ -1,0 +1,328 @@
+[job] 2026-11-18T15:06:18+01:00 host=sl-mee-br-212 job=78234 run_dir=runs/20261118-150602_sic_cm_sampling args=--cmd cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=1 --set CM_STOCHASTIC=False --out-tag _n1 && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=4 --set CM_STOCHASTIC=True --out-tag _n4s && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=10 --set CM_STOCHASTIC=True --out-tag _n10s
+NVIDIA H100 NVL, 95830 MiB
+
+========================================================================================
+[run_metrics] STARTING CMT_v3 / SIC
+========================================================================================
+[run_metrics] CMT_v3 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n1_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n1_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v3', 'GAP_FILL': 'osi', 'FM_TEACHER_LOG': 'logs_FM_sic_v3', 'CM_NSTEPS': 1, 'CM_STOCHASTIC': False}
+Unable to parse line 16 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Unable to parse line 19 'GAP_FILL = 'zero'       # (rebuttal, SIC) fill of the target gaps in the training inputs: 'zero' (= open water) or 'osi' (OSI SAF)'.
+Passed unknown parameter: GAP_FILL
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:05<02:55,  5.01s/cell]Executing:   8%|▊         | 3/36 [00:23<04:32,  8.26s/cell]Wed Nov 18 15:06:49 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   35C    P0             64W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:24<02:07,  4.10s/cell]Executing:  19%|█▉        | 7/36 [00:30<01:49,  3.78s/cell](z-score disabled; train stats were mean=0.5201 std=0.4040)
+Computed SIC training stats: mean=0.0000  std=1.0000
+C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range (normalised): [0.000, 1.000]
+asip std (normalised): 0.4139
+NaN fraction in asip: 22.2%
+Executing:  25%|██▌       | 9/36 [00:39<01:47,  3.98s/cell]Executing:  36%|███▌      | 13/36 [00:40<00:47,  2.08s/cell]Valid checkpoint: logs_CMT_sic_v3/checkpoints/last.ckpt
+[CMT] ODE-teacher targets from logs_FM_sic_v3/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_CMT_sic_v3/checkpoints/last.ckpt directly (trainer.fit() not called)
+EMA model saved to: logs_CMT_sic_v3/best_model
+Executing:  47%|████▋     | 17/36 [00:43<00:27,  1.47s/cell]Model loaded from: logs_CMT_sic_v3/best_model  (cond_mode=assim)
+  Params : 32,887,433
+Executing:  53%|█████▎    | 19/36 [00:43<00:20,  1.18s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  58%|█████▊    | 21/36 [00:44<00:14,  1.04cell/s]Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+[diag] ens_std (normalised): min=0.000874  mean=0.009094  max=0.205078
+[diag] |member0 - member1| (normalised): min=0.000000  mean=0.008728  max=0.345703
+[diag] |noise0 - noise1| input (should be ~sqrt(2)*sigma_max): 1.1328
+Executing:  64%|██████▍   | 23/36 [00:48<00:16,  1.26s/cell][diag] t=0.95  sigma=7.7820  |x_A-x_B|=8.7500  |raw_model(x_A)-raw_model(x_B)|=0.0505  ratio(out/in)=0.0058
+[diag] t=0.50  sigma=0.4803  |x_A-x_B|=0.5430  |raw_model(x_A)-raw_model(x_B)|=0.0136  ratio(out/in)=0.0251
+[diag] t=0.10  sigma=0.0089  |x_A-x_B|=0.0100  |raw_model(x_A)-raw_model(x_B)|=0.0008  ratio(out/in)=0.0774
+Executing:  69%|██████▉   | 25/36 [00:48<00:10,  1.04cell/s][diag] ens_std in OBSERVED pixels (input valid): mean=0.005249  n=153791
+[diag] ens_std in GAP pixels (OSISAF-only):      mean=0.010742  n=364609
+[diag] ens_std COARSE (low-pass, k=9):  mean=0.007928
+[diag] ens_std FINE   (high-pass resid): mean=0.002897
+Executing:  75%|███████▌  | 27/36 [00:49<00:07,  1.27cell/s][diag] REINJECTION sampler (frac=0.3) — ens_std (normalised): min=0.000000  mean=0.008972  max=0.227539
+[diag] (original sampler, no reinjection) ens_std mean=0.009094
+Executing:  81%|████████  | 29/36 [00:50<00:05,  1.35cell/s]Masked-out fraction (no ASIP obs in window): 14.8%
+[diag] std_phys (physical units): min=0.000999  mean=0.009610  max=0.179688  p99=0.071289
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_asip_gt.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_input.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_osisaf.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_mean.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_spread.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_member0.png
+Executing:  86%|████████▌ | 31/36 [00:51<00:03,  1.47cell/s]  Saved: figures/CMT_sic_v3/CMT_sic_v3_transport.png
+Executing:  92%|█████████▏| 33/36 [00:52<00:01,  1.73cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (20 members): SSR 0.004  spread 0.0020  RMSE 0.5603  CRPS(all px) 0.3980  rank dev 2.99 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n1_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [01:00<00:01,  1.61s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n1_metrics.csv
+Executing: 100%|██████████| 36/36 [01:03<00:00,  1.78s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n1_metrics.csv
+
+========================================================================================
+[run_metrics] STARTING CMT_v3 / SIC
+========================================================================================
+[run_metrics] CMT_v3 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n4s_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n4s_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v3', 'GAP_FILL': 'osi', 'FM_TEACHER_LOG': 'logs_FM_sic_v3', 'CM_NSTEPS': 4, 'CM_STOCHASTIC': True}
+Unable to parse line 16 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Unable to parse line 19 'GAP_FILL = 'zero'       # (rebuttal, SIC) fill of the target gaps in the training inputs: 'zero' (= open water) or 'osi' (OSI SAF)'.
+Passed unknown parameter: GAP_FILL
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:01<00:37,  1.07s/cell]Executing:   8%|▊         | 3/36 [00:05<00:57,  1.74s/cell]Wed Nov 18 15:07:35 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   39C    P0             65W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:05<00:28,  1.09cell/s]Executing:  19%|█▉        | 7/36 [00:06<00:21,  1.37cell/s](z-score disabled; train stats were mean=0.5201 std=0.4040)
+Computed SIC training stats: mean=0.0000  std=1.0000
+C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range (normalised): [0.000, 1.000]
+asip std (normalised): 0.4139
+NaN fraction in asip: 22.2%
+Executing:  25%|██▌       | 9/36 [00:12<00:43,  1.61s/cell]Executing:  36%|███▌      | 13/36 [00:13<00:21,  1.07cell/s]Valid checkpoint: logs_CMT_sic_v3/checkpoints/last.ckpt
+[CMT] ODE-teacher targets from logs_FM_sic_v3/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_CMT_sic_v3/checkpoints/last.ckpt directly (trainer.fit() not called)
+EMA model saved to: logs_CMT_sic_v3/best_model
+Executing:  47%|████▋     | 17/36 [00:15<00:14,  1.27cell/s]Model loaded from: logs_CMT_sic_v3/best_model  (cond_mode=assim)
+  Params : 32,887,433
+Executing:  53%|█████▎    | 19/36 [00:16<00:11,  1.52cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  58%|█████▊    | 21/36 [00:16<00:08,  1.77cell/s]Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+[diag] ens_std (normalised): min=0.000874  mean=0.009094  max=0.205078
+[diag] |member0 - member1| (normalised): min=0.000000  mean=0.008728  max=0.345703
+[diag] |noise0 - noise1| input (should be ~sqrt(2)*sigma_max): 1.1328
+Executing:  64%|██████▍   | 23/36 [00:21<00:12,  1.03cell/s][diag] t=0.95  sigma=7.7820  |x_A-x_B|=8.7500  |raw_model(x_A)-raw_model(x_B)|=0.0505  ratio(out/in)=0.0058
+[diag] t=0.50  sigma=0.4803  |x_A-x_B|=0.5430  |raw_model(x_A)-raw_model(x_B)|=0.0136  ratio(out/in)=0.0251
+[diag] t=0.10  sigma=0.0089  |x_A-x_B|=0.0100  |raw_model(x_A)-raw_model(x_B)|=0.0008  ratio(out/in)=0.0774
+Executing:  69%|██████▉   | 25/36 [00:21<00:08,  1.37cell/s][diag] ens_std in OBSERVED pixels (input valid): mean=0.005249  n=153791
+[diag] ens_std in GAP pixels (OSISAF-only):      mean=0.010742  n=364609
+[diag] ens_std COARSE (low-pass, k=9):  mean=0.007928
+[diag] ens_std FINE   (high-pass resid): mean=0.002897
+Executing:  75%|███████▌  | 27/36 [00:21<00:05,  1.65cell/s][diag] REINJECTION sampler (frac=0.3) — ens_std (normalised): min=0.000000  mean=0.008972  max=0.227539
+[diag] (original sampler, no reinjection) ens_std mean=0.009094
+Executing:  81%|████████  | 29/36 [00:23<00:04,  1.63cell/s]Masked-out fraction (no ASIP obs in window): 14.8%
+[diag] std_phys (physical units): min=0.000999  mean=0.009610  max=0.179688  p99=0.071289
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_asip_gt.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_input.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_osisaf.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_mean.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_spread.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_member0.png
+Executing:  86%|████████▌ | 31/36 [00:24<00:02,  1.69cell/s]  Saved: figures/CMT_sic_v3/CMT_sic_v3_transport.png
+Executing:  92%|█████████▏| 33/36 [00:24<00:01,  2.01cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (20 members): SSR 0.285  spread 0.0287  RMSE 0.1029  CRPS(all px) 0.0601  rank dev 2.10 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n4s_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [01:29<00:09,  9.91s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n4s_metrics.csv
+Executing: 100%|██████████| 36/36 [01:33<00:00,  2.60s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n4s_metrics.csv
+
+========================================================================================
+[run_metrics] STARTING CMT_v3 / SIC
+========================================================================================
+[run_metrics] CMT_v3 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n10s_metrics.ipynb (n_members=20)
+[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n10s_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v3', 'GAP_FILL': 'osi', 'FM_TEACHER_LOG': 'logs_FM_sic_v3', 'CM_NSTEPS': 10, 'CM_STOCHASTIC': True}
+Unable to parse line 16 'P_LOCAL = 0.25          # probability of the local-anchor pair (k = n-1)'.
+Unable to parse line 19 'GAP_FILL = 'zero'       # (rebuttal, SIC) fill of the target gaps in the training inputs: 'zero' (= open water) or 'osi' (OSI SAF)'.
+Passed unknown parameter: GAP_FILL
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:01<00:36,  1.05s/cell]Executing:   8%|▊         | 3/36 [00:05<01:04,  1.96s/cell]Wed Nov 18 15:09:10 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
+| N/A   59C    P0             72W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:05<00:31,  1.03s/cell]Executing:  19%|█▉        | 7/36 [00:07<00:24,  1.20cell/s](z-score disabled; train stats were mean=0.5201 std=0.4040)
+Computed SIC training stats: mean=0.0000  std=1.0000
+C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range (normalised): [0.000, 1.000]
+asip std (normalised): 0.4139
+NaN fraction in asip: 22.2%
+Executing:  25%|██▌       | 9/36 [00:13<00:46,  1.71s/cell]Executing:  36%|███▌      | 13/36 [00:14<00:22,  1.02cell/s]Valid checkpoint: logs_CMT_sic_v3/checkpoints/last.ckpt
+[CMT] ODE-teacher targets from logs_FM_sic_v3/best_model
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+Using 16bit Automatic Mixed Precision (AMP)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_CMT_sic_v3/checkpoints/last.ckpt directly (trainer.fit() not called)
+EMA model saved to: logs_CMT_sic_v3/best_model
+Executing:  47%|████▋     | 17/36 [00:17<00:15,  1.22cell/s]Model loaded from: logs_CMT_sic_v3/best_model  (cond_mode=assim)
+  Params : 32,887,433
+Executing:  53%|█████▎    | 19/36 [00:17<00:11,  1.47cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Executing:  58%|█████▊    | 21/36 [00:17<00:08,  1.73cell/s]Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
+NaN fraction in target: 54.1%
+  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
+20 ensemble members generated
+[diag] ens_std (normalised): min=0.000874  mean=0.009094  max=0.205078
+[diag] |member0 - member1| (normalised): min=0.000000  mean=0.008728  max=0.345703
+[diag] |noise0 - noise1| input (should be ~sqrt(2)*sigma_max): 1.1328
+Executing:  64%|██████▍   | 23/36 [00:22<00:12,  1.02cell/s][diag] t=0.95  sigma=7.7820  |x_A-x_B|=8.7500  |raw_model(x_A)-raw_model(x_B)|=0.0505  ratio(out/in)=0.0058
+[diag] t=0.50  sigma=0.4803  |x_A-x_B|=0.5430  |raw_model(x_A)-raw_model(x_B)|=0.0136  ratio(out/in)=0.0251
+[diag] t=0.10  sigma=0.0089  |x_A-x_B|=0.0100  |raw_model(x_A)-raw_model(x_B)|=0.0008  ratio(out/in)=0.0774
+Executing:  69%|██████▉   | 25/36 [00:22<00:08,  1.35cell/s][diag] ens_std in OBSERVED pixels (input valid): mean=0.005249  n=153791
+[diag] ens_std in GAP pixels (OSISAF-only):      mean=0.010742  n=364609
+[diag] ens_std COARSE (low-pass, k=9):  mean=0.007928
+[diag] ens_std FINE   (high-pass resid): mean=0.002897
+Executing:  75%|███████▌  | 27/36 [00:22<00:05,  1.72cell/s][diag] REINJECTION sampler (frac=0.3) — ens_std (normalised): min=0.000000  mean=0.008972  max=0.227539
+[diag] (original sampler, no reinjection) ens_std mean=0.009094
+Executing:  81%|████████  | 29/36 [00:24<00:04,  1.68cell/s]Masked-out fraction (no ASIP obs in window): 14.8%
+[diag] std_phys (physical units): min=0.000999  mean=0.009610  max=0.179688  p99=0.071289
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_asip_gt.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_input.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_osisaf.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_mean.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_cm_spread.png
+  Saved: figures/CMT_sic_v3/CMT_sic_v3_member0.png
+Executing:  86%|████████▌ | 31/36 [00:25<00:02,  1.72cell/s]  Saved: figures/CMT_sic_v3/CMT_sic_v3_transport.png
+Executing:  92%|█████████▏| 33/36 [00:25<00:01,  2.04cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Calibration (20 members): SSR 0.170  spread 0.0181  RMSE 0.1089  CRPS(all px) 0.0667  rank dev 2.65 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n10s_metrics_calibration.csv
+Executing:  97%|█████████▋| 35/36 [03:26<00:27, 27.06s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n10s_metrics.csv
+Executing: 100%|██████████| 36/36 [03:30<00:00,  5.85s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/CMT_v3_n10s_metrics.csv
+[run_step] ok in 376.2 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261118-150602_sic_cm_sampling
+[job] 2026-11-18T15:12:35+01:00 exit=0
