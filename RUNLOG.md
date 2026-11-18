@@ -267,3 +267,7 @@ fatal: Cannot autostash
 - 2026-11-17 23:10 submitted `sic_dynfm_v3_train` as job 77727 -> `runs/20261117-231015_sic_dynfm_v3_train` (lane 2) [gpu:a100:1]
 - 2026-11-18 06:36 **ATTENTION** lane 2: `sic_dynfm_v3_train` ended CANCELLED by 264082 after 00:00:00; see `runs/20261117-231015_sic_dynfm_v3_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-18 06:36 lane 4: `sic_fm_v3_train` done in 03:15:22, gate passed
+- 2026-11-18 06:41 state fixed by hand: `sic_dynfm_v3_train` = job 77721 (completed; 77727 was a cancelled duplicate), `sic_dyncmt_train` skipped (DynFM_v2 teacher superseded); lanes 2 and 3 resumed
+- 2026-11-18 06:43 **ATTENTION** next lane-2 step `sic_dyncmt_v3_train` needs approval (`python3 odyssey/pilot.py approve sic_dyncmt_v3_train`).
+- 2026-11-18 06:44 submitted `sic_cmt_v3_train` as job 77836 -> `runs/20261118-064350_sic_cmt_v3_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 06:44 `ssh_cmt_train` done in 04:44:37, gate passed
