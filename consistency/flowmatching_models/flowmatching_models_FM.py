@@ -495,6 +495,7 @@ class LitFMConfig:
     eval_n_steps: int = 20          # Heun steps for val monitoring
     lower_bound: Optional[float] = None   # censoring lower bound (normalised)
     upper_bound: Optional[float] = None   # censoring upper bound (normalised)
+    augment: bool = False           # (rebuttal) random D4 transform (rot90 x flip) of (x1, y) at training time
 
 
 class LitFlowMatchingModel(LightningModule):
@@ -555,6 +556,10 @@ class LitFlowMatchingModel(LightningModule):
 
         x1 = batch.tgt                                      # (B, C, H, W) clean
         y  = batch.input                                    # (B, C, H, W) obs (NaN)
+        if getattr(self.config, "augment", False):          # (rebuttal) same D4 transform as VarCM on SSH
+            k = int(torch.randint(4, (1,)).item()); flip = bool(torch.randint(2, (1,)).item())
+            x1, y = [torch.flip(torch.rot90(f, k, dims=(-2, -1)), dims=(-1,)) if flip
+                     else torch.rot90(f, k, dims=(-2, -1)) for f in (x1, y)]
         B, C, H, W = x1.shape
 
         # ── linear interpolant ────────────────────────────────────────────

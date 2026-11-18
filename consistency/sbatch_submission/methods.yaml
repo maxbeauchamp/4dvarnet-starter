@@ -386,6 +386,40 @@ methods:
         params:
           MAX_TIME: "00:05:00:00"
 
+  FM_aug:
+    # SSH: FM_v2 trained with the same random D4 transform of (x, y) as VarCM (single 128x128 training region).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _aug
+      SELECT_BY_VAL: true
+      AUGMENT: true
+    xp:
+      SSH_GF:
+        notebook: Notebook_flowmatching_model_FM_ssh_gf.ipynb
+        log_dir: logs_FM_ssh_gf_aug
+        status: existing
+        params:
+          MAX_TIME: "00:04:00:00"
+
+  DynFM_aug:
+    # SSH: DynFM_v2 with the same random D4 transform of (x, y) as VarCM.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _aug
+      SELECT_BY_VAL: true
+      AUGMENT: true
+    xp:
+      SSH_GF:
+        notebook: Notebook_flowmatching_model_DynFM_ssh_gf.ipynb
+        log_dir: logs_DynFM_ssh_gf_aug
+        status: existing
+        params:
+          MAX_TIME: "00:04:00:00"
+
   CMT_v2:
     # CM (ODE-teacher targets) on SSH distilled from FM_v2, from scratch.
     generative: true
