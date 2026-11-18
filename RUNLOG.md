@@ -282,3 +282,5 @@ fatal: Cannot autostash
 - 2026-11-18 11:45 lane 4: `sic_cmt_v3_train` done in 04:51:22, gate passed
 - 2026-11-18 11:45 submitted `ssh_dynfm_aug_train` as job 78052 -> `runs/20261118-114534_ssh_dynfm_aug_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-18 13:10 lane 2: `sic_dyncmt_v3_train` done in 05:15:58, gate passed
+- 2026-11-18 13:11 submitted `ssh_dyncm_fig_dump` as job 78120 -> `runs/20261118-131110_ssh_dyncm_fig_dump` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 13:31 lane 2: `ssh_dyncm_fig_dump` done in 00:14:49, gate passed
