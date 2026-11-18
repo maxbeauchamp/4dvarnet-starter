@@ -290,3 +290,5 @@ fatal: Cannot autostash
 - 2026-11-18 15:06 submitted `sic_cm_sampling` as job 78234 -> `runs/20261118-150602_sic_cm_sampling` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-18 15:07 lane 4: `ssh_dynfm_aug_train` done in 03:11:35, gate passed
 - 2026-11-18 15:37 lane 2: `sic_cm_sampling` done in 00:06:17, gate passed
+- 2026-11-18 16:39 `ssh_fm_aug_train` ended TIMEOUT after 06:00:21; retrying once
+- 2026-11-18 16:40 submitted `ssh_fm_aug_train` as job 78283 -> `runs/20261118-163932_ssh_fm_aug_train` [gpu:a100:1]

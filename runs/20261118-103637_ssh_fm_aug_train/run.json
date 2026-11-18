@@ -1,0 +1,8 @@
+{
+  "plan_id": "ssh_fm_aug_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method FM_aug --reset && python run_metrics.py --xp SSH_GF --method FM_aug",
+  "commit": "05210ac",
+  "host": "sl-mee-br-207",
+  "slurm_job": "77968",
+  "started": "2026-11-18T10:36:51"
+}
