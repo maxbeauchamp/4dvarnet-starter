@@ -287,3 +287,5 @@ fatal: Cannot autostash
 - 2026-11-18 13:32 submitted `ssh_varcm_mix` as job 78127 -> `runs/20261118-133215_ssh_varcm_mix` (lane 2) [gpu:a100:1]
 - 2026-11-18 13:32 submitted `ssh_vardyncm_smooth` as job 78132 -> `runs/20261118-133235_ssh_vardyncm_smooth` (lane 3) [gpu:a100:1]
 - 2026-11-18 14:03 lane 2: `ssh_varcm_mix` done in 00:28:20, gate passed
+- 2026-11-18 15:06 submitted `sic_cm_sampling` as job 78234 -> `runs/20261118-150602_sic_cm_sampling` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-18 15:07 lane 4: `ssh_dynfm_aug_train` done in 03:11:35, gate passed
