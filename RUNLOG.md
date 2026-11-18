@@ -295,3 +295,4 @@ fatal: Cannot autostash
 - 2026-11-18 18:41 submitted `sic_4dvarnet_train` as job 78347 -> `runs/20261118-184057_sic_4dvarnet_train` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-18 18:41 submitted `sic_unet_train` as job 78353 -> `runs/20261118-184132_sic_unet_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-18 20:14 lane 3: `ssh_vardyncm_smooth` done in 06:09:24, gate passed
+- 2026-11-18 20:15 `ssh_fm_aug_train` done in 03:25:25, gate passed
