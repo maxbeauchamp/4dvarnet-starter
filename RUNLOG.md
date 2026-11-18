@@ -263,3 +263,6 @@ fatal: Cannot autostash
 - 2026-11-17 22:08 **ATTENTION** lane 3: `sic_dyncmt_train` ended CANCELLED by 264082 after 01:05:36; see `runs/20261117-204742_sic_dyncmt_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-17 23:09 lane 2: `sic_vardyncm_grid` done in 03:10:43, gate passed
 - 2026-11-17 23:09 lane 2: `sic_vardyncm_grid` done in 03:10:43, gate passed
+- 2026-11-17 23:10 submitted `sic_dynfm_v3_train` as job 77721 -> `runs/20261117-230928_sic_dynfm_v3_train` (lane 2) [gpu:a100:1]
+- 2026-11-17 23:10 submitted `sic_dynfm_v3_train` as job 77727 -> `runs/20261117-231015_sic_dynfm_v3_train` (lane 2) [gpu:a100:1]
+- 2026-11-18 06:36 **ATTENTION** lane 2: `sic_dynfm_v3_train` ended CANCELLED by 264082 after 00:00:00; see `runs/20261117-231015_sic_dynfm_v3_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
