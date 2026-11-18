@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_vardyncm_smooth",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method VarDynCM_smooth_ssh --reset && python run_metrics.py --xp SSH_GF --method VarDynCM_smooth_ssh",
+  "commit": "ed42496-dirty",
+  "host": "sl-mee-br-207",
+  "slurm_job": "78132",
+  "started": "2026-11-18T13:44:02",
+  "status": "ok",
+  "seconds": 22163.7,
+  "finished": "2026-11-18T19:53:25"
+}
