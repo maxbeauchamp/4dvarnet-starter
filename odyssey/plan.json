@@ -635,6 +635,13 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method UNet",
    "note": "SSH UNet: recompute metrics (lambda_x in degrees)"
+  },
+  {
+   "id": "ssh_cmt_aug_train",
+   "time": "07:30:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT_aug --reset && python run_metrics.py --xp SSH_GF --method CMT_aug",
+   "note": "SSH CM distilled from the augmented FM teacher (FM_aug: RMSE 0.059, SSR 0.82)"
   }
  ]
 }

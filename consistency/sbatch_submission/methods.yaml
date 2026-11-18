@@ -439,6 +439,23 @@ methods:
         log_dir: logs_CMT_ssh_gf_v2
         status: existing
 
+  CMT_aug:
+    # SSH: CM (ODE-teacher targets) distilled from FM_aug (D4-augmented teacher), from scratch.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _aug
+      FM_TEACHER_LOG: logs_FM_ssh_gf_aug
+      WARM_START: false
+    xp:
+      SSH_GF:
+        notebook: Notebook_consistency_model_CMT_ssh_gf.ipynb
+        log_dir: logs_CMT_ssh_gf_aug
+        status: existing
+        params:
+          MAX_TIME: "00:05:30:00"
+
   CMT_det:
     # Evaluation variant of CMT (GP) for the NFE sweep: deterministic pairwise chain instead of re-noised
     # multistep sampling (SWEEP_STOCHASTIC=False); used for the composition-gap test.
