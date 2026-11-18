@@ -30,6 +30,8 @@ methods:
         notebook: Notebook_direct_unet_sic.ipynb
         log_dir: logs_direct_unet_SIC
         status: generated
+        params:
+          MAX_TIME: "00:02:00:00"
       SSH_GF:
         notebook: Notebook_direct_unet.ipynb
         log_dir: logs_direct_unet
@@ -49,6 +51,8 @@ methods:
         notebook: Notebook_4dvarnet_unet_sic.ipynb
         log_dir: logs_4dvarnet_lstm_sic
         status: generated
+        params:
+          MAX_TIME: "00:03:00:00"
       SSH_GF:
         notebook: Notebook_4dvarnet_unet.ipynb
         log_dir: logs_4dvarnet_lstm          # TO VERIFY: confirm whether LOG_DIR depends on SOLVER_TYPE here as in GP

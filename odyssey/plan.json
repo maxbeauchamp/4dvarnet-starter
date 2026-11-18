@@ -611,6 +611,30 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=1 --set CM_STOCHASTIC=False --out-tag _n1 && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=4 --set CM_STOCHASTIC=True --out-tag _n4s && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=10 --set CM_STOCHASTIC=True --out-tag _n10s",
    "note": "CM SIC (collapsed, SSR 0.17 with 10 deterministic jumps): one jump, and multistep sampling with re-noising (Song et al. Alg. 2), eval only"
+  },
+  {
+   "id": "sic_4dvarnet_train",
+   "lane": 2,
+   "time": "04:30:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method 4dvarnet_lstm --reset && python run_metrics.py --xp SIC --method 4dvarnet_lstm",
+   "note": "SIC 4DVarNet-LSTM baseline: masked loss on ASIP, J_o = SAR + OSI SAF block averages"
+  },
+  {
+   "id": "sic_unet_train",
+   "lane": 4,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method UNet --reset && python run_metrics.py --xp SIC --method UNet",
+   "note": "SIC direct UNet baseline: masked loss on ASIP, input = SAR fused with OSI SAF + SAR mask"
+  },
+  {
+   "id": "ssh_unet_metrics",
+   "lane": 4,
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method UNet",
+   "note": "SSH UNet: recompute metrics (lambda_x in degrees)"
   }
  ]
 }
