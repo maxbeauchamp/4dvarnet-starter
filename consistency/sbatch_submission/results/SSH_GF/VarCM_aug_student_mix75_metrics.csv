@@ -1,0 +1,2 @@
+Method,RMSE,lambda_x,CRPS
+"VarCM (ens. mean, full test set)",0.1669 $\pm$ 0.0250,1.8 $\pm$ 0.6,0.0581 $\pm$ 0.0163
