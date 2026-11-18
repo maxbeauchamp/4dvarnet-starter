@@ -348,6 +348,44 @@ methods:
         params:
           MAX_TIME: "00:05:00:00"
 
+  DynFM_v4:
+    # SIC: DynFM_v3 fails in the transport (frame 0 as good as FM, RMSE 0.11 -> 0.20 from frame 1): SIC changes by
+    # ~0.15-0.2 RMSE from one day to the next and the deterministic frame-to-frame interpolant never shows the
+    # network a state off the true path. PHYS_NOISE perturbs the start frame of each physical segment at training
+    # time, so the learned velocity steers a perturbed state back to the next frame (error-correcting transport).
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 400
+      RUN_TAG: _v4
+      SELECT_BY_VAL: true
+      GAP_FILL: osi
+      PHYS_NOISE: 0.1
+    xp:
+      SIC:
+        notebook: Notebook_flowmatching_model_DynFM_sic.ipynb
+        log_dir: logs_DynFM_sic_v4
+        status: existing
+        params:
+          MAX_TIME: "00:04:00:00"
+
+  DynCMT_v4:
+    # SIC: DynCM distilled from DynFM_v4.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 600
+      RUN_TAG: _v4
+      GAP_FILL: osi
+      DYNFM_TEACHER_LOG: logs_DynFM_sic_v4
+    xp:
+      SIC:
+        notebook: Notebook_consistency_model_DynCMT_sic.ipynb
+        log_dir: logs_DynCMT_sic_v4
+        status: existing
+        params:
+          MAX_TIME: "00:05:00:00"
+
   CMT_v2:
     # CM (ODE-teacher targets) on SSH distilled from FM_v2, from scratch.
     generative: true

@@ -549,6 +549,23 @@
    "confirm": true,
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT_v3 --reset && python run_metrics.py --xp SIC --method DynCMT_v3",
    "note": "approve only if DynFM_v3 is good (RMSE MIZ < 0.20)"
+  },
+  {
+   "id": "sic_dynfm_v4_train",
+   "lane": 3,
+   "time": "06:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynFM_v4 --reset && python run_metrics.py --xp SIC --method DynFM_v4",
+   "note": "error-correcting transport: perturbed start frames (PHYS_NOISE=0.1)"
+  },
+  {
+   "id": "sic_dyncmt_v4_train",
+   "lane": 3,
+   "time": "09:00:00",
+   "gate": "status == 'ok'",
+   "confirm": true,
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT_v4 --reset && python run_metrics.py --xp SIC --method DynCMT_v4",
+   "note": "approve if DynFM_v4 beats DynFM_v3 (RMSE MIZ 0.245)"
   }
  ]
 }
