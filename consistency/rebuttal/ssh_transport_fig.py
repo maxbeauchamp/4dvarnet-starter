@@ -33,7 +33,7 @@ sd = P.std(0, ddof=1)                          # (S, H, W)
 err = np.abs(mean_f - gt)
 vlo, vhi = np.nanpercentile(gt, [1, 99])
 pos = sd[cols]; lo = max(np.nanpercentile(np.concatenate([sd[frame_idx].ravel(), err[np.isfinite(err)]]), 2), 1e-4)
-hi = np.nanpercentile(sd[spin], 99) if spin else np.nanpercentile(pos, 99)
+hi = np.nanpercentile(np.concatenate([sd[frame_idx].ravel(), err[np.isfinite(err)]]), 99.5)   # noise at t=1 saturates
 div = plt.get_cmap('RdBu_r').copy(); div.set_bad('#d9d9d9')
 seq = plt.get_cmap('magma').copy(); seq.set_bad('#d9d9d9')
 
@@ -86,7 +86,7 @@ def bracket(j0, j1, text, col):
         fig.add_artist(plt.Line2D([x, x], [y, y - 0.012], color=col, lw=0.9, transform=fig.transFigure))
     fig.text((a.x0 + b.x1) / 2, y + 0.006, text, ha='center', va='bottom', fontsize=7.5, color=col)
 if nsp:
-    bracket(0, nsp - 1, f'spin-up ($t>t_{{\\mathrm{{IC}}}}={sb:.1f}$): noise $\\to$ initial condition', '#3b6ea5')
+    bracket(0, nsp - 1, 'spin-up' if nsp < 3 else f'spin-up ($t>t_{{\\mathrm{{IC}}}}={sb:.1f}$): noise $\\to$ initial condition', '#3b6ea5')
 bracket(nsp, ncol - 1, 'physical regime: one jump per day', '#b03a2e')
 def bar(kind, r0, r1, label, **kw):
     top, bot = axs[r0, -1].get_position(), axs[r1, -1].get_position()
