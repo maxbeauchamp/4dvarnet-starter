@@ -297,3 +297,4 @@ fatal: Cannot autostash
 - 2026-11-18 20:14 lane 3: `ssh_vardyncm_smooth` done in 06:09:24, gate passed
 - 2026-11-18 20:15 `ssh_fm_aug_train` done in 03:25:25, gate passed
 - 2026-11-18 20:46 **ATTENTION** lane 2: `sic_4dvarnet_train` ended FAILED after 00:01:04; see `runs/20261118-184057_sic_4dvarnet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-18 20:47 **ATTENTION** lane 4: `sic_unet_train` ended FAILED after 00:00:13; see `runs/20261118-184132_sic_unet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
