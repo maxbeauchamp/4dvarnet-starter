@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_fm_v3_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method FM_v3 --reset && python run_metrics.py --xp SIC --method FM_v3",
+  "commit": "9afde29",
+  "host": "sl-mee-br-206",
+  "slurm_job": "77704",
+  "started": "2026-11-17T22:43:02",
+  "status": "ok",
+  "seconds": 11720.7,
+  "finished": "2026-11-18T01:58:22"
+}
