@@ -1,0 +1,63 @@
+
+========================================================================================
+[run_training] STARTING 4dvarnet_lstm / SIC
+========================================================================================
+[run_training] 4dvarnet_lstm / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/4dvarnet_lstm_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/4dvarnet_lstm_metrics_train.csv', 'SOLVER_TYPE': 'lstm', 'MAX_TIME': '00:03:00:00'}
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
+  validate(nb)
+Passed unknown parameter: SOLVER_TYPE
+Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:04<02:23,  4.10s/cell]Executing:   8%|▊         | 3/36 [00:34<06:41, 12.17s/cell]Wed Nov 18 20:40:14 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                Off |   00000000:82:00.0 Off |                    0 |
+| N/A   32C    P0             60W /  400W |       0MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  14%|█▍        | 5/36 [00:34<03:06,  6.00s/cell]Executing:  19%|█▉        | 7/36 [00:43<02:36,  5.40s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  28%|██▊       | 10/36 [00:48<01:33,  3.58s/cell]Executing:  47%|████▋     | 17/36 [00:48<00:26,  1.41s/cell]Executing:  47%|████▋     | 17/36 [00:52<00:58,  3.06s/cell]
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 102, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 89, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [11]":
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+Cell In[11], line 152
+    148 
+    149 # Sanity check — 100×100 will be padded to 104×104 internally
+    150 C = datamodule.window_size
+    151 summary(
+--> 152     GradSolverUNet(GradSolverUNetConfig(channels=C, cond_channels=2*C)),
+    153     input_data=[
+    154         torch.zeros(1, C, 100, 100),
+    155         torch.zeros(1, C, 100, 100),
+
+TypeError: GradSolverUNetConfig.__init__() got an unexpected keyword argument 'cond_channels'
+
+[run_step] exit 1 in 63.1 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261118-184057_sic_4dvarnet_train

@@ -1,3 +1,3 @@
-# Needs attention (2026-11-18 11:44)
+# Needs attention (2026-11-18 20:46)
 
-next lane-3 step `sic_dyncmt_v4_train` needs approval (`python3 odyssey/pilot.py approve sic_dyncmt_v4_train`).
+lane 2: `sic_4dvarnet_train` ended FAILED after 00:01:04; see `runs/20261118-184057_sic_4dvarnet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
