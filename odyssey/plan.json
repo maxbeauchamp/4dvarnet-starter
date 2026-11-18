@@ -603,6 +603,14 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.25 --set EVAL_TAG=_mix25 --out-tag _mix25 && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.5 --set EVAL_TAG=_mix50 --out-tag _mix50 && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.75 --set EVAL_TAG=_mix75 --out-tag _mix75",
    "note": "VarCM SSH: a*EMA+(1-a)*student, a in {0.25,0.5,0.75}; choose a on the TRAIN-set calibration, not on test"
+  },
+  {
+   "id": "sic_cm_sampling",
+   "lane": 2,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=1 --set CM_STOCHASTIC=False --out-tag _n1 && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=4 --set CM_STOCHASTIC=True --out-tag _n4s && python run_metrics.py --xp SIC --method CMT_v3 --set CM_NSTEPS=10 --set CM_STOCHASTIC=True --out-tag _n10s",
+   "note": "CM SIC (collapsed, SSR 0.17 with 10 deterministic jumps): one jump, and multistep sampling with re-noising (Song et al. Alg. 2), eval only"
   }
  ]
 }
