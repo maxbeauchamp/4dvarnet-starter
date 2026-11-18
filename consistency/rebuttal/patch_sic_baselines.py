@@ -91,6 +91,10 @@ FDV = [
      "    _y_filled_b, _mask_b = sic_pack(_y_b, _tb.osisaf.to(device=device, dtype=dtype))"),
 ]
 
+# the configs have no `cond_channels` field (never-run notebooks); the GradSolverUNet sanity summary is skipped
+UNET += [("DirectUNetConfig(channels=C, cond_channels=2*C)", "DirectUNetConfig(channels=C)")]
+FDV += [("GradSolverUNetConfig(channels=C, cond_channels=2*C)", "GradSolverUNetConfig(channels=C)"),
+        ("summary(\n    GradSolverUNet(GradSolverUNetConfig(channels=C)),", "if False:  summary(\n    GradSolverUNet(GradSolverUNetConfig(channels=C)),")]
 # the SIC items have no `tgt` field: the reference is `asip`
 for _r in (UNET, FDV):
     _r += [("batch.tgt", "batch.asip"), ("_tb.tgt", "_tb.asip")]
