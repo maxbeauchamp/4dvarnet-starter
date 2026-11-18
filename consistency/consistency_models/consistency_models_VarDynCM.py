@@ -1,3 +1,4 @@
+import os
 from typing import NamedTuple, Optional, Tuple
 import torch.nn.functional as F
 from .utils import *
@@ -181,6 +182,18 @@ def _get_local_obs(y: Tensor, t: Tensor, spinup_boundary: float) -> Tensor:
 
 # ── Physical-time gradient of variational cost ────────────────────────────────
 
+
+def _gauss_blur(g, sigma):
+    """Separable Gaussian smoothing over the last two dims, reflect padding (rebuttal)."""
+    r = max(1, int(3 * sigma))
+    k = torch.arange(-r, r + 1, device=g.device, dtype=g.dtype)
+    k = torch.exp(-0.5 * (k / sigma) ** 2); k = k / k.sum()
+    sh = g.shape
+    z = g.reshape(-1, 1, sh[-2], sh[-1])
+    z = torch.nn.functional.conv2d(torch.nn.functional.pad(z, (r, r, 0, 0), mode="reflect"), k.view(1, 1, 1, -1))
+    z = torch.nn.functional.conv2d(torch.nn.functional.pad(z, (0, 0, r, r), mode="reflect"), k.view(1, 1, -1, 1))
+    return z.reshape(sh)
+
 def _compute_physical_grad_J(
     x:               Tensor,             # (B, 1, H, W)  physical state
     y:               Tensor,             # (B, C, H, W)  observations
@@ -238,6 +251,9 @@ def _compute_physical_grad_J(
 
     g_Jo = g_Jo.detach()
     g_Jb = g_Jb.detach()
+    _sig = float(os.environ.get("VARDYNCM_GRAD_SMOOTH", "0") or 0)
+    if _sig > 0:   # (rebuttal) B^{1/2}-like preconditioning: Gaussian smoothing of the (track-supported) obs gradient
+        g_Jo = _gauss_blur(g_Jo.float(), _sig).to(g_Jo.dtype)
     return (
         g_Jo / g_Jo.std().clamp(min=1e-8)
         + g_Jb / g_Jb.std().clamp(min=1e-8)

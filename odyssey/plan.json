@@ -559,15 +559,6 @@
    "note": "error-correcting transport: perturbed start frames (PHYS_NOISE=0.1)"
   },
   {
-   "id": "sic_dyncmt_v4_train",
-   "lane": 3,
-   "time": "09:00:00",
-   "gate": "status == 'ok'",
-   "confirm": true,
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT_v4 --reset && python run_metrics.py --xp SIC --method DynCMT_v4",
-   "note": "approve if DynFM_v4 beats DynFM_v3 (RMSE MIZ 0.245)"
-  },
-  {
    "id": "ssh_fig_dump",
    "time": "01:30:00",
    "gate": "status == 'ok'",
@@ -596,6 +587,22 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method DynCMT --set FIG_DUMP=True --out-tag _fig",
    "note": "paper figure: full DynCM sampling process (20 members) of test window 0 -> results/SSH_GF/figdump/DynCM_ssh_win000.npz"
+  },
+  {
+   "id": "ssh_vardyncm_smooth",
+   "lane": 3,
+   "time": "08:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method VarDynCM_smooth_ssh --reset && python run_metrics.py --xp SSH_GF --method VarDynCM_smooth_ssh",
+   "note": "DynVarCM SSH: smoothed obs gradient (track imprint, under-dispersion)"
+  },
+  {
+   "id": "ssh_varcm_mix",
+   "lane": 2,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.25 --set EVAL_TAG=_mix25 --out-tag _mix25 && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.5 --set EVAL_TAG=_mix50 --out-tag _mix50 && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set EMA_MIX=0.75 --set EVAL_TAG=_mix75 --out-tag _mix75",
+   "note": "VarCM SSH: a*EMA+(1-a)*student, a in {0.25,0.5,0.75}; choose a on the TRAIN-set calibration, not on test"
   }
  ]
 }

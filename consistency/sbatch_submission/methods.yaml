@@ -589,6 +589,29 @@ methods:
         log_dir: logs_VarDynCM_crps_ssh_gf_grad_grid
         status: existing
 
+  VarDynCM_smooth_ssh:
+    # SSH: VarDynCM_scratch fine-tuned with the observation gradient smoothed by a Gaussian of 3 pixels before its
+    # normalisation (B^{1/2}-like preconditioning): grad J_o is supported on the altimeter tracks only, which
+    # imprints the tracks on the members and pulls them identically towards the data.
+    generative: true
+    n_samples_metrics: 20
+    params:
+      MAX_EPOCHS: 60
+      COND_MODE: grad
+      LAMBDA_SELF: 0.1
+      RUN_TAG: _smooth
+      WARM_FROM: logs_VarDynCM_crps_ssh_gf_grad_scratch
+      SELECT_BY_VAL: true
+      FRAME_GRID: true
+      GRAD_SMOOTH: 3.0
+    xp:
+      SSH_GF:
+        notebook: Notebook_consistency_model_VarDynCM_ssh_gf.ipynb
+        log_dir: logs_VarDynCM_crps_ssh_gf_grad_smooth
+        status: existing
+        params:
+          MAX_TIME: "00:06:00:00"
+
   VarDynCM_grid_sic:
     # SIC, same recipe as SSH/GP: VarDynCM_scratch (SIC) fine-tuned 40 epochs on random refinements of the frame grid.
     generative: true
