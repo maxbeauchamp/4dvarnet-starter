@@ -351,6 +351,22 @@ def advance(st, sid):
 
 
 def tick(st):
+    """Exclusive: a second tick (e.g. `tick` by hand while `watch` ticks) returns at once instead of submitting the
+    same step twice; the state is re-read under the lock so that it is never stale."""
+    import fcntl
+    STATE.parent.mkdir(exist_ok=True)
+    with open(STATE.parent / "tick.lock", "w") as lk:
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            print("another tick is running (watch?): nothing done")
+            return
+        fresh = load_state()
+        st.clear(); st.update(fresh)
+        return _tick(st)
+
+
+def _tick(st):
     git_pull(); reload_plan()          # Claude may have pushed code or a reordered plan
     r = subprocess.run(["ssh", *SSH_OPTS, "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", CFG["ODY_HOST"], "true"],
                        capture_output=True, text=True)
