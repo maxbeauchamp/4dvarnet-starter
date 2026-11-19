@@ -1,0 +1,82 @@
+sksparse.cholmod: False
+T=300 grid=128x128 H11 in [1.04,9.95] H12 in [-0.47,0.47]
+  orientation C dt=1.0: residual var 0.9985 (expected dt), lag-1 autocorr +0.001
+  orientation C dt=0.25: residual var 0.1478 (expected dt), lag-1 autocorr +0.311
+  orientation T dt=1.0: residual var 3.4233 (expected dt), lag-1 autocorr -0.426
+  orientation T dt=0.25: residual var 0.3260 (expected dt), lag-1 autocorr -0.240
+-> orientation C, dt=1.0, sigma^2=0.9985
+prior samples ready (20s)
+  window 1/45 (start 122): RMSE 0.2151  OI 0.2228  (65s)
+  window 2/45 (start 17): RMSE 0.2150  OI 0.2264  (109s)
+  window 3/45 (start 167): RMSE 0.2130  OI 0.2203  (153s)
+  window 4/45 (start 283): RMSE 0.2154  OI 0.2261  (198s)
+  window 5/45 (start 53): RMSE 0.2164  OI 0.2255  (242s)
+
+EXACT POSTERIOR on 5 test windows: RMSE 0.2150  lambda_x 62.7  CRPS(all px) 0.1185  SSR 1.005  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2242  | orientation C dt 1.0 sigma2 0.9985  (242s)
+  window 6/45 (start 76): RMSE 0.2177  OI 0.2273  (286s)
+  window 7/45 (start 208): RMSE 0.2133  OI 0.2218  (329s)
+  window 8/45 (start 31): RMSE 0.2156  OI 0.2227  (372s)
+  window 9/45 (start 129): RMSE 0.2128  OI 0.2222  (417s)
+  window 10/45 (start 105): RMSE 0.2198  OI 0.2284  (460s)
+
+EXACT POSTERIOR on 10 test windows: RMSE 0.2154  lambda_x 64.9  CRPS(all px) 0.1187  SSR 1.004  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2243  | orientation C dt 1.0 sigma2 0.9985  (460s)
+  window 11/45 (start 212): RMSE 0.2166  OI 0.2268  (504s)
+  window 12/45 (start 43): RMSE 0.2167  OI 0.2266  (549s)
+  window 13/45 (start 286): RMSE 0.2161  OI 0.2276  (593s)
+  window 14/45 (start 160): RMSE 0.2147  OI 0.2257  (636s)
+  window 15/45 (start 57): RMSE 0.2095  OI 0.2197  (680s)
+
+EXACT POSTERIOR on 15 test windows: RMSE 0.2152  lambda_x 63.8  CRPS(all px) 0.1187  SSR 1.004  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2247  | orientation C dt 1.0 sigma2 0.9985  (680s)
+  window 16/45 (start 23): RMSE 0.2146  OI 0.2241  (724s)
+  window 17/45 (start 15): RMSE 0.2157  OI 0.2266  (767s)
+  window 18/45 (start 109): RMSE 0.2193  OI 0.2275  (812s)
+  window 19/45 (start 137): RMSE 0.2146  OI 0.2260  (857s)
+  window 20/45 (start 190): RMSE 0.2159  OI 0.2260  (901s)
+
+EXACT POSTERIOR on 20 test windows: RMSE 0.2154  lambda_x 57.2  CRPS(all px) 0.1188  SSR 1.003  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2250  | orientation C dt 1.0 sigma2 0.9985  (901s)
+  window 21/45 (start 16): RMSE 0.2145  OI 0.2272  (944s)
+  window 22/45 (start 240): RMSE 0.2197  OI 0.2279  (989s)
+  window 23/45 (start 110): RMSE 0.2195  OI 0.2289  (1034s)
+  window 24/45 (start 195): RMSE 0.2152  OI 0.2251  (1079s)
+  window 25/45 (start 34): RMSE 0.2165  OI 0.2235  (1123s)
+
+EXACT POSTERIOR on 25 test windows: RMSE 0.2157  lambda_x 53.5  CRPS(all px) 0.1191  SSR 1.002  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2253  | orientation C dt 1.0 sigma2 0.9985  (1123s)
+  window 26/45 (start 35): RMSE 0.2158  OI 0.2236  (1168s)
+  window 27/45 (start 182): RMSE 0.2187  OI 0.2263  (1212s)
+  window 28/45 (start 49): RMSE 0.2179  OI 0.2261  (1256s)
+  window 29/45 (start 6): RMSE 0.2115  OI 0.2203  (1299s)
+  window 30/45 (start 102): RMSE 0.2157  OI 0.2254  (1345s)
+
+EXACT POSTERIOR on 30 test windows: RMSE 0.2158  lambda_x 53.5  CRPS(all px) 0.1192  SSR 1.001  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2252  | orientation C dt 1.0 sigma2 0.9985  (1346s)
+  window 31/45 (start 175): RMSE 0.2151  OI 0.2255  (1390s)
+  window 32/45 (start 139): RMSE 0.2171  OI 0.2261  (1434s)
+  window 33/45 (start 284): RMSE 0.2150  OI 0.2257  (1478s)
+  window 34/45 (start 41): RMSE 0.2138  OI 0.2243  (1522s)
+  window 35/45 (start 22): RMSE 0.2159  OI 0.2235  (1566s)
+
+EXACT POSTERIOR on 35 test windows: RMSE 0.2157  lambda_x 53.7  CRPS(all px) 0.1191  SSR 1.001  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2251  | orientation C dt 1.0 sigma2 0.9985  (1567s)
+  window 36/45 (start 275): RMSE 0.2141  OI 0.2221  (1611s)
+  window 37/45 (start 163): RMSE 0.2159  OI 0.2258  (1653s)
+  window 38/45 (start 113): RMSE 0.2242  OI 0.2315  (1698s)
+  window 39/45 (start 237): RMSE 0.2192  OI 0.2255  (1741s)
+  window 40/45 (start 14): RMSE 0.2200  OI 0.2278  (1784s)
+
+EXACT POSTERIOR on 40 test windows: RMSE 0.2161  lambda_x 51.5  CRPS(all px) 0.1193  SSR 0.999  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2253  | orientation C dt 1.0 sigma2 0.9985  (1784s)
+  window 41/45 (start 141): RMSE 0.2153  OI 0.2240  (1829s)
+  window 42/45 (start 194): RMSE 0.2169  OI 0.2249  (1872s)
+  window 43/45 (start 36): RMSE 0.2160  OI 0.2244  (1916s)
+  window 44/45 (start 97): RMSE 0.2189  OI 0.2259  (1959s)
+  window 45/45 (start 136): RMSE 0.2161  OI 0.2264  (2001s)
+
+EXACT POSTERIOR on 45 test windows: RMSE 0.2161  lambda_x 51.5  CRPS(all px) 0.1194  SSR 0.999  rank_dev 0.26  | OI of the file on the same windows: RMSE 0.2253  | orientation C dt 1.0 sigma2 0.9985  (2001s)
+method,members,spread,rmse,ssr,crps_all,rank_dev,ranks,bias,ssr_debiased
+ExactPosterior,20,0.21610034978842038,0.22169321538173342,0.9988441193275445,0.11937481150083534,0.2625804166747991,91963 40326 40312 40498 40687 40612 40321 40357 40863 40547 40585 40228 40191 40189 40570 40245 40087 40117 40225 40555 40522,-0.0003217533464810406,0.999760811810304
+method,frame,spread,rmse,ssr,crps_all,rank_dev,bias
+ExactPosterior,0,0.21947698861440806,0.22446180551205241,1.001938789302021,0.12079794172465076,0.26932552830068757,0.00016217962584572207
+ExactPosterior,1,0.21464791228423463,0.21973333292748828,1.0009799423187171,0.118037993346253,0.25958567339769223,0.000740973688413974
+ExactPosterior,2,0.2133211955132301,0.2187314592153727,0.9993495200008631,0.11754245425200503,0.25429173818885875,-0.0017514687537546838
+ExactPosterior,3,0.2144162995171398,0.22080158210048625,0.9950622833723529,0.11899053332799964,0.26523691752217804,-0.0007224221501453387
+ExactPosterior,4,0.21856955222615326,0.22467037875461315,0.9968699269632761,0.12150513485326826,0.26596797760465657,-3.802914276487669e-05
+Method,RMSE,lambda_x,CRPS
+Exact posterior (45 test windows),0.2161 $\pm$ 0.0047,51.5 $\pm$ 44.5,0.1194
+[run_step] ok in 2003.6 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261119-104409_gp_exact_posterior2

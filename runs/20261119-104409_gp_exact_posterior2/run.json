@@ -1,0 +1,11 @@
+{
+  "plan_id": "gp_exact_posterior2",
+  "cmd": "cd consistency && python -u rebuttal/gp_exact_posterior.py --members 20 --budget 3000 && cat sbatch_submission/results/GP/ExactPosterior_metrics*.csv",
+  "commit": "58232b7",
+  "host": "sl-mee-br-206",
+  "slurm_job": "78651",
+  "started": "2026-11-19T10:44:53",
+  "status": "ok",
+  "seconds": 2003.6,
+  "finished": "2026-11-19T11:18:16"
+}
