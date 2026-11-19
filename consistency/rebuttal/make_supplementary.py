@@ -30,7 +30,7 @@ METHODS = {
     "SSH_GF": {"FM": "FM_aug", "CM": "CMT_aug", "VarCM": "VarCM_aug_student", "DynFM": "DynFM_v2",
                "DynCM": "DynCMT", "DynVarCM": "VarDynCM_scratch", "UNet": "UNet", "4DVarNet": "4dvarnet_lstm"},
     "SIC": {"FM": "FM_v3", "CM": "CMT_v3", "VarCM": "VarCM_aug_student", "DynFM": "DynFM_v3",
-            "DynCM": "DynCMT_v3", "DynVarCM": "VarDynCM_grid_sic"},
+            "DynCM": "DynCMT_v3", "DynVarCM": "VarDynCM_grid_sic", "UNet": "UNet", "4DVarNet": "4dvarnet_lstm"},
 }
 # methods needed to build another one (teachers, warm starts)
 DEPENDS = {"VarDynCM_grid": ["VarDynCM_scratch"], "VarDynCM_grid_sic": ["VarDynCM_scratch"]}
