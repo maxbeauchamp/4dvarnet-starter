@@ -615,10 +615,10 @@
   {
    "id": "sic_4dvarnet_train",
    "lane": 2,
-   "time": "04:30:00",
+   "time": "01:30:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method 4dvarnet_lstm --reset && python run_metrics.py --xp SIC --method 4dvarnet_lstm",
-   "note": "SIC 4DVarNet-LSTM baseline: masked loss on ASIP, J_o = SAR + OSI SAF block averages"
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method 4dvarnet_lstm",
+   "note": "trained 3h (first run failed at evaluation: prior_cost.pt not saved) -> metrics only, best validation checkpoint"
   },
   {
    "id": "sic_unet_train",
@@ -642,6 +642,14 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT_aug --reset && python run_metrics.py --xp SSH_GF --method CMT_aug",
    "note": "SSH CM distilled from the augmented FM teacher (FM_aug: RMSE 0.059, SSR 0.82)"
+  },
+  {
+   "id": "sic_unet_metrics",
+   "lane": 4,
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method UNet",
+   "note": "SIC UNet: evaluate the best validation checkpoint"
   }
  ]
 }
