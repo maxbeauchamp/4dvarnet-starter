@@ -45,7 +45,9 @@ COPY_FILES = ["environment.yaml", "consistency/calibration.py", "consistency/spe
               "consistency/sbatch_submission/run_training.py", "consistency/sbatch_submission/run_metrics.py",
               "consistency/rebuttal/sic_costs.py" if (ROOT / "consistency/rebuttal/sic_costs.py").exists() else None,
               "consistency/rebuttal/sic_fig.py", "consistency/rebuttal/ssh_transport_fig.py",
-              "consistency/rebuttal/toy_gaussian_targets.py"]
+              "consistency/rebuttal/toy_gaussian_targets.py", "consistency/sbatch_submission/run_nfe_sweep.py",
+              "consistency/rebuttal/gp_nfe_fig.py", "consistency/rebuttal/ssh_nfe_fig.py",
+              "consistency/rebuttal/gp_exact_posterior.py"]
 
 
 def strip_notebook(src, dst):
@@ -110,6 +112,8 @@ def main():
             s2 = re.sub(r"\bOdyssey\b", "the cluster", s2)
             s2 = re.sub(r" ?added for the ICLR rebuttal \(reviewers[^)]*\)", "", s2)
             s2 = re.sub(r" ?\(ICLR rebuttal[^)]*\)", "", s2)
+            s2 = re.sub(r" ?\(rebuttal run [^)]*\)", "", s2)
+            s2 = s2.replace(" of the rebuttal", "")
             s2 = re.sub(r"\(rebuttal, ?", "(", s2)
             s2 = re.sub(r" ?\(rebuttal\) ?", " ", s2)
             s2 = s2.replace("in this\\n\",\n    \"        # conversation)", "in this\\n\",\n    \"        # version)")
@@ -169,8 +173,8 @@ observations and the OSI SAF field on the same grid (Appendix D.3). Download lin
 Train, then evaluate (20 members, full test set):
 
     cd consistency/sbatch_submission
-    python run_training.py --xp SSH_GF --method FM_v2 --reset
-    python run_metrics.py  --xp SSH_GF --method FM_v2
+    python run_training.py --xp SSH_GF --method FM_aug --reset
+    python run_metrics.py  --xp SSH_GF --method FM_aug
 
 Teachers must be trained before the models distilled from them (FM before CM, DynFM before DynCM), and
 `VarDynCM_scratch` before its fine-tuned variants. Methods of each table row:
@@ -188,6 +192,17 @@ Teachers must be trained before the models distilled from them (FM before CM, Dy
 * `consistency/scripts/sic_fig.py`, `consistency/scripts/ssh_transport_fig.py`: SIC example and transport figures, from
   the ensembles dumped by the notebooks with `--set FIG_DUMP=True`.
 * `consistency/scripts/toy_gaussian_targets.py`: the Gaussian example of Appendix E.
+* Number of network evaluations. GP: `python run_nfe_sweep.py --method CMT --grid 2,3,5,9,16` (and the other
+  methods), then `consistency/scripts/gp_nfe_fig.py`. SSH: `python run_metrics.py --xp SSH_GF --method CMT_aug
+  --set NSTEPS_EVAL=5 --out-tag _nfe5` for each model and step count (DynVarCM: `--set FRAME_GRID=True
+  --set FRAME_REFINE_SWEEP=True --set NSTEPS_EVAL=K --out-tag _nfe_frK`), then `consistency/scripts/ssh_nfe_fig.py`.
+
+## Exact GP posterior
+
+`python consistency/scripts/gp_exact_posterior.py` computes the exact Gaussian posterior of the GP benchmark on its
+test windows (the implicit SPDE scheme gives a block-tridiagonal window precision; exact conditioning on the
+noise-free observations, banded Cholesky) and scores its mean and 20 exact posterior samples with the same code as
+the models (row "Exact posterior" of Table 2). CPU only, a few minutes.
 
 All runs use one GPU (A100 or H100, 40-80 GB).
 """
