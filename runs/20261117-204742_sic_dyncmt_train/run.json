@@ -1,8 +1,0 @@
-{
-  "plan_id": "sic_dyncmt_train",
-  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method DynCMT --reset && python run_metrics.py --xp SIC --method DynCMT",
-  "commit": "8fdcfa0",
-  "host": "sl-mee-br-211",
-  "slurm_job": "77662",
-  "started": "2026-11-17T20:47:58"
-}

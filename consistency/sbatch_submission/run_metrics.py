@@ -7,7 +7,7 @@ and re-executes the notebook with N_SAMPLES=50 for the 6 generative methods
 (CM, VarCM, DynCM, VarDynCM, FM, DynFM) or N_SAMPLES=1 for the 2 deterministic
 methods (UNet, 4dvarnet_lstm) — cf. `generative` in methods.yaml.
 
-Writes results/<xp>/<method>_metrics.csv, later consumed by make_latex_table.py.
+Writes results/<xp>/<method>_metrics.csv, copied to consistency/paper_results/ for the tables of the paper.
 
 Usage:
     python run_metrics.py --xp GP --method CM

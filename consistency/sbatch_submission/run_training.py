@@ -50,9 +50,7 @@ def main():
     notebook_in = NOTEBOOKS_ROOT / cfg["xp_notebook_dir"][args.xp] / xp_cfg["notebook"]
     if not notebook_in.exists():
         raise SystemExit(
-            f"Notebook not found: {notebook_in}\n"
-            f"(status declared in methods.yaml: {xp_cfg['status']} — "
-            f"if 'generated', run generate_missing_notebooks.py first)"
+            f"Notebook not found: {notebook_in}"
         )
 
     out_dir = RESULTS_ROOT / args.xp

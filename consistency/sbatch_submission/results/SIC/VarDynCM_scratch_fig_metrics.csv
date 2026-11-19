@@ -1,2 +1,0 @@
-Method,RMSE,lambda_x,CRPS
-"VarDynCM (ens. mean, MIZ, full test set)",0.1604 $\pm$ 0.0611,93.7 $\pm$ 96.6,0.0790 $\pm$ 0.0443

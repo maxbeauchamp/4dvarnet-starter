@@ -1,108 +1,0 @@
-
-========================================================================================
-[run_metrics] STARTING DynCMT / SSH_GF
-========================================================================================
-[run_metrics] DynCMT / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/DynCMT_fig_metrics.ipynb (n_members=20)
-[run_metrics] params = {'MAX_EPOCHS': 600, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/DynCMT_fig_metrics.csv', 'SKIP_TRAINING': True, 'FIG_DUMP': True}
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
-  validate(nb)
-Executing:   0%|          | 0/37 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/37 [00:04<02:42,  4.51s/cell]Executing:   8%|▊         | 3/37 [00:27<05:33,  9.82s/cell]Wed Nov 18 13:12:34 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.195.03             Driver Version: 570.195.03     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA H100 NVL                On  |   00000000:82:00.0 Off |                    0 |
-| N/A   33C    P0             64W /  400W |       0MiB /  95830MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  14%|█▎        | 5/37 [00:28<02:35,  4.85s/cell]Executing:  19%|█▉        | 7/37 [00:33<02:00,  4.02s/cell]Norm stats (0.3047108663749711, 0.3879814586804132)
-window_size (C) = 9
-TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
-Executing:  27%|██▋       | 10/37 [00:48<01:57,  4.34s/cell][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 9, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=28 input channels)
-[OK] Parameters: 33,004,801
-
-w_obs sanity check (C=9, t_IC=0.111):
-  t=0.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.056  →  w=[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.111  →  w=[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.121  →  w=[0.9100000262260437, 0.0899999812245369, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.500  →  w=[0.0, 0.0, 0.0, 0.5000001192092896, 0.49999988079071045, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=1.000  →  w=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
-Executing:  38%|███▊      | 14/37 [00:48<00:54,  2.35s/cell]Executing:  49%|████▊     | 18/37 [00:49<00:27,  1.45s/cell][OK] Resuming from: logs_DynCMT_ssh_gf/checkpoints/last.ckpt
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using bfloat16 Automatic Mixed Precision (AMP)
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using bfloat16 Automatic Mixed Precision (AMP)
-GPU available: True (cuda), used: True
-
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-[DynCMT] DynFM-teacher targets from logs_DynFM_ssh_gf_v2
-[TRAINING] SKIP_TRAINING=True -- loading weights from logs_DynCMT_ssh_gf/checkpoints/last.ckpt directly (trainer.fit() not called)
-[OK] EMA model saved → logs_DynCMT_ssh_gf/best_model
-Executing:  57%|█████▋    | 21/37 [00:53<00:23,  1.44s/cell][OK] Model loaded from: logs_DynCMT_ssh_gf/best_model
-     Input channels: 3*C+1 = 28  (x | y_filled | mask_y | w_obs)
-Executing:  62%|██████▏   | 23/37 [00:53<00:16,  1.17s/cell][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Executing:  68%|██████▊   | 25/37 [00:53<00:10,  1.11cell/s]  Sample 1/20 done  Sample 2/20 done  Sample 3/20 done  Sample 4/20 done  Sample 5/20 done  Sample 6/20 done  Sample 7/20 done  Sample 8/20 done  Sample 9/20 done  Sample 10/20 done  Sample 11/20 done  Sample 12/20 done  Sample 13/20 done  Sample 14/20 done  Sample 15/20 done  Sample 16/20 done  Sample 17/20 done  Sample 18/20 done  Sample 19/20 done  Sample 20/20 done
-[OK] 20 ensemble members generated  (nsteps=37)
-Physical frame indices IC→last: [11, 14, 17, 20, 23, 27, 30, 33, 36]
-  → solver_times: ['0.31', '0.39', '0.47', '0.56', '0.64', '0.75', '0.83', '0.92', '1.00']
-  IC expected at s ≈ 0.30  (step ~11)
-
-Sample shape: torch.Size([1, 1, 128, 128])
-Process shape: torch.Size([37, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
-Executing:  73%|███████▎  | 27/37 [01:05<00:21,  2.13s/cell]  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_obs.png
-  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_gt.png
-  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_dyncm_mean.png
-  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_dyncm_spread.png
-  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_member0.png
-  Saved: figures/DynCMT_ssh_gf/DynCMT_ssh_gf_member1.png
-Executing:  84%|████████▍ | 31/37 [01:07<00:08,  1.41s/cell]step_indices (21 cols) = [0, 3, 7, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 28, 30, 31, 33, 34, 36]
-phys_col                   = [4, 6, 8, 10, 12, 14, 16, 18, 20]
-spinup_cols                = [0, 1, 2, 3]
-  Saved: figures/DynCMT_ssh_gf/DynCM_ssh_gf_transport.png
-  Saved: figures/DynCMT_ssh_gf/DynCM_ssh_gf_variance_collapse.png
-Std step 0 (noise): 9.9679   Std last step: 1.0540   GT std: 1.0138
-Executing:  89%|████████▉ | 33/37 [01:08<00:05,  1.26s/cell][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-[FIG_DUMP] saved /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/figdump/DynCM_ssh_win000.npz 37 states, phys_idx [11, 14, 17, 20, 23, 27, 30, 33, 36]
-Executing:  95%|█████████▍| 35/37 [01:20<00:04,  2.44s/cell][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Evaluated 657 (test sample, timestep) pairs across the full test set
-
-## Metrics -- full test set (whole domain), n=657 (sample,t) pairs
-
-Calibration (20 members): SSR 0.980  spread 0.0775  RMSE 0.0811  CRPS(all px) 0.0415  rank dev 0.77 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/DynCMT_fig_metrics_calibration.csv
-Executing:  97%|█████████▋| 36/37 [14:37<02:02, 122.37s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/DynCMT_fig_metrics.csv
-Executing: 100%|██████████| 37/37 [14:40<00:00, 23.78s/cell] 
-[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/DynCMT_fig_metrics.csv
-[run_step] ok in 887.3 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261118-131110_ssh_dyncm_fig_dump

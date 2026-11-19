@@ -1,95 +1,0 @@
-[job] 2026-11-16T22:29:41+01:00 host=sl-mee-br-206 job=76735 run_dir=runs/20261116-222911_sic_fm_v2_eval args=--cmd cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method FM_v2
-NVIDIA A100-SXM4-80GB, 81920 MiB
-
-========================================================================================
-[run_metrics] STARTING FM_v2 / SIC
-========================================================================================
-[run_metrics] FM_v2 / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.ipynb (n_members=20)
-[run_metrics] params = {'MAX_EPOCHS': 400, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv', 'SKIP_TRAINING': True, 'RUN_TAG': '_v2', 'SELECT_BY_VAL': True}
-Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:03<01:42,  3.79s/cell]Executing:  11%|█         | 3/28 [00:24<03:38,  8.74s/cell]Mon Nov 16 22:30:12 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:8B:00.0 Off |                    0 |
-| N/A   48C    P0             74W /  400W |       0MiB /  81920MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  18%|█▊        | 5/28 [00:25<01:41,  4.41s/cell]Executing:  25%|██▌       | 7/28 [00:35<01:36,  4.59s/cell]C=9, H=240, W=240
-Train: 300, Val: 50, Test: 43
-asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
-asip range: [0.000, 1.000]
-asip std: 0.4139
-NaN fraction in asip: 22.2%
-Executing:  32%|███▏      | 9/28 [00:49<01:45,  5.57s/cell]Executing:  39%|███▉      | 11/28 [00:51<01:06,  3.93s/cell]Executing:  43%|████▎     | 12/28 [00:51<00:51,  3.19s/cell]LitFlowMatchingSIC defined
-Executing:  50%|█████     | 14/28 [00:51<00:29,  2.07s/cell]Valid checkpoint: logs_FM_sic_v2/checkpoints/last.ckpt
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using 16bit Automatic Mixed Precision (AMP)
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using 16bit Automatic Mixed Precision (AMP)
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
-  scaler = torch.cuda.amp.GradScaler()
-GPU available: True (cuda), used: True
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
-  scaler = torch.cuda.amp.GradScaler()
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-[TRAINING] SKIP_TRAINING=True -- loading weights from logs_FM_sic_v2/checkpoints/last.ckpt directly (trainer.fit() not called)
-[SELECT] best validation CRPS checkpoint: logs_FM_sic_v2/checkpoints/val_crps=0.07188-epoch=389.ckpt
-EMA model saved to: logs_FM_sic_v2/best_model
-Executing:  54%|█████▎    | 15/28 [01:03<00:52,  4.02s/cell]EMA UNetFM loaded from logs_FM_sic_v2/best_model
-  Params : 32,289,417
-Executing:  61%|██████    | 17/28 [01:03<00:28,  2.60s/cell][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Test batch  asip:(2, 9, 240, 240)  y_cond:(2, 18, 240, 240)
-NaN fraction in target: 54.1%
-Executing:  68%|██████▊   | 19/28 [01:05<00:17,  1.99s/cell]  member 1/20 done  member 2/20 done  member 3/20 done  member 4/20 done  member 5/20 done  member 6/20 done  member 7/20 done  member 8/20 done  member 9/20 done  member 10/20 done  member 11/20 done  member 12/20 done  member 13/20 done  member 14/20 done  member 15/20 done  member 16/20 done  member 17/20 done  member 18/20 done  member 19/20 done  member 20/20 done
-Ensemble: (20, 2, 9, 240, 240)
-Executing:  75%|███████▌  | 21/28 [02:10<01:25, 12.19s/cell]Masked-out fraction (no ASIP obs in window): 14.8%
-  Saved: figures/FM_sic_v2/FM_sic_v2_asip_gt.png
-  Saved: figures/FM_sic_v2/FM_sic_v2_input.png
-  Saved: figures/FM_sic_v2/FM_sic_v2_osisaf.png
-  Saved: figures/FM_sic_v2/FM_sic_v2_fm_mean.png
-  Saved: figures/FM_sic_v2/FM_sic_v2_fm_spread.png
-  Saved: figures/FM_sic_v2/FM_sic_v2_member0.png
-Executing:  82%|████████▏ | 23/28 [02:12<00:42,  8.51s/cell]  Saved: figures/FM_sic_v2/FM_sic_v2_transport.png
-Executing:  89%|████████▉ | 25/28 [02:14<00:18,  6.25s/cell][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
-
-## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
-
-Calibration (20 members): SSR 0.569  spread 0.0533  RMSE 0.0960  CRPS(all px) 0.0465  rank dev 0.41 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics_calibration.csv
-Executing:  96%|█████████▋| 27/28 [25:54<03:44, 224.27s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv
-Executing: 100%|██████████| 28/28 [25:56<00:00, 55.58s/cell] 
-[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/FM_v2_metrics.csv
-[run_step] ok in 1561.8 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261116-222911_sic_fm_v2_eval
-[job] 2026-11-16T22:55:44+01:00 exit=0

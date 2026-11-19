@@ -101,7 +101,7 @@ def rsync(src, dst, extra=()):
 
 def remote_repo():
     r = CFG["ODY_REPO"].rstrip("/")
-    if not r.endswith("4dvarnet-starter-iclr"):
+    if CFG.get("SYNC_MODE", "git") == "rsync" and not r.endswith("4dvarnet-starter-iclr"):
         sys.exit("ODY_REPO must end with '4dvarnet-starter-iclr' (safety check before rsync --delete)")
     return r
 
@@ -122,6 +122,14 @@ def sync_code():
     dirty = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()
     (HERE / "COMMIT").write_text(head + ("-dirty" if dirty else "") + "\n")
     ssh(f"mkdir -p {shlex.quote(r)}/runs")
+    if CFG.get("SYNC_MODE", "git") == "git":
+        # ODY_REPO is a git working copy of the branch (default): fast-forward it to origin/<branch>. Untracked files
+        # (checkpoints logs_*, results, figures) are never touched; a local change of a tracked file stops the sync.
+        br = CFG.get("GIT_BRANCH", "consistency_models")
+        q = shlex.quote(r)
+        ssh(f"cd {q} && test \"$(git rev-parse --abbrev-ref HEAD)\" = {shlex.quote(br)} && "
+            f"git fetch -q origin {shlex.quote(br)} && git merge -q --ff-only origin/{shlex.quote(br)}")
+        return
     rsync(f"{REPO}/", f"{CFG['ODY_HOST']}:{r}/",
           ["--delete", "--exclude", ".git/", "--exclude", "/data", "--exclude", "runs/", "--exclude", ".pilot/",
            "--exclude", "results/", "--exclude", "logs*", "--exclude", "lightning_logs", "--exclude", "*.ckpt",
@@ -270,7 +278,8 @@ def evaluate(expr, run_dir):
 
 
 def push():
-    paths = [p for p in ("results", "runs", "consistency/sbatch_submission/results", "RUNLOG.md") if (REPO / p).exists()]
+    # results, runs/ and RUNLOG.md stay local (git-ignored); only the paths listed in PUSH_PATHS are committed
+    paths = [p for p in CFG.get("PUSH_PATHS", "").split(",") if p and (REPO / p).exists()]
     if not paths:
         return
     subprocess.run(["git", "-C", str(REPO), "add", *paths], check=True)

@@ -3,7 +3,7 @@
 Problem with the submitted training (`ConsistencyTrainingFewSteps_TimeEmbedding`, pairwise=True): student and
 teacher inputs are built from ONE noise draw, x_s = x0 + s*eps. Those states lie on the forward interpolant,
 not on a probability-flow ODE trajectory, and the L2 optimum is a linear regression that shrinks every
-one-step output towards E[x0 | y] (see consistency/rebuttal/toy_gaussian_targets.py).
+one-step output towards E[x0 | y] (see consistency/scripts/toy_gaussian_targets.py).
 
 Fix (CTM-style distillation, Kim et al. 2024, with a local anchor):
     n ~ U{1..N-1}, k ~ U{0..n-1} (k = n-1 with probability p_local)

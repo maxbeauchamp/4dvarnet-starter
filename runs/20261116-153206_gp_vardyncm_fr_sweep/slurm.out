@@ -1,287 +1,0 @@
-[job] 2026-11-16T15:32:12+01:00 host=sl-mee-br-206 job=76485 run_dir=runs/20261116-153206_gp_vardyncm_fr_sweep args=--cmd cd consistency/sbatch_submission && python run_nfe_sweep.py --method VarDynCM_scratch_fr --grid 1,2,3,4,6 ; python run_nfe_sweep.py --method VarDynCM_grid_fr --grid 1,2,3,4,6 ; cat results/GP/VarDynCM_*_fr_nfe_sweep.csv
-NVIDIA A100-SXM4-80GB, 81920 MiB
-
-========================================================================================
-[run_nfe_sweep] STARTING VarDynCM_scratch_fr / GP
-========================================================================================
-[run_nfe_sweep] VarDynCM_scratch_fr -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_scratch_fr_nfe_sweep.ipynb
-[run_nfe_sweep] grid=[1, 2, 3, 4, 6]  n_test_batches=3  n_samples_sweep=20
-Unable to parse line 23 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
-Passed unknown parameter: COND_MODE
-Executing:   0%|          | 0/40 [00:00<?, ?cell/s]Executing:   2%|▎         | 1/40 [00:03<02:28,  3.80s/cell]Executing:   8%|▊         | 3/40 [00:21<04:35,  7.45s/cell]Mon Nov 16 15:32:39 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
-| N/A   32C    P0             66W /  400W |       0MiB /  81920MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  15%|█▌        | 6/40 [00:21<01:42,  3.02s/cell]Executing:  22%|██▎       | 9/40 [00:22<00:50,  1.63s/cell]Executing:  28%|██▊       | 11/40 [00:25<00:48,  1.69s/cell]<xarray.Dataset>
-Dimensions:    (time: 300, lat: 128, lon: 128)
-Coordinates:
-  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
-  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
-  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
-Data variables:
-    x          (time, lat, lon) float32 ...
-    y          (time, lat, lon) float32 ...
-    OI         (time, lat, lon) float64 ...
-    H11        (lat, lon) float32 ...
-    H22        (lat, lon) float32 ...
-    H12        (lat, lon) float32 ...
-    Time       (time) int64 ...
-    longitude  (lon) int64 ...
-    latitude   (lat) int64 ...
-Attributes:
-    description:  SPDE-based diffusion GP
-
-Variables:
-  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
-  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
-  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
-  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  Time: ('time',)  shape=(300,)  dtype=int64
-  longitude: ('lon',)  shape=(128,)  dtype=int64
-  latitude: ('lat',)  shape=(128,)  dtype=int64
-Executing:  30%|███       | 12/40 [00:31<01:09,  2.48s/cell][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
-[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
-window_size C      = 5
-t_IC (transition)  = 0.2000  (= 1/C)
-Spatial size       = 128 x 128
-TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
-Executing:  32%|███▎      | 13/40 [00:32<00:57,  2.12s/cell][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
-[OK] Parameters: 32,997,889
-
-w_obs sanity check (C=5, spinup_boundary=0.7):
-  t=0.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
-  t=0.100  →  w=[0.0, 0.0, 0.0, 0.5714285969734192, 0.4285714030265808]  (sum=1.000)
-  t=0.350  →  w=[0.0, 0.0, 1.0, 0.0, 0.0]  (sum=1.000)
-  t=0.690  →  w=[0.9428572058677673, 0.05714280530810356, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.700  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.710  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.900  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=1.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-Executing:  42%|████▎     | 17/40 [00:33<00:25,  1.11s/cell]Executing:  57%|█████▊    | 23/40 [00:33<00:08,  1.90cell/s][RESUME] last checkpoint: logs_VarDynCM_crps_spde_grad_scratch/checkpoints/last.ckpt
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-GPU available: True (cuda), used: True
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[TRAINING] SKIP_TRAINING=True -- loading weights from logs_VarDynCM_crps_spde_grad_scratch/checkpoints/last.ckpt directly (trainer.fit() not called)
-[SELECT] best validation CRPS checkpoint: logs_VarDynCM_crps_spde_grad_scratch/checkpoints/val_crps=0.90214-epoch=198.ckpt
-Loading checkpoint: logs_VarDynCM_crps_spde_grad_scratch/checkpoints/val_crps=0.90214-epoch=198.ckpt
-Executing:  65%|██████▌   | 26/40 [00:38<00:11,  1.17cell/s][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Executing:  70%|███████   | 28/40 [00:38<00:08,  1.43cell/s]
-[OK] 2 ensemble members generated  (nsteps=25)
-Physical frame indices (IC→last): [25, 50, 75, 100, 125]
-  → solver_times: ['1.04', '2.08', '3.12', '4.17', '5.21']
-  IC expected at s ≈ 0.30  (step ~7)
-Process shape: torch.Size([126, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
-Executing:  75%|███████▌  | 30/40 [00:45<00:13,  1.33s/cell]  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_obs.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_gt.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_oi.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_vardyncm_mean.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_vardyncm_spread.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_member0.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_crps_spde_scratch_fr_member1.png
-Executing:  85%|████████▌ | 34/40 [00:47<00:05,  1.05cell/s]step_indices (13 cols) = [0, 8, 16, 24, 25, 37, 50, 62, 75, 87, 100, 112, 125]
-phys_col                   = [4, 6, 8, 10, 12]
-spinup_cols                = [0, 1, 2, 3, 5]
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_spde_transport.png
-  Saved: figures/VarDynCM_crps_spde_scratch_fr/VarDynCM_spde_variance_collapse.png
-Std step 0 (noise): 2.9907   Std last step: 1.1593   GT std: 0.9939
-Executing:  90%|█████████ | 36/40 [00:48<00:03,  1.10cell/s][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Evaluated 225 (test sample, timestep) pairs across the full test set
-
-## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
-
-Calibration (2 members): SSR 0.631  spread 0.1262  RMSE 0.2451  CRPS(all px) 0.1651  rank dev 0.39 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_scratch_fr_metrics_nfe_placeholder_calibration.csv
-Executing:  95%|█████████▌| 38/40 [05:13<01:04, 32.44s/cell][NFE sweep][VarDynCM] N=  1  NFE=5.0  RMSE=0.2015  CRPS=0.0038  SSR=0.854  wall=118.6 ms/sample
-[NFE sweep][VarDynCM] N=  2  NFE=10.0  RMSE=0.2170  CRPS=0.0333  SSR=0.633  wall=230.5 ms/sample
-[NFE sweep][VarDynCM] N=  3  NFE=15.0  RMSE=0.2188  CRPS=0.0420  SSR=0.715  wall=346.1 ms/sample
-[NFE sweep][VarDynCM] N=  4  NFE=20.0  RMSE=0.2225  CRPS=0.0427  SSR=0.728  wall=455.8 ms/sample
-[NFE sweep][VarDynCM] N=  6  NFE=30.0  RMSE=0.2239  CRPS=0.0464  SSR=0.690  wall=686.0 ms/sample
-[NFE sweep] composition gap (RMS difference to N=6, in units of the spread): {1: 1.593, 2: 1.419, 3: 1.336, 4: 1.185, 6: 0.0}
-[NFE sweep][VarDynCM] saved -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_scratch_fr_nfe_sweep.csv
-Executing:  98%|█████████▊| 39/40 [07:04<00:43, 43.84s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_scratch_fr_metrics_nfe_placeholder.csv
-Executing: 100%|██████████| 40/40 [07:07<00:00, 10.68s/cell]
-[run_nfe_sweep] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_scratch_fr_nfe_sweep.csv
-
-========================================================================================
-[run_nfe_sweep] STARTING VarDynCM_grid_fr / GP
-========================================================================================
-[run_nfe_sweep] VarDynCM_grid_fr -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_grid_fr_nfe_sweep.ipynb
-[run_nfe_sweep] grid=[1, 2, 3, 4, 6]  n_test_batches=3  n_samples_sweep=20
-Unable to parse line 23 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
-Passed unknown parameter: COND_MODE
-Passed unknown parameter: WARM_FROM
-Executing:   0%|          | 0/40 [00:00<?, ?cell/s]Executing:   2%|▎         | 1/40 [00:01<00:42,  1.10s/cell]Executing:   8%|▊         | 3/40 [00:05<01:15,  2.03s/cell]Mon Nov 16 15:39:31 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
-| N/A   38C    P0             68W /  400W |       0MiB /  81920MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  15%|█▌        | 6/40 [00:06<00:30,  1.11cell/s]Executing:  25%|██▌       | 10/40 [00:06<00:14,  2.01cell/s]<xarray.Dataset>
-Dimensions:    (time: 300, lat: 128, lon: 128)
-Coordinates:
-  * lon        (lon) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
-  * lat        (lat) int64 0 1 2 3 4 5 6 7 8 ... 120 121 122 123 124 125 126 127
-  * time       (time) int64 0 1 2 3 4 5 6 7 ... 292 293 294 295 296 297 298 299
-Data variables:
-    x          (time, lat, lon) float32 ...
-    y          (time, lat, lon) float32 ...
-    OI         (time, lat, lon) float64 ...
-    H11        (lat, lon) float32 ...
-    H22        (lat, lon) float32 ...
-    H12        (lat, lon) float32 ...
-    Time       (time) int64 ...
-    longitude  (lon) int64 ...
-    latitude   (lat) int64 ...
-Attributes:
-    description:  SPDE-based diffusion GP
-
-Variables:
-  x: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
-  y: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float32
-  OI: ('time', 'lat', 'lon')  shape=(300, 128, 128)  dtype=float64
-  H11: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  H22: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  H12: ('lat', 'lon')  shape=(128, 128)  dtype=float32
-  Time: ('time',)  shape=(300,)  dtype=int64
-  longitude: ('lon',)  shape=(128,)  dtype=int64
-  latitude: ('lat',)  shape=(128,)  dtype=int64
-Executing:  30%|███       | 12/40 [00:08<00:17,  1.63cell/s][SPDEDataModule] T=300, window=5, stride=1 → 296 windows: train=207, val=44, test=45
-[SPDEDataModule] Norm stats (mean, std): (-0.00018237734911963344, 0.249156191945076)
-window_size C      = 5
-t_IC (transition)  = 0.2000  (= 1/C)
-Spatial size       = 128 x 128
-TrainingItem: input (y) (5, 128, 128)  tgt (x) (5, 128, 128)
-Executing:  32%|███▎      | 13/40 [00:09<00:15,  1.71cell/s][OK] UNet forward: x torch.Size([1, 1, 100, 100]) + y torch.Size([1, 5, 100, 100]) -> torch.Size([1, 1, 100, 100])  (3C+1=16 input channels)
-[OK] Parameters: 32,997,889
-
-w_obs sanity check (C=5, spinup_boundary=0.7):
-  t=0.000  →  w=[0.0, 0.0, 0.0, 0.0, 1.0]  (sum=1.000)
-  t=0.100  →  w=[0.0, 0.0, 0.0, 0.5714285969734192, 0.4285714030265808]  (sum=1.000)
-  t=0.350  →  w=[0.0, 0.0, 1.0, 0.0, 0.0]  (sum=1.000)
-  t=0.690  →  w=[0.9428572058677673, 0.05714280530810356, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.700  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.710  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=0.900  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-  t=1.000  →  w=[1.0, 0.0, 0.0, 0.0, 0.0]  (sum=1.000)
-Executing:  42%|████▎     | 17/40 [00:10<00:09,  2.39cell/s]Executing:  57%|█████▊    | 23/40 [00:10<00:03,  4.67cell/s]/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-GPU available: True (cuda), used: True
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[RESUME] last checkpoint: logs_VarDynCM_crps_spde_grad_grid/checkpoints/last.ckpt
-[TRAINING] SKIP_TRAINING=True -- loading weights from logs_VarDynCM_crps_spde_grad_grid/checkpoints/last.ckpt directly (trainer.fit() not called)
-[SELECT] best validation CRPS checkpoint: logs_VarDynCM_crps_spde_grad_grid/checkpoints/val_crps=0.90084-epoch=038.ckpt
-Loading checkpoint: logs_VarDynCM_crps_spde_grad_grid/checkpoints/val_crps=0.90084-epoch=038.ckpt
-Executing:  65%|██████▌   | 26/40 [00:14<00:07,  1.84cell/s][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Executing:  70%|███████   | 28/40 [00:14<00:05,  2.25cell/s]
-[OK] 2 ensemble members generated  (nsteps=25)
-Physical frame indices (IC→last): [25, 50, 75, 100, 125]
-  → solver_times: ['1.04', '2.08', '3.12', '4.17', '5.21']
-  IC expected at s ≈ 0.30  (step ~7)
-Process shape: torch.Size([126, 1, 1, 128, 128])  (nsteps, B=1, 1, H, W)
-Executing:  75%|███████▌  | 30/40 [00:21<00:10,  1.07s/cell]  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_obs.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_gt.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_oi.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_vardyncm_mean.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_vardyncm_spread.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_member0.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_crps_spde_grid_fr_member1.png
-Executing:  85%|████████▌ | 34/40 [00:22<00:04,  1.23cell/s]step_indices (13 cols) = [0, 8, 16, 24, 25, 37, 50, 62, 75, 87, 100, 112, 125]
-phys_col                   = [4, 6, 8, 10, 12]
-spinup_cols                = [0, 1, 2, 3, 5]
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_spde_transport.png
-  Saved: figures/VarDynCM_crps_spde_grid_fr/VarDynCM_spde_variance_collapse.png
-Std step 0 (noise): 2.9907   Std last step: 0.9116   GT std: 0.9939
-Executing:  90%|█████████ | 36/40 [00:24<00:03,  1.24cell/s][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Evaluated 225 (test sample, timestep) pairs across the full test set
-
-## Metrics -- full test set (whole domain), n=225 (sample,t) pairs
-
-Calibration (2 members): SSR 0.638  spread 0.1140  RMSE 0.2189  CRPS(all px) 0.1450  rank dev 0.35 -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_grid_fr_metrics_nfe_placeholder_calibration.csv
-Executing:  95%|█████████▌| 38/40 [04:43<01:02, 31.37s/cell][NFE sweep][VarDynCM] N=  1  NFE=5.0  RMSE=0.1983  CRPS=0.0049  SSR=0.813  wall=125.1 ms/sample
-[NFE sweep][VarDynCM] N=  2  NFE=10.0  RMSE=0.1992  CRPS=0.0075  SSR=0.795  wall=236.4 ms/sample
-[NFE sweep][VarDynCM] N=  3  NFE=15.0  RMSE=0.2005  CRPS=0.0044  SSR=0.778  wall=353.9 ms/sample
-[NFE sweep][VarDynCM] N=  4  NFE=20.0  RMSE=0.2014  CRPS=0.0053  SSR=0.782  wall=473.0 ms/sample
-[NFE sweep][VarDynCM] N=  6  NFE=30.0  RMSE=0.2031  CRPS=0.0048  SSR=0.754  wall=701.2 ms/sample
-[NFE sweep] composition gap (RMS difference to N=6, in units of the spread): {1: 1.549, 2: 1.559, 3: 1.493, 4: 1.344, 6: 0.0}
-[NFE sweep][VarDynCM] saved -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_grid_fr_nfe_sweep.csv
-Executing:  98%|█████████▊| 39/40 [06:36<00:43, 43.30s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_grid_fr_metrics_nfe_placeholder.csv
-Executing: 100%|██████████| 40/40 [06:39<00:00,  9.99s/cell]
-[run_nfe_sweep] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/GP/VarDynCM_grid_fr_nfe_sweep.csv
-method,N,nfe,rmse,crps,spread,ssr,wall_clock_s_per_sample,n_pairs,gap_rel_spread
-VarDynCM,1,5.0,0.1983366221189499,0.004945968264211112,0.15818514623640412,0.8129922970266777,0.1250819351679335,15,1.5492909063733369
-VarDynCM,2,10.0,0.19921498397986095,0.00751636008281852,0.15529217636948317,0.7946198507638275,0.23638992610697945,15,1.5586893504182906
-VarDynCM,3,15.0,0.20054239531358084,0.004427499480100361,0.15299647364131477,0.7780805409224321,0.35389354162228603,15,1.4930484053851638
-VarDynCM,4,20.0,0.20144137839476267,0.005259183499121136,0.15440993211096835,0.78178927868251,0.47303036766437195,15,1.3437380112297341
-VarDynCM,6,30.0,0.20311136643091837,0.004765178640744052,0.1501558729921888,0.7541710332117934,0.7011882636696101,15,0.0
-method,N,nfe,rmse,crps,spread,ssr,wall_clock_s_per_sample,n_pairs,gap_rel_spread
-VarDynCM,1,5.0,0.20146007041136424,0.0037896641761215044,0.1686549515808792,0.8542856228734969,0.11857435007890066,15,1.592721242123592
-VarDynCM,2,10.0,0.21695528229077657,0.033345464607557856,0.13467957679672732,0.6329965779372078,0.2304812236999472,15,1.4192129257221673
-VarDynCM,3,15.0,0.21876950263977052,0.04197175797821331,0.15338853201160824,0.7149767266722687,0.3460684161633253,15,1.3359629857003004
-VarDynCM,4,20.0,0.22254223128159842,0.04268097371541342,0.15892919634170094,0.7284560589617415,0.45577864392350115,15,1.1854714174461558
-VarDynCM,6,30.0,0.2238773117462794,0.046379206191315046,0.15146459583136745,0.6901133064755044,0.6859739377163351,15,0.0
-[run_step] ok in 833.8 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261116-153206_gp_vardyncm_fr_sweep
-[job] 2026-11-16T15:46:05+01:00 exit=0

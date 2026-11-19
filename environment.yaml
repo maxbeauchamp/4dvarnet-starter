@@ -32,5 +32,5 @@ dependencies:
     - geopandas
     - papermill      # consistency/sbatch_submission : exécution paramétrée des notebooks
     - nbformat       # consistency/sbatch_submission : génération/patch des notebooks
-    - pandas         # consistency/sbatch_submission/make_latex_table.py
+    - pandas         
     - pyyaml         # consistency/sbatch_submission : lecture de methods.yaml

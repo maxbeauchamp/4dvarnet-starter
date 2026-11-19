@@ -1,150 +1,0 @@
-
-========================================================================================
-[run_metrics] STARTING 4dvarnet_lstm / SIC
-========================================================================================
-[run_metrics] 4dvarnet_lstm / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/4dvarnet_lstm_metrics.ipynb (n_members=1)
-[run_metrics] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 1, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/4dvarnet_lstm_metrics.csv', 'SKIP_TRAINING': True, 'SOLVER_TYPE': 'lstm'}
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
-  validate(nb)
-Passed unknown parameter: SOLVER_TYPE
-Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:13<08:04, 13.85s/cell]Executing:   8%|▊         | 3/36 [01:37<19:04, 34.68s/cell]Thu Nov 19 06:54:23 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.195.03             Driver Version: 570.195.03     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA H100 NVL                On  |   00000000:82:00.0 Off |                    0 |
-| N/A   34C    P0             65W /  400W |       0MiB /  95830MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  14%|█▍        | 5/36 [01:38<08:47, 17.00s/cell]Executing:  19%|█▉        | 7/36 [02:06<07:35, 15.71s/cell]Executing:  25%|██▌       | 9/36 [02:06<04:24,  9.81s/cell]C=9, H=240, W=240
-Train: 300, Val: 50, Test: 43
-asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
-asip range: [0.000, 1.000]
-asip std: 0.4139
-NaN fraction in asip: 22.2%
-Executing:  31%|███       | 11/36 [02:16<03:23,  8.14s/cell]Executing:  39%|███▉      | 14/36 [02:16<01:42,  4.67s/cell]Executing:  44%|████▍     | 16/36 [02:16<01:06,  3.33s/cell]Executing:  50%|█████     | 18/36 [02:16<00:42,  2.37s/cell]Executing:  56%|█████▌    | 20/36 [02:16<00:27,  1.69s/cell]Executing:  64%|██████▍   | 23/36 [02:17<00:13,  1.05s/cell]Executing:  72%|███████▏  | 26/36 [02:17<00:06,  1.44cell/s]lid checkpoint: logs_4dvarnet_lstm_sic/checkpoints/last.ckpt
-▶ Using ConvLSTM gradient model
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using 16bit Automatic Mixed Precision (AMP)
-
-Using 16bit Automatic Mixed Precision (AMP)
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
-  scaler = torch.cuda.amp.GradScaler()
-GPU available: True (cuda), used: True
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/plugins/precision/amp.py:53: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
-  scaler = torch.cuda.amp.GradScaler()
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-[TRAINING] SKIP_TRAINING=True -- loading weights from logs_4dvarnet_lstm_sic/checkpoints/last.ckpt directly (trainer.fit() not called)
-[SELECT] best validation checkpoint: logs_4dvarnet_lstm_sic/checkpoints/epoch=003-step=152-val_loss=0.0359.ckpt
-Model saved to: logs_4dvarnet_lstm_sic/best_model
-Executing:  78%|███████▊  | 28/36 [02:19<00:06,  1.26cell/s]▶ Loaded prior_cost weights from: logs_4dvarnet_lstm_sic/best_model
-▶ Loaded ConvLSTM gradient model from: logs_4dvarnet_lstm_sic/best_model
-Executing:  83%|████████▎ | 30/36 [02:20<00:04,  1.33cell/s][rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Executing:  86%|████████▌ | 31/36 [02:28<00:09,  1.82s/cell]Executing:  86%|████████▌ | 31/36 [02:31<00:24,  4.88s/cell]
-Traceback (most recent call last):
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_metrics.py", line 116, in <module>
-    main()
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_metrics.py", line 103, in main
-    pm.execute_notebook(
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
-    raise_for_execution_errors(nb, output_path)
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
-    raise error
-papermill.exceptions.PapermillExecutionError: 
----------------------------------------------------------------------------
-Exception encountered at "In [19]":
----------------------------------------------------------------------------
-RuntimeError                              Traceback (most recent call last)
-Cell In[19], line 10
-      6 
-      7 y_filled, mask = sic_pack(y, batch.osisaf.to(device=device, dtype=dtype))
-      8 
-      9 with torch.no_grad():
----> 10     iterates = solver(y_filled, mask, return_all_iterates=True)
-     11 
-     12 b = 0
-     13 x_hat = iterates[-1].detach()
-
-File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
-   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
-   1777 else:
--> 1778     return self._call_impl(*args, **kwargs)
-
-File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
-   1784 # If we don't have any hooks, we want to skip the rest of the logic in
-   1785 # this function, and just call forward.
-   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
-   1787         or _global_backward_pre_hooks or _global_backward_hooks
-   1788         or _global_forward_hooks or _global_forward_pre_hooks):
--> 1789     return forward_call(*args, **kwargs)
-   1791 result = None
-   1792 called_always_called_hooks = set()
-
-Cell In[16], line 102, in Solver4DVarLSTM.forward(self, y_filled, mask, return_all_iterates)
-     98         iterates = [x] if return_all_iterates else None
-     99 
-    100         with torch.set_grad_enabled(True):
-    101             for k in range(self.n_solver):
---> 102                 grad_j = compute_grad_j(x, y_filled, mask, self.obs_cost, self.prior_cost, self.alpha_prior)
-    103                 lstm_out = self.grad_model(grad_j)
-    104                 # Update rule: x_{k+1} = x_k - [1/(k+1) * LSTM(∇J) + η*(k+1)/N * ∇J]
-    105                 x = x - (lstm_out / (k + 1) + self.lr_grad * (k + 1) / self.n_solver * grad_j)
-
-Cell In[13], line 38, in compute_grad_j(state, y_filled, mask, obs_cost, prior_cost, alpha)
-     36 def compute_grad_j(state, y_filled, mask, obs_cost, prior_cost, alpha=1.0):
-     37     x = state.requires_grad_(True)
----> 38     J = obs_cost(x, y_filled, mask) + alpha * prior_cost(x)
-     39     return torch.autograd.grad(J, x, create_graph=True)[0]
-
-File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1778, in Module._wrapped_call_impl(self, *args, **kwargs)
-   1776     return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
-   1777 else:
--> 1778     return self._call_impl(*args, **kwargs)
-
-File ~/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/torch/nn/modules/module.py:1789, in Module._call_impl(self, *args, **kwargs)
-   1784 # If we don't have any hooks, we want to skip the rest of the logic in
-   1785 # this function, and just call forward.
-   1786 if not (self._backward_hooks or self._backward_pre_hooks or self._forward_hooks or self._forward_pre_hooks
-   1787         or _global_backward_pre_hooks or _global_backward_hooks
-   1788         or _global_forward_hooks or _global_forward_pre_hooks):
--> 1789     return forward_call(*args, **kwargs)
-   1791 result = None
-   1792 called_always_called_hooks = set()
-
-Cell In[13], line 7, in ObsCost.forward(self, state, y_filled, mask)
-      6     def forward(self, state: Tensor, y_filled: Tensor, mask: Tensor) -> Tensor:
-----> 7         return self.w * F.mse_loss(state * mask, y_filled * mask)
-
-RuntimeError: The size of tensor a (9) must match the size of tensor b (18) at non-singleton dimension 1
-
-[run_step] exit 1 in 186.8 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261119-065144_sic_4dvarnet_train

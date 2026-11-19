@@ -22,7 +22,7 @@ notebook has no SOLVER_TYPE switch (always the UNet gradient model, no LSTM
 variant) -- see the caveat printed by that cell.
 
 Writes results/<xp>/<method>_nfe_sweep.csv, later consumed by
-plot_nfe_efficiency.py to build the final NFE-vs-RMSE / NFE-vs-CRPS figure.
+consistency/scripts/gp_nfe_fig.py to build the NFE figure of the paper.
 
 Usage:
     python run_nfe_sweep.py --method CM
@@ -49,7 +49,7 @@ METHODS_YAML = HERE / "methods.yaml"
 # same defaults -- kept here too so a sweep can be re-run with a different
 # grid without touching the notebooks).
 #
-# CM and FM (the only two plotted as curves by plot_nfe_efficiency.py) are
+# CM and FM are
 # deliberately built from a SHARED target-NFE list so their measured `nfe`
 # values land on the same x-axis points -- otherwise the two curves cover
 # different NFE ranges (FM does 2 network calls/step via Heun, CM does 1)
@@ -63,24 +63,12 @@ METHODS_YAML = HERE / "methods.yaml"
 _TARGET_NFE_CM_FM = [2, 4, 8, 16, 24, 32, 50, 76, 100]
 
 NFE_GRIDS = {
-    "CM":            [n + 1 for n in _TARGET_NFE_CM_FM],
-    "VarCM":         [1, 2, 3, 5, 8, 12, 15, 20, 30],
-    "DynCM":         [2, 3, 4, 5, 6, 8, 10, 15, 20],
-    "VarDynCM":      [2, 3, 4, 5, 6, 8, 10, 15, 20],
-    "FM":            [n // 2 for n in _TARGET_NFE_CM_FM],
-    "DynFM":         [5, 8, 12, 16, 21, 30, 42],
-    "4dvarnet_lstm": [15],   # fixed by training (n_solver) -- single reference point
-    # ICLR rebuttal: corrected models (same notebooks/sweep cells as CM / DynCM)
-    "CMT":           [n + 1 for n in _TARGET_NFE_CM_FM],
-    "DynCMT":        [2, 3, 4, 5, 6, 8, 10, 15, 20],
-    "VarCM_v3":      [1, 2, 3, 5, 8, 12, 15, 20, 30],
-    "CMT_det":          [n + 1 for n in _TARGET_NFE_CM_FM],
-    "VarCM_scratch2":   [1, 2, 3, 5, 8, 12, 15, 20, 30],
-    "VarDynCM_scratch": [5],                       # frame grid: N+1 frames -> N+1 calls (N ignored)
-    "VarDynCM_scratch_uni": [2, 3, 5, 8, 10, 15, 20],
-    "VarDynCM_grid_uni":    [2, 3, 5, 8, 10, 15, 20],
-    "VarDynCM_scratch_fr":  [1, 2, 3, 4, 6],         # K jumps per segment of the frame grid: NFE = K * C
-    "VarDynCM_grid_fr":     [1, 2, 3, 4, 6],
+    "FM":                [n // 2 for n in _TARGET_NFE_CM_FM],
+    "DynFM":             [5, 8, 12, 16, 21, 30, 42],
+    "CMT":               [n + 1 for n in _TARGET_NFE_CM_FM],
+    "DynCMT":            [2, 3, 4, 5, 6, 8, 10, 15, 20],
+    "VarCM_scratch2":    [1, 2, 3, 5, 8, 12, 15, 20, 30],
+    "VarDynCM_grid_fr":  [1, 2, 3, 4, 6],         # K jumps per segment of the frame grid: NFE = K * C
 }
 
 
@@ -94,10 +82,10 @@ def load_methods():
 # notebooks' sweep cells). Picking an un-instrumented combo would silently
 # produce no CSV (the notebook has nothing gated on RUN_NFE_SWEEP to run),
 # so this is checked explicitly instead of failing downstream in
-# plot_nfe_efficiency.py with a cryptic "missing file" warning.
+# the figure script with a cryptic "missing file" warning.
 INSTRUMENTED_XP_METHODS = {
-    "GP":     {"CM", "VarCM", "DynCM", "VarDynCM", "FM", "DynFM", "4dvarnet_lstm", "CMT", "DynCMT", "VarCM_v3", "CMT_det", "VarCM_scratch2", "VarDynCM_scratch", "VarDynCM_scratch_uni", "VarDynCM_grid_uni", "VarDynCM_scratch_fr", "VarDynCM_grid_fr"},
-    "SSH_GF": {"CM", "FM", "4dvarnet_lstm"},
+    "GP":     set(NFE_GRIDS),
+    "SSH_GF": set(),      # SSH: run_metrics.py --set NSTEPS_EVAL=n --out-tag _nfe<n> (see consistency/scripts/ssh_nfe_fig.py)
     "SIC":    set(),
 }
 

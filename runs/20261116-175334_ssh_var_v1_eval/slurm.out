@@ -1,91 +1,0 @@
-[job] 2026-11-16T17:53:55+01:00 host=sl-mee-br-212 job=76545 run_dir=runs/20261116-175334_ssh_var_v1_eval args=--cmd cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_v1 && python run_metrics.py --xp SSH_GF --method VarDynCM_v1
-NVIDIA H100 NVL, 95830 MiB
-
-========================================================================================
-[run_metrics] STARTING VarCM_v1 / SSH_GF
-========================================================================================
-[run_metrics] VarCM_v1 / SSH_GF -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_v1_metrics.ipynb (n_members=20)
-[run_metrics] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 20, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SSH_GF/VarCM_v1_metrics.csv', 'SKIP_TRAINING': True, 'COND_MODE': 'grad'}
-Passed unknown parameter: COND_MODE
-Executing:   0%|          | 0/36 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/36 [00:05<03:05,  5.29s/cell]Executing:   8%|▊         | 3/36 [00:28<05:27,  9.94s/cell]Mon Nov 16 17:54:33 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.172.08             Driver Version: 570.172.08     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA H100 NVL                Off |   00000000:E3:00.0 Off |                    0 |
-| N/A   37C    P0             64W /  400W |       0MiB /  95830MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  14%|█▍        | 5/36 [00:28<02:32,  4.91s/cell]Executing:  19%|█▉        | 7/36 [00:35<02:01,  4.18s/cell]Norm stats (0.3047108663749711, 0.3879814586804132)
-window_size (C) = 9
-TrainingItem shapes -- input (y): (9, 128, 128), tgt (x): (9, 128, 128)
-Executing:  28%|██▊       | 10/36 [00:48<01:52,  4.33s/cell][OK] UNet stoch=True: mu torch.Size([1, 9, 100, 100])  log_sigma torch.Size([1, 1])
-Executing:  42%|████▏     | 15/36 [00:50<00:46,  2.22s/cell]J_o = 180102.328125
-J_b = 179818.578125
-Phi(x) shape = torch.Size([2, 9, 100, 100])
-[OK] VarCMTraining (L_pair + L_anc + L_ae):
-  loss=1.9455  N=3
-  L_pair=0.5280  L_anc=0.8730  (L_long=0.7769  L_short=0.0961)  L_ae=1.0889
-Executing:  53%|█████▎    | 19/36 [00:52<00:27,  1.59s/cell][INFO] No checkpoint dir found at 'logs_CT_VarCM_ssh_gf_grad/checkpoints' — starting from scratch.
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using bfloat16 Automatic Mixed Precision (AMP)
-
-/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
-  rank_zero_warn(
-Using bfloat16 Automatic Mixed Precision (AMP)
-GPU available: True (cuda), used: True
-
-GPU available: True (cuda), used: True
-TPU available: False, using: 0 TPU cores
-
-TPU available: False, using: 0 TPU cores
-IPU available: False, using: 0 IPUs
-
-IPU available: False, using: 0 IPUs
-HPU available: False, using: 0 HPUs
-
-HPU available: False, using: 0 HPUs
-[rank: 0] Global seed set to 42
-
-[rank: 0] Global seed set to 42
-Executing:  64%|██████▍   | 23/36 [00:53<00:14,  1.14s/cell]Executing:  64%|██████▍   | 23/36 [00:57<00:32,  2.49s/cell]
-Traceback (most recent call last):
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_metrics.py", line 106, in <module>
-    main()
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_metrics.py", line 93, in main
-    pm.execute_notebook(
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
-    raise_for_execution_errors(nb, output_path)
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
-    raise error
-papermill.exceptions.PapermillExecutionError: 
----------------------------------------------------------------------------
-Exception encountered at "In [14]":
----------------------------------------------------------------------------
-RuntimeError                              Traceback (most recent call last)
-Cell In[14], line 133
-    129 seed_everything(42)
-    130 trainer.callbacks.append(EpochHeartbeat(every_n_epochs=1))
-    131 if SKIP_TRAINING:
-    132     if resume_ckpt is None:
---> 133         raise RuntimeError(
-    134             f"SKIP_TRAINING=True but no checkpoint found in {CKPT_DIR} -- "
-    135             "run training first (submit_train.sbatch) before computing metrics."
-    136         )
-
-RuntimeError: SKIP_TRAINING=True but no checkpoint found in logs_CT_VarCM_ssh_gf_grad/checkpoints -- run training first (submit_train.sbatch) before computing metrics.
-
-[run_step] exit 1 in 65.7 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261116-175334_ssh_var_v1_eval
-[job] 2026-11-16T17:55:02+01:00 exit=1

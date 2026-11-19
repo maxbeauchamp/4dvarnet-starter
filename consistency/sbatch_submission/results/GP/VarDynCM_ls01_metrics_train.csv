@@ -1,3 +1,0 @@
-Method,RMSE,lambda_x,CRPS
-"VarDynCM (ens. mean, full test set)",0.2423 $\pm$ 0.0650,67.4 $\pm$ 67.9,0.0938 $\pm$ 0.0666
-OI baseline (full test set),0.2253 $\pm$ 0.0040,43.1 $\pm$ 35.9,--

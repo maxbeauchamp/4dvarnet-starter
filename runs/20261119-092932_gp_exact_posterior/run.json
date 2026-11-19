@@ -1,8 +1,0 @@
-{
-  "plan_id": "gp_exact_posterior",
-  "cmd": "cd consistency && python rebuttal/gp_exact_posterior.py --members 20",
-  "commit": "62a7bc4",
-  "host": "sl-mee-br-210",
-  "slurm_job": "78580",
-  "started": "2026-11-19T09:29:58"
-}

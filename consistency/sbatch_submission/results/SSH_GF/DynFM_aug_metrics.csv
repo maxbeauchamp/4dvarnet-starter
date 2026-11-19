@@ -1,2 +1,0 @@
-Method,RMSE,lambda_x,CRPS
-"DynFM (ens. mean, full test set)",0.0618 $\pm$ 0.0193,1.2 $\pm$ 0.3,0.0276 $\pm$ 0.0122

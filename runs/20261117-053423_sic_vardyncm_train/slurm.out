@@ -1,66 +1,0 @@
-[job] 2026-11-17T05:34:37+01:00 host=sl-mee-br-211 job=76884 run_dir=runs/20261117-053423_sic_vardyncm_train args=--cmd cd consistency/sbatch_submission && python run_training.py --xp SIC --method VarDynCM_scratch --reset && python run_metrics.py --xp SIC --method VarDynCM_scratch
-NVIDIA H100 NVL, 95830 MiB
-
-========================================================================================
-[run_training] STARTING VarDynCM_scratch / SIC
-========================================================================================
-[run_training] VarDynCM_scratch / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/VarDynCM_scratch_train.ipynb
-[run_training] params = {'MAX_EPOCHS': 200, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/VarDynCM_scratch_metrics_train.csv', 'COND_MODE': 'grad', 'LAMBDA_SELF': 0.1, 'RUN_TAG': '_scratch', 'WARM_START': False, 'SELECT_BY_VAL': True, 'FRAME_GRID': True, 'MAX_TIME': '00:08:00:00'}
-Unable to parse line 18 'WARM_FROM = ''           # log dir of the warm start ('' = default of the notebook)'.
-Passed unknown parameter: COND_MODE
-Executing:   0%|          | 0/37 [00:00<?, ?cell/s]Executing:   3%|▎         | 1/37 [00:01<00:42,  1.18s/cell]Executing:   8%|▊         | 3/37 [00:05<01:09,  2.03s/cell]Tue Nov 17 05:34:45 2026       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.195.03             Driver Version: 570.195.03     CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA H100 NVL                On  |   00000000:E3:00.0 Off |                    0 |
-| N/A   45C    P0             65W /  400W |       0MiB /  95830MiB |      0%      Default |
-|                                         |                        |             Disabled |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-Executing:  14%|█▎        | 5/37 [00:06<00:34,  1.08s/cell]Executing:  19%|█▉        | 7/37 [00:07<00:25,  1.17cell/s]Executing:  27%|██▋       | 10/37 [00:10<00:26,  1.01cell/s]Executing:  27%|██▋       | 10/37 [00:13<00:36,  1.35s/cell]
-Traceback (most recent call last):
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 102, in <module>
-    main()
-  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 89, in main
-    pm.execute_notebook(
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
-    raise_for_execution_errors(nb, output_path)
-  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
-    raise error
-papermill.exceptions.PapermillExecutionError: 
----------------------------------------------------------------------------
-Exception encountered at "In [7]":
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-Cell In[7], line 59
-     55     t_crop=T_CROP,
-     56 )
-     57 datamodule.setup()
-     58 
----> 59 sample = datamodule.train_ds[0]
-     60 C = sample.asip.shape[0]
-     61 datamodule.window_size = C  # shim: window_size only exists on the GP/SPDE
-     62 # reference datamodule this notebook's later cells were copied from -- the
-
-File ~/iclr-rebuttal/4dvarnet-starter-iclr/consistency/Notebooks/Notebooks_SIC/../../../src/dataloader_SIC.py:87, in XrDataset.__getitem__(self, item)
-     85 item_dict["tgt"] = item.asip
-     86 item_dict["coarse"] = item.osisaf
----> 87 item_dict["lonv"] = item.lon
-     88 item_dict["latv"] = item.lat
-     89 item = ExtendedTrainingItem_4da(**item_dict)
-
-AttributeError: 'SICItem' object has no attribute 'lon'
-
-[run_step] exit 1 in 15.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261117-053423_sic_vardyncm_train
-[job] 2026-11-17T05:34:52+01:00 exit=1
