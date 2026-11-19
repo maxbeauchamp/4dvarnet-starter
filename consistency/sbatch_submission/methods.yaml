@@ -334,6 +334,8 @@ methods:
         status: existing
         params:
           MAX_TIME: "00:04:45:00"
+          CM_NSTEPS: 4          # evaluation: 4 jumps with re-noising (paper, SIC)
+          CM_STOCHASTIC: true
 
   DynCMT_v3:
     # SIC: DynCM distilled from the DynFM_v3 teacher (OSI SAF gap fill), same fill in the DynCM inputs.
