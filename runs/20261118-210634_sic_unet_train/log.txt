@@ -1,0 +1,534 @@
+
+========================================================================================
+[run_training] STARTING UNet / SIC
+========================================================================================
+[run_training] UNet / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_train.ipynb
+[run_training] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 2, 'RESET_TRAINING': True, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_metrics_train.csv', 'MAX_TIME': '00:02:00:00'}
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
+  validate(nb)
+Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:03<01:33,  3.46s/cell]Executing:  11%|█         | 3/28 [00:11<01:36,  3.88s/cell]Wed Nov 18 22:48:14 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:48:00.0 Off |                    0 |
+| N/A   42C    P0             67W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  18%|█▊        | 5/28 [00:12<00:46,  2.04s/cell]Executing:  25%|██▌       | 7/28 [00:13<00:31,  1.50s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  36%|███▌      | 10/28 [00:15<00:20,  1.13s/cell]Executing:  61%|██████    | 17/28 [00:15<00:04,  2.25cell/s][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+RESET_TRAINING=True -- starting from scratch
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[TRAINING] resume_ckpt=None | MAX_EPOCHS=2000
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+
+You are using a CUDA device ('NVIDIA A100-SXM4-80GB') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name  | Type       | Params
+-------------------------------------
+0 | model | DirectUNet | 58.8 M
+-------------------------------------
+58.8 M    Trainable params
+0         Non-trainable params
+58.8 M    Total params
+235.282   Total estimated model params size (MB)
+
+
+  | Name  | Type       | Params
+-------------------------------------
+0 | model | DirectUNet | 58.8 M
+-------------------------------------
+58.8 M    Trainable params
+0         Non-trainable params
+58.8 M    Total params
+235.282   Total estimated model params size (MB)
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: FutureWarning: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+  return [pytree], LeafSpec()
+Executing:  64%|██████▍   | 18/28 [00:30<00:04,  2.25cell/s][progress] epoch 1/2000 | train_loss=0.0744 | val_loss=0.0474 | val_rmse=0.2161
+[progress] epoch 2/2000 | train_loss=0.0875 | val_loss=0.0434 | val_rmse=0.2064
+[progress] epoch 3/2000 | train_loss=0.0173 | val_loss=0.0310 | val_rmse=0.1732
+[progress] epoch 4/2000 | train_loss=0.0175 | val_loss=0.0300 | val_rmse=0.1711
+[progress] epoch 5/2000 | train_loss=0.0097 | val_loss=0.0211 | val_rmse=0.1427
+[progress] epoch 6/2000 | train_loss=0.0204 | val_loss=0.0206 | val_rmse=0.1415
+[progress] epoch 7/2000 | train_loss=0.0286 | val_loss=0.0199 | val_rmse=0.1386
+[progress] epoch 8/2000 | train_loss=0.0177 | val_loss=0.0179 | val_rmse=0.1308
+[progress] epoch 9/2000 | train_loss=0.0136 | val_loss=0.0151 | val_rmse=0.1208
+[progress] epoch 10/2000 | train_loss=0.0151 | val_loss=0.0168 | val_rmse=0.1269
+[progress] epoch 11/2000 | train_loss=0.0097 | val_loss=0.0148 | val_rmse=0.1190
+[progress] epoch 12/2000 | train_loss=0.0159 | val_loss=0.0149 | val_rmse=0.1193
+[progress] epoch 13/2000 | train_loss=0.0143 | val_loss=0.0183 | val_rmse=0.1329
+[progress] epoch 14/2000 | train_loss=0.0146 | val_loss=0.0137 | val_rmse=0.1145
+[progress] epoch 15/2000 | train_loss=0.0071 | val_loss=0.0133 | val_rmse=0.1125
+[progress] epoch 16/2000 | train_loss=0.0031 | val_loss=0.0125 | val_rmse=0.1092
+[progress] epoch 17/2000 | train_loss=0.0097 | val_loss=0.0132 | val_rmse=0.1131
+[progress] epoch 18/2000 | train_loss=0.0203 | val_loss=0.0129 | val_rmse=0.1112
+[progress] epoch 19/2000 | train_loss=0.0132 | val_loss=0.0124 | val_rmse=0.1093
+[progress] epoch 20/2000 | train_loss=0.0088 | val_loss=0.0126 | val_rmse=0.1100
+[progress] epoch 21/2000 | train_loss=0.0142 | val_loss=0.0107 | val_rmse=0.1012
+[progress] epoch 22/2000 | train_loss=0.0115 | val_loss=0.0104 | val_rmse=0.0994
+[progress] epoch 23/2000 | train_loss=0.0106 | val_loss=0.0109 | val_rmse=0.1026
+[progress] epoch 24/2000 | train_loss=0.0132 | val_loss=0.0105 | val_rmse=0.1004
+[progress] epoch 25/2000 | train_loss=0.0038 | val_loss=0.0114 | val_rmse=0.1044
+[progress] epoch 26/2000 | train_loss=0.0088 | val_loss=0.0111 | val_rmse=0.1033
+[progress] epoch 27/2000 | train_loss=0.0033 | val_loss=0.0094 | val_rmse=0.0947
+[progress] epoch 28/2000 | train_loss=0.0030 | val_loss=0.0098 | val_rmse=0.0969
+[progress] epoch 29/2000 | train_loss=0.0065 | val_loss=0.0092 | val_rmse=0.0938
+[progress] epoch 30/2000 | train_loss=0.0099 | val_loss=0.0094 | val_rmse=0.0949
+[progress] epoch 31/2000 | train_loss=0.0092 | val_loss=0.0096 | val_rmse=0.0962
+[progress] epoch 32/2000 | train_loss=0.0123 | val_loss=0.0096 | val_rmse=0.0961
+[progress] epoch 33/2000 | train_loss=0.0058 | val_loss=0.0101 | val_rmse=0.0983
+[progress] epoch 34/2000 | train_loss=0.0050 | val_loss=0.0089 | val_rmse=0.0921
+[progress] epoch 35/2000 | train_loss=0.0082 | val_loss=0.0095 | val_rmse=0.0951
+[progress] epoch 36/2000 | train_loss=0.0152 | val_loss=0.0090 | val_rmse=0.0929
+[progress] epoch 37/2000 | train_loss=0.0053 | val_loss=0.0083 | val_rmse=0.0893
+[progress] epoch 38/2000 | train_loss=0.0052 | val_loss=0.0087 | val_rmse=0.0910
+[progress] epoch 39/2000 | train_loss=0.0087 | val_loss=0.0088 | val_rmse=0.0913
+[progress] epoch 40/2000 | train_loss=0.0095 | val_loss=0.0089 | val_rmse=0.0923
+[progress] epoch 41/2000 | train_loss=0.0054 | val_loss=0.0079 | val_rmse=0.0870
+[progress] epoch 42/2000 | train_loss=0.0063 | val_loss=0.0086 | val_rmse=0.0912
+[progress] epoch 43/2000 | train_loss=0.0073 | val_loss=0.0080 | val_rmse=0.0877
+[progress] epoch 44/2000 | train_loss=0.0060 | val_loss=0.0089 | val_rmse=0.0921
+[progress] epoch 45/2000 | train_loss=0.0063 | val_loss=0.0084 | val_rmse=0.0894
+[progress] epoch 46/2000 | train_loss=0.0053 | val_loss=0.0076 | val_rmse=0.0852
+[progress] epoch 47/2000 | train_loss=0.0066 | val_loss=0.0078 | val_rmse=0.0868
+[progress] epoch 48/2000 | train_loss=0.0062 | val_loss=0.0080 | val_rmse=0.0877
+[progress] epoch 49/2000 | train_loss=0.0040 | val_loss=0.0076 | val_rmse=0.0853
+[progress] epoch 50/2000 | train_loss=0.0035 | val_loss=0.0081 | val_rmse=0.0881
+[progress] epoch 51/2000 | train_loss=0.0061 | val_loss=0.0074 | val_rmse=0.0843
+[progress] epoch 52/2000 | train_loss=0.0056 | val_loss=0.0078 | val_rmse=0.0870
+[progress] epoch 53/2000 | train_loss=0.0100 | val_loss=0.0084 | val_rmse=0.0900
+[progress] epoch 54/2000 | train_loss=0.0079 | val_loss=0.0079 | val_rmse=0.0872
+[progress] epoch 55/2000 | train_loss=0.0077 | val_loss=0.0078 | val_rmse=0.0866
+[progress] epoch 56/2000 | train_loss=0.0054 | val_loss=0.0084 | val_rmse=0.0899
+[progress] epoch 57/2000 | train_loss=0.0029 | val_loss=0.0071 | val_rmse=0.0829
+[progress] epoch 58/2000 | train_loss=0.0032 | val_loss=0.0075 | val_rmse=0.0852
+[progress] epoch 59/2000 | train_loss=0.0043 | val_loss=0.0080 | val_rmse=0.0882
+[progress] epoch 60/2000 | train_loss=0.0012 | val_loss=0.0067 | val_rmse=0.0804
+[progress] epoch 61/2000 | train_loss=0.0044 | val_loss=0.0078 | val_rmse=0.0870
+[progress] epoch 62/2000 | train_loss=0.0030 | val_loss=0.0085 | val_rmse=0.0902
+[progress] epoch 63/2000 | train_loss=0.0062 | val_loss=0.0073 | val_rmse=0.0837
+[progress] epoch 64/2000 | train_loss=0.0067 | val_loss=0.0106 | val_rmse=0.1012
+[progress] epoch 65/2000 | train_loss=0.0037 | val_loss=0.0067 | val_rmse=0.0800
+[progress] epoch 66/2000 | train_loss=0.0081 | val_loss=0.0070 | val_rmse=0.0821
+[progress] epoch 67/2000 | train_loss=0.0066 | val_loss=0.0078 | val_rmse=0.0871
+[progress] epoch 68/2000 | train_loss=0.0055 | val_loss=0.0069 | val_rmse=0.0818
+[progress] epoch 69/2000 | train_loss=0.0105 | val_loss=0.0068 | val_rmse=0.0809
+[progress] epoch 70/2000 | train_loss=0.0067 | val_loss=0.0070 | val_rmse=0.0822
+[progress] epoch 71/2000 | train_loss=0.0057 | val_loss=0.0068 | val_rmse=0.0809
+[progress] epoch 72/2000 | train_loss=0.0020 | val_loss=0.0069 | val_rmse=0.0812
+[progress] epoch 73/2000 | train_loss=0.0095 | val_loss=0.0089 | val_rmse=0.0929
+[progress] epoch 74/2000 | train_loss=0.0033 | val_loss=0.0066 | val_rmse=0.0796
+[progress] epoch 75/2000 | train_loss=0.0064 | val_loss=0.0082 | val_rmse=0.0889
+[progress] epoch 76/2000 | train_loss=0.0030 | val_loss=0.0075 | val_rmse=0.0848
+[progress] epoch 77/2000 | train_loss=0.0036 | val_loss=0.0062 | val_rmse=0.0775
+[progress] epoch 78/2000 | train_loss=0.0037 | val_loss=0.0063 | val_rmse=0.0780
+[progress] epoch 79/2000 | train_loss=0.0053 | val_loss=0.0063 | val_rmse=0.0779
+[progress] epoch 80/2000 | train_loss=0.0073 | val_loss=0.0067 | val_rmse=0.0802
+[progress] epoch 81/2000 | train_loss=0.0030 | val_loss=0.0061 | val_rmse=0.0764
+[progress] epoch 82/2000 | train_loss=0.0048 | val_loss=0.0064 | val_rmse=0.0786
+[progress] epoch 83/2000 | train_loss=0.0044 | val_loss=0.0065 | val_rmse=0.0790
+[progress] epoch 84/2000 | train_loss=0.0047 | val_loss=0.0063 | val_rmse=0.0777
+[progress] epoch 85/2000 | train_loss=0.0022 | val_loss=0.0061 | val_rmse=0.0765
+[progress] epoch 86/2000 | train_loss=0.0020 | val_loss=0.0061 | val_rmse=0.0763
+[progress] epoch 87/2000 | train_loss=0.0075 | val_loss=0.0059 | val_rmse=0.0757
+[progress] epoch 88/2000 | train_loss=0.0013 | val_loss=0.0069 | val_rmse=0.0812
+[progress] epoch 89/2000 | train_loss=0.0043 | val_loss=0.0062 | val_rmse=0.0769
+[progress] epoch 90/2000 | train_loss=0.0036 | val_loss=0.0061 | val_rmse=0.0765
+[progress] epoch 91/2000 | train_loss=0.0035 | val_loss=0.0059 | val_rmse=0.0753
+[progress] epoch 92/2000 | train_loss=0.0033 | val_loss=0.0059 | val_rmse=0.0750
+[progress] epoch 93/2000 | train_loss=0.0055 | val_loss=0.0065 | val_rmse=0.0797
+[progress] epoch 94/2000 | train_loss=0.0022 | val_loss=0.0065 | val_rmse=0.0789
+[progress] epoch 95/2000 | train_loss=0.0045 | val_loss=0.0063 | val_rmse=0.0778
+[progress] epoch 96/2000 | train_loss=0.0028 | val_loss=0.0055 | val_rmse=0.0730
+[progress] epoch 97/2000 | train_loss=0.0032 | val_loss=0.0072 | val_rmse=0.0834
+[progress] epoch 98/2000 | train_loss=0.0044 | val_loss=0.0062 | val_rmse=0.0769
+[progress] epoch 99/2000 | train_loss=0.0055 | val_loss=0.0059 | val_rmse=0.0750
+[progress] epoch 100/2000 | train_loss=0.0034 | val_loss=0.0059 | val_rmse=0.0749
+[progress] epoch 101/2000 | train_loss=0.0043 | val_loss=0.0062 | val_rmse=0.0773
+[progress] epoch 102/2000 | train_loss=0.0010 | val_loss=0.0056 | val_rmse=0.0734
+[progress] epoch 103/2000 | train_loss=0.0022 | val_loss=0.0056 | val_rmse=0.0732
+[progress] epoch 104/2000 | train_loss=0.0047 | val_loss=0.0062 | val_rmse=0.0771
+[progress] epoch 105/2000 | train_loss=0.0029 | val_loss=0.0058 | val_rmse=0.0750
+[progress] epoch 106/2000 | train_loss=0.0041 | val_loss=0.0058 | val_rmse=0.0748
+[progress] epoch 107/2000 | train_loss=0.0029 | val_loss=0.0058 | val_rmse=0.0748
+[progress] epoch 108/2000 | train_loss=0.0030 | val_loss=0.0083 | val_rmse=0.0894
+[progress] epoch 109/2000 | train_loss=0.0017 | val_loss=0.0057 | val_rmse=0.0740
+[progress] epoch 110/2000 | train_loss=0.0018 | val_loss=0.0055 | val_rmse=0.0725
+[progress] epoch 111/2000 | train_loss=0.0031 | val_loss=0.0058 | val_rmse=0.0746
+[progress] epoch 112/2000 | train_loss=0.0059 | val_loss=0.0070 | val_rmse=0.0819
+[progress] epoch 113/2000 | train_loss=0.0016 | val_loss=0.0055 | val_rmse=0.0729
+[progress] epoch 114/2000 | train_loss=0.0008 | val_loss=0.0055 | val_rmse=0.0725
+[progress] epoch 115/2000 | train_loss=0.0033 | val_loss=0.0059 | val_rmse=0.0751
+[progress] epoch 116/2000 | train_loss=0.0041 | val_loss=0.0055 | val_rmse=0.0725
+[progress] epoch 117/2000 | train_loss=0.0018 | val_loss=0.0056 | val_rmse=0.0731
+[progress] epoch 118/2000 | train_loss=0.0038 | val_loss=0.0059 | val_rmse=0.0751
+[progress] epoch 119/2000 | train_loss=0.0031 | val_loss=0.0059 | val_rmse=0.0755
+[progress] epoch 120/2000 | train_loss=0.0042 | val_loss=0.0053 | val_rmse=0.0718
+[progress] epoch 121/2000 | train_loss=0.0023 | val_loss=0.0066 | val_rmse=0.0795
+[progress] epoch 122/2000 | train_loss=0.0016 | val_loss=0.0052 | val_rmse=0.0708
+[progress] epoch 123/2000 | train_loss=0.0030 | val_loss=0.0057 | val_rmse=0.0741
+[progress] epoch 124/2000 | train_loss=0.0045 | val_loss=0.0054 | val_rmse=0.0723
+[progress] epoch 125/2000 | train_loss=0.0011 | val_loss=0.0054 | val_rmse=0.0723
+[progress] epoch 126/2000 | train_loss=0.0038 | val_loss=0.0059 | val_rmse=0.0757
+[progress] epoch 127/2000 | train_loss=0.0020 | val_loss=0.0057 | val_rmse=0.0741
+[progress] epoch 128/2000 | train_loss=0.0025 | val_loss=0.0054 | val_rmse=0.0722
+[progress] epoch 129/2000 | train_loss=0.0019 | val_loss=0.0059 | val_rmse=0.0754
+[progress] epoch 130/2000 | train_loss=0.0017 | val_loss=0.0058 | val_rmse=0.0752
+[progress] epoch 131/2000 | train_loss=0.0042 | val_loss=0.0055 | val_rmse=0.0727
+[progress] epoch 132/2000 | train_loss=0.0031 | val_loss=0.0053 | val_rmse=0.0715
+[progress] epoch 133/2000 | train_loss=0.0017 | val_loss=0.0054 | val_rmse=0.0721
+[progress] epoch 134/2000 | train_loss=0.0027 | val_loss=0.0054 | val_rmse=0.0717
+[progress] epoch 135/2000 | train_loss=0.0020 | val_loss=0.0055 | val_rmse=0.0727
+[progress] epoch 136/2000 | train_loss=0.0025 | val_loss=0.0053 | val_rmse=0.0711
+[progress] epoch 137/2000 | train_loss=0.0024 | val_loss=0.0052 | val_rmse=0.0704
+[progress] epoch 138/2000 | train_loss=0.0051 | val_loss=0.0053 | val_rmse=0.0714
+[progress] epoch 139/2000 | train_loss=0.0014 | val_loss=0.0055 | val_rmse=0.0727
+[progress] epoch 140/2000 | train_loss=0.0023 | val_loss=0.0060 | val_rmse=0.0758
+[progress] epoch 141/2000 | train_loss=0.0025 | val_loss=0.0052 | val_rmse=0.0703
+[progress] epoch 142/2000 | train_loss=0.0030 | val_loss=0.0060 | val_rmse=0.0757
+[progress] epoch 143/2000 | train_loss=0.0013 | val_loss=0.0051 | val_rmse=0.0698
+[progress] epoch 144/2000 | train_loss=0.0008 | val_loss=0.0049 | val_rmse=0.0687
+[progress] epoch 145/2000 | train_loss=0.0009 | val_loss=0.0057 | val_rmse=0.0743
+[progress] epoch 146/2000 | train_loss=0.0042 | val_loss=0.0057 | val_rmse=0.0736
+[progress] epoch 147/2000 | train_loss=0.0006 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 148/2000 | train_loss=0.0008 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 149/2000 | train_loss=0.0013 | val_loss=0.0052 | val_rmse=0.0706
+[progress] epoch 150/2000 | train_loss=0.0021 | val_loss=0.0059 | val_rmse=0.0755
+[progress] epoch 151/2000 | train_loss=0.0024 | val_loss=0.0056 | val_rmse=0.0735
+[progress] epoch 152/2000 | train_loss=0.0010 | val_loss=0.0048 | val_rmse=0.0678
+[progress] epoch 153/2000 | train_loss=0.0013 | val_loss=0.0053 | val_rmse=0.0712
+[progress] epoch 154/2000 | train_loss=0.0015 | val_loss=0.0049 | val_rmse=0.0686
+[progress] epoch 155/2000 | train_loss=0.0019 | val_loss=0.0053 | val_rmse=0.0710
+[progress] epoch 156/2000 | train_loss=0.0017 | val_loss=0.0052 | val_rmse=0.0705
+[progress] epoch 157/2000 | train_loss=0.0018 | val_loss=0.0053 | val_rmse=0.0711
+[progress] epoch 158/2000 | train_loss=0.0023 | val_loss=0.0054 | val_rmse=0.0722
+[progress] epoch 159/2000 | train_loss=0.0021 | val_loss=0.0047 | val_rmse=0.0673
+[progress] epoch 160/2000 | train_loss=0.0021 | val_loss=0.0055 | val_rmse=0.0728
+[progress] epoch 161/2000 | train_loss=0.0009 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 162/2000 | train_loss=0.0018 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 163/2000 | train_loss=0.0007 | val_loss=0.0053 | val_rmse=0.0715
+[progress] epoch 164/2000 | train_loss=0.0016 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 165/2000 | train_loss=0.0016 | val_loss=0.0051 | val_rmse=0.0697
+[progress] epoch 166/2000 | train_loss=0.0020 | val_loss=0.0051 | val_rmse=0.0700
+[progress] epoch 167/2000 | train_loss=0.0014 | val_loss=0.0053 | val_rmse=0.0715
+[progress] epoch 168/2000 | train_loss=0.0016 | val_loss=0.0048 | val_rmse=0.0677
+[progress] epoch 169/2000 | train_loss=0.0011 | val_loss=0.0049 | val_rmse=0.0682
+[progress] epoch 170/2000 | train_loss=0.0021 | val_loss=0.0052 | val_rmse=0.0702
+[progress] epoch 171/2000 | train_loss=0.0018 | val_loss=0.0049 | val_rmse=0.0682
+[progress] epoch 172/2000 | train_loss=0.0019 | val_loss=0.0051 | val_rmse=0.0704
+[progress] epoch 173/2000 | train_loss=0.0009 | val_loss=0.0051 | val_rmse=0.0698
+[progress] epoch 174/2000 | train_loss=0.0018 | val_loss=0.0047 | val_rmse=0.0674
+[progress] epoch 175/2000 | train_loss=0.0011 | val_loss=0.0048 | val_rmse=0.0677
+[progress] epoch 176/2000 | train_loss=0.0022 | val_loss=0.0059 | val_rmse=0.0754
+[progress] epoch 177/2000 | train_loss=0.0008 | val_loss=0.0046 | val_rmse=0.0666
+[progress] epoch 178/2000 | train_loss=0.0019 | val_loss=0.0048 | val_rmse=0.0677
+[progress] epoch 179/2000 | train_loss=0.0008 | val_loss=0.0050 | val_rmse=0.0692
+[progress] epoch 180/2000 | train_loss=0.0023 | val_loss=0.0057 | val_rmse=0.0740
+[progress] epoch 181/2000 | train_loss=0.0015 | val_loss=0.0047 | val_rmse=0.0668
+[progress] epoch 182/2000 | train_loss=0.0005 | val_loss=0.0048 | val_rmse=0.0678
+[progress] epoch 183/2000 | train_loss=0.0015 | val_loss=0.0048 | val_rmse=0.0675
+[progress] epoch 184/2000 | train_loss=0.0012 | val_loss=0.0048 | val_rmse=0.0677
+[progress] epoch 185/2000 | train_loss=0.0017 | val_loss=0.0047 | val_rmse=0.0672
+[progress] epoch 186/2000 | train_loss=0.0010 | val_loss=0.0048 | val_rmse=0.0675
+[progress] epoch 187/2000 | train_loss=0.0018 | val_loss=0.0049 | val_rmse=0.0681
+[progress] epoch 188/2000 | train_loss=0.0023 | val_loss=0.0046 | val_rmse=0.0665
+[progress] epoch 189/2000 | train_loss=0.0030 | val_loss=0.0050 | val_rmse=0.0689
+[progress] epoch 190/2000 | train_loss=0.0012 | val_loss=0.0047 | val_rmse=0.0669
+[progress] epoch 191/2000 | train_loss=0.0007 | val_loss=0.0048 | val_rmse=0.0681
+[progress] epoch 192/2000 | train_loss=0.0007 | val_loss=0.0046 | val_rmse=0.0664
+[progress] epoch 193/2000 | train_loss=0.0013 | val_loss=0.0046 | val_rmse=0.0666
+[progress] epoch 194/2000 | train_loss=0.0010 | val_loss=0.0053 | val_rmse=0.0712
+[progress] epoch 195/2000 | train_loss=0.0029 | val_loss=0.0049 | val_rmse=0.0683
+[progress] epoch 196/2000 | train_loss=0.0008 | val_loss=0.0045 | val_rmse=0.0654
+[progress] epoch 197/2000 | train_loss=0.0006 | val_loss=0.0046 | val_rmse=0.0660
+[progress] epoch 198/2000 | train_loss=0.0007 | val_loss=0.0047 | val_rmse=0.0669
+[progress] epoch 199/2000 | train_loss=0.0020 | val_loss=0.0056 | val_rmse=0.0734
+[progress] epoch 200/2000 | train_loss=0.0016 | val_loss=0.0049 | val_rmse=0.0685
+[progress] epoch 201/2000 | train_loss=0.0009 | val_loss=0.0047 | val_rmse=0.0673
+[progress] epoch 202/2000 | train_loss=0.0011 | val_loss=0.0046 | val_rmse=0.0667
+[progress] epoch 203/2000 | train_loss=0.0007 | val_loss=0.0051 | val_rmse=0.0698
+[progress] epoch 204/2000 | train_loss=0.0020 | val_loss=0.0054 | val_rmse=0.0721
+[progress] epoch 205/2000 | train_loss=0.0010 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 206/2000 | train_loss=0.0006 | val_loss=0.0044 | val_rmse=0.0653
+[progress] epoch 207/2000 | train_loss=0.0017 | val_loss=0.0050 | val_rmse=0.0695
+[progress] epoch 208/2000 | train_loss=0.0014 | val_loss=0.0046 | val_rmse=0.0663
+[progress] epoch 209/2000 | train_loss=0.0020 | val_loss=0.0050 | val_rmse=0.0693
+[progress] epoch 210/2000 | train_loss=0.0007 | val_loss=0.0047 | val_rmse=0.0667
+[progress] epoch 211/2000 | train_loss=0.0007 | val_loss=0.0047 | val_rmse=0.0668
+[progress] epoch 212/2000 | train_loss=0.0009 | val_loss=0.0047 | val_rmse=0.0673
+[progress] epoch 213/2000 | train_loss=0.0004 | val_loss=0.0046 | val_rmse=0.0663
+[progress] epoch 214/2000 | train_loss=0.0017 | val_loss=0.0052 | val_rmse=0.0706
+[progress] epoch 215/2000 | train_loss=0.0050 | val_loss=0.0046 | val_rmse=0.0661
+[progress] epoch 216/2000 | train_loss=0.0013 | val_loss=0.0047 | val_rmse=0.0670
+[progress] epoch 217/2000 | train_loss=0.0012 | val_loss=0.0050 | val_rmse=0.0694
+[progress] epoch 218/2000 | train_loss=0.0017 | val_loss=0.0045 | val_rmse=0.0656
+[progress] epoch 219/2000 | train_loss=0.0012 | val_loss=0.0043 | val_rmse=0.0643
+[progress] epoch 220/2000 | train_loss=0.0013 | val_loss=0.0044 | val_rmse=0.0652
+[progress] epoch 221/2000 | train_loss=0.0015 | val_loss=0.0047 | val_rmse=0.0668
+[progress] epoch 222/2000 | train_loss=0.0007 | val_loss=0.0046 | val_rmse=0.0665
+[progress] epoch 223/2000 | train_loss=0.0009 | val_loss=0.0044 | val_rmse=0.0651
+[progress] epoch 224/2000 | train_loss=0.0034 | val_loss=0.0048 | val_rmse=0.0681
+[progress] epoch 225/2000 | train_loss=0.0011 | val_loss=0.0045 | val_rmse=0.0654
+[progress] epoch 226/2000 | train_loss=0.0010 | val_loss=0.0047 | val_rmse=0.0669
+[progress] epoch 227/2000 | train_loss=0.0009 | val_loss=0.0046 | val_rmse=0.0668
+[progress] epoch 228/2000 | train_loss=0.0009 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 229/2000 | train_loss=0.0011 | val_loss=0.0045 | val_rmse=0.0655
+[progress] epoch 230/2000 | train_loss=0.0009 | val_loss=0.0046 | val_rmse=0.0664
+[progress] epoch 231/2000 | train_loss=0.0009 | val_loss=0.0046 | val_rmse=0.0662
+[progress] epoch 232/2000 | train_loss=0.0009 | val_loss=0.0048 | val_rmse=0.0678
+[progress] epoch 233/2000 | train_loss=0.0010 | val_loss=0.0046 | val_rmse=0.0663
+[progress] epoch 234/2000 | train_loss=0.0021 | val_loss=0.0054 | val_rmse=0.0721
+[progress] epoch 235/2000 | train_loss=0.0014 | val_loss=0.0043 | val_rmse=0.0644
+[progress] epoch 236/2000 | train_loss=0.0008 | val_loss=0.0045 | val_rmse=0.0650
+[progress] epoch 237/2000 | train_loss=0.0007 | val_loss=0.0044 | val_rmse=0.0650
+[progress] epoch 238/2000 | train_loss=0.0007 | val_loss=0.0045 | val_rmse=0.0659
+[progress] epoch 239/2000 | train_loss=0.0014 | val_loss=0.0047 | val_rmse=0.0671
+[progress] epoch 240/2000 | train_loss=0.0007 | val_loss=0.0046 | val_rmse=0.0665
+[progress] epoch 241/2000 | train_loss=0.0013 | val_loss=0.0044 | val_rmse=0.0650
+[progress] epoch 242/2000 | train_loss=0.0012 | val_loss=0.0048 | val_rmse=0.0678
+[progress] epoch 243/2000 | train_loss=0.0009 | val_loss=0.0046 | val_rmse=0.0665
+[progress] epoch 244/2000 | train_loss=0.0009 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 245/2000 | train_loss=0.0012 | val_loss=0.0043 | val_rmse=0.0643
+[progress] epoch 246/2000 | train_loss=0.0010 | val_loss=0.0044 | val_rmse=0.0647
+[progress] epoch 247/2000 | train_loss=0.0007 | val_loss=0.0049 | val_rmse=0.0686
+[progress] epoch 248/2000 | train_loss=0.0019 | val_loss=0.0049 | val_rmse=0.0684
+[progress] epoch 249/2000 | train_loss=0.0016 | val_loss=0.0046 | val_rmse=0.0664
+[progress] epoch 250/2000 | train_loss=0.0005 | val_loss=0.0045 | val_rmse=0.0657
+[progress] epoch 251/2000 | train_loss=0.0020 | val_loss=0.0050 | val_rmse=0.0696
+[progress] epoch 252/2000 | train_loss=0.0011 | val_loss=0.0043 | val_rmse=0.0640
+[progress] epoch 253/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 254/2000 | train_loss=0.0009 | val_loss=0.0045 | val_rmse=0.0655
+[progress] epoch 255/2000 | train_loss=0.0011 | val_loss=0.0054 | val_rmse=0.0720
+[progress] epoch 256/2000 | train_loss=0.0010 | val_loss=0.0046 | val_rmse=0.0668
+[progress] epoch 257/2000 | train_loss=0.0013 | val_loss=0.0045 | val_rmse=0.0655
+[progress] epoch 258/2000 | train_loss=0.0013 | val_loss=0.0044 | val_rmse=0.0650
+[progress] epoch 259/2000 | train_loss=0.0008 | val_loss=0.0041 | val_rmse=0.0631
+[progress] epoch 260/2000 | train_loss=0.0014 | val_loss=0.0045 | val_rmse=0.0654
+[progress] epoch 261/2000 | train_loss=0.0007 | val_loss=0.0043 | val_rmse=0.0640
+[progress] epoch 262/2000 | train_loss=0.0011 | val_loss=0.0046 | val_rmse=0.0664
+[progress] epoch 263/2000 | train_loss=0.0008 | val_loss=0.0045 | val_rmse=0.0656
+[progress] epoch 264/2000 | train_loss=0.0011 | val_loss=0.0044 | val_rmse=0.0647
+[progress] epoch 265/2000 | train_loss=0.0015 | val_loss=0.0048 | val_rmse=0.0677
+[progress] epoch 266/2000 | train_loss=0.0011 | val_loss=0.0049 | val_rmse=0.0688
+[progress] epoch 267/2000 | train_loss=0.0008 | val_loss=0.0043 | val_rmse=0.0639
+[progress] epoch 268/2000 | train_loss=0.0007 | val_loss=0.0044 | val_rmse=0.0651
+[progress] epoch 269/2000 | train_loss=0.0005 | val_loss=0.0044 | val_rmse=0.0650
+[progress] epoch 270/2000 | train_loss=0.0010 | val_loss=0.0043 | val_rmse=0.0643
+[progress] epoch 271/2000 | train_loss=0.0010 | val_loss=0.0047 | val_rmse=0.0670
+[progress] epoch 272/2000 | train_loss=0.0012 | val_loss=0.0044 | val_rmse=0.0654
+[progress] epoch 273/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0627
+[progress] epoch 274/2000 | train_loss=0.0020 | val_loss=0.0044 | val_rmse=0.0648
+[progress] epoch 275/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 276/2000 | train_loss=0.0022 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 277/2000 | train_loss=0.0006 | val_loss=0.0043 | val_rmse=0.0641
+[progress] epoch 278/2000 | train_loss=0.0017 | val_loss=0.0045 | val_rmse=0.0656
+[progress] epoch 279/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0629
+[progress] epoch 280/2000 | train_loss=0.0008 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 281/2000 | train_loss=0.0008 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 282/2000 | train_loss=0.0009 | val_loss=0.0048 | val_rmse=0.0680
+[progress] epoch 283/2000 | train_loss=0.0004 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 284/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 285/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0636
+[progress] epoch 286/2000 | train_loss=0.0002 | val_loss=0.0041 | val_rmse=0.0623
+[progress] epoch 287/2000 | train_loss=0.0007 | val_loss=0.0043 | val_rmse=0.0642
+[progress] epoch 288/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0636
+[progress] epoch 289/2000 | train_loss=0.0004 | val_loss=0.0047 | val_rmse=0.0668
+[progress] epoch 290/2000 | train_loss=0.0005 | val_loss=0.0043 | val_rmse=0.0639
+[progress] epoch 291/2000 | train_loss=0.0009 | val_loss=0.0044 | val_rmse=0.0651
+[progress] epoch 292/2000 | train_loss=0.0006 | val_loss=0.0042 | val_rmse=0.0632
+[progress] epoch 293/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 294/2000 | train_loss=0.0002 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 295/2000 | train_loss=0.0007 | val_loss=0.0044 | val_rmse=0.0650
+[progress] epoch 296/2000 | train_loss=0.0006 | val_loss=0.0042 | val_rmse=0.0631
+[progress] epoch 297/2000 | train_loss=0.0011 | val_loss=0.0046 | val_rmse=0.0664
+[progress] epoch 298/2000 | train_loss=0.0002 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 299/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0629
+[progress] epoch 300/2000 | train_loss=0.0009 | val_loss=0.0043 | val_rmse=0.0638
+[progress] epoch 301/2000 | train_loss=0.0004 | val_loss=0.0043 | val_rmse=0.0643
+[progress] epoch 302/2000 | train_loss=0.0018 | val_loss=0.0046 | val_rmse=0.0661
+[progress] epoch 303/2000 | train_loss=0.0011 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 304/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0622
+[progress] epoch 305/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 306/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0627
+[progress] epoch 307/2000 | train_loss=0.0006 | val_loss=0.0043 | val_rmse=0.0645
+[progress] epoch 308/2000 | train_loss=0.0006 | val_loss=0.0043 | val_rmse=0.0643
+[progress] epoch 309/2000 | train_loss=0.0009 | val_loss=0.0043 | val_rmse=0.0642
+[progress] epoch 310/2000 | train_loss=0.0005 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 311/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 312/2000 | train_loss=0.0008 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 313/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 314/2000 | train_loss=0.0007 | val_loss=0.0043 | val_rmse=0.0641
+[progress] epoch 315/2000 | train_loss=0.0005 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 316/2000 | train_loss=0.0007 | val_loss=0.0044 | val_rmse=0.0647
+[progress] epoch 317/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 318/2000 | train_loss=0.0005 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 319/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 320/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0637
+[progress] epoch 321/2000 | train_loss=0.0004 | val_loss=0.0043 | val_rmse=0.0640
+[progress] epoch 322/2000 | train_loss=0.0009 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 323/2000 | train_loss=0.0017 | val_loss=0.0045 | val_rmse=0.0656
+[progress] epoch 324/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0627
+[progress] epoch 325/2000 | train_loss=0.0004 | val_loss=0.0040 | val_rmse=0.0620
+[progress] epoch 326/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0616
+[progress] epoch 327/2000 | train_loss=0.0006 | val_loss=0.0042 | val_rmse=0.0633
+[progress] epoch 328/2000 | train_loss=0.0009 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 329/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0630
+[progress] epoch 330/2000 | train_loss=0.0004 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 331/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0621
+[progress] epoch 332/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0622
+[progress] epoch 333/2000 | train_loss=0.0014 | val_loss=0.0043 | val_rmse=0.0644
+[progress] epoch 334/2000 | train_loss=0.0006 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 335/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 336/2000 | train_loss=0.0005 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 337/2000 | train_loss=0.0006 | val_loss=0.0047 | val_rmse=0.0670
+[progress] epoch 338/2000 | train_loss=0.0014 | val_loss=0.0041 | val_rmse=0.0628
+[progress] epoch 339/2000 | train_loss=0.0005 | val_loss=0.0042 | val_rmse=0.0637
+[progress] epoch 340/2000 | train_loss=0.0008 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 341/2000 | train_loss=0.0007 | val_loss=0.0042 | val_rmse=0.0630
+[progress] epoch 342/2000 | train_loss=0.0009 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 343/2000 | train_loss=0.0016 | val_loss=0.0044 | val_rmse=0.0646
+[progress] epoch 344/2000 | train_loss=0.0008 | val_loss=0.0040 | val_rmse=0.0619
+[progress] epoch 345/2000 | train_loss=0.0007 | val_loss=0.0043 | val_rmse=0.0639
+[progress] epoch 346/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0616
+[progress] epoch 347/2000 | train_loss=0.0006 | val_loss=0.0040 | val_rmse=0.0621
+[progress] epoch 348/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0615
+[progress] epoch 349/2000 | train_loss=0.0012 | val_loss=0.0043 | val_rmse=0.0639
+[progress] epoch 350/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 351/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0621
+[progress] epoch 352/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0617
+[progress] epoch 353/2000 | train_loss=0.0009 | val_loss=0.0042 | val_rmse=0.0635
+[progress] epoch 354/2000 | train_loss=0.0012 | val_loss=0.0044 | val_rmse=0.0645
+[progress] epoch 355/2000 | train_loss=0.0011 | val_loss=0.0040 | val_rmse=0.0619
+[progress] epoch 356/2000 | train_loss=0.0010 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 357/2000 | train_loss=0.0011 | val_loss=0.0042 | val_rmse=0.0636
+[progress] epoch 358/2000 | train_loss=0.0006 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 359/2000 | train_loss=0.0012 | val_loss=0.0040 | val_rmse=0.0621
+[progress] epoch 360/2000 | train_loss=0.0006 | val_loss=0.0040 | val_rmse=0.0620
+[progress] epoch 361/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0627
+[progress] epoch 362/2000 | train_loss=0.0003 | val_loss=0.0039 | val_rmse=0.0610
+[progress] epoch 363/2000 | train_loss=0.0005 | val_loss=0.0041 | val_rmse=0.0627
+[progress] epoch 364/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0620
+[progress] epoch 365/2000 | train_loss=0.0012 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 366/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0615
+[progress] epoch 367/2000 | train_loss=0.0005 | val_loss=0.0039 | val_rmse=0.0610
+[progress] epoch 368/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0619
+[progress] epoch 369/2000 | train_loss=0.0007 | val_loss=0.0039 | val_rmse=0.0613
+[progress] epoch 370/2000 | train_loss=0.0002 | val_loss=0.0038 | val_rmse=0.0605
+[progress] epoch 371/2000 | train_loss=0.0005 | val_loss=0.0043 | val_rmse=0.0636
+[progress] epoch 372/2000 | train_loss=0.0005 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 373/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0629
+[progress] epoch 374/2000 | train_loss=0.0005 | val_loss=0.0039 | val_rmse=0.0614
+[progress] epoch 375/2000 | train_loss=0.0008 | val_loss=0.0039 | val_rmse=0.0615
+[progress] epoch 376/2000 | train_loss=0.0011 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 377/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0632
+[progress] epoch 378/2000 | train_loss=0.0006 | val_loss=0.0040 | val_rmse=0.0622
+[progress] epoch 379/2000 | train_loss=0.0014 | val_loss=0.0040 | val_rmse=0.0619
+[progress] epoch 380/2000 | train_loss=0.0004 | val_loss=0.0038 | val_rmse=0.0604
+[progress] epoch 381/2000 | train_loss=0.0008 | val_loss=0.0040 | val_rmse=0.0616
+[progress] epoch 382/2000 | train_loss=0.0005 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 383/2000 | train_loss=0.0004 | val_loss=0.0038 | val_rmse=0.0602
+[progress] epoch 384/2000 | train_loss=0.0003 | val_loss=0.0038 | val_rmse=0.0600
+[progress] epoch 385/2000 | train_loss=0.0005 | val_loss=0.0041 | val_rmse=0.0631
+[progress] epoch 386/2000 | train_loss=0.0006 | val_loss=0.0040 | val_rmse=0.0616
+[progress] epoch 387/2000 | train_loss=0.0003 | val_loss=0.0039 | val_rmse=0.0613
+[progress] epoch 388/2000 | train_loss=0.0004 | val_loss=0.0041 | val_rmse=0.0623
+[progress] epoch 389/2000 | train_loss=0.0007 | val_loss=0.0040 | val_rmse=0.0620
+[progress] epoch 390/2000 | train_loss=0.0008 | val_loss=0.0041 | val_rmse=0.0628
+[progress] epoch 391/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0623
+[progress] epoch 392/2000 | train_loss=0.0004 | val_loss=0.0039 | val_rmse=0.0615
+[progress] epoch 393/2000 | train_loss=0.0010 | val_loss=0.0041 | val_rmse=0.0626
+[progress] epoch 394/2000 | train_loss=0.0006 | val_loss=0.0042 | val_rmse=0.0636
+[progress] epoch 395/2000 | train_loss=0.0007 | val_loss=0.0038 | val_rmse=0.0605
+[progress] epoch 396/2000 | train_loss=0.0004 | val_loss=0.0039 | val_rmse=0.0607
+[progress] epoch 397/2000 | train_loss=0.0003 | val_loss=0.0042 | val_rmse=0.0634
+[progress] epoch 398/2000 | train_loss=0.0003 | val_loss=0.0039 | val_rmse=0.0612
+[progress] epoch 399/2000 | train_loss=0.0008 | val_loss=0.0038 | val_rmse=0.0605
+[progress] epoch 400/2000 | train_loss=0.0008 | val_loss=0.0039 | val_rmse=0.0609
+[progress] epoch 401/2000 | train_loss=0.0006 | val_loss=0.0041 | val_rmse=0.0624
+[progress] epoch 402/2000 | train_loss=0.0007 | val_loss=0.0039 | val_rmse=0.0610
+[progress] epoch 403/2000 | train_loss=0.0006 | val_loss=0.0038 | val_rmse=0.0604
+[progress] epoch 404/2000 | train_loss=0.0003 | val_loss=0.0037 | val_rmse=0.0597
+[progress] epoch 405/2000 | train_loss=0.0003 | val_loss=0.0040 | val_rmse=0.0618
+[progress] epoch 406/2000 | train_loss=0.0007 | val_loss=0.0041 | val_rmse=0.0625
+[progress] epoch 407/2000 | train_loss=0.0006 | val_loss=0.0039 | val_rmse=0.0614
+[progress] epoch 408/2000 | train_loss=0.0006 | val_loss=0.0039 | val_rmse=0.0608
+Time limit reached. Elapsed time is 2:00:00. Signaling Trainer to stop.
+
+Time limit reached. Elapsed time is 2:00:00. Signaling Trainer to stop.
+[progress] epoch 409/2000 | train_loss=0.0008 | val_loss=0.0042 | val_rmse=0.0634
+Model saved to: logs_direct_unet_SIC/best_model
+Executing:  68%|██████▊   | 19/28 [2:00:23<1:48:16, 721.85s/cell]Executing:  75%|███████▌  | 21/28 [2:00:29<1:05:33, 561.96s/cell]Executing:  75%|███████▌  | 21/28 [2:00:31<40:10, 344.34s/cell]  
+Traceback (most recent call last):
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 102, in <module>
+    main()
+  File "/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/run_training.py", line 89, in main
+    pm.execute_notebook(
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [13]":
+---------------------------------------------------------------------------
+FileNotFoundError                         Traceback (most recent call last)
+Cell In[13], line 6
+      2 dtype  = torch.float32
+      3 
+      4 MODEL_PATH = os.path.join("logs_direct_unet_GP", "best_model")
+      5 
+----> 6 model = DirectUNet.from_pretrained(MODEL_PATH).eval().to(device=device, dtype=dtype)
+      7 print(f"DirectUNet loaded from {MODEL_PATH}")
+      8 print(f"  Device : {next(model.parameters()).device}")
+      9 print(f"  Params : {sum(p.numel() for p in model.parameters()):,}")
+
+Cell In[9], line 135, in DirectUNet.from_pretrained(cls, path)
+    133     @classmethod
+    134     def from_pretrained(cls, path: str) -> "DirectUNet":
+--> 135         with open(os.path.join(path, "config.json")) as f:
+    136             cfg = DirectUNetConfig(**json.load(f))
+    137         model = cls(cfg)
+    138         model.load_state_dict(torch.load(os.path.join(path, "model.pt"),
+
+FileNotFoundError: [Errno 2] No such file or directory: 'logs_direct_unet_GP/best_model/config.json'
+
+[run_step] exit 1 in 7235.5 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261118-210634_sic_unet_train
