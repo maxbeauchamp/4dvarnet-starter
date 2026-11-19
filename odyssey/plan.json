@@ -650,6 +650,30 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency && python rebuttal/gp_exact_posterior.py --members 20",
    "note": "Exact Gaussian posterior (mean, 20 exact samples) of the GP benchmark on its test windows: Bayes-optimal RMSE/CRPS/SSR reference (rebuttal)"
+  },
+  {
+   "id": "ssh_nfe_cm_fm",
+   "lane": 1,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method CMT_aug --set NSTEPS_EVAL=3 --out-tag _nfe3 ; python run_metrics.py --xp SSH_GF --method CMT_aug --set NSTEPS_EVAL=5 --out-tag _nfe5 ; python run_metrics.py --xp SSH_GF --method CMT_aug --set NSTEPS_EVAL=17 --out-tag _nfe17 ; python run_metrics.py --xp SSH_GF --method FM_aug --set NSTEPS_EVAL=2 --out-tag _nfe2 ; python run_metrics.py --xp SSH_GF --method FM_aug --set NSTEPS_EVAL=5 --out-tag _nfe5 ; python run_metrics.py --xp SSH_GF --method FM_aug --set NSTEPS_EVAL=10 --out-tag _nfe10 ; ls results/SSH_GF/*_nfe*_metrics_calibration.csv",
+   "note": "(rebuttal) SSH NFE study, full test set, 20 members: evaluation only, same checkpoints as Table 3"
+  },
+  {
+   "id": "ssh_nfe_var",
+   "lane": 2,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set NSTEPS_EVAL=4 --out-tag _nfe4 ; python run_metrics.py --xp SSH_GF --method VarCM_aug_student --set NSTEPS_EVAL=8 --out-tag _nfe8 ; python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set NSTEPS_EVAL=10 --out-tag _nfe10 ; python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set NSTEPS_EVAL=19 --out-tag _nfe19 ; python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set FRAME_GRID=True --out-tag _nfe_fr1 ; python run_metrics.py --xp SSH_GF --method VarDynCM_scratch --set FRAME_GRID=True --set FRAME_REFINE_SWEEP=True --set NSTEPS_EVAL=2 --out-tag _nfe_fr2 ; ls results/SSH_GF/*_nfe*_metrics_calibration.csv",
+   "note": "(rebuttal) SSH NFE study, full test set, 20 members: evaluation only, same checkpoints as Table 3"
+  },
+  {
+   "id": "ssh_nfe_dyn",
+   "lane": 3,
+   "time": "03:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=10 --out-tag _nfe10 ; python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=19 --out-tag _nfe19 ; python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=73 --out-tag _nfe73 ; python run_metrics.py --xp SSH_GF --method DynFM_v2 --set NSTEPS_EVAL=10 --out-tag _nfe10 ; python run_metrics.py --xp SSH_GF --method DynFM_v2 --set NSTEPS_EVAL=19 --out-tag _nfe19 ; ls results/SSH_GF/*_nfe*_metrics_calibration.csv",
+   "note": "(rebuttal) SSH NFE study, full test set, 20 members: evaluation only, same checkpoints as Table 3"
   }
  ]
 }
