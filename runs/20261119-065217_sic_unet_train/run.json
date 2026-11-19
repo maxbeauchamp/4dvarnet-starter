@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_unet_train",
+  "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method UNet",
+  "commit": "351feef-dirty",
+  "host": "sl-mee-br-212",
+  "slurm_job": "78520",
+  "started": "2026-11-19T06:52:43",
+  "status": "exit 1",
+  "seconds": 126.6,
+  "finished": "2026-11-19T06:54:50"
+}
