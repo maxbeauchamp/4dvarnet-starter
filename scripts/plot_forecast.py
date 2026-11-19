@@ -84,6 +84,8 @@ def main():
     ap.add_argument("--members", type=int, default=8)
     ap.add_argument("--w", type=float, default=0.0, help="weight of the observations after t (0: forecast)")
     ap.add_argument("--n-steps", type=int, default=None, help="Heun steps (default: the model's)")
+    ap.add_argument("--raw-clip", action="store_true",
+                    help="N1 sampled without censoring, then clipped to the bounds (scripts/one_step_bias.py)")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -112,7 +114,7 @@ def main():
         raw = {k: v.to(dev) for k, v in torch.utils.data.default_collate([ds[0]]).items()}
         days = D.build_batch(raw)
         with torch.no_grad(), amp:
-            runs = [R.rollout(n1, days, K, w=args.w, seed=s, sampler_steps=n_steps) for s in range(args.members)]
+            runs = [R.rollout(n1, days, K, w=args.w, seed=s, sampler_steps=n_steps, bounded=not args.raw_clip) for s in range(args.members)]
             traj = torch.stack([z[0] for z, _ in runs]).float()          # [N, K+1, 12, 64, 64]
             psis = torch.stack([p[0] for _, p in runs]).float()
             ana = torch.stack([torch.stack([n1.analysis(days[k], n_steps, torch.Generator(dev).manual_seed(100 + s))[0][0]

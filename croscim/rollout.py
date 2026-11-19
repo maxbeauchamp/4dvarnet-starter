@@ -78,9 +78,10 @@ def s_from_fine(fine: dict, b: dict) -> Tensor:
 def rollout(n1, days: Sequence[dict], n_steps: int, w: Union[float, Callable[[int], float]] = 1.0, seed: int = 0,
             intervention: Optional[Intervention] = None, z0: Optional[Tensor] = None, psi0: Optional[Tensor] = None,
             mode: str = "A", fine_with_obs: bool = False, keep: Optional[dict] = None,
-            sampler_steps: Optional[int] = None) -> tuple[Tensor, Tensor]:
+            sampler_steps: Optional[int] = None, bounded: bool = True) -> tuple[Tensor, Tensor]:
     """Rollout of n_steps days from the N0 analysis of days[0] (or z0, psi0).
-    Returns the trajectory [B, n_steps + 1, 12, 64, 64] (physical) and psi."""
+    Returns the trajectory [B, n_steps + 1, 12, 64, 64] (physical) and psi.
+    bounded=False: N1 sampled without censoring, then clipped by Pi_S."""
     nets = n1.ema.module
     sampler_steps = sampler_steps or n1.hparams.n_steps
     dev = days[0]["omega_c"].device
@@ -93,7 +94,8 @@ def rollout(n1, days: Sequence[dict], n_steps: int, w: Union[float, Callable[[in
     for k in range(1, n_steps + 1):
         wk = w(k) if callable(w) else w
         kp = keep or n1.keep(z.shape[0], dev, train=False)
-        z, psi = n1.step(nets, days[k], z, psi, kp, sampler_steps, w=wk, generator=_gen(seed, k, dev))
+        z, psi = n1.step(nets, days[k], z, psi, kp, sampler_steps, w=wk, generator=_gen(seed, k, dev),
+                         bounded=bounded)
         if mode == "B":
             fine = downscale(n1.n0, days[k], z, psi, seed * 10_007 + k, with_obs=fine_with_obs)
             z = torch.cat([z[:, :N_X], s_from_fine(fine, days[k])], 1)

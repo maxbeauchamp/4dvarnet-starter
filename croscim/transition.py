@@ -81,6 +81,14 @@ Options (v6, N1b; all False for the former checkpoints):
                learnt that gap (the N0 SIT uncertainty) as the daily law: one
                step from A_t had a SIT spread of 0.3-0.5 m (true change
                ~0.05 m), thin ice +0.13 m, thick -0.31 m, volume x2-3 in 30 days.
+  dense_relax_days  (N1p) tau: the dense increment target is also relaxed
+               towards the analysis, + r (A_t+k-1 - z_in), r = 1 - exp(-1 / tau)
+               (none: r = 0, N1o; r = 1: N1n). N1o was stable but learnt no SIC
+               tendency (Oct / Nov freeze-up: area 0.40 -> 0.42, analysis 0.55;
+               March pack lost ice): the daily mean change (~0.01) is small
+               against the pixel noise and nothing pulled a lagging rollout
+               back; with r the signal grows with the lag, the N0 uncertainty
+               enters at r only.
   inc_scale_sic  (N1i) inc_scale of the SIC channel alone (default inc_scale):
                the per-step SIC noise of N1h (spread 0.1-0.2 inside the pack),
                stuck against SIC = 1 and carried on by the background (the
@@ -194,7 +202,7 @@ class LitCascadeN1(pl.LightningModule):
                  inc_scale_sic=None, weak_sic=True,
                  drift_init=(0.015, 15.0), warp_mode="bilinear", tobit=False,
                  dense_targets=False, dense_members=2, dense_steps=8, dense_sigma=0.05, dense_paired=False,
-                 dense_increment=False):
+                 dense_increment=False, dense_relax_days=None):
         super().__init__()
         self.save_hyperparameters(ignore=["n0"])
         n0 = load_n0(n0_ckpt) if n0 is None else n0
@@ -319,7 +327,9 @@ class LitCascadeN1(pl.LightningModule):
             prev = getattr(self, "_dense_prev", None)
             if hp.get("dense_increment", False) and z_in is not None and prev is not None:
                 self._dense_prev = a
-                an = self.nrm.z(z_in + (a - prev))
+                tau = hp.get("dense_relax_days")
+                r = 1.0 - math.exp(-1.0 / tau) if tau else 0.0
+                an = self.nrm.z(z_in + (a - prev) + r * (prev - z_in))
                 an = torch.minimum(torch.maximum(an, self.lo[:, :N_Z]), self.hi[:, :N_Z])
             fill = (b["omega_c"] > 0)[:, None] & ~m
             z = torch.where(fill, an, z)
@@ -353,9 +363,11 @@ class LitCascadeN1(pl.LightningModule):
 
     @torch.no_grad()
     def step(self, nets: N1Nets, b: dict, z: Tensor, psi: Tensor, keep: dict, n_steps: int,
-             w: float = 1.0, generator=None) -> tuple[Tensor, Tensor]:
+             w: float = 1.0, generator=None, bounded: bool = True) -> tuple[Tensor, Tensor]:
         """One transition step (physical z, latent psi), with guidance weight w
-        on the observations (w = 0: free simulation, w = 1: assimilation)."""
+        on the observations (w = 0: free simulation, w = 1: assimilation).
+        bounded=False: sampler without the censoring of the one-step
+        prediction (the caller clips afterwards, e.g. rollout's Pi_S)."""
         base = self.base(b, z, psi)
         cond, valid = self.cond(nets, b, z, psi, keep, base)
         cond_null = self.cond(nets, b, z, psi, {**keep, "h": torch.zeros_like(keep["h"])}, base)[0] if w != 1.0 else None
@@ -363,6 +375,8 @@ class LitCascadeN1(pl.LightningModule):
         sc = self.inc_sc()
         if self.hparams.increment:
             lo, hi = (lo - base) / sc, (hi - base) / sc
+        if not bounded:
+            lo = hi = None
         zn = nets.gen.sample(cond, valid, n_steps, lo=lo, hi=hi, cond_null=cond_null, w=w, generator=generator)
         if self.hparams.increment:
             zn = base + zn * sc

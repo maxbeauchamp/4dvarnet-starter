@@ -396,3 +396,27 @@ def test_n1o_dense_increment_targets(days):
     want = n1o.nrm.z(z_in + (a2 - a1)).clamp(n1o.lo[0, 0].item(), n1o.hi[0, 0].item())
     assert torch.allclose(z[:, 0][fill2], want[:, 0][fill2], atol=1e-4)
     assert torch.isfinite(n1o.losses(days)["loss"])
+
+
+def test_n1p_relaxed_dense_increment_and_raw_clip_rollout(days):
+    import math
+    torch.manual_seed(0)
+    n1p = LitCascadeN1(n0=make_model(), swin=TINY, k_max=2, n_steps=1, push_steps=1, n_members=2, increment=True,
+                       inc_scale=0.2, dense_targets=True, dense_members=1, dense_steps=1, dense_paired=True,
+                       analysis_steps=1, dense_increment=True, dense_relax_days=7)
+    n1p._dense_seed = 123
+    a1, _ = n1p.analysis(days[1], 1, torch.Generator("cpu").manual_seed(123))
+    a2, _ = n1p.analysis(days[2], 1, torch.Generator("cpu").manual_seed(123))
+    n1p._dense_prev = a1
+    z_in = a1 + 0.1
+    fill = (days[2]["omega_c"] > 0) & ~n1p.n0.target_c(days[2])[1][:, 0]
+    z, _, _ = n1p.target(days[2], z_in=z_in)
+    r = 1 - math.exp(-1 / 7)
+    want = n1p.nrm.z(z_in + (a2 - a1) + r * (a1 - z_in)).clamp(n1p.lo[0, 0].item(), n1p.hi[0, 0].item())
+    assert torch.allclose(z[:, 0][fill], want[:, 0][fill], atol=1e-4)
+    # raw-clip rollout: sampled without censoring, within the bounds after Pi_S
+    zr, _ = R.rollout(n1p, days, 2, w=0.0, seed=1, bounded=False)
+    zb, _ = R.rollout(n1p, days, 2, w=0.0, seed=1)
+    sic = zr[:, :, Z_NAMES.index("SIC")]
+    assert torch.isfinite(zr).all() and sic.min() >= 0 and sic.max() <= 1
+    assert torch.equal(zr[:, 0], zb[:, 0])
