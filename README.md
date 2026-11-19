@@ -1,123 +1,105 @@
-# Consistency Models & Flow Matching for Generative Data Assimilation
+# Pairwise consistency models for Bayesian transport and variational data assimilation
 
-This branch is a split-off of the `devs` development branch of
-[4dvarnet-starter](https://github.com/maxbeauchamp/4dvarnet-starter): it keeps
-only the `consistency/` research code (pairwise Consistency Models and Flow
-Matching for ensemble/generative reconstruction of geophysical fields) and
-its minimal dependencies, dropping the unrelated `devs` work (other
-notebooks, configs, contrib modules, …).
+Branch `consistency_models` of [4dvarnet-starter](https://github.com/maxbeauchamp/4dvarnet-starter): the code,
+notebooks and results of the pairwise consistency models (CM, VarCM, DynCM, DynVarCM), their flow-matching teachers
+(FM, DynFM) and the UNet / 4DVarNet baselines, on three benchmarks: a linear–Gaussian space–time process (GP), sea
+surface height from altimetry (SSH, Gulf Stream) and sea-ice concentration from SAR retrievals (SIC). The state of the
+ICLR 2027 rebuttal is tagged [`iclr2027-rebuttal`](https://github.com/maxbeauchamp/4dvarnet-starter/tree/iclr2027-rebuttal).
 
-## What's here
+![Diffusion time as solver and physical time](docs/figures/overview.png)
 
-Eight reconstruction methods are compared across three variables (`GP`,
-`SIC`, `SSH_GF`), each implemented as a standalone Jupyter notebook under
-`consistency/Notebooks/Notebooks_<XP>/`:
+*Diffusion models and variational optimisation both transport a state along a gradient flow; pairwise models learn its
+jumps $g_\theta(\mathbf x^{(t)}, t, t', \cdot)$ (a). Instead of diffusing the whole space–time tensor (b), the
+space–time models use one clock: a spin-up jump from noise to the initial condition, then one jump per frame (c).*
 
-| Method | Type | Idea |
+## Methods
+
+| Model | Trained from | Idea |
 |---|---|---|
-| `UNet` | deterministic | direct regression baseline |
-| `4dvarnet_lstm` | deterministic | 4DVarNet variational solver with an LSTM gradient step |
-| `CM` | generative | pairwise Consistency Model (Karras noise schedule) |
-| `VarCM` | generative | CM + variational conditioning (observation / cost-gradient) |
-| `DynCM` | generative | CM extended to sequences: spin-up (noise→initial condition) + physical (sequential frames) regimes |
-| `VarDynCM` | generative | DynCM + variational conditioning (physical regime only) |
-| `FM` | generative | Flow Matching, linear-interpolant velocity regression |
-| `DynFM` | generative | FM extended to sequences, same spin-up/physical split as DynCM |
+| **FM** / **DynFM** | reference states | flow matching (linear interpolant), static / space–time; teachers of CM / DynCM |
+| **CM** / **DynCM** | FM / DynFM teacher | pairwise (two-time) consistency map distilled from the teacher's probability-flow ODE |
+| **VarCM** / **DynVarCM** | reference states only | pairwise map conditioned on the gradient of a learned variational cost $\nabla\mathcal J_\phi$ at every jump; trained by self-consistency + a fair ensemble CRPS, no teacher, no forward process |
+| UNet | reference states | direct regression (conditional mean) |
+| 4DVarNet | reference states | learned variational solver |
 
-The six generative methods produce an ensemble (mean, spread, CRPS); the two
-deterministic ones don't.
+DynCM and DynVarCM reconstruct a whole window (5 frames on GP, 9 days on SSH and SIC) with one network evaluation per
+frame, the spin-up jump included.
 
-## Datasets (`xp`)
+## Examples
 
-- **`GP`** — synthetic Gaussian Process / SPDE field, used as the reference
-  test-bed (all 8 methods first validated here).
-- **`SIC`** — Arctic sea-ice concentration, self-supervised on gappy ASIP
-  targets with OSISAF conditioning (`src/dataloader_SIC.py`).
-- **`SSH_GF`** — Gulf Stream sea surface height from along-track altimetry.
+![One test window per benchmark](docs/figures/examples.png)
 
-## A few results (GP)
+*One test window per benchmark, time from left to right: CM on GP and SSH, DynVarCM on SIC. From top to bottom:
+observations, reference, ensemble mean, one member, ensemble spread.*
 
-CM: single-frame transport from noise to the clean field along the Karras
-schedule.
+![DynCM transport on SSH](docs/figures/ssh_dyncm_transport.png)
 
-![CM transport](consistency/Notebooks/Notebooks_GP/figures/CM_spde/CM_spde_transport.png)
+*DynCM on SSH: spin-up from noise to the initial condition (blue), then solver time = physical time, one jump per day
+(red). Rows: one member, ensemble spread, ensemble mean, reference, error, observations.*
 
-DynFM: the same idea extended to a sequence — a spin-up segment (noise → IC)
-followed by a physical segment (frame-to-frame transport), each compared
-against ground truth and the sparse observations actually seen by the model.
+<p align="center"><img src="docs/figures/sic_dynvarcm_example.png" width="55%"></p>
 
-![DynFM transport](consistency/Notebooks/Notebooks_GP/figures/DynFM_spde/DynFM_spde_transport.png)
+*DynVarCM on SIC (marginal ice zone): SAR observations, OSI SAF, ASIP reference, ensemble mean, one member, spread and
+absolute error with the spread–skill ratio of each day.*
 
-DynCM: reconstructed 5-frame ensemble mean.
+## Results
 
-![DynCM ensemble mean](consistency/Notebooks/Notebooks_GP/figures/DynCM_spde/DynCM_spde_dyncm_mean.png)
+Full test sets, ensembles of 20 members. CRPS over all grid points; SSR: spread–skill ratio (1 for a calibrated
+ensemble). The CSVs are in [`consistency/paper_results/`](consistency/paper_results).
 
-More figures (ensemble members, spread, per-method) are under
-`consistency/Notebooks/Notebooks_<XP>/figures/`, regenerated by each
-notebook.
+| SSH (Gulf Stream) | RMSE (m) | λx (°) | CRPS | SSR | | SIC (MIZ) | RMSE | λx (px) | CRPS | SSR |
+|---|---|---|---|---|---|---|---|---|---|---|
+| FM | 0.059 | 1.12 | 0.030 | 0.82 | | FM | 0.144 | 137 | 0.090 | 0.71 |
+| CM | 0.062 | 1.12 | 0.033 | 0.88 | | CM | 0.141 | 109 | 0.100 | 0.29 |
+| VarCM | 0.092 | 1.46 | 0.041 | 1.44 | | VarCM | 0.175 | 133 | 0.095 | 0.83 |
+| DynFM | 0.075 | 1.39 | 0.039 | 0.83 | | DynFM | 0.245 | 158 | 0.169 | 0.47 |
+| DynCM | 0.079 | 1.50 | 0.042 | 0.98 | | DynCM | 0.245 | 175 | 0.199 | 0.13 |
+| DynVarCM | **0.055** | 1.20 | **0.029** | 0.58 | | DynVarCM | 0.150 | 88 | **0.077** | **0.89** |
+| UNet | 0.193 | – | – | – | | UNet | **0.106** | 90 | – | – |
+| 4DVarNet | 0.075 | 1.35 | – | – | | 4DVarNet | 0.191 | **80** | – | – |
+
+**GP.** The exact posterior of the generating SPDE is computed by
+[`consistency/scripts/gp_exact_posterior.py`](consistency/scripts/gp_exact_posterior.py) (RMSE 0.216, CRPS 0.119,
+SSR 1.00). The GP windows are overlapping windows of a single trajectory split at random, so test frames also appear
+in training windows and the absolute GP scores of the learned models are optimistic; GP is used for relative
+comparisons (distillation, calibration, number of network evaluations).
+
+**Number of network evaluations.** DynCM keeps its accuracy and calibration from 9 to 72 evaluations on SSH (one per
+frame suffices, against 34–90 for DynFM); CM needs about 9 evaluations to approach FM on SSH, a single one on GP.
+
+<p align="center"><img src="docs/figures/ssh_nfe.png" width="90%"></p>
 
 ## Repository layout
 
 ```
 consistency/
-├── consistency_models/          # CM / VarCM / DynCM / VarDynCM pairwise-consistency preconditioning + utils
-├── flowmatching_models/
-│   └── flowmatching_models_FM.py # FM network + Lightning module, shared by the FM and DynFM
-│                                  # notebooks (DynFM's own LitDynFM is defined inline)
-├── spectral_utils.py            # shared PSD / resolved-scale (λx) metric
-├── cartopy/                     # local cartopy shapefile cache (map backgrounds for SIC/SSH_GF plots)
-├── Notebooks/
-│   ├── Notebooks_GP/             # GP / SPDE xp: one notebook per method + figures/
-│   ├── Notebooks_SIC/             # SIC xp
-│   └── Notebooks_SSH_GF/           # SSH_GF xp
-├── sbatch_submission/            # papermill training + metrics + LaTeX-table pipeline — see its own README
-└── figs/                          # misc standalone illustrations
-
-src/
-├── dataloader_SSH.py             # SSH_GF datamodule (BaseDataModule)
-├── dataloader_SPDE.py            # GP/SPDE datamodule (SPDEDataModule)
-└── dataloader_SIC.py             # SIC datamodule (BaseDataModule, ASIP/OSISAF), trimmed from
-                                   # the former contrib/ASIP_OSISAF/data_simple.py to just the
-                                   # dataloader classes actually imported by the notebooks
+├── consistency_models/        CM, VarCM, DynCM, VarDynCM (models, losses, samplers), sic_costs.py, teacher_targets.py
+├── flowmatching_models/       FM / DynFM networks and Lightning modules
+├── calibration.py             CRPS, spread–skill ratio, rank histograms
+├── spectral_utils.py          spectral score and resolved scale λx
+├── Notebooks/Notebooks_{GP,SSH_GF,SIC}/   one notebook per method and benchmark (first cell = parameters)
+├── sbatch_submission/         run_training.py, run_metrics.py, run_nfe_sweep.py + methods.yaml
+├── paper_results/             CSVs of the tables and NFE studies
+└── scripts/                   figures, exact GP posterior, supplementary archive
+src/                           data loaders (dataloader_SPDE.py, dataloader_SSH.py, dataloader_SIC.py)
+odyssey/                       pilot to run the experiments on the Odyssey cluster from a laptop (see its README)
+docs/figures/                  figures of this README
 ```
 
-Everything above is the complete dependency closure of the notebooks
-(verified by grepping every `from src...` import across `consistency/`) —
-nothing in this branch is unused scaffolding. There is no `contrib/` on this
-branch: the SIC dataloader used to live at `contrib/ASIP_OSISAF/data_simple.py`
-and pull in a whole (mostly unused) `contrib/ASIP_OSISAF/` package; only the
-two classes actually imported by the notebooks (`BaseDataModule`,
-`TrainingItem_4da`) were kept, moved to `src/dataloader_SIC.py` alongside the
-other two dataloaders.
-
-## Install
+## Usage
 
 ```bash
-mamba env create -n consistency_models -f environment.yaml
-conda activate consistency_models
-```
-
-## Running
-
-Either open a notebook directly under `consistency/Notebooks/Notebooks_<XP>/`
-in Jupyter, or drive the full training + metrics pipeline via `papermill`
-from the cluster:
-
-```bash
+conda env create -f environment.yaml && conda activate 4dvarnet-starter
 cd consistency/sbatch_submission
-sbatch submit_train.sbatch GP     # trains all 8 methods sequentially
-sbatch submit_metrics.sbatch GP   # reloads each checkpoint, computes ensemble metrics, writes the LaTeX table
-cat results/GP/comparison_table.tex
+python run_training.py --xp SSH_GF --method FM_aug --reset      # train (checkpoints in Notebooks_SSH_GF/<log_dir>/)
+python run_metrics.py  --xp SSH_GF --method FM_aug              # evaluate: results/SSH_GF/FM_aug_metrics*.csv
+python run_metrics.py  --xp SSH_GF --method CMT_aug --set NSTEPS_EVAL=5 --out-tag _nfe5   # override a parameter
 ```
 
-See `consistency/sbatch_submission/README.md` for the pipeline's design
-notes, the method registry (`methods.yaml`), and known limitations of the
-notebooks generated for SIC/SSH_GF.
+[`methods.yaml`](consistency/sbatch_submission/methods.yaml) maps every row of the tables to its method key, notebook
+and checkpoint folder. Teachers are trained before their students (FM before CM, DynFM before DynCM).
 
-## References
-
-- Song, Y., Dhariwal, P., Chen, M., & Sutskever, I. (2023). Consistency Models. *ICML 2023*.
-- Lipman, Y., Chen, R. T. Q., Ben-Hamu, H., Nickel, M., & Le, M. (2023). Flow Matching for Generative Modeling. *ICLR 2023*.
-- Beauchamp, M., Desassis, N., Johnson, J. E., Benaichouche, S., Tandeo, P., & Fablet, R. (2024). SPDE priors for uncertainty quantification of end-to-end neural data assimilation schemes. https://arxiv.org/abs/2402.01855
-- Beauchamp M., Febvre Q., and Fablet R. Ensemble-based 4DVarNet uncertainty quantification for the reconstruction of sea surface height dynamics. *Environmental Data Science*, 2:e18, 2023. doi: 10.1017/eds.2023.19.
-- Beauchamp, M., Febvre Q., Georgenthum H., and Fablet R. 4DVarNet-SSH: End-to-end learning of variational interpolation schemes for nadir and wide-swath satellite altimetry. *Geoscientific Model Development*, 16(8):2119–2147, 2023. doi: 10.5194/gmd-16-2119-2023.
+**Data** (in `data/`, not tracked): `SPDE_diffusion_dataset_1.nc` (GP, simulated from the SPDE),
+`natl_gf_w_5nadirs_swot.nc` (SSH, built from the [2020a SSH mapping data
+challenge](https://github.com/ocean-data-challenges/2020a_SSH_mapping_NATL60)), `asip_database_daw15_sparse.nc`
+(SIC: ASIP fields, SAR retrievals and OSI SAF on a common grid).
