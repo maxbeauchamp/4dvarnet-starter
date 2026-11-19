@@ -326,3 +326,4 @@ fatal: Cannot autostash
 - 2026-11-19 09:37 submitted `ssh_nfe_var` as job 78592 -> `runs/20261119-093709_ssh_nfe_var` (lane 2) [gpu:a100:1]
 - 2026-11-19 09:37 submitted `ssh_nfe_dyn` as job 78597 -> `runs/20261119-093733_ssh_nfe_dyn` (lane 3) [gpu:a100:1]
 - 2026-11-19 10:09 `ssh_nfe_cm_fm` done in 00:24:04, gate passed
+- 2026-11-19 10:40 lane 2: `ssh_nfe_var` done in 00:40:37, gate passed
