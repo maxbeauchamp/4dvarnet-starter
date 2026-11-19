@@ -306,3 +306,8 @@ fatal: Cannot autostash
 - 2026-11-19 06:43 **ATTENTION** lane 2: `sic_4dvarnet_train` ended FAILED after 03:00:59; see `runs/20261118-210610_sic_4dvarnet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-19 06:45 **ATTENTION** lane 4: `sic_unet_train` ended FAILED after 02:00:36; see `runs/20261118-210634_sic_unet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
 - 2026-11-19 06:46 `ssh_cmt_aug_train` done in 05:37:36, gate passed
+- 2026-11-19 06:51 pilot resumed
+- 2026-11-19 06:52 submitted `sic_4dvarnet_train` as job 78515 -> `runs/20261119-065144_sic_4dvarnet_train` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-19 06:52 submitted `sic_unet_train` as job 78520 -> `runs/20261119-065217_sic_unet_train` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-19 06:59 pilot resumed
+- 2026-11-19 07:04 **ATTENTION** lane 2: `sic_4dvarnet_train` ended FAILED after 00:03:10; see `runs/20261119-065144_sic_4dvarnet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
