@@ -319,3 +319,6 @@ fatal: Cannot autostash
 - 2026-11-19 07:32 lane 4: `sic_unet_train` done in 00:01:58, gate passed
 - 2026-11-19 07:33 submitted `ssh_unet_metrics` as job 78545 -> `runs/20261119-073300_ssh_unet_metrics` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-19 07:36 **ATTENTION** lane 4: `ssh_unet_metrics` ended FAILED after 00:01:10; see `runs/20261119-073300_ssh_unet_metrics`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-19 07:42 pilot resumed
+- 2026-11-19 07:43 submitted `ssh_unet_metrics` as job 78552 -> `runs/20261119-074250_ssh_unet_metrics` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-19 09:07 lane 4: `ssh_unet_metrics` done in 01:17:23, gate passed

@@ -1,0 +1,11 @@
+{
+  "plan_id": "ssh_unet_metrics",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method UNet --reset && python run_metrics.py --xp SSH_GF --method UNet",
+  "commit": "b5a68e3-dirty",
+  "host": "sl-mee-br-212",
+  "slurm_job": "78552",
+  "started": "2026-11-19T07:43:08",
+  "status": "ok",
+  "seconds": 4642.1,
+  "finished": "2026-11-19T09:00:30"
+}

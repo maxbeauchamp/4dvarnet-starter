@@ -1,0 +1,2 @@
+Method,RMSE,lambda_x
+DirectUNet (full test set),0.1931 $\pm$ 0.0182,159.40 $\pm$ 12.35
