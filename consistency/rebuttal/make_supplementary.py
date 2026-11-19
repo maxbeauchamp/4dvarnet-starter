@@ -27,7 +27,7 @@ OUT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT.parent / "suppl
 METHODS = {
     "GP": {"FM": "FM", "CM": "CMT", "VarCM": "VarCM_scratch2_student", "DynFM": "DynFM",
            "DynCM": "DynCMT", "DynVarCM": "VarDynCM_grid", "UNet": "UNet", "4DVarNet": "4dvarnet_lstm"},
-    "SSH_GF": {"FM": "FM_v2", "CM": "CMT_v2", "VarCM": "VarCM_aug_student", "DynFM": "DynFM_v2",
+    "SSH_GF": {"FM": "FM_aug", "CM": "CMT_aug", "VarCM": "VarCM_aug_student", "DynFM": "DynFM_v2",
                "DynCM": "DynCMT", "DynVarCM": "VarDynCM_scratch", "UNet": "UNet", "4DVarNet": "4dvarnet_lstm"},
     "SIC": {"FM": "FM_v3", "CM": "CMT_v3", "VarCM": "VarCM_aug_student", "DynFM": "DynFM_v3",
             "DynCM": "DynCMT_v3", "DynVarCM": "VarDynCM_grid_sic"},
