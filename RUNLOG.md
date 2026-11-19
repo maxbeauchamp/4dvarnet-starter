@@ -328,3 +328,5 @@ fatal: Cannot autostash
 - 2026-11-19 10:09 `ssh_nfe_cm_fm` done in 00:24:04, gate passed
 - 2026-11-19 10:40 lane 2: `ssh_nfe_var` done in 00:40:37, gate passed
 - 2026-11-19 10:41 **ATTENTION** lane 4: `gp_exact_posterior` ended TIMEOUT after 01:00:13; see `runs/20261119-092932_gp_exact_posterior`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+- 2026-11-19 10:44 submitted `gp_exact_posterior2` as job 78651 -> `runs/20261119-104409_gp_exact_posterior2` [gpu:a100:1]
+- 2026-11-19 11:24 lane 3: `ssh_nfe_dyn` done in 01:36:23, gate passed
