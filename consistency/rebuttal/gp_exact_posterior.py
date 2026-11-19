@@ -31,6 +31,32 @@ except Exception:   # pragma: no cover
     _chol = None
 
 
+def pcg_solver(A, tol=1e-10, maxiter=5000):
+    """Jacobi-preconditioned CG (Q_uu is SPD and sparse; direct factorisation of the 3-D window is too slow)."""
+    A = sp.csr_matrix(A)
+    Dinv = 1.0 / A.diagonal()
+    P = spla.LinearOperator(A.shape, matvec=lambda v: Dinv * v)
+    def solve(b):
+        x, info = spla.cg(A, b, rtol=tol, maxiter=maxiter, M=P)
+        if info != 0:
+            print(f"  [cg] info={info}", flush=True)
+        return x
+    return solve
+
+
+def banded_chol_solver(A):
+    """Cholesky of a symmetric banded matrix (LAPACK pbtrf): A in an ordering where its bandwidth is small."""
+    import scipy.linalg as sla
+    A = sp.coo_matrix(A)
+    keep = A.col >= A.row
+    r, c, v = A.row[keep], A.col[keep], A.data[keep]
+    u = int((c - r).max())
+    ab = np.zeros((u + 1, A.shape[0]))
+    ab[u + r - c, c] = v
+    cb = sla.cholesky_banded(ab, overwrite_ab=True, lower=False)
+    return lambda b: sla.cho_solve_banded((cb, False), b)
+
+
 def factor(A):
     A = sp.csc_matrix(A)
     if _chol is not None:
@@ -74,6 +100,7 @@ def main():
     ap.add_argument("--n-win", type=int, default=0, help="0: all test windows")
     ap.add_argument("--members", type=int, default=20)
     ap.add_argument("--kappa", type=float, default=1.0 / 3.0)
+    ap.add_argument("--budget", type=float, default=0, help="stop after this many seconds (0: no limit); results so far are written")
     a = ap.parse_args()
     t0 = time.time()
     if a.data.endswith(".npz"):
@@ -82,7 +109,8 @@ def main():
         import xarray as xr
         ds = xr.open_dataset(a.data)
     X = ds["x"].values.astype(np.float64); Y = ds["y"].values.astype(np.float64); OI = ds["OI"].values.astype(np.float64)
-    T, ny, nx = X.shape   # last axis fast (C order), as reshape(n_iter, nx, ny) in the generator (nx = ny)
+    T, ny, nx = X.shape
+    print("sksparse.cholmod:", _chol is not None, flush=True)   # last axis fast (C order), as reshape(n_iter, nx, ny) in the generator (nx = ny)
     N = nx * ny
     H11, H22, H12 = (ds[k].values.astype(np.float64).ravel() for k in ("H11", "H22", "H12"))
     print(f"T={T} grid={ny}x{nx} H11 in [{H11.min():.2f},{H11.max():.2f}] H12 in [{H12.min():.2f},{H12.max():.2f}]", flush=True)
@@ -110,7 +138,7 @@ def main():
     OIf = OI.reshape(T, N) if orient == "C" else OI.transpose(0, 2, 1).reshape(T, N)
     unflat = (lambda v: v.reshape(ny, nx)) if orient == "C" else (lambda v: v.reshape(nx, ny).T)
 
-    I = sp.identity(N, format="csr"); M = (I + dt * B).tocsr(); MM = (M @ M).tocsr()
+    I = sp.identity(N, format="csr"); M = (I + dt * B).tocsr(); MM = (M.T @ M).tocsr()   # |M x_{t+1} - x_t|^2
     nt = 5
     D = [MM] + [MM + I] * (nt - 2) + [MM]
     blocks = [[None] * nt for _ in range(nt)]
@@ -119,6 +147,10 @@ def main():
         if k + 1 < nt:
             blocks[k][k + 1] = -M; blocks[k + 1][k] = -M.T
     Q = (sp.bmat(blocks, format="csr") / s2).tocsr()
+    # space-major ordering (node, frame): Q becomes banded (bandwidth ~ nt (nx + 1)), so that the conditioned
+    # block Q_uu is factorised exactly by a banded Cholesky (sparse LU of the time-major 3-D system is far too slow)
+    perm = (np.arange(nt)[None, :] * N + np.arange(N)[:, None]).ravel()      # new index j -> old index perm[j]
+    Qp = Q[perm][:, perm].tocsr()
 
     # --- prior samples of a window (stationary): run the simulation scheme from 0 with burn-in ---
     rng = np.random.default_rng(0)
@@ -138,17 +170,19 @@ def main():
         starts = starts[:a.n_win]
     rows, stats, rmse_pairs, rmse_oi_pairs, lam_pairs = [], [], [], [], []
     for w, s in enumerate(starts):
-        yw = Yf[s:s + nt].ravel(); xw = Xf[s:s + nt].ravel()
+        yw = Yf[s:s + nt].ravel()[perm]; xw = Xf[s:s + nt].ravel()[perm]
         o = np.isfinite(yw); u = ~o
-        Quu = Q[u][:, u]; Quo = Q[u][:, o]
-        solve = factor(Quu)
+        Quu = Qp[u][:, u]; Quo = Qp[u][:, o]
+        solve = banded_chol_solver(Quu)
         mean = xw * 0.0; mean[o] = yw[o]
         mean[u] = solve(-(Quo @ yw[o]))
         ens = np.empty((a.members, nt * N))
         for m in range(a.members):
-            ps = prior[m]
+            ps = prior[m][perm]
             cond_u = solve(-(Quo @ ps[o]))          # E[u | prior obs]
             ens[m] = mean; ens[m, u] = mean[u] + (ps[u] - cond_u)
+        inv = np.argsort(perm)
+        xw, mean, ens = xw[inv], mean[inv], ens[:, inv]
         for k in range(nt):
             sl = slice(k * N, (k + 1) * N)
             gt = unflat(xw[sl]); mu = unflat(mean[sl]); e = np.stack([unflat(v[sl]) for v in ens])
@@ -160,15 +194,22 @@ def main():
             stats.append(calib_stats(e, gt, np.ones_like(gt, dtype=bool)))
         print(f"  window {w + 1}/{len(starts)} (start {s}): RMSE {np.mean(rmse_pairs[-nt:]):.4f}"
               f"  OI {np.nanmean(rmse_oi_pairs[-nt:]):.4f}  ({time.time() - t0:.0f}s)", flush=True)
+        if (w + 1) % 5 == 0 or w + 1 == len(starts) or (a.budget and time.time() - t0 > a.budget):
+            write(a, stats, rmse_pairs, rmse_oi_pairs, lam_pairs, w + 1, orient, dt, s2, t0)
+        if a.budget and time.time() - t0 > a.budget:
+            print("time budget reached", flush=True); break
+
+
+def write(a, stats, rmse_pairs, rmse_oi_pairs, lam_pairs, n_done, orient, dt, s2, t0):
     summ = calib_summary(stats)
     os.makedirs(a.out, exist_ok=True)
     agg = lambda v: (float(np.nanmean(v)), float(np.nanstd(v)))
     (rm, rs), (lm, ls) = agg(rmse_pairs), agg(lam_pairs)
     with open(os.path.join(a.out, "ExactPosterior_metrics.csv"), "w", newline="") as f:
         wr = csv.writer(f); wr.writerow(["Method", "RMSE", "lambda_x", "CRPS"])
-        wr.writerow(["Exact posterior (full test set)", f"{rm:.4f} $\\pm$ {rs:.4f}", f"{lm:.1f} $\\pm$ {ls:.1f}", f"{summ['crps_all']:.4f}"])
+        wr.writerow([f"Exact posterior ({n_done} test windows)", f"{rm:.4f} $\\pm$ {rs:.4f}", f"{lm:.1f} $\\pm$ {ls:.1f}", f"{summ['crps_all']:.4f}"])
     write_calibration_csv(os.path.join(a.out, "ExactPosterior_metrics_calibration.csv"), "ExactPosterior", summ, a.members)
-    print(f"\nEXACT POSTERIOR on {len(starts)} test windows: RMSE {rm:.4f}  lambda_x {lm:.1f}  CRPS(all px) {summ['crps_all']:.4f}"
+    print(f"\nEXACT POSTERIOR on {n_done} test windows: RMSE {rm:.4f}  lambda_x {lm:.1f}  CRPS(all px) {summ['crps_all']:.4f}"
           f"  SSR {summ['ssr']:.3f}  rank_dev {summ['rank_dev']:.2f}  | OI of the file on the same windows: RMSE {np.nanmean(rmse_oi_pairs):.4f}"
           f"  | orientation {orient} dt {dt} sigma2 {s2:.4f}  ({time.time() - t0:.0f}s)", flush=True)
 

@@ -3,8 +3,8 @@
 Reads results/SSH_GF/<method>{,_nfe<tag>}_metrics_calibration.csv (run_metrics.py --set NSTEPS_EVAL=n --out-tag _nfe<n>)
 and converts the step counts to network evaluations with the sampler of each model (checked on the GP sweeps, where
 the NFE was counted by wrapping the network):
-  CM, DynCM, DynVarCM (uniform grid): nsteps - 1;  VarCM: nsteps;  FM: 2 nsteps (Heun);
-  DynFM: 2 x (Heun steps of the boundary-aware grid);  DynVarCM frame grid: K x C (C = 9 frames).
+  CM, DynCM: nsteps - 1;  VarCM: nsteps;  FM: 2 nsteps (Heun);
+  DynFM: 2 x (Heun steps of the boundary-aware grid);  DynVarCM: K x C on its frame grid (K jumps per segment, C = 9 frames).
 
     python ssh_nfe_fig.py RESULTS_DIR OUT.pdf [OUT.csv]
 """
@@ -30,7 +30,6 @@ MODELS = [
     ("CM", "CMT_aug", 10, lambda n: n - 1),
     ("DynCM", "DynCMT", 4 * C + 1, lambda n: n - 1),
     ("VarCM", "VarCM_aug_student", 15, lambda n: n),
-    ("DynVarCM (uniform grid)", "VarDynCM_scratch", 5 * C, lambda n: n - 1),
 ]
 col = {"FM": "#555555", "CM": "#2a6fb0", "VarCM": "#2e8b57"}
 
@@ -51,10 +50,11 @@ for name, key, n0, nfe in MODELS:
         pts.append((n, read(f)))
     for n, v in pts:
         rows.append(dict(model=name, nsteps=n, nfe=nfe(n), **v))
+# DynVarCM: frame grid (Table 3: K = 1, i.e. one jump per frame) and its refinement with K jumps per segment
 for k in (1, 2):
     f = f"{R}/VarDynCM_scratch_nfe_fr{k}_metrics_calibration.csv"
     if os.path.exists(f):
-        rows.append(dict(model="DynVarCM (frame grid)", nsteps=k, nfe=k * C, **read(f)))
+        rows.append(dict(model="DynVarCM", nsteps=k, nfe=k * C, **read(f)))
 df = pd.DataFrame(rows).sort_values(["model", "nfe"])
 df.to_csv(CSV, index=False)
 print(df.to_string(index=False))
@@ -62,12 +62,12 @@ print(df.to_string(index=False))
 plt.rcParams.update({"font.size": 9, "font.family": "serif", "mathtext.fontset": "cm"})
 fig, axs = plt.subplots(1, 3, figsize=(7.0, 2.4), sharex=True)
 handles = []
-ORDER = ["FM", "CM", "VarCM", "DynFM", "DynCM", "DynVarCM (uniform grid)", "DynVarCM (frame grid)"]
+ORDER = ["FM", "CM", "VarCM", "DynFM", "DynCM", "DynVarCM"]
 for name in [m for m in ORDER if m in set(df.model)]:
     d = df[df.model == name]
     base = name.split(" ")[0].replace("Dyn", "") or "FM"
     dyn = name.startswith("Dyn")
-    fr = "frame" in name
+    fr = False
     kw = dict(color=col[base], ls=":" if fr else ("--" if dyn else "-"), marker="D" if fr else ("s" if dyn else "o"),
               ms=3.5, lw=1.4, label=name)
     h, = axs[0].plot(d.nfe, d.rmse, **kw); handles.append(h)

@@ -674,6 +674,14 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=10 --out-tag _nfe10 ; python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=19 --out-tag _nfe19 ; python run_metrics.py --xp SSH_GF --method DynCMT --set NSTEPS_EVAL=73 --out-tag _nfe73 ; python run_metrics.py --xp SSH_GF --method DynFM_v2 --set NSTEPS_EVAL=10 --out-tag _nfe10 ; python run_metrics.py --xp SSH_GF --method DynFM_v2 --set NSTEPS_EVAL=19 --out-tag _nfe19 ; ls results/SSH_GF/*_nfe*_metrics_calibration.csv",
    "note": "(rebuttal) SSH NFE study, full test set, 20 members: evaluation only, same checkpoints as Table 3"
+  },
+  {
+   "id": "gp_exact_posterior2",
+   "lane": 1,
+   "time": "01:00:00",
+   "gate": "status == 'ok'",
+   "cmd": "cd consistency && python -u rebuttal/gp_exact_posterior.py --members 20 --budget 3000 && cat sbatch_submission/results/GP/ExactPosterior_metrics*.csv",
+   "note": "Exact GP posterior, banded Cholesky (about 8 s per window; the sparse-LU version of gp_exact_posterior is too slow)"
   }
  ]
 }
