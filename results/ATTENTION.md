@@ -1,3 +1,3 @@
-# Needs attention (2026-11-19 07:05)
+# Needs attention (2026-11-19 07:36)
 
-lane 4: `sic_unet_train` ended FAILED after 00:02:08; see `runs/20261119-065217_sic_unet_train`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
+lane 4: `ssh_unet_metrics` ended FAILED after 00:01:10; see `runs/20261119-073300_ssh_unet_metrics`. Lane paused (`pilot.py resume` re-enables it; the failed step is resubmitted).
