@@ -1,0 +1,11 @@
+{
+  "plan_id": "sic_4dvarnet_train",
+  "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method 4dvarnet_lstm --reset && python run_metrics.py --xp SIC --method 4dvarnet_lstm",
+  "commit": "cfe80ff-dirty",
+  "host": "sl-mee-br-206",
+  "slurm_job": "78433",
+  "started": "2026-11-18T22:41:24",
+  "status": "exit 1",
+  "seconds": 10857.3,
+  "finished": "2026-11-19T01:42:21"
+}
