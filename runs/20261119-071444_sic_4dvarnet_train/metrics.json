@@ -1,0 +1,9 @@
+{
+ "SIC/4dvarnet_lstm_metrics.csv": [
+  {
+   "Method": "4DVarNet (MIZ, full test set)",
+   "RMSE": "0.1912 $\\pm$ 0.0711",
+   "lambda_x": "79.6 $\\pm$ 78.3"
+  }
+ ]
+}
