@@ -11,37 +11,37 @@ import json, os, re
 NB = os.path.join(os.path.dirname(__file__), "..", "Notebooks", "Notebooks_SIC")
 MARK = "# (rebuttal) SIC baseline helpers"
 HELPERS = MARK + r'''
-import torch as _t
-import torch.nn.functional as _F
+import torch as _tsic
+import torch.nn.functional as _Fsic
 
 def sic_pack(sar, osi):
     """y = cat(SAR, OSI SAF) with NaN -> 0, and the matching masks (float)."""
     osi = osi.to(sar)
-    m = _t.cat([_t.isfinite(sar), _t.isfinite(osi)], 1).to(sar.dtype)
-    return _t.cat([sar.nan_to_num(0.0), osi.nan_to_num(0.0)], 1), m
+    m = _tsic.cat([_tsic.isfinite(sar), _tsic.isfinite(osi)], 1).to(sar.dtype)
+    return _tsic.cat([sar.nan_to_num(0.0), osi.nan_to_num(0.0)], 1), m
 
 def sic_fuse(sar, osi):
     """SAR where observed, else OSI SAF (NaN -> 0 on land), and the SAR mask."""
     osi = osi.to(sar)
-    m = _t.isfinite(sar).to(sar.dtype)
-    return _t.where(m > 0, sar.nan_to_num(0.0), osi.nan_to_num(0.0)), m
+    m = _tsic.isfinite(sar).to(sar.dtype)
+    return _tsic.where(m > 0, sar.nan_to_num(0.0), osi.nan_to_num(0.0)), m
 
 def sic_init_state(y, m):
     C = y.shape[1] // 2
-    return _t.where(m[:, :C] > 0, y[:, :C], y[:, C:])
+    return _tsic.where(m[:, :C] > 0, y[:, :C], y[:, C:])
 
 def masked_mse(x, tgt):
-    v = _t.isfinite(tgt).to(x.dtype)
+    v = _tsic.isfinite(tgt).to(x.dtype)
     return (((x - tgt.nan_to_num(0.0)) ** 2) * v).sum() / v.sum().clamp(min=1.0)
 
-class SICObsCost4DV(_t.nn.Module):
+class SICObsCost4DV(_tsic.nn.Module):
     def __init__(self, pool=16, w_osi=1.0):
         super().__init__(); self.pool, self.w_osi = pool, w_osi
     def forward(self, state, y, m):
         C = state.shape[1]
         sar, osi, ms, mo = y[:, :C], y[:, C:], m[:, :C], m[:, C:]
         j_sar = (((state - sar) ** 2) * ms).sum() / ms.sum().clamp(min=1.0)
-        P = lambda z: _F.avg_pool2d(z, self.pool, ceil_mode=True)
+        P = lambda z: _Fsic.avg_pool2d(z, self.pool, ceil_mode=True)
         cnt = P(mo)
         xs = P(state * mo) / cnt.clamp(min=1e-6)
         os_ = P(osi * mo) / cnt.clamp(min=1e-6)
@@ -52,6 +52,9 @@ class SICObsCost4DV(_t.nn.Module):
 
 def patch(name, rules, helper_before):
     p = os.path.join(NB, name); nb = json.load(open(p)); n = 0
+    for c in nb["cells"]:   # refresh the helper cell (names must not collide with notebook variables such as _t)
+        if MARK in "".join(c["source"]):
+            c["source"] = HELPERS.splitlines(keepends=True)
     if not any(MARK in "".join(c["source"]) for c in nb["cells"]):
         i = next(i for i, c in enumerate(nb["cells"]) if helper_before in "".join(c["source"]))
         nb["cells"].insert(i, {"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [],
