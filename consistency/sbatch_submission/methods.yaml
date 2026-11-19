@@ -10,7 +10,7 @@
 #
 # generative: ensemble methods (n_samples_metrics members); log_dir: checkpoint folder written by the notebook,
 # relative to Notebooks_<XP>/; params: papermill overrides (method level, then xp level).
-# NB 4dvarnet_lstm GP/SSH: the checkpoints on Odyssey are logs_4dvarnet_unet_spde / logs_4dvarnet_unet (SOLVER_TYPE=unet).
+# 4dvarnet_lstm: GP and SSH rows of the paper use the UNet solver (SOLVER_TYPE=unet, logs_4dvarnet_unet*), SIC the LSTM.
 
 methods:
   FM:
@@ -185,10 +185,14 @@ methods:
     xp:
       GP:
         notebook: Notebook_4dvarnet_unet_spde.ipynb
-        log_dir: logs_4dvarnet_lstm_spde
+        log_dir: logs_4dvarnet_unet_spde
+        params:
+          SOLVER_TYPE: unet
       SSH_GF:
         notebook: Notebook_4dvarnet_unet.ipynb
-        log_dir: logs_4dvarnet_lstm
+        log_dir: logs_4dvarnet_unet
+        params:
+          SOLVER_TYPE: unet
       SIC:
         notebook: Notebook_4dvarnet_unet_sic.ipynb
         log_dir: logs_4dvarnet_lstm_sic
