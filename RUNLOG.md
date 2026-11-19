@@ -316,3 +316,4 @@ fatal: Cannot autostash
 - 2026-11-19 07:15 submitted `sic_4dvarnet_train` as job 78533 -> `runs/20261119-071444_sic_4dvarnet_train` (lane 2) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-19 07:15 submitted `sic_unet_train` as job 78538 -> `runs/20261119-071512_sic_unet_train` (lane 4) [gpu:a100:1]
 - 2026-11-19 07:32 lane 2: `sic_4dvarnet_train` done in 00:01:43, gate passed
+- 2026-11-19 07:32 lane 4: `sic_unet_train` done in 00:01:58, gate passed

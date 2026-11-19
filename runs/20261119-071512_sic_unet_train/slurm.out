@@ -1,0 +1,78 @@
+[job] 2026-11-19T07:15:43+01:00 host=sl-mee-br-207 job=78538 run_dir=runs/20261119-071512_sic_unet_train args=--cmd cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method UNet
+NVIDIA A100-SXM4-80GB, 81920 MiB
+
+========================================================================================
+[run_metrics] STARTING UNet / SIC
+========================================================================================
+[run_metrics] UNet / SIC -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_metrics.ipynb (n_members=1)
+[run_metrics] params = {'MAX_EPOCHS': 2000, 'N_SAMPLES': 1, 'RESET_TRAINING': False, 'CUDA_VISIBLE_DEVICES': '0', 'METRICS_CSV': '/Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_metrics.csv', 'SKIP_TRAINING': True}
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
+  validate(nb)
+Executing:   0%|          | 0/28 [00:00<?, ?cell/s]Executing:   4%|▎         | 1/28 [00:04<01:55,  4.26s/cell]Executing:  11%|█         | 3/28 [00:56<08:35, 20.61s/cell]Thu Nov 19 07:16:46 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-80GB          Off |   00000000:07:00.0 Off |                    0 |
+| N/A   33C    P0             68W /  400W |       0MiB /  81920MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Executing:  18%|█▊        | 5/28 [00:57<03:55, 10.25s/cell]Executing:  25%|██▌       | 7/28 [01:14<03:19,  9.51s/cell]C=9, H=240, W=240
+Train: 300, Val: 50, Test: 43
+asip: (9, 240, 240)  input: (9, 240, 240)  osisaf: (9, 240, 240)
+asip range: [0.000, 1.000]
+asip std: 0.4139
+NaN fraction in asip: 22.2%
+Executing:  36%|███▌      | 10/28 [01:23<01:53,  6.28s/cell]Executing:  57%|█████▋    | 16/28 [01:23<00:32,  2.67s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+Valid checkpoint: logs_direct_unet_SIC/checkpoints/last.ckpt
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+
+/Odyssey/private/m19beauc/conda_envs/4dvarnet-starter/lib/python3.11/site-packages/lightning_fabric/plugins/environments/slurm.py:168: PossibleUserWarning: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python /Odyssey/private/m19beauc/conda_envs/4dvarnet-starte ...
+  rank_zero_warn(
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+HPU available: False, using: 0 HPUs
+[TRAINING] SKIP_TRAINING=True -- loading weights from logs_direct_unet_SIC/checkpoints/last.ckpt directly (trainer.fit() not called)
+Model saved to: logs_direct_unet_SIC/best_model
+Executing:  68%|██████▊   | 19/28 [01:29<00:22,  2.51s/cell]DirectUNet loaded from logs_direct_unet_SIC/best_model
+  Device : cuda:0
+  Params : 58,820,427
+Executing:  75%|███████▌  | 21/28 [01:30<00:14,  2.12s/cell][rank: 0] Global seed set to 42
+
+[rank: 0] Global seed set to 42
+RMSE (test batch, normalised): nan
+Executing:  82%|████████▏ | 23/28 [01:38<00:12,  2.55s/cell]Masked-out fraction (no ASIP obs in window): 14.7%
+  Saved: figures/DirectUNet_sic/DirectUNet_sic_obs.png
+  Saved: figures/DirectUNet_sic/DirectUNet_sic_gt.png
+  Saved: figures/DirectUNet_sic/DirectUNet_sic_pred.png
+Executing:  89%|████████▉ | 25/28 [01:40<00:06,  2.09s/cell]Evaluated 251 (test sample, timestep) pairs with MIZ coverage across the full test set
+
+## Metrics -- full test set, MIZ only (0.15-0.85), n=251 (sample,t) pairs
+
+Executing:  96%|█████████▋| 27/28 [01:46<00:02,  2.42s/cell]Metrics written to /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_metrics.csv
+Executing: 100%|██████████| 28/28 [01:50<00:00,  3.93s/cell]
+[run_metrics] done: /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/consistency/sbatch_submission/results/SIC/UNet_metrics.csv
+[run_step] ok in 114.9 s -> /Odyssey/private/m19beauc/iclr-rebuttal/4dvarnet-starter-iclr/runs/20261119-071512_sic_unet_train
+[job] 2026-11-19T07:17:39+01:00 exit=0
