@@ -156,8 +156,8 @@ The notebooks read the three NetCDF files from `data/`:
 * GP (79 MB): included in `data/`. The fields are simulated from the SPDE of Appendix H (implicit scheme, noise-free
   observations along tracks); `consistency/scripts/gp_exact_posterior.py` recovers the generating operator from the
   file and checks it on the data.
-* SSH (0.9 GB) and SIC (13.6 GB) exceed the size limit of the supplementary material and will be released with the
-  code. The SSH data are the NATL60 Gulf Stream OSSE with nadir observations of the public 2020a SSH mapping data
+* SSH (0.9 GB) and SIC (13.6 GB) exceed the size limit of the supplementary material; the preprocessed files will be
+  released upon acceptance, together with the code. The SSH data are the NATL60 Gulf Stream OSSE with nadir observations of the public 2020a SSH mapping data
   challenge (https://github.com/ocean-data-challenges/2020a_SSH_mapping_NATL60), on a 128x128 grid at 0.1 degree. The
   SIC file holds the ASIP SIC fields, the SAR-derived observations and the OSI SAF field on a common grid
   (Appendix D.3), all from public products.
