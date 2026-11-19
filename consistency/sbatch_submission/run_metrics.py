@@ -74,6 +74,7 @@ def main():
         "SKIP_TRAINING": True,
     }
     params.update(method_cfg.get("params") or {})
+    params.update(xp_cfg.get("params") or {})          # per-benchmark overrides (e.g. 4DVarNet solver, SIC CM sampler)
     import ast
     for kv in args.set:
         k, v = kv.split("=", 1)

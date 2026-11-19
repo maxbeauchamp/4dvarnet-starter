@@ -146,6 +146,7 @@ def main():
         "NFE_SWEEP_CSV": str(sweep_csv),
     }
     params.update(method_cfg.get("params") or {})
+    params.update(xp_cfg.get("params") or {})          # per-benchmark overrides (e.g. 4DVarNet solver, SIC CM sampler)
 
     print(f"\n{'='*88}\n[run_nfe_sweep] STARTING {args.method} / {args.xp}\n{'='*88}", flush=True)
     print(f"[run_nfe_sweep] {args.method} -> {notebook_out}", flush=True)
