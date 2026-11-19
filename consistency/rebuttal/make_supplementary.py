@@ -149,13 +149,13 @@ Anonymised code to reproduce the tables and figures of the paper.
 
 ## Data
 
-Place the three NetCDF files in `data/`:
+The three NetCDF files are included in `data/`, where the notebooks expect them:
 
 {data}
 
 The GP fields are simulated from the SPDE of Appendix H; the SSH data are the NATL60 Gulf Stream OSSE with nadir
 observations of the 2020a SSH mapping data challenge; the SIC file holds the ASIP SIC fields, the SAR-derived
-observations and the OSI SAF field on the same grid (Appendix D.3). Download links are given in the paper.
+observations and the OSI SAF field on the same grid (Appendix D.3).
 
 ## Layout
 
