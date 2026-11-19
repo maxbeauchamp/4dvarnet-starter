@@ -1,0 +1,8 @@
+T=300 grid=128x128 H11 in [1.04,9.95] H12 in [-0.47,0.47]
+  orientation C dt=1.0: residual var 0.9985 (expected dt), lag-1 autocorr +0.001
+  orientation C dt=0.25: residual var 0.1478 (expected dt), lag-1 autocorr +0.311
+  orientation T dt=1.0: residual var 3.4233 (expected dt), lag-1 autocorr -0.426
+  orientation T dt=0.25: residual var 0.3260 (expected dt), lag-1 autocorr -0.240
+-> orientation C, dt=1.0, sigma^2=0.9985
+prior samples ready (66s)
+  window 1/45 (start 122): RMSE 0.2149  OI 0.2228  (3147s)
