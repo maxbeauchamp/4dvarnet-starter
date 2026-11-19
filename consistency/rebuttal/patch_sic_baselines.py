@@ -105,6 +105,8 @@ FDV += [("grad_model.save_pretrained(MODEL_PATH)\nprint(f\"del saved to: {MODEL_
          "torch.save(prior_cost.state_dict(), os.path.join(MODEL_PATH, 'prior_cost.pt'))   # (rebuttal) needed by the evaluation cells\n"
          "print(f\"Model saved to: {MODEL_PATH}\")")]
 UNET += [('MODEL_PATH = os.path.join("logs_direct_unet_GP", "best_model")', 'MODEL_PATH = os.path.join(LOG_DIR, "best_model")')]
+FDV += [("obs_cost = ObsCost(w=1.0).to(device=device, dtype=dtype)",
+         "obs_cost = SICObsCost4DV(pool=16, w_osi=1.0).to(device=device, dtype=dtype)   # (rebuttal) as in training")]
 # the SIC items have no `tgt` field: the reference is `asip`
 for _r in (UNET, FDV):
     _r += [("batch.tgt", "batch.asip"), ("_tb.tgt", "_tb.asip")]
