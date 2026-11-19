@@ -631,10 +631,10 @@
   {
    "id": "ssh_unet_metrics",
    "lane": 4,
-   "time": "01:00:00",
+   "time": "02:30:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SSH_GF --method UNet",
-   "note": "SSH UNet: recompute metrics (lambda_x in degrees)"
+   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method UNet --reset && python run_metrics.py --xp SSH_GF --method UNet",
+   "note": "SSH UNet: no checkpoint left -> train (1h15 budget, best validation checkpoint) and evaluate"
   },
   {
    "id": "ssh_cmt_aug_train",

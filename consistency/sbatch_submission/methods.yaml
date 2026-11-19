@@ -36,6 +36,8 @@ methods:
         notebook: Notebook_direct_unet.ipynb
         log_dir: logs_direct_unet
         status: existing
+        params:
+          MAX_TIME: "00:01:15:00"
 
   4dvarnet_lstm:
     generative: false
