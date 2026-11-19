@@ -322,3 +322,7 @@ fatal: Cannot autostash
 - 2026-11-19 07:42 pilot resumed
 - 2026-11-19 07:43 submitted `ssh_unet_metrics` as job 78552 -> `runs/20261119-074250_ssh_unet_metrics` (lane 4) [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
 - 2026-11-19 09:07 lane 4: `ssh_unet_metrics` done in 01:17:23, gate passed
+- 2026-11-19 09:37 submitted `ssh_nfe_cm_fm` as job 78587 -> `runs/20261119-093639_ssh_nfe_cm_fm` [gpu:h100:1, excl. sl-mee-br-206,sl-mee-br-207]
+- 2026-11-19 09:37 submitted `ssh_nfe_var` as job 78592 -> `runs/20261119-093709_ssh_nfe_var` (lane 2) [gpu:a100:1]
+- 2026-11-19 09:37 submitted `ssh_nfe_dyn` as job 78597 -> `runs/20261119-093733_ssh_nfe_dyn` (lane 3) [gpu:a100:1]
+- 2026-11-19 10:09 `ssh_nfe_cm_fm` done in 00:24:04, gate passed

@@ -1,0 +1,2 @@
+Method,RMSE,lambda_x,CRPS
+"FM (ens. mean, full test set)",0.0641 $\pm$ 0.0122,1.14 $\pm$ 0.23,0.0330 $\pm$ 0.0045
