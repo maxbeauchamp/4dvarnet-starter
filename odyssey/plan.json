@@ -623,10 +623,10 @@
   {
    "id": "sic_unet_train",
    "lane": 4,
-   "time": "03:00:00",
+   "time": "01:00:00",
    "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SIC --method UNet --reset && python run_metrics.py --xp SIC --method UNet",
-   "note": "SIC direct UNet baseline: masked loss on ASIP, input = SAR fused with OSI SAF + SAR mask"
+   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method UNet",
+   "note": "trained 2h (first run failed at evaluation: GP model path) -> metrics only, best validation checkpoint"
   },
   {
    "id": "ssh_unet_metrics",
@@ -642,14 +642,6 @@
    "gate": "status == 'ok'",
    "cmd": "cd consistency/sbatch_submission && python run_training.py --xp SSH_GF --method CMT_aug --reset && python run_metrics.py --xp SSH_GF --method CMT_aug",
    "note": "SSH CM distilled from the augmented FM teacher (FM_aug: RMSE 0.059, SSR 0.82)"
-  },
-  {
-   "id": "sic_unet_metrics",
-   "lane": 4,
-   "time": "01:00:00",
-   "gate": "status == 'ok'",
-   "cmd": "cd consistency/sbatch_submission && python run_metrics.py --xp SIC --method UNet",
-   "note": "SIC UNet: evaluate the best validation checkpoint"
   }
  ]
 }

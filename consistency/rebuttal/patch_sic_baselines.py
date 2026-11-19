@@ -101,6 +101,7 @@ FDV += [("grad_model.save_pretrained(MODEL_PATH)\nprint(f\"del saved to: {MODEL_
          '_bc = sorted(glob.glob(os.path.join(CKPT_DIR, "*val_loss=*.ckpt")), key=lambda q: float(q.split("val_loss=")[-1].replace(".ckpt", "")))\nif _bc:   # (rebuttal) evaluate the best validation checkpoint, not the last weights\n    print("[SELECT] best validation checkpoint:", _bc[0], flush=True)\n    lit.load_state_dict(torch.load(_bc[0], map_location="cpu")["state_dict"])\n' + "grad_model.save_pretrained(MODEL_PATH)\n"
          "torch.save(prior_cost.state_dict(), os.path.join(MODEL_PATH, 'prior_cost.pt'))   # (rebuttal) needed by the evaluation cells\n"
          "print(f\"Model saved to: {MODEL_PATH}\")")]
+UNET += [('MODEL_PATH = os.path.join("logs_direct_unet_GP", "best_model")', 'MODEL_PATH = os.path.join(LOG_DIR, "best_model")')]
 # the SIC items have no `tgt` field: the reference is `asip`
 for _r in (UNET, FDV):
     _r += [("batch.tgt", "batch.asip"), ("_tb.tgt", "_tb.asip")]
