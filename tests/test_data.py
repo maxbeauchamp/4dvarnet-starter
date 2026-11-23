@@ -245,3 +245,27 @@ def test_asip_pass_crossing_a_bin_edge_is_one_unit():
     for seed in range(20):
         tgt = obs.unit_partition(unit, valid, 0.5, torch.Generator().manual_seed(seed))
         assert tgt[:, :30].all() or not tgt[:, :30].any()
+
+
+def test_interleaved_splits_drop_training_days_near_val_test(tmp_path):
+    from croscim.data import CascadeDataModule, date_blocks, to_day
+    from croscim.layout import STORES
+    days = list(range(to_day("2022-01-01"), to_day("2022-03-01")))
+    for name in STORES.values():
+        zarr.open_array(os.path.join(tmp_path, name, "days"), mode="w", shape=(len(days),), dtype="i8")[:] = days
+    blocks = [["2022-01-20", "2022-01-22"], ["2022-02-10", "2022-02-12"]]
+    assert date_blocks(blocks) == [(to_day(a), to_day(b)) for a, b in blocks]
+    assert date_blocks(["2022-01-20", "2022-01-22"]) == [(to_day("2022-01-20"), to_day("2022-01-22"))]
+    dm = CascadeDataModule(str(tmp_path), None, ["2022-01-05", "2022-02-20"], [blocks[0]], [blocks[1]],
+                           horizon=2, train_gap=1)
+    tr, va, te = dm._days("train"), dm._days("val"), dm._days("test")
+    assert va == list(range(to_day("2022-01-20"), to_day("2022-01-23"))) and len(te) == 3
+    # no training sequence t..t+2 within 1 day of a held-out sequence s..s+2
+    for t in tr:
+        for s in va + te:
+            assert t + 2 < s - 1 or t > s + 2 + 1
+    assert to_day("2022-01-16") in tr and to_day("2022-01-17") not in tr    # 01-17..01-19 touches the margin
+    assert to_day("2022-01-26") in tr and to_day("2022-01-25") not in tr
+    # train_gap None: splits as given
+    assert len(CascadeDataModule(str(tmp_path), None, ["2022-01-05", "2022-02-20"], [blocks[0]], [blocks[1]],
+                                 horizon=2)._days("train")) == len(range(to_day("2022-01-05"), to_day("2022-02-21")))

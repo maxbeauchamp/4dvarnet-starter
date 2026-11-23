@@ -102,9 +102,14 @@ def main():
             json.dump(report, f, indent=2)
 
     d = pcfg.dates
+
+    def fmt(x):  # [start, end] or [[start, end], ...] (interleaved blocks) as a Hydra override value
+        return "[" + ",".join(fmt(v) for v in x) + "]" if OmegaConf.is_list(x) else str(x)
+
     common = [f"datamodule.root={args.root}", f"datamodule.natural_earth_zip={REPO}/assets/ne_10m_land.zip",
-              f"datamodule.train_dates=[{d.train[0]},{d.train[1]}]", f"datamodule.val_dates=[{d.val[0]},{d.val[1]}]",
-              f"datamodule.test_dates=[{d.test[0]},{d.test[1]}]", *pcfg.get("common", [])]
+              f"datamodule.train_dates={fmt(d.train)}", f"datamodule.val_dates={fmt(d.val)}",
+              f"datamodule.test_dates={fmt(d.test)}", *pcfg.get("common", [])]
+    test_blocks = [list(b) for b in d.test] if OmegaConf.is_list(d.test[0]) else [list(d.test)]
     tiny_n0 = [f"swin_config.{t}" for t in TINY] + [f"swin_config_fine.{t}" for t in TINY] if args.tiny else []
     if args.tiny:
         common += ["datamodule.dl_kw.num_workers=0", "datamodule.dl_kw.pin_memory=false"]
@@ -196,18 +201,21 @@ def main():
         cfg_ev = OmegaConf.to_container(cfg_ev)
         ckpt = ckpt_of(cfg_ev.pop("ckpt_of"))
         dest = os.path.join(out, key)
-        cmd = [sys.executable, os.path.join(REPO, "scripts", f"{script}.py"), "--ckpt", ckpt, "--root", args.root,
-               "--start", d.test[0], "--end", d.test[1], "--out", dest]
+        extra = []
         for k, v in cfg_ev.items():
             flag = f"--{k.replace('_', '-')}"
             if isinstance(v, bool):
-                cmd += [flag] if v else []
+                extra += [flag] if v else []
             else:
-                cmd += [flag, *([str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)])]
-        print(f"{key}: {' '.join(cmd)}", flush=True)
-        t0 = time.perf_counter()
-        res = subprocess.run(cmd)
-        report[key] = {"done": res.returncode == 0, "returncode": res.returncode, "out": dest,
+                extra += [flag, *([str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)])]
+        t0, codes = time.perf_counter(), []
+        for a, b in test_blocks:  # one run per test block (interleaved splits), in <dest>/<start>
+            dest_b = dest if len(test_blocks) == 1 else os.path.join(dest, str(a))
+            cmd = [sys.executable, os.path.join(REPO, "scripts", f"{script}.py"), "--ckpt", ckpt, "--root", args.root,
+                   "--start", str(a), "--end", str(b), "--out", dest_b, *extra]
+            print(f"{key}: {' '.join(cmd)}", flush=True)
+            codes.append(subprocess.run(cmd).returncode)
+        report[key] = {"done": all(c == 0 for c in codes), "returncode": max(codes, key=abs), "out": dest,
                        "time_s": round(time.perf_counter() - t0, 1)}
         save()
     print(json.dumps(report, indent=2))

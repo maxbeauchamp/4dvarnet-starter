@@ -67,6 +67,13 @@ def to_day(date: str) -> int:
     return (dt.date.fromisoformat(date) - EPOCH).days
 
 
+def date_blocks(dates) -> list[tuple[int, int]]:
+    """A split's dates, [start, end] or a list of such blocks, as (day, day) pairs."""
+    if len(dates) and not isinstance(dates[0], str):
+        return [(to_day(str(a)), to_day(str(b))) for a, b in dates]
+    return [(to_day(str(dates[0])), to_day(str(dates[1])))]
+
+
 def valid_tile_origins(omega_c: np.ndarray, stride: int) -> np.ndarray:
     """C-tile origins (iy0, ix0) on a `stride` lattice (the last origin is
     clamped to the domain edge) whose ocean fraction is >= MIN_TILE_OCEAN."""
@@ -349,8 +356,14 @@ def build_batch(batch: dict) -> list[dict]:
 class CascadeDataModule(pl.LightningDataModule):
 
     def __init__(self, root, natural_earth_zip, train_dates, val_dates, test_dates,
-                 tiles_per_day=8, dl_kw=None, horizon=0, asip_weighted_tiles=False):
+                 tiles_per_day=8, dl_kw=None, horizon=0, asip_weighted_tiles=False, train_gap=None):
+        """Each split's dates: [start, end] or a list of [start, end] blocks.
+        train_gap (interleaved splits, N1q): training days t whose sequence
+        t..t+K comes within train_gap days of a val / test sequence are
+        dropped (no shared day, a margin for the day-to-day correlation);
+        None: the splits are taken as given (disjoint periods)."""
         super().__init__()
+        self.train_gap = train_gap
         self.asip_weighted_tiles = asip_weighted_tiles  # training tiles drawn by ASIP coverage (fine levels)
         self.horizon = horizon  # 0: N0 batches; K: N1 sequences of K + 1 analysis days
         self.root, self.natural_earth_zip = root, natural_earth_zip
@@ -360,11 +373,18 @@ class CascadeDataModule(pl.LightningDataModule):
 
     def _days(self, split):
         """Analysis days t of the split such that t..t+K are in every store."""
-        start, end = (to_day(d) for d in self.dates[split])
-        avail = set(range(start, end + 1 + self.horizon))
+        days = sorted({t for a, b in date_blocks(self.dates[split]) for t in range(a, b + 1)})
+        if not days:
+            return []
+        avail = set(range(days[0], days[-1] + 1 + self.horizon))
         for src in ("asip", *SOURCES):
             avail &= {int(d) for d in zarr.open_array(os.path.join(self.root, STORES[src], "days"), mode="r")[:]}
-        return [t for t in range(start, end + 1) if all(t + k in avail for k in range(self.horizon + 1))]
+        days = [t for t in days if all(t + k in avail for k in range(self.horizon + 1))]
+        if split == "train" and self.train_gap is not None:
+            k, gap = self.horizon, self.train_gap
+            held = [(a - k - gap, b + k + gap) for s in ("val", "test") for a, b in date_blocks(self.dates[s])]
+            days = [t for t in days if not any(lo <= t <= hi for lo, hi in held)]
+        return days
 
     def setup(self, stage=None):
         if self.ds:

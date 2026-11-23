@@ -37,6 +37,7 @@ datamodule:
   train_dates: ???
   val_dates: ???
   test_dates: ???
+  train_gap: null       # N1q: interleaved splits, days of margin around the val / test blocks
   tiles_per_day: 8
   horizon: ${model.k_max}
   # single GPU: shuffle the days here; under DDP drop it (Lightning sets the sampler)
